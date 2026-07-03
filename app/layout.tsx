@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Quicksand } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +11,58 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const quicksand = Quicksand({
+  variable: "--font-quicksand-mono",
+  subsets: ["latin"],
+});
+
+const aileron = localFont({
+  src: [
+    {
+      path: "../public/fonts/AILERON-BLACK.OTF",
+      weight: "900",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/AILERON-BLACKITALIC.OTF",
+      weight: "900",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/AILERON-BOLD.OTF",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/AILERON-BOLDITALIC.OTF",
+      weight: "700",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/AILERON-REGULAR.OTF",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-aileron",
+});
+
+const optima = localFont({
+  src: [
+    {
+      path: "../public/fonts/OPTIMA BLACK.OTF",
+      weight: "900",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/OPTIMA BOLD OBLIQUE.OTF",
+      weight: "700",
+      style: "italic",
+    },
+  ],
+  variable: "--font-optima",
 });
 
 export const metadata: Metadata = {
