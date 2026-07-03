@@ -41,7 +41,7 @@ const aileron = localFont({
       style: "italic",
     },
     {
-      path: "..public\fonts\AILERON-REGULAR.otf",
+      path: "..public/fonts/AILERON-REGULAR.otf",
       weight: "400",
       style: "normal",
     },
