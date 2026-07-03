@@ -21,27 +21,27 @@ const quicksand = Quicksand({
 const aileron = localFont({
   src: [
     {
-      path: "../public/fonts/AILERON-BLACK.otf",
+      path: "./fonts/AILERON-BLACK.otf",
       weight: "900",
       style: "normal",
     },
     {
-      path: "../public/fonts/AILERON-BLACKITALIC.otf",
+      path: "./fonts/AILERON-BLACKITALIC.otf",
       weight: "900",
       style: "italic",
     },
     {
-      path: "../public/fonts/AILERON-BOLD.otf",
+      path: "./fonts/AILERON-BOLD.otf",
       weight: "700",
       style: "normal",
     },
     {
-      path: "../public/fonts/AILERON-BOLDITALIC.otf",
+      path: "./fonts/AILERON-BOLDITALIC.otf",
       weight: "700",
       style: "italic",
     },
     {
-      path: "../public/fonts/AILERON-REGULAR.otf",
+      path: "./fonts/AILERON-REGULAR.otf",
       weight: "400",
       style: "normal",
     },
@@ -52,12 +52,12 @@ const aileron = localFont({
 const optima = localFont({
   src: [
     {
-      path: "../public/fonts/OPTIMA-BLACK.otf",
+      path: "./fonts/OPTIMA-BLACK.otf",
       weight: "900",
       style: "normal",
     },
     {
-      path: "../public/fonts/OPTIMA-BOLD-OBLIQUE.otf",
+      path: "./fonts/OPTIMA-BOLD-OBLIQUE.otf",
       weight: "700",
       style: "italic",
     },
