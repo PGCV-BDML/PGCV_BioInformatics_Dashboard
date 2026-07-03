@@ -29,6 +29,27 @@
   --color-brand-accent-6: #282560;
 }
 
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-REGULAR.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-BOLD.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Optima";
+  src: url("/fonts/OPTIMA-BOLD-OBLIQUE.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     --background: #f6f4ee;
@@ -39,5 +60,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-aileron), var(--font-quicksand), sans-serif;
+  --font-aileron: "Aileron", sans-serif;
+  --font-optima: "Optima", sans-serif;
 }
