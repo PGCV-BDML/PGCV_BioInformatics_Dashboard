@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Quicksand } from "next/font/google";
-import localFont from "next/font/local";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,38 +15,6 @@ const geistMono = Geist_Mono({
 const quicksand = Quicksand({
   variable: "--font-quicksand-mono",
   subsets: ["latin"],
-});
-
-const aileron = localFont({
-  src: [
-    {
-      path: "./fonts/AILERON-BLACK.otf",
-      weight: "900",
-      style: "normal",
-    },
-    {
-      path: "./fonts/AILERON-BLACKITALIC.otf",
-      weight: "900",
-      style: "italic",
-    },
-    {
-      path: "./fonts/AILERON-BOLDITALIC.otf",
-      weight: "700",
-      style: "italic",
-    },
-  ],
-  variable: "--font-aileron",
-});
-
-const optima = localFont({
-  src: [
-    {
-      path: "./fonts/OPTIMA-BLACK.otf",
-      weight: "900",
-      style: "normal",
-    },
-  ],
-  variable: "--font-optima",
 });
 
 export const metadata: Metadata = {

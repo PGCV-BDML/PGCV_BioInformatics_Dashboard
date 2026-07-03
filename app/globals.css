@@ -11,11 +11,6 @@
   --color-black: #333333;
   --color-gray: #7b7979;
 
-  /* Font Tokens*/
-  --font-aileron: var(--font-aileron), sans-serif;
-  --font-quicksand: var(--font-quicksand-mono), sans-serif;
-  --font-optima: var(--font-optima), serif;
-
   /* Color Tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -41,6 +36,20 @@
   src: url("/fonts/AILERON-BOLD.otf") format("opentype");
   font-weight: 700;
   font-style: normal;
+}
+
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-BLACK.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Optima";
+  src: url("/fonts/OPTIMA-BLACK.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
 }
 
 @font-face {
