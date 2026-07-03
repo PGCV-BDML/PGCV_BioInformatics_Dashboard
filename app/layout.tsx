@@ -31,19 +31,9 @@ const aileron = localFont({
       style: "italic",
     },
     {
-      path: "./fonts/AILERON-BOLD.otf",
-      weight: "700",
-      style: "normal",
-    },
-    {
       path: "./fonts/AILERON-BOLDITALIC.otf",
       weight: "700",
       style: "italic",
-    },
-    {
-      path: "./fonts/AILERON-REGULAR.otf",
-      weight: "400",
-      style: "normal",
     },
   ],
   variable: "--font-aileron",
@@ -55,11 +45,6 @@ const optima = localFont({
       path: "./fonts/OPTIMA-BLACK.otf",
       weight: "900",
       style: "normal",
-    },
-    {
-      path: "./fonts/OPTIMA-BOLD-OBLIQUE.otf",
-      weight: "700",
-      style: "italic",
     },
   ],
   variable: "--font-optima",
