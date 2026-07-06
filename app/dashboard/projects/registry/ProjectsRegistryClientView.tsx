@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import ComplianceFooter from "../../components/compliancefooter";
+import ComplianceFooter from "../../../components/compliancefooter";
 import {
   Search,
   Network,
-  ListFilter,
+  ChevronLeft,
   Edit3,
   Trash2,
   X,
@@ -29,7 +29,7 @@ type Project = {
   repository_link?: string;
 };
 
-export default function ProjectsClientView({
+export default function ProjectsRegistryClientView({
   initialProjects,
 }: {
   initialProjects: Project[];
@@ -71,9 +71,8 @@ export default function ProjectsClientView({
     return sortableItems;
   }, [filteredProjects, sortConfig]);
 
-  const displayedProjects = useMemo(() => {
-    return sortedProjects.slice(0, 5);
-  }, [sortedProjects]);
+  // EXPANDED VIEW: Render all sorted projects instead of slicing down to 5
+  const displayedProjects = sortedProjects;
 
   const requestSort = (key: keyof Project) => {
     let direction: "asc" | "desc" = "asc";
@@ -198,16 +197,24 @@ export default function ProjectsClientView({
 
   return (
     <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
-      {/* ── TOP ACTION BAR ───────────────────────────────────────────── */}
+      {/* ── TOP ACTION BAR WITH BACK NAVIGATION ───────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-4xl font-bold font-aileron text-[#2a7797] tracking-tight">
-          Projects
-        </h1>
+        <div className="space-y-1">
+          <Link
+            href="/dashboard/projects"
+            className="inline-flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-[#2a7797] transition-colors"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" /> Back to Dashboard
+          </Link>
+          <h1 className="text-4xl font-bold font-aileron text-[#2a7797] tracking-tight">
+            Full Project Registry
+          </h1>
+        </div>
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search projects..."
+            placeholder="Search full registry..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-11 pl-11 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 outline-none text-[14px] focus:ring-2 focus:ring-[#4ec2bb] transition-all"
@@ -215,22 +222,22 @@ export default function ProjectsClientView({
         </div>
       </div>
 
-      {/* ── PROJECTS TRACKER TABLE ───────────────────────────────────── */}
+      {/* ── EXPANDED PROJECTS REGISTRY TABLE ─────────────────────────── */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm relative overflow-hidden">
         <div className="flex justify-between items-start mb-6">
           <div>
             <p className="text-[11px] font-bold text-[#7b7979] tracking-widest uppercase mb-2">
-              Projects Tracker
+              Master Index ({displayedProjects.length} Records)
             </p>
             <div className="flex items-center gap-2 mb-2">
               <Network className="w-6 h-6 text-[#2a7797]" />
               <h2 className="text-3xl font-bold text-[#333333]">
-                List of Projects
+                All Registered Projects
               </h2>
             </div>
           </div>
-          <span className="hidden sm:inline-block bg-gray-100 text-[#55656e] font-bold text-[10px] tracking-wider px-3 py-1 rounded-full uppercase">
-            Internal and Service-Linked Work
+          <span className="hidden sm:inline-block bg-[#eaf7ee] text-[#2e7d32] font-bold text-[10px] tracking-wider px-3 py-1 rounded-full uppercase">
+            Complete Ledger View
           </span>
         </div>
 
@@ -345,26 +352,16 @@ export default function ProjectsClientView({
                     colSpan={8}
                     className="text-center py-12 text-gray-400 font-medium"
                   >
-                    No active projects found matching your filters.
+                    No projects found matching your search.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        <div className="mt-5 flex justify-end relative z-10">
-          <Link
-            href="/dashboard/projects/registry"
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl font-bold text-[13px] text-[#2a7797] shadow-sm transition-all"
-          >
-            <ListFilter className="w-4 h-4" /> View Full Registry Table (
-            {projectsList.length} total)
-          </Link>
-        </div>
       </div>
 
-      {/* ── MODALS LAYER (EDIT OR DELETE OVERLAYS) ───────────────────── */}
+      {/* ── MODALS LAYER ────────────────────────────────────────────── */}
       {isEditing && editForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
@@ -558,60 +555,6 @@ export default function ProjectsClientView({
           </div>
         </div>
       )}
-
-      {/* ── REQUIRED FIELDS GUIDE REFERENCE ────────────────── */}
-      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.08)] rounded-[28px] p-6 shadow-sm">
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-          <div>
-            <h3 className="text-[11px] font-bold tracking-[1.5px] uppercase font-aileron text-[#7b7979]">
-              Required Fields Guide
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Reference blueprint layout for clients lodging submission
-              workflows.
-            </p>
-          </div>
-          <span className="bg-gray-100 text-[#7b7979] font-bold text-[10px] tracking-wider px-3 py-1 rounded-full uppercase">
-            Review with biology track
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            {
-              label: "Project Name",
-              desc: "Descriptive title of work assignment",
-            },
-            {
-              label: "Client",
-              desc: "Origin organization, university or lab unit",
-            },
-            {
-              label: "Service Type",
-              desc: "Bioinformatics analysis branch requested",
-            },
-            { label: "Status", desc: "Pipeline tracking position flag" },
-            {
-              label: "Lead",
-              desc: "Assigned head supervisor processing parameters",
-            },
-            {
-              label: "Target Delivery",
-              desc: "Estimated delivery pipeline threshold date",
-            },
-          ].map((field, i) => (
-            <div
-              key={i}
-              className="bg-[#fffdf8] rounded-2xl border border-gray-200/60 p-4 flex flex-col justify-center"
-            >
-              <span className="text-sm font-bold text-[#172126]">
-                {field.label}
-              </span>
-              <span className="text-xs text-gray-400 mt-1">{field.desc}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       <ComplianceFooter />
     </div>
