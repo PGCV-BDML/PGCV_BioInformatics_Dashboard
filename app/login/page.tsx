@@ -1,4 +1,17 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
+
 export default function SignInPage() {
+  const handleSignInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen w-full flex">
       {/* ── Left hero panel ───────────────────────────────────────────── */}
@@ -82,6 +95,7 @@ export default function SignInPage() {
           {/* Sign-in button - Switched to font-quicksand layout token */}
           <button
             type="button"
+            onClick={handleSignInWithGoogle}
             className="mt-8 w-full h-[52px] rounded-2xl flex items-center justify-center gap-3 text-white text-[14px] font-bold font-quicksand transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1071ff]"
             style={{
               backgroundImage:
