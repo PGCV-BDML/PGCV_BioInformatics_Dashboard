@@ -20,6 +20,7 @@ import {
   Calendar,
   ClipboardCheck,
   Save,
+  Inbox,
 } from "lucide-react";
 
 type Collaboration = {
@@ -184,9 +185,8 @@ export default function CollaborationsPage() {
   };
 
   const renderSectionLabel = (icon: React.ReactNode, text: string) => (
-    <div className="flex items-center gap-2 text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[1.5px] mb-4 mt-2">
-      <div className="text-slate-400">{icon}</div>
-      <span>{text}</span>
+    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[1.5px] mb-3 mt-1">
+      {icon} <span>{text}</span>
     </div>
   );
 
@@ -360,60 +360,71 @@ export default function CollaborationsPage() {
             Alliances & Consortium Network
           </h2>
         </div>
-        <DataTable
-          columns={columns}
-          data={displayedCollaborations}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-        />
-        <Pagination
-          totalItems={filteredCollaborations.length}
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+
+        {collaborationsList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
+            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
+            <span className="text-sm font-medium text-slate-500">
+              No collaborations
+            </span>
+          </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              data={displayedCollaborations}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+            <Pagination
+              totalItems={filteredCollaborations.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </div>
 
-      {/* EXACT PROJECTS PAGE MODAL UI COOP/LAYOUT DESIGN */}
+      {/* MATCHING REGISTRY MODAL OVERLAY WRAPPER */}
       {(isAdding || isEditing) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172126]/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-[#fffdf8] w-full max-w-2xl rounded-[24px] border border-[rgba(23,33,38,0.08)] p-8 shadow-xl relative max-h-[90vh] overflow-y-auto">
-            {/* Close Toggle */}
-            <button
-              type="button"
-              onClick={() =>
-                isAdding ? setIsAdding(false) : setIsEditing(false)
-              }
-              className="absolute right-6 top-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Heading Context Elements */}
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-[#11161a] tracking-tight">
-                {isAdding
-                  ? "Initialize New Collaboration"
-                  : "Edit Collaboration Settings"}
-              </h3>
-              <p className="text-xs text-[#5c6e7a] mt-1 font-medium">
-                {isAdding
-                  ? "Define target parameter settings for the custom sequence pipeline assignment."
-                  : "Modify alignment boundaries and workspace connection anchors."}
-              </p>
+        <div className="fixed inset-0 w-full h-full z-[100] flex items-center justify-center bg-[#172126]/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-[#fffdf8] w-full max-w-xl rounded-[24px] border border-[rgba(23,33,38,0.08)] shadow-2xl relative flex flex-col max-h-[90vh]">
+            <div className="p-6 pb-3 flex items-start justify-between border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-bold text-[#11161a]">
+                  {isAdding
+                    ? "Initialize Collaboration"
+                    : "Modify Collaboration Record"}
+                </h3>
+                <p className="text-xs text-[#5c6e7a] mt-0.5">
+                  {isAdding
+                    ? "Specify operational scope parameters, allocate core research staff leaders, and connect runtime workspace parameters."
+                    : "Update sequence alignment paths, client anchors, or re-assign platform milestones for the project registry entry."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  isAdding ? setIsAdding(false) : setIsEditing(false)
+                }
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <form
               onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
-              className="space-y-6"
+              className="flex-1 overflow-y-auto p-6 space-y-4"
             >
-              {/* CATEGORY: IDENTITY */}
+              {/* SECTION: IDENTITY */}
               <div>
                 {renderSectionLabel(
-                  <FlaskConical className="w-3.5 h-3.5" />,
+                  <FlaskConical className="w-3.5 h-3.5 text-slate-400" />,
                   "Project Identity",
                 )}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="text-xs font-bold text-[#11161a]">
                     Partner Organization
                   </label>
@@ -427,29 +438,29 @@ export default function CollaborationsPage() {
                         partner_organization: e.target.value,
                       })
                     }
-                    className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all shadow-sm"
                     placeholder="e.g., Philippine Genome Center"
+                    className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb]"
                   />
                 </div>
               </div>
 
-              {/* CATEGORY: PERSONNEL & LIFECYCLE */}
+              {/* SECTION: COORDINATION */}
               <div>
                 {renderSectionLabel(
-                  <User className="w-3.5 h-3.5" />,
+                  <User className="w-3.5 h-3.5 text-slate-400" />,
                   "Personnel Allocation & Operational Timeline",
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-[#11161a]">
-                      Lead System Analyst / Coordinator
+                      Lead Coordinator
                     </label>
                     <select
                       value={formState.lead}
                       onChange={(e) =>
                         setFormState({ ...formState, lead: e.target.value })
                       }
-                      className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all cursor-pointer shadow-sm"
+                      className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
                     >
                       {AVAILABLE_USERS.map((user) => (
                         <option key={user} value={user}>
@@ -458,7 +469,7 @@ export default function CollaborationsPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-[#11161a]">
                       Commencement Date
                     </label>
@@ -472,28 +483,28 @@ export default function CollaborationsPage() {
                           start_date: e.target.value,
                         })
                       }
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all shadow-sm"
+                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* CATEGORY: WORKFLOW STATE */}
+              {/* SECTION: PROTOCOL */}
               <div>
                 {renderSectionLabel(
-                  <ClipboardCheck className="w-3.5 h-3.5" />,
+                  <ClipboardCheck className="w-3.5 h-3.5 text-slate-400" />,
                   "Classification & Workflow Protocol",
                 )}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="text-xs font-bold text-[#11161a]">
-                    Pipeline Operational State
+                    Workflow Status State
                   </label>
                   <select
                     value={formState.status}
                     onChange={(e) =>
                       setFormState({ ...formState, status: e.target.value })
                     }
-                    className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all cursor-pointer shadow-sm"
+                    className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
                   >
                     {AVAILABLE_STATUSES.map((status) => (
                       <option key={status} value={status}>
@@ -504,14 +515,14 @@ export default function CollaborationsPage() {
                 </div>
               </div>
 
-              {/* CATEGORY: REMOTE DATA SYNC AND CODES */}
+              {/* SECTION: CONNECTIONS */}
               <div>
                 {renderSectionLabel(
-                  <Link2 className="w-3.5 h-3.5" />,
+                  <Link2 className="w-3.5 h-3.5 text-slate-400" />,
                   "Resource Asset Connections",
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-[#11161a]">
                       Documents Vault (URL)
                     </label>
@@ -524,13 +535,13 @@ export default function CollaborationsPage() {
                           documents_link: e.target.value,
                         })
                       }
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all shadow-sm"
                       placeholder="https://drive.google.com/..."
+                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-[#11161a]">
-                      Repository Link (URL)
+                      Repository Link Asset
                     </label>
                     <input
                       type="url"
@@ -541,20 +552,20 @@ export default function CollaborationsPage() {
                           repository_link: e.target.value,
                         })
                       }
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all shadow-sm"
                       placeholder="https://github.com/..."
+                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* CATEGORY: INTERNAL ANNOTATIONS */}
+              {/* SECTION: ANNOTATIONS */}
               <div>
                 {renderSectionLabel(
-                  <Calendar className="w-3.5 h-3.5" />,
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />,
                   "Supplemental Annotations",
                 )}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="text-xs font-bold text-[#11161a]">
                     Internal Context Notes
                   </label>
@@ -564,8 +575,8 @@ export default function CollaborationsPage() {
                       setFormState({ ...formState, notes: e.target.value })
                     }
                     rows={3}
-                    className="w-full p-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb] transition-all resize-none shadow-sm"
-                    placeholder="Provide high-level context notes regarding agreement status or workspace milestones..."
+                    placeholder="Provide high-level context notes regarding agreement status..."
+                    className="w-full p-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none resize-none shadow-sm focus:ring-1 focus:ring-[#4ec2bb]"
                   />
                 </div>
               </div>
@@ -587,7 +598,7 @@ export default function CollaborationsPage() {
                 >
                   <Save className="w-4 h-4" />
                   <span>
-                    {isAdding ? "Save Alliance Record" : "Commit Form Metadata"}
+                    {isAdding ? "Add Collaboration" : "Commit Changes"}
                   </span>
                 </button>
               </div>

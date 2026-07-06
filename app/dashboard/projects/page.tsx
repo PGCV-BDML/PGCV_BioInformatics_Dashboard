@@ -20,6 +20,7 @@ import {
   FlaskConical,
   User,
   Calendar,
+  Inbox,
 } from "lucide-react";
 
 type Project = {
@@ -127,7 +128,6 @@ export default function ProjectsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Modals Visibility States
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -142,7 +142,6 @@ export default function ProjectsPage() {
     );
   }, [searchQuery, projectsList]);
 
-  // FIX: Converted unsafe side-effect useMemo to an ideal useEffect hook
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -178,14 +177,6 @@ export default function ProjectsPage() {
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    if (editForm) {
-      setEditForm({ ...editForm, [e.target.name]: e.target.value });
-    }
-  };
-
   const handleAddNewProjectSubmit = (newProjectData: Omit<Project, "id">) => {
     const generatedId =
       projectsList.length > 0
@@ -197,24 +188,8 @@ export default function ProjectsPage() {
       ...newProjectData,
     };
 
-    // 1. Appends the new project directly to the top of your stateful table list
     setProjectsList((prev) => [instantiatedProject, ...prev]);
-
-    // 2. Closes the creation modal layout overlay
     setIsAdding(false);
-
-    // 3. REMOVE OR COMMENT THIS OUT to prevent the 404 page hop:
-    // router.push(`/dashboard/projects/${generatedId}`);
-  };
-
-  const handleSaveChanges = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editForm) return;
-
-    setProjectsList((prev) =>
-      prev.map((item) => (item.id === editForm.id ? editForm : item)),
-    );
-    setIsEditing(false);
   };
 
   const handleDeleteRecord = () => {
@@ -224,12 +199,6 @@ export default function ProjectsPage() {
     );
     setShowDeleteConfirm(false);
   };
-
-  const renderSectionLabel = (icon: React.ReactNode, text: string) => (
-    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[1.5px] mb-3 mt-1">
-      {icon} <span>{text}</span>
-    </div>
-  );
 
   const renderStatusBadge = (status: string) => {
     const baseClass =
@@ -321,10 +290,7 @@ export default function ProjectsPage() {
             type="button"
             onClick={() => {
               setSelectedProject(p);
-              setEditForm({
-                ...p,
-                repository_link: p.repository_link || "",
-              });
+              setEditForm({ ...p, repository_link: p.repository_link || "" });
               setIsEditing(true);
             }}
             className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
@@ -348,7 +314,6 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
-      {/* Table Workspace Controls Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
           Projects
@@ -369,34 +334,44 @@ export default function ProjectsPage() {
             onClick={() => setIsAdding(true)}
             className="flex items-center justify-center gap-2 h-11 px-5 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white text-sm font-bold rounded-full shadow-sm transition-all whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> Add New Project
+            <Plus className="w-4 h-4 stroke-[2.5]" /> Add Project
           </button>
         </div>
       </div>
 
-      {/* Main Workspace Table View */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
           <Network className="w-6 h-6 text-[#2a7797]" />
           <h2 className="text-3xl font-bold text-[#333333]">
-            Project Tracking Workspace
+            List of Projects
           </h2>
         </div>
-        <DataTable
-          columns={columns}
-          data={displayedProjects}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-        />
-        <Pagination
-          totalItems={filteredProjects.length}
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+
+        {projectsList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
+            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
+            <span className="text-sm font-medium text-slate-500">
+              No current projects
+            </span>
+          </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              data={displayedProjects}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+            <Pagination
+              totalItems={filteredProjects.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </div>
 
-      {/* Initialize New Project Modal Container */}
       <NewProjectModal
         isOpen={isAdding}
         onClose={() => setIsAdding(false)}
@@ -406,7 +381,6 @@ export default function ProjectsPage() {
         availableUsers={AVAILABLE_USERS}
       />
 
-      {/* Record Erasure Modal Component */}
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={selectedProject?.name || ""}

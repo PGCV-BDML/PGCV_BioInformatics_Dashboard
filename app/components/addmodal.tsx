@@ -302,7 +302,7 @@ export default function NewProjectModal({
               onClick={onClose}
               className="h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-2xl transition-colors"
             >
-              Discard
+              Cancel
             </button>
             <button
               type="submit"
