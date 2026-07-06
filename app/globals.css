@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f4ee;
+  --foreground: #333333;
 }
 
-@theme inline {
+@theme {
+  /* Default black and white */
+  --color-white: #e6e7e8;
+  --color-black: #333333;
+  --color-gray: #7b7979;
+
+  /* Color Tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-primary: #2a7797;
+  --color-brand-secondary: #07d8ff;
+  --color-brand-accent-1: #4ec2bb;
+  --color-brand-accent-2: #2a7797;
+  --color-brand-accent-3: #fcb016;
+  --color-brand-accent-4: #6bb155;
+  --color-brand-accent-5: #92298d;
+  --color-brand-accent-6: #282560;
+
+  /* Text Tokens */
+  --font-aileron: "Aileron", sans-serif;
+  --font-optima: "Optima", sans-serif;
+  --font-quicksand: var(--font-quicksand-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-REGULAR.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-BOLD.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Aileron";
+  src: url("/fonts/AILERON-BLACK.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Optima";
+  src: url("/fonts/OPTIMA-BLACK.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Optima";
+  src: url("/fonts/OPTIMA-BOLD-OBLIQUE.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f6f4ee;
+    --foreground: #333333;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
