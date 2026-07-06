@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   X,
   Save,
@@ -22,26 +22,24 @@ type ProjectInput = {
   repository_link: string;
 };
 
-interface EditProjectModalProps {
+interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (project: ProjectInput) => void;
-  initialData: ProjectInput | null;
   availableClients: string[];
   availableServices: string[];
   availableUsers: string[];
 }
 
-export default function EditProjectModal({
+export default function NewProjectModal({
   isOpen,
   onClose,
   onSubmit,
-  initialData,
   availableClients,
   availableServices,
   availableUsers,
-}: EditProjectModalProps) {
-  const [form, setForm] = useState<ProjectInput>({
+}: NewProjectModalProps) {
+  const initialFormState: ProjectInput = {
     name: "",
     client_name: "",
     service_type: "",
@@ -50,14 +48,9 @@ export default function EditProjectModal({
     start_date: "",
     target_delivery_date: "",
     repository_link: "",
-  });
+  };
 
-  // Keep form data synchronized when initialData node changes or gets loaded
-  useEffect(() => {
-    if (initialData) {
-      setForm(initialData);
-    }
-  }, [initialData, isOpen]);
+  const [form, setForm] = useState<ProjectInput>(initialFormState);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -68,6 +61,7 @@ export default function EditProjectModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(form);
+    setForm(initialFormState); // Reset form values after submit
   };
 
   if (!isOpen) return null;
@@ -89,11 +83,11 @@ export default function EditProjectModal({
         <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-white">
           <div>
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Modify Project Parameters
+              Initialize New Project
             </h3>
             <p className="text-slate-500 text-sm mt-1 font-medium font-aileron">
-              Update design settings and custom execution values for this
-              pipeline tracking node.
+              Define target parameter settings for the custom sequence pipeline
+              assignment.
             </p>
           </div>
           <button
@@ -308,13 +302,13 @@ export default function EditProjectModal({
               onClick={onClose}
               className="h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-2xl transition-colors"
             >
-              Cancel
+              Discard
             </button>
             <button
               type="submit"
               className="flex items-center gap-2 h-12 px-6 bg-slate-900 hover:bg-black text-white font-bold text-sm rounded-2xl shadow-lg shadow-slate-200 transition-all"
             >
-              <Save className="w-4 h-4" /> Save Changes
+              <Save className="w-4 h-4" /> Save Project
             </button>
           </div>
         </form>
