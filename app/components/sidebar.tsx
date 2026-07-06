@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutGrid,
   Calendar,
@@ -40,6 +41,12 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   return (
     <aside className="w-[340px] h-screen bg-[#fffdf8] flex flex-col justify-between p-6 border-r border-[rgba(23,33,38,0.08)] shadow-[2px_0px_24px_rgba(40,37,96,0.02)] flex-shrink-0">
@@ -105,6 +112,7 @@ export default function Sidebar() {
       <div className="pt-4 border-t border-gray-100">
         <button
           type="button"
+          onClick={handleSignOut}
           className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-gray-50 transition-colors focus:outline-none"
         >
           <div className="flex items-center gap-3">
