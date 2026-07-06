@@ -77,41 +77,44 @@ export default function ProjectsClientView({
 
   const renderStatusBadge = (status: string) => {
     const baseClass =
-      "px-2.5 py-1 rounded-full text-[12px] font-bold font-aileron text-center min-w-[92px] inline-block";
+      "px-2.5 py-1 rounded-full text-[11.5px] font-bold font-aileron text-center min-w-[92px] inline-block tracking-wide uppercase text-[10px]";
+
     switch (status) {
       case "Completed":
         return (
-          <span className={`${baseClass} bg-[#eaf7ee] text-[#55b672]`}>
+          <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
             Completed
           </span>
         );
       case "On-going":
+      case "In-progress":
         return (
-          <span className={`${baseClass} bg-[#f2f4f5] text-[#55656e]`}>
-            On-going
+          <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
+            In-Progress
           </span>
         );
       case "On hold":
+      case "Overdue":
         return (
-          <span className={`${baseClass} bg-[#fff8eb] text-[#f4ba61]`}>
-            On hold
+          <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
+            Overdue
           </span>
         );
       case "Submitted":
         return (
-          <span className={`${baseClass} bg-[#f8fafb] text-[#788894]`}>
+          <span className={`${baseClass} bg-[#f5f5f5] text-[#616161]`}>
             Submitted
           </span>
         );
       case "For approval":
         return (
-          <span className={`${baseClass} bg-[#f2f2f5] text-[#8e8d94]`}>
-            For approval
+          <span className={`${baseClass} bg-[#efebe9] text-[#4e342e]`}>
+            For Approval
           </span>
         );
       default:
         return (
-          <span className={`${baseClass} bg-gray-50 text-gray-500`}>
+          <span className={`${baseClass} bg-gray-100 text-gray-600`}>
             {status}
           </span>
         );
