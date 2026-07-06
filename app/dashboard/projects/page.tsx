@@ -197,9 +197,14 @@ export default function ProjectsPage() {
       ...newProjectData,
     };
 
+    // 1. Appends the new project directly to the top of your stateful table list
     setProjectsList((prev) => [instantiatedProject, ...prev]);
+
+    // 2. Closes the creation modal layout overlay
     setIsAdding(false);
-    router.push(`/dashboard/projects/${generatedId}`);
+
+    // 3. REMOVE OR COMMENT THIS OUT to prevent the 404 page hop:
+    // router.push(`/dashboard/projects/${generatedId}`);
   };
 
   const handleSaveChanges = (e: React.FormEvent) => {
@@ -413,7 +418,6 @@ export default function ProjectsPage() {
         isOpen={isEditing}
         onClose={() => setIsEditing(false)}
         onSubmit={(updatedFormValues) => {
-          // Sync the updated form object back into your local page.tsx array state
           setProjectsList((prev) =>
             prev.map((item) =>
               item.id === selectedProject?.id
