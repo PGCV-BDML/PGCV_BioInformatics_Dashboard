@@ -29,11 +29,34 @@ type Project = {
   repository_link?: string;
 };
 
+interface ProjectsClientViewProps {
+  initialProjects: Project[];
+  availableClients?: string[];
+  availableServices?: string[];
+  availableUsers?: string[];
+}
+
 export default function ProjectsClientView({
   initialProjects,
-}: {
-  initialProjects: Project[];
-}) {
+  availableClients = [
+    "Acme Corp",
+    "BioLab Labs",
+    "Apex Medical",
+    "Horizon Genomics",
+  ],
+  availableServices = [
+    "RNA-Seq Analysis",
+    "WGS Variant Calling",
+    "Metagenomics pipeline",
+    "Single-Cell Transcriptomics",
+  ],
+  availableUsers = [
+    "Dr. Sarah Jenkins",
+    "Alex Rivera",
+    "Elena Rostova",
+    "Marcus Vance",
+  ],
+}: ProjectsClientViewProps) {
   const [projectsList, setProjectsList] = useState<Project[]>(initialProjects);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{
@@ -49,6 +72,7 @@ export default function ProjectsClientView({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [editForm, setEditForm] = useState<Project | null>(null);
 
+  // Reset page pagination anchor on search filters mutating
   useMemo(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -92,17 +116,6 @@ export default function ProjectsClientView({
     setSortConfig({ key, direction });
   };
 
-  const openEditModal = (project: Project) => {
-    setSelectedProject(project);
-    setEditForm({
-      ...project,
-      start_date: project.start_date || "",
-      target_delivery_date: project.target_delivery_date || "",
-      repository_link: project.repository_link || "",
-    });
-    setIsEditing(true);
-  };
-
   const closeModals = () => {
     setIsEditing(false);
     setShowDeleteConfirm(false);
@@ -139,34 +152,37 @@ export default function ProjectsClientView({
   const renderStatusBadge = (status: string) => {
     const baseClass =
       "px-2.5 py-1 rounded-full text-[10px] font-bold font-aileron text-center min-w-[92px] inline-block tracking-wide uppercase";
-    switch (status) {
-      case "Completed":
+
+    const normalizedStatus = status.toLowerCase().replace(/[\s-]/g, "");
+
+    switch (normalizedStatus) {
+      case "completed":
         return (
           <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
             Completed
           </span>
         );
-      case "On-going":
-      case "In-progress":
+      case "ongoing":
+      case "inprogress":
         return (
           <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
-            In-Progress
+            On-Progress
           </span>
         );
-      case "On hold":
-      case "Overdue":
+      case "onhold":
+      case "overdue":
         return (
           <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
             Overdue
           </span>
         );
-      case "Submitted":
+      case "submitted":
         return (
           <span className={`${baseClass} bg-[#f5f5f5] text-[#616161]`}>
             Submitted
           </span>
         );
-      case "For approval":
+      case "forapproval":
         return (
           <span className={`${baseClass} bg-[#efebe9] text-[#4e342e]`}>
             For Approval
@@ -207,19 +223,12 @@ export default function ProjectsClientView({
       render: (p) => renderStatusBadge(p.status),
     },
     { key: "lead", label: "Lead", width: "12%", sortable: true },
-    {
-      key: "start_date",
-      label: "Start Date",
-      width: "13%",
-      sortable: true,
-      render: (p) => <span>{p.start_date || "—"}</span>,
-    },
+    { key: "start_date", label: "Start Date", width: "13%", sortable: true },
     {
       key: "target_delivery_date",
       label: "Target Delivery",
       width: "13%",
       sortable: true,
-      render: (p) => <span>{p.target_delivery_date || "—"}</span>,
     },
     {
       key: "actions",
@@ -229,9 +238,17 @@ export default function ProjectsClientView({
         <div className="flex items-center justify-center gap-1">
           <button
             type="button"
-            onClick={() => openEditModal(p)}
-            className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-[#2a7797] transition-colors"
-            title="Edit Project"
+            onClick={() => {
+              setSelectedProject(p);
+              setEditForm({
+                ...p,
+                start_date: p.start_date || "",
+                target_delivery_date: p.target_delivery_date || "",
+                repository_link: p.repository_link || "",
+              });
+              setIsEditing(true);
+            }}
+            className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
           >
             <Edit3 className="w-4 h-4" />
           </button>
@@ -242,7 +259,6 @@ export default function ProjectsClientView({
               setShowDeleteConfirm(true);
             }}
             className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors"
-            title="Delete Project"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -312,7 +328,6 @@ export default function ProjectsClientView({
         </div>
       </div>
 
-      {/* REUSABLE DELETE MODAL COMPONENT */}
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={selectedProject?.name || ""}
@@ -320,7 +335,6 @@ export default function ProjectsClientView({
         onConfirm={handleDeleteRecord}
       />
 
-      {/* REUSABLE EDIT MODAL COMPONENT */}
       <EditModal
         isOpen={isEditing}
         onClose={closeModals}
@@ -330,6 +344,7 @@ export default function ProjectsClientView({
         {editForm && (
           <form onSubmit={handleSaveChanges} className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Project Name */}
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Project Name
@@ -343,32 +358,54 @@ export default function ProjectsClientView({
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
                 />
               </div>
+
+              {/* Client Dropdown */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Client
                 </label>
-                <input
-                  type="text"
+                <select
                   name="client_name"
                   required
                   value={editForm.client_name}
                   onChange={handleInputChange}
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
-                />
+                >
+                  <option value="" disabled>
+                    Select Client Table Record
+                  </option>
+                  {availableClients.map((client) => (
+                    <option key={client} value={client}>
+                      {client}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Service Type Dropdown */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Service Type
                 </label>
-                <input
-                  type="text"
+                <select
                   name="service_type"
                   required
                   value={editForm.service_type}
                   onChange={handleInputChange}
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
-                />
+                >
+                  <option value="" disabled>
+                    Select Service Table Record
+                  </option>
+                  {availableServices.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Status Dropdown */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Pipeline Status
@@ -386,19 +423,31 @@ export default function ProjectsClientView({
                   <option value="For approval">For approval</option>
                 </select>
               </div>
+
+              {/* Lead Coordinator Dropdown */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Lead Coordinator
                 </label>
-                <input
-                  type="text"
+                <select
                   name="lead"
                   required
                   value={editForm.lead}
                   onChange={handleInputChange}
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
-                />
+                >
+                  <option value="" disabled>
+                    Select Users Table Record
+                  </option>
+                  {availableUsers.map((user) => (
+                    <option key={user} value={user}>
+                      {user}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Start Date */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Start Date
@@ -411,6 +460,8 @@ export default function ProjectsClientView({
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
                 />
               </div>
+
+              {/* Target Delivery Date */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-bold text-[#172126]">
                   Target Delivery
@@ -423,6 +474,8 @@ export default function ProjectsClientView({
                   className="h-10 px-3 bg-white rounded-xl border border-gray-200 outline-none text-xs focus:ring-2 focus:ring-[#4ec2bb]"
                 />
               </div>
+
+              {/* Linked Repository Link */}
               <div className="flex flex-col gap-1 sm:col-span-2 pt-2 border-t border-gray-100">
                 <div className="flex items-center gap-1.5">
                   <Link2 className="w-3.5 h-3.5 text-[#2a7797]" />
@@ -440,17 +493,18 @@ export default function ProjectsClientView({
                 />
               </div>
             </div>
+
             <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
               <button
                 type="button"
                 onClick={closeModals}
-                className="h-11 px-5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm rounded-xl"
+                className="h-11 px-5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 h-11 px-5 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white font-bold text-sm rounded-xl shadow-md"
+                className="flex items-center gap-2 h-11 px-5 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white font-bold text-sm rounded-xl shadow-md transition-colors"
               >
                 <Save className="w-4 h-4" /> Save Changes
               </button>
@@ -459,7 +513,7 @@ export default function ProjectsClientView({
         )}
       </EditModal>
 
-      {/* Guide reference layout holds constant below */}
+      {/* Guide reference layout */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.08)] rounded-[28px] p-6 shadow-sm">
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
           <div>

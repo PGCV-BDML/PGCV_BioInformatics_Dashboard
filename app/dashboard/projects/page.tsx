@@ -5,7 +5,8 @@ import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
-import { Search, Network, Edit3, Trash2, X, Save } from "lucide-react";
+import EditModal from "../../components/editmodal";
+import { Search, Network, Edit3, Trash2, Save, Link2 } from "lucide-react";
 
 type Project = {
   id: number;
@@ -16,6 +17,7 @@ type Project = {
   lead: string;
   start_date: string;
   target_delivery_date: string;
+  repository_link?: string;
 };
 
 const INITIAL_PROJECTS: Project[] = [
@@ -28,6 +30,7 @@ const INITIAL_PROJECTS: Project[] = [
     lead: "Dr. Analyst Cruz",
     start_date: "2026-05-10",
     target_delivery_date: "2026-07-20",
+    repository_link: "https://github.com/upv-marine/transcriptome-pipeline",
   },
   {
     id: 2,
@@ -69,56 +72,33 @@ const INITIAL_PROJECTS: Project[] = [
     start_date: "2026-03-01",
     target_delivery_date: "2026-06-15",
   },
-  {
-    id: 6,
-    name: "Amplicion Deep Sequencing Verification",
-    client_name: "DOST-PCHRD",
-    service_type: "Sequencing Service",
-    status: "On-going",
-    lead: "Dr. Analyst Cruz",
-    start_date: "2026-05-20",
-    target_delivery_date: "2026-08-01",
-  },
-  {
-    id: 7,
-    name: "Exome Variant Annotation Pipeline",
-    client_name: "PGH Pediatric Labs",
-    service_type: "Bioinformatics Analysis",
-    status: "Submitted",
-    lead: "Engr. Santos",
-    start_date: "2026-06-11",
-    target_delivery_date: "2026-09-10",
-  },
-  {
-    id: 8,
-    name: "CRISPR Off-Target Screening Monitor",
-    client_name: "IRRI",
-    service_type: "Custom Workflow",
-    status: "On-going",
-    lead: "Dr. Cruz",
-    start_date: "2026-01-15",
-    target_delivery_date: "2026-05-30",
-  },
-  {
-    id: 9,
-    name: "Single-Cell RNA-Seq Clustering Atlas",
-    client_name: "UP Diliman NIMBB",
-    service_type: "Bioinformatics Analysis",
-    status: "Completed",
-    lead: "Prof. Torres",
-    start_date: "2026-02-20",
-    target_delivery_date: "2026-05-15",
-  },
-  {
-    id: 10,
-    name: "HLA Typing Pipeline Optimization",
-    client_name: "Philippine Genome Center",
-    service_type: "Sequencing Service",
-    status: "For approval",
-    lead: "Dr. Analyst Cruz",
-    start_date: "2026-06-10",
-    target_delivery_date: "2026-08-20",
-  },
+];
+
+const AVAILABLE_CLIENTS = [
+  "UP Visayas Marine Science",
+  "DOST Region VI",
+  "PhilRice",
+  "UP Manila",
+  "MSU-IIT",
+  "DOST-PCHRD",
+  "PGH Pediatric Labs",
+  "IRRI",
+  "UP Diliman NIMBB",
+  "Philippine Genome Center",
+];
+
+const AVAILABLE_SERVICES = [
+  "Bioinformatics Analysis",
+  "Sequencing Service",
+  "Custom Workflow",
+];
+
+const AVAILABLE_USERS = [
+  "Dr. Analyst Cruz",
+  "Prof. Lopez",
+  "Engr. Santos",
+  "Dr. Cruz",
+  "Prof. Torres",
 ];
 
 export default function ProjectsPage() {
@@ -153,9 +133,9 @@ export default function ProjectsPage() {
     let sortableItems = [...filteredProjects];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key])
+        if (a[sortConfig.key]! < b[sortConfig.key]!)
           return sortConfig.direction === "asc" ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key])
+        if (a[sortConfig.key]! > b[sortConfig.key]!)
           return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
@@ -180,6 +160,24 @@ export default function ProjectsPage() {
     setSortConfig({ key, direction });
   };
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    if (editForm) {
+      setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    }
+  };
+
+  const handleSaveChanges = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm) return;
+
+    setProjectsList((prev) =>
+      prev.map((item) => (item.id === editForm.id ? editForm : item)),
+    );
+    setIsEditing(false);
+  };
+
   const handleDeleteRecord = () => {
     if (!selectedProject) return;
     setProjectsList((prev) =>
@@ -188,7 +186,55 @@ export default function ProjectsPage() {
     setShowDeleteConfirm(false);
   };
 
-  // ── DEFINE COLUMNS SCHEMATIC FOR CORE TABLE ───────────────────────
+  // Safe case-insensitive color badge lookup
+  const renderStatusBadge = (status: string) => {
+    const baseClass =
+      "px-2.5 py-1 rounded-full text-[10px] font-bold font-aileron text-center min-w-[92px] inline-block tracking-wide uppercase";
+
+    const normalizedStatus = status.toLowerCase().replace(/[\s-]/g, "");
+
+    switch (normalizedStatus) {
+      case "completed":
+        return (
+          <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
+            Completed
+          </span>
+        );
+      case "ongoing":
+      case "inprogress":
+        return (
+          <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
+            In-Progress
+          </span>
+        );
+      case "onhold":
+      case "overdue":
+        return (
+          <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
+            Overdue
+          </span>
+        );
+      case "submitted":
+        return (
+          <span className={`${baseClass} bg-[#f5f5f5] text-[#616161]`}>
+            Submitted
+          </span>
+        );
+      case "forapproval":
+        return (
+          <span className={`${baseClass} bg-[#efebe9] text-[#4e342e]`}>
+            For Approval
+          </span>
+        );
+      default:
+        return (
+          <span className={`${baseClass} bg-gray-100 text-gray-600`}>
+            {status}
+          </span>
+        );
+    }
+  };
+
   const columns: Column<Project>[] = [
     {
       key: "name",
@@ -203,7 +249,7 @@ export default function ProjectsPage() {
       label: "Service Type",
       width: "14%",
       render: (p) => (
-        <span className="px-2.5 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[12px] font-bold">
+        <span className="px-2.5 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[12px] font-bold inline-block">
           {p.service_type}
         </span>
       ),
@@ -212,11 +258,7 @@ export default function ProjectsPage() {
       key: "status",
       label: "Status",
       width: "12%",
-      render: (p) => (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold text-center min-w-[92px] inline-block uppercase bg-gray-100 text-gray-700">
-          {p.status}
-        </span>
-      ),
+      render: (p) => renderStatusBadge(p.status),
     },
     { key: "lead", label: "Lead", width: "12%", sortable: true },
     { key: "start_date", label: "Start Date", width: "13%", sortable: true },
@@ -236,7 +278,10 @@ export default function ProjectsPage() {
             type="button"
             onClick={() => {
               setSelectedProject(p);
-              setEditForm(p);
+              setEditForm({
+                ...p,
+                repository_link: p.repository_link || "",
+              });
               setIsEditing(true);
             }}
             className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
@@ -284,7 +329,6 @@ export default function ProjectsPage() {
           </h2>
         </div>
 
-        {/* REUSABLE DATA TABLE */}
         <DataTable
           columns={columns}
           data={displayedProjects}
@@ -292,7 +336,6 @@ export default function ProjectsPage() {
           onSort={handleSort}
         />
 
-        {/* REUSABLE PAGINATION BAR */}
         <Pagination
           totalItems={filteredProjects.length}
           itemsPerPage={itemsPerPage}
@@ -301,7 +344,6 @@ export default function ProjectsPage() {
         />
       </div>
 
-      {/* REUSABLE DELETE CONFIRMATION MODAL */}
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={selectedProject?.name || ""}
@@ -309,72 +351,174 @@ export default function ProjectsPage() {
         onConfirm={handleDeleteRecord}
       />
 
-      {/* Localized Edit Parameter Form */}
-      {isEditing && editForm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
-          onClick={() => setIsEditing(false)}
-        >
-          <div
-            className="bg-[#fffdf8] rounded-[28px] max-w-[640px] w-full p-8 shadow-xl border border-gray-100 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="absolute top-6 right-6 p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setProjectsList((prev) =>
-                  prev.map((item) =>
-                    item.id === editForm.id ? editForm : item,
-                  ),
-                );
-                setIsEditing(false);
-              }}
-              className="space-y-5"
-            >
-              <h3 className="text-2xl font-bold text-[#333333]">
-                Update Record Parameters
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex flex-col gap-1">
+      <EditModal
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        title="Update Record Parameters"
+        subtitle="Configuration Form"
+      >
+        {editForm && (
+          <form onSubmit={handleSaveChanges} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Project Name */}
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  value={editForm.name}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                />
+              </div>
+
+              {/* Client Dropdown */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Client
+                </label>
+                <select
+                  name="client_name"
+                  required
+                  value={editForm.client_name}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                >
+                  {AVAILABLE_CLIENTS.map((client) => (
+                    <option key={client} value={client}>
+                      {client}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Service Type Dropdown */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Service Type
+                </label>
+                <select
+                  name="service_type"
+                  required
+                  value={editForm.service_type}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                >
+                  {AVAILABLE_SERVICES.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Pipeline Status
+                </label>
+                <select
+                  name="status"
+                  value={editForm.status}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                >
+                  <option value="On-going">On-going</option>
+                  <option value="Completed">Completed</option>
+                  <option value="On hold">On hold</option>
+                  <option value="Submitted">Submitted</option>
+                  <option value="For approval">For approval</option>
+                </select>
+              </div>
+
+              {/* Lead Dropdown */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Lead Coordinator
+                </label>
+                <select
+                  name="lead"
+                  required
+                  value={editForm.lead}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                >
+                  {AVAILABLE_USERS.map((user) => (
+                    <option key={user} value={user}>
+                      {user}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start Date */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  name="start_date"
+                  value={editForm.start_date}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                />
+              </div>
+
+              {/* Target Delivery Date */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-bold text-[#172126]">
+                  Target Delivery
+                </label>
+                <input
+                  type="date"
+                  name="target_delivery_date"
+                  value={editForm.target_delivery_date}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                />
+              </div>
+
+              {/* Repository Link */}
+              <div className="flex flex-col gap-1 sm:col-span-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-[#2a7797]" />
                   <label className="text-[12px] font-bold text-[#172126]">
-                    Project Name
+                    Linked Repository Link
                   </label>
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, name: e.target.value })
-                    }
-                    className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                  />
                 </div>
+                <input
+                  type="url"
+                  name="repository_link"
+                  placeholder="https://github.com/..."
+                  value={editForm.repository_link}
+                  onChange={handleInputChange}
+                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+                />
               </div>
-              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="h-11 px-5 bg-gray-100 text-gray-600 font-bold text-sm rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 h-11 px-5 bg-[#4ec2bb] text-white font-bold text-sm rounded-xl shadow-md"
-                >
-                  <Save className="w-4 h-4" /> Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="h-11 px-5 bg-gray-100 text-gray-600 font-bold text-sm rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex items-center gap-2 h-11 px-5 bg-[#4ec2bb] text-white font-bold text-sm rounded-xl shadow-md"
+              >
+                <Save className="w-4 h-4" /> Save Changes
+              </button>
+            </div>
+          </form>
+        )}
+      </EditModal>
 
       <ComplianceFooter />
     </div>
