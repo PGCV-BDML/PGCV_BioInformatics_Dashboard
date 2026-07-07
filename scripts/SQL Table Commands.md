@@ -1,3 +1,5 @@
+# Tables
+
 ## analysis
 
 ```sql
@@ -307,3 +309,127 @@ create table public.user (
 ) TABLESPACE pg_default;
 ```
 
+
+
+# Enums
+
+## user_roles
+
+```sql
+CREATE TYPE public.user_roles AS ENUM (
+    'team_lead', 
+    'team_member', 
+    'trainee', 
+    'intern'
+);
+```
+
+## service_categories
+
+```sql
+CREATE TYPE public.service_categories AS ENUM (
+    'WGS', 
+    'amplicon', 
+    'metabarcoding', 
+    'transcriptomics', 
+    'shotgun_metag', 
+    'phylogenetics', 
+    'custom'
+);
+```
+
+## analysis_status
+
+```sql
+CREATE TYPE public.analysis_status AS ENUM (
+    'on_hold', 
+    'ongoing', 
+    'submitted', 
+    'for_approval', 
+    'completed'
+);
+```
+
+## collab_status
+
+```sql
+CREATE TYPE public.collab_status AS ENUM (
+    'for_approval', 
+    'ongoing', 
+    'finished'
+);
+```
+
+## training_type
+
+```sql
+CREATE TYPE public.training_type AS ENUM (
+    'training', 
+    'internship'
+);
+```
+
+## assessment_type
+
+```sql
+CREATE TYPE public.assessment_type AS ENUM (
+    'pre_test', 
+    'post_test', 
+    'evaluation'
+);
+```
+
+## project_status
+
+```sql
+CREATE TYPE public.project_status AS ENUM (
+    'ongoing', 
+    'for_approval', 
+    'submitted'
+);
+```
+
+## template_categories
+
+```sql
+CREATE TYPE public.template_categories AS ENUM (
+    'collaboration_onboarding', 
+    'project_onboarding', 
+    'certificate', 
+    'service_report'
+);
+```
+
+## audit_log_action
+
+```sql
+CREATE TYPE public.audit_log_action AS ENUM (
+    'state_change', 
+    'data_deletion', 
+    'role_change', 
+    'data_export', 
+    'data_modification', 
+    'user_login'
+);
+```
+
+## task_status
+
+```sql
+CREATE TYPE public.task_status AS ENUM (
+    'to_do', 
+    'ongoing', 
+    'finished'
+);
+```
+
+## task_priority
+
+```sql
+CREATE TYPE public.task_priority AS ENUM (
+    'critical', 
+    'high', 
+    'medium', 
+    'low'
+);
+```

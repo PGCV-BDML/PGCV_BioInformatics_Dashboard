@@ -1,7 +1,85 @@
 -- ============================================================
--- MASTER SCRIPT: All Tables
+-- MASTER SCRIPT: All Tables and ENUMS
 -- Tables are created in dependency order (referenced tables first)
 -- ============================================================
+
+-- Creating custom ENUM data types
+CREATE TYPE public.user_roles AS ENUM (
+    'team_lead', 
+    'team_member', 
+    'trainee', 
+    'intern'
+);
+
+CREATE TYPE public.service_categories AS ENUM (
+    'WGS', 
+    'amplicon', 
+    'metabarcoding', 
+    'transcriptomics', 
+    'shotgun_metag', 
+    'phylogenetics', 
+    'custom'
+);
+
+CREATE TYPE public.analysis_status AS ENUM (
+    'on_hold', 
+    'ongoing', 
+    'submitted', 
+    'for_approval', 
+    'completed'
+);
+
+CREATE TYPE public.collab_status AS ENUM (
+    'for_approval', 
+    'ongoing', 
+    'finished'
+);
+
+CREATE TYPE public.training_type AS ENUM (
+    'training', 
+    'internship'
+);
+
+CREATE TYPE public.assessment_type AS ENUM (
+    'pre_test', 
+    'post_test', 
+    'evaluation'
+);
+
+CREATE TYPE public.project_status AS ENUM (
+    'ongoing', 
+    'for_approval', 
+    'submitted'
+);
+
+CREATE TYPE public.template_categories AS ENUM (
+    'collaboration_onboarding', 
+    'project_onboarding', 
+    'certificate', 
+    'service_report'
+);
+
+CREATE TYPE public.audit_log_action AS ENUM (
+    'state_change', 
+    'data_deletion', 
+    'role_change', 
+    'data_export', 
+    'data_modification', 
+    'user_login'
+);
+
+CREATE TYPE public.task_status AS ENUM (
+    'to_do', 
+    'ongoing', 
+    'finished'
+);
+
+CREATE TYPE public.task_priority AS ENUM (
+    'critical', 
+    'high', 
+    'medium', 
+    'low'
+);
 
 -- Table: public.user
 create table public.user (
