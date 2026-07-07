@@ -274,7 +274,7 @@ export default function CollaborationsPage() {
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </a>
         ) : (
-          <span className="text-xs text-slate-400 italic">No sync</span>
+          <span className="text-xs text-slate-400 italic">-</span>
         ),
     },
     {
@@ -383,13 +383,13 @@ export default function CollaborationsPage() {
 
       {/* ADD / EDIT MODAL — styled consistent with Projects modals */}
       {(isAdding || isEditing) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
+        <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
           <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
             {/* Top Gradient Stripe Accent */}
             <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
             {/* Modal Header */}
-            <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-white">
+            <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
               <div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
                   {isAdding ? "Add New Collaboration" : "Modify Collaboration"}
@@ -414,7 +414,7 @@ export default function CollaborationsPage() {
             {/* Modal Form Content */}
             <form
               onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
-              className="flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
+              className="bg-[#ffffff] flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
             >
               {/* SECTION: Partner Organization */}
               <div className="space-y-3">

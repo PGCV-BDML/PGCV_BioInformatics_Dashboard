@@ -63,7 +63,7 @@ interface WeeklyTask {
   flagColor: string;
 }
 
-const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b"];
+const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b", "#6366f1", "#94a3b8"];
 const AVAILABLE_YEARS = ["2024", "2025", "2026"];
 
 export default function DashboardLandingPage() {
@@ -270,7 +270,9 @@ export default function DashboardLandingPage() {
     ? [
         { name: "On-going / In-Progress", value: stats.activeProjects },
         { name: "Completed", value: stats.completedProjects },
-        { name: "Backlog / Queued", value: stats.backlogProjects },
+        { name: "On-hold / Overdue", value: stats.backlogProjects },
+        { name: "Submitted", value: stats.newProjectsThisMonth },
+        { name: "For approval", value: stats.ongoingTrainings },
       ]
     : [];
 
@@ -312,24 +314,39 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Welcome Operational Banner */}
-      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="space-y-2 max-w-2xl">
-          <span className="text-[11px] bg-[#e6f4f8] px-2.5 py-1 rounded-md font-optima font-bold uppercase tracking-[1.5px] text-[#2a7797]">
+      {/* Welcome Operational Banner Section with Custom Node Gradient styling */}
+      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-sm border border-slate-200/40 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+        {/* Left Side: Dynamic Text Copy and Subheadings */}
+        <div className="space-y-4 max-w-2xl z-10">
+          <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
             Internal Operations Hub
           </span>
-          <h2 className="text-4xl font-extrabold text-[#11161a] leading-tight tracking-tight">
+
+          <h2 className="text-4xl md:text-[44px] font-black text-slate-800 leading-[1.15] tracking-tight font-aileron">
             Bioinformatics Workflow <br />
             Dashboard
           </h2>
-          <p className="text-sm text-[#5c6e7a] font-medium leading-relaxed">
+
+          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1">
             One internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and repository
             links.
           </p>
         </div>
-        <div className="flex-shrink-0 bg-slate-100 px-6 py-4 rounded-2xl border border-slate-200/60 text-xs text-slate-500 font-bold">
-          🧬 PGC VISAYAS NODE
+
+        {/* Right Side: Node Visual / Brand Signifier Placement Area */}
+        <div className="flex-shrink-0 z-10 self-end md:self-auto bg-white/60 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-200/50 flex items-center gap-3 shadow-xs">
+          <div className="flex flex-col items-end text-right">
+            <img
+              src="/assets/pgcv_logo.png"
+              alt="Philippine Genome Center Visayas logo"
+              className="h-15 w-auto object-contain"
+            />
+          </div>
         </div>
+
+        {/* Ambient background decoration circle layer (Optional for depth) */}
+        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
       {/* ================= SUMMARY CARDS LAYER ================= */}

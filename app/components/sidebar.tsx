@@ -158,7 +158,7 @@ export default function Sidebar() {
       <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
         {/* Account Menu */}
         {showProfileCard && (
-          <div className="absolute bottom-[76px] left-0 w-full bg-white border border-[rgba(23,33,38,0.1)] rounded-2xl py-2 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30">
+          <div className="absolute bottom-[76px] left-0 w-full bg-[#FFFDF8] border border-[rgba(23,33,38,0.1)] rounded-2xl py-2 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30">
             <div className="px-4 py-2.5 border-b border-gray-100">
               <p className="text-[13px] font-bold text-[#333333] leading-tight">
                 PGC Visayas
