@@ -63,7 +63,7 @@ export default function DataTable<T extends { id: string | number }>({
           {data.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-[#f9fafb] even:bg-white border-b border-gray-200/40 hover:bg-gray-100/70 transition-colors"
+              className="odd:bg-[#ffffff] even:bg-white border-b border-gray-200/40 hover:bg-gray-100/70 transition-colors"
             >
               {columns.map((col, colIndex) => (
                 <td key={colIndex} className="py-4 px-4 break-words">

@@ -2,7 +2,7 @@ import { ShieldCheck, Database, Link2 } from "lucide-react";
 
 export default function ComplianceFooter() {
   return (
-    <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.08)] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between text-xs text-gray-500 gap-4 mt-6">
+    <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.08)] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between text-xs text-gray-500 gap-4 mt-6 shadow-[0px_8px_24px_rgba(40,37,96,0.06)]">
       <div className="flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-green-600" />
         <span>Google login and role-based access</span>

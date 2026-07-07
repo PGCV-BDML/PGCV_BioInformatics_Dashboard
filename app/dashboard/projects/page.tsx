@@ -15,6 +15,7 @@ import {
   Trash2,
   Save,
   Link2,
+  ExternalLink,
   Plus,
   ClipboardCheck,
   FlaskConical,
@@ -251,15 +252,15 @@ export default function ProjectsPage() {
     {
       key: "name",
       label: "Project Name",
-      width: "20%",
+      width: "16%",
       sortable: true,
       render: (p) => <span className="font-bold text-[#11161a]">{p.name}</span>,
     },
-    { key: "client_name", label: "Client", width: "16%", sortable: true },
+    { key: "client_name", label: "Client", width: "14%", sortable: true },
     {
       key: "service_type",
       label: "Service Type",
-      width: "14%",
+      width: "12%",
       render: (p) => (
         <span className="px-2.5 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[12px] font-bold inline-block">
           {p.service_type}
@@ -269,21 +270,40 @@ export default function ProjectsPage() {
     {
       key: "status",
       label: "Status",
-      width: "12%",
+      width: "10%",
       render: (p) => renderStatusBadge(p.status),
     },
-    { key: "lead", label: "Lead", width: "12%", sortable: true },
-    { key: "start_date", label: "Start Date", width: "13%", sortable: true },
+    { key: "lead", label: "Lead", width: "10%", sortable: true },
+    { key: "start_date", label: "Start Date", width: "11%", sortable: true },
     {
       key: "target_delivery_date",
       label: "Target Delivery",
-      width: "13%",
+      width: "11%",
       sortable: true,
+    },
+    {
+      key: "repository_link",
+      label: "Repository Link",
+      width: "12%",
+      render: (p) =>
+        p.repository_link ? (
+          <a
+            href={p.repository_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-black font-semibold bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200"
+          >
+            <Link2 className="w-3.5 h-3.5 text-slate-500" /> <span>Repo</span>
+            <ExternalLink className="w-3 h-3 text-slate-400" />
+          </a>
+        ) : (
+          <span className="text-xs text-slate-400 italic">No sync</span>
+        ),
     },
     {
       key: "actions",
       label: "Actions",
-      width: "10%",
+      width: "8%",
       render: (p) => (
         <div className="flex items-center justify-center gap-1">
           <button

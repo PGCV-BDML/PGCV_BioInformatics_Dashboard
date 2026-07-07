@@ -81,19 +81,18 @@ export default function EditProjectModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
       {/* Modal Card Box wrapper */}
-      <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
+      <div className="relative bg-[#ffffff] w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
         {/* Top Gradient Stripe Accent */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
         {/* Modal Header Container */}
-        <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-white">
+        <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
           <div>
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Modify Project Parameters
+              Modify Project
             </h3>
             <p className="text-slate-500 text-sm mt-1 font-medium font-aileron">
-              Update design settings and custom execution values for this
-              pipeline tracking node.
+              Update project details, timeline, status, or repository link.
             </p>
           </div>
           <button
@@ -110,15 +109,15 @@ export default function EditProjectModal({
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
         >
-          {/* SECTION 1: Identity Profile Card Parameters */}
+          {/* SECTION 1: Project Name */}
           <div className="space-y-3">
             {renderSectionLabel(
               <ClipboardCheck className="w-3.5 h-3.5" />,
-              "Project Identity",
+              "Project Name",
             )}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-bold text-slate-800 ml-1">
-                Project Title / Assignment Label
+                Project Name
               </label>
               <input
                 type="text"
@@ -132,17 +131,16 @@ export default function EditProjectModal({
             </div>
           </div>
 
-          {/* SECTION 2: Node Routing Classifications */}
+          {/* SECTION 2: Client & Service Type */}
           <div className="space-y-3">
             {renderSectionLabel(
               <FlaskConical className="w-3.5 h-3.5" />,
-              "Classification & Workflow Protocol",
+              "Client & Service Type",
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Client Selector mapping block */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-bold text-slate-800 ml-1">
-                  Client Entity Account
+                  Client
                 </label>
                 <select
                   name="client_name"
@@ -152,7 +150,7 @@ export default function EditProjectModal({
                   className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                 >
                   <option value="" disabled className="text-slate-400">
-                    Select Client Profile Node
+                    Select client
                   </option>
                   {availableClients.map((client) => (
                     <option key={client} value={client} className="text-black">
@@ -162,10 +160,9 @@ export default function EditProjectModal({
                 </select>
               </div>
 
-              {/* Service Type mapping configuration block */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-bold text-slate-800 ml-1">
-                  Service Pipeline Route
+                  Service Type
                 </label>
                 <select
                   name="service_type"
@@ -175,7 +172,7 @@ export default function EditProjectModal({
                   className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                 >
                   <option value="" disabled className="text-slate-400">
-                    Select Protocol Template
+                    Select service type
                   </option>
                   {availableServices.map((service) => (
                     <option
@@ -191,16 +188,16 @@ export default function EditProjectModal({
             </div>
           </div>
 
-          {/* SECTION 3: Operations Logistics / Coordinators */}
+          {/* SECTION 3: Lead & Status */}
           <div className="space-y-3">
             {renderSectionLabel(
               <User className="w-3.5 h-3.5" />,
-              "Personnel Allocation & Operational Timeline",
+              "Lead & Status",
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-bold text-slate-800 ml-1">
-                  Lead System Analyst / Coordinator
+                  Lead
                 </label>
                 <select
                   name="lead"
@@ -210,7 +207,7 @@ export default function EditProjectModal({
                   className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                 >
                   <option value="" disabled className="text-slate-400">
-                    Assign Accountable Personnel
+                    Assign lead
                   </option>
                   {availableUsers.map((user) => (
                     <option key={user} value={user} className="text-black">
@@ -220,10 +217,9 @@ export default function EditProjectModal({
                 </select>
               </div>
 
-              {/* Pipeline Status Row inside operations segment block */}
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-bold text-slate-800 ml-1">
-                  Pipeline Operational State
+                  Status
                 </label>
                 <select
                   name="status"
@@ -248,13 +244,20 @@ export default function EditProjectModal({
                   </option>
                 </select>
               </div>
+            </div>
+          </div>
 
-              {/* Commencement Tracking Fields */}
+          {/* SECTION 4: Start Date & Target Delivery */}
+          <div className="space-y-3">
+            {renderSectionLabel(
+              <Calendar className="w-3.5 h-3.5" />,
+              "Start Date & Target Delivery",
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-1.5 text-slate-800 ml-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <label className="text-sm font-bold">Commencement Date</label>
-                </div>
+                <label className="text-sm font-bold text-slate-800 ml-1">
+                  Start Date
+                </label>
                 <input
                   type="date"
                   name="start_date"
@@ -265,12 +268,10 @@ export default function EditProjectModal({
                 />
               </div>
 
-              {/* Deadline Target Parameter Context inputs */}
               <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-1.5 text-slate-800 ml-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <label className="text-sm font-bold">Delivery Deadline</label>
-                </div>
+                <label className="text-sm font-bold text-slate-800 ml-1">
+                  Target Delivery
+                </label>
                 <input
                   type="date"
                   name="target_delivery_date"
@@ -283,18 +284,19 @@ export default function EditProjectModal({
             </div>
           </div>
 
-          {/* SECTION 4: Repository Remote Assets Context Sync parameters */}
+          {/* SECTION 5: Repository Link */}
           <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-slate-800 ml-1 mb-1">
-              <Link2 className="w-4 h-4 text-[#2a7797]" />
-              <label className="text-sm font-bold">
-                Remote Linked Repository (Optional)
-              </label>
-            </div>
+            {renderSectionLabel(
+              <Link2 className="w-3.5 h-3.5" />,
+              "Repository Link",
+            )}
+            <label className="text-sm font-bold text-slate-800 ml-1">
+              Repository Link (Optional)
+            </label>
             <input
               type="url"
               name="repository_link"
-              placeholder="https://github.com/username/repository-signature"
+              placeholder="https://github.com/username/repository-name"
               value={form.repository_link}
               onChange={handleInputChange}
               className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"

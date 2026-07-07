@@ -16,7 +16,6 @@ import {
   ChevronRight,
   ChevronDown,
   LogOut,
-  UserCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -157,42 +156,37 @@ export default function Sidebar() {
 
       {/* ── Footer / User Profile Context ────────────────────────────── */}
       <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
-        {/* Absolute Logout Popup Card Panel */}
+        {/* Account Menu */}
         {showProfileCard && (
-          <div className="absolute bottom-20 left-0 w-full bg-[#fffdf8] border border-[rgba(23,33,38,0.08)] rounded-[20px] p-4 shadow-xl animate-fade-in z-30 space-y-3">
-            <div className="flex items-center gap-2 px-2 py-1 text-slate-400 border-b border-gray-50 pb-2">
-              <UserCheck className="w-4 h-4 text-[#2a7797]" />
-              <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase font-quicksand">
-                Account Status
-              </span>
-            </div>
-
-            <div className="bg-[#f8fafc] rounded-xl p-3 text-xs text-slate-600 space-y-1">
-              <p className="font-semibold text-slate-800">
-                Role: System Administrator
+          <div className="absolute bottom-[76px] left-0 w-full bg-white border border-[rgba(23,33,38,0.1)] rounded-2xl py-2 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30">
+            <div className="px-4 py-2.5 border-b border-gray-100">
+              <p className="text-[13px] font-bold text-[#333333] leading-tight">
+                PGC Visayas
               </p>
-              <p className="text-[11px] text-slate-400">
-                Node: Visayas Core Server
+              <p className="text-[11.5px] text-[#7b7979] leading-tight mt-0.5">
+                Administrator
               </p>
             </div>
 
             <button
               type="button"
               onClick={handleSignOut}
-              className="w-full flex items-center gap-2.5 px-3 h-11 text-red-600 hover:bg-red-50/60 font-semibold text-xs uppercase tracking-wider rounded-xl transition-all font-aileron"
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 mt-1 text-[#333333] hover:bg-[#f5f5f4] font-medium text-[13px] font-aileron transition-colors"
             >
-              <LogOut className="w-4 h-4 stroke-[2.5]" />
-              <span>Log Out of Session</span>
+              <LogOut className="w-4 h-4 text-[#7b7979]" />
+              <span>Sign out</span>
             </button>
           </div>
         )}
 
-        {/* Profile Activation Interface Button */}
+        {/* Profile Activation Trigger Button */}
         <button
           type="button"
           onClick={() => setShowProfileCard(!showProfileCard)}
-          className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-150 focus:outline-none ${
-            showProfileCard ? "bg-slate-100/80" : "hover:bg-gray-50"
+          className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none ${
+            showProfileCard
+              ? "bg-[#e6f5ff] text-[#2a7797]"
+              : "hover:bg-[#e6f5ff]/60 hover:-translate-y-0.5 hover:scale-[1.01]"
           }`}
         >
           <div className="flex items-center gap-3">
@@ -200,16 +194,16 @@ export default function Sidebar() {
               PG
             </div>
             <div className="text-left flex flex-col">
-              <span className="text-[#333333] text-[13.5px] font-bold font-aileron leading-tight">
+              <span className="text-[#333333] text-[13.5px] font-bold leading-tight">
                 PGC Visayas
               </span>
-              <span className="text-[#7b7979] text-[11px] font-aileron leading-tight mt-0.5">
-                Admin
+              <span className="text-[#7b7979] text-[11px] leading-tight mt-0.5">
+                Admin Account
               </span>
             </div>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-[#7b7979] mr-1 transition-transform duration-200 ${showProfileCard ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-[#7b7979] mr-1 transition-transform duration-300 ${showProfileCard ? "rotate-180" : ""}`}
           />
         </button>
       </div>

@@ -7,7 +7,7 @@ import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import {
   Search,
-  Network,
+  Users2,
   Link2,
   ExternalLink,
   FileText,
@@ -30,7 +30,6 @@ type Collaboration = {
   status: string;
   start_date: string;
   documents_link: string;
-  notes: string;
   repository_link: string;
 };
 
@@ -42,7 +41,6 @@ const INITIAL_COLLABORATIONS: Collaboration[] = [
     status: "On-going",
     start_date: "2026-01-15",
     documents_link: "https://drive.google.com/drive/folders/mock-pgc-share",
-    notes: "Core sequence indexing alliance",
     repository_link:
       "https://github.com/pgc-core/collaborative-variant-pipeline",
   },
@@ -53,7 +51,6 @@ const INITIAL_COLLABORATIONS: Collaboration[] = [
     status: "Completed",
     start_date: "2026-02-10",
     documents_link: "https://irri.org/resources/mock-docs",
-    notes: "Phenotype classification validation dataset share",
     repository_link: "https://github.com/irri-genomics/rice-subspecies-mra",
   },
 ];
@@ -101,7 +98,6 @@ export default function CollaborationsPage() {
     start_date: "",
     status: "On-going",
     documents_link: "",
-    notes: "",
     repository_link: "",
   };
   const [formState, setFormState] =
@@ -297,7 +293,6 @@ export default function CollaborationsPage() {
                 start_date: c.start_date,
                 status: c.status,
                 documents_link: c.documents_link,
-                notes: c.notes,
                 repository_link: c.repository_link,
               });
               setIsEditing(true);
@@ -355,9 +350,9 @@ export default function CollaborationsPage() {
       {/* Main Table View */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <Network className="w-6 h-6 text-[#2a7797]" />
+          <Users2 className="w-6 h-6 text-[#2a7797]" />
           <h2 className="text-3xl font-bold text-[#333333]">
-            Alliances & Consortium Network
+            Collaborations List
           </h2>
         </div>
 
@@ -386,21 +381,23 @@ export default function CollaborationsPage() {
         )}
       </div>
 
-      {/* MATCHING REGISTRY MODAL OVERLAY WRAPPER */}
+      {/* ADD / EDIT MODAL — styled consistent with Projects modals */}
       {(isAdding || isEditing) && (
-        <div className="fixed inset-0 w-full h-full z-[100] flex items-center justify-center bg-[#172126]/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-[#fffdf8] w-full max-w-xl rounded-[24px] border border-[rgba(23,33,38,0.08)] shadow-2xl relative flex flex-col max-h-[90vh]">
-            <div className="p-6 pb-3 flex items-start justify-between border-b border-slate-100">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
+          <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
+            {/* Top Gradient Stripe Accent */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
+
+            {/* Modal Header */}
+            <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-white">
               <div>
-                <h3 className="text-xl font-bold text-[#11161a]">
-                  {isAdding
-                    ? "Initialize Collaboration"
-                    : "Modify Collaboration Record"}
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {isAdding ? "Add New Collaboration" : "Modify Collaboration"}
                 </h3>
-                <p className="text-xs text-[#5c6e7a] mt-0.5">
+                <p className="text-slate-500 text-sm mt-1 font-medium font-aileron">
                   {isAdding
-                    ? "Specify operational scope parameters, allocate core research staff leaders, and connect runtime workspace parameters."
-                    : "Update sequence alignment paths, client anchors, or re-assign platform milestones for the project registry entry."}
+                    ? "Define the partner organization, assign a lead coordinator, and link related resources."
+                    : "Update partner details, timeline, status, or linked resources."}
                 </p>
               </div>
               <button
@@ -408,24 +405,25 @@ export default function CollaborationsPage() {
                 onClick={() =>
                   isAdding ? setIsAdding(false) : setIsEditing(false)
                 }
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+                className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
+            {/* Modal Form Content */}
             <form
               onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
-              className="flex-1 overflow-y-auto p-6 space-y-4"
+              className="flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
             >
-              {/* SECTION: IDENTITY */}
-              <div>
+              {/* SECTION: Partner Organization */}
+              <div className="space-y-3">
                 {renderSectionLabel(
-                  <FlaskConical className="w-3.5 h-3.5 text-slate-400" />,
-                  "Project Identity",
+                  <FlaskConical className="w-3.5 h-3.5" />,
+                  "Partner Organization",
                 )}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#11161a]">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-800 ml-1">
                     Partner Organization
                   </label>
                   <input
@@ -439,20 +437,20 @@ export default function CollaborationsPage() {
                       })
                     }
                     placeholder="e.g., Philippine Genome Center"
-                    className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none focus:ring-1 focus:ring-[#4ec2bb] focus:border-[#4ec2bb]"
+                    className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
                   />
                 </div>
               </div>
 
-              {/* SECTION: COORDINATION */}
-              <div>
+              {/* SECTION: Lead Coordinator & Start Date */}
+              <div className="space-y-3">
                 {renderSectionLabel(
-                  <User className="w-3.5 h-3.5 text-slate-400" />,
-                  "Personnel Allocation & Operational Timeline",
+                  <User className="w-3.5 h-3.5" />,
+                  "Lead Coordinator & Start Date",
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#11161a]">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-800 ml-1">
                       Lead Coordinator
                     </label>
                     <select
@@ -460,19 +458,20 @@ export default function CollaborationsPage() {
                       onChange={(e) =>
                         setFormState({ ...formState, lead: e.target.value })
                       }
-                      className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
+                      className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                     >
                       {AVAILABLE_USERS.map((user) => (
-                        <option key={user} value={user}>
+                        <option key={user} value={user} className="text-black">
                           {user}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#11161a]">
-                      Commencement Date
-                    </label>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-slate-800 ml-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <label className="text-sm font-bold">Start Date</label>
+                    </div>
                     <input
                       type="date"
                       required
@@ -483,31 +482,35 @@ export default function CollaborationsPage() {
                           start_date: e.target.value,
                         })
                       }
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
+                      className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* SECTION: PROTOCOL */}
-              <div>
+              {/* SECTION: Status */}
+              <div className="space-y-3">
                 {renderSectionLabel(
-                  <ClipboardCheck className="w-3.5 h-3.5 text-slate-400" />,
-                  "Classification & Workflow Protocol",
+                  <ClipboardCheck className="w-3.5 h-3.5" />,
+                  "Status",
                 )}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#11161a]">
-                    Workflow Status State
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-800 ml-1">
+                    Status
                   </label>
                   <select
                     value={formState.status}
                     onChange={(e) =>
                       setFormState({ ...formState, status: e.target.value })
                     }
-                    className="w-full h-11 px-3 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
+                    className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                   >
                     {AVAILABLE_STATUSES.map((status) => (
-                      <option key={status} value={status}>
+                      <option
+                        key={status}
+                        value={status}
+                        className="text-black"
+                      >
                         {status}
                       </option>
                     ))}
@@ -515,16 +518,16 @@ export default function CollaborationsPage() {
                 </div>
               </div>
 
-              {/* SECTION: CONNECTIONS */}
-              <div>
+              {/* SECTION: Documents Link & Repository Link */}
+              <div className="flex flex-col gap-4 pt-2 border-t border-slate-100">
                 {renderSectionLabel(
-                  <Link2 className="w-3.5 h-3.5 text-slate-400" />,
-                  "Resource Asset Connections",
+                  <Link2 className="w-3.5 h-3.5" />,
+                  "Documents Link & Repository Link",
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#11161a]">
-                      Documents Vault (URL)
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-800 ml-1">
+                      Documents Link
                     </label>
                     <input
                       type="url"
@@ -536,12 +539,12 @@ export default function CollaborationsPage() {
                         })
                       }
                       placeholder="https://drive.google.com/..."
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
+                      className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#11161a]">
-                      Repository Link Asset
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-800 ml-1">
+                      Repository Link
                     </label>
                     <input
                       type="url"
@@ -553,52 +556,30 @@ export default function CollaborationsPage() {
                         })
                       }
                       placeholder="https://github.com/..."
-                      className="w-full h-11 px-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none"
+                      className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* SECTION: ANNOTATIONS */}
-              <div>
-                {renderSectionLabel(
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />,
-                  "Supplemental Annotations",
-                )}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#11161a]">
-                    Internal Context Notes
-                  </label>
-                  <textarea
-                    value={formState.notes}
-                    onChange={(e) =>
-                      setFormState({ ...formState, notes: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Provide high-level context notes regarding agreement status..."
-                    className="w-full p-4 bg-[#fffdf8] rounded-xl border border-gray-200 text-[14px] outline-none resize-none shadow-sm focus:ring-1 focus:ring-[#4ec2bb]"
-                  />
-                </div>
-              </div>
-
-              {/* ACTION FOOTER */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {/* Action Footer */}
+              <div className="flex gap-3 justify-end pt-6 pb-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() =>
                     isAdding ? setIsAdding(false) : setIsEditing(false)
                   }
-                  className="px-5 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-full transition-all"
+                  className="h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-2xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 h-11 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white text-sm font-bold rounded-full shadow-sm transition-all"
+                  className="flex items-center gap-2 h-12 px-6 bg-slate-900 hover:bg-black text-white font-bold text-sm rounded-2xl shadow-lg shadow-slate-200 transition-all"
                 >
                   <Save className="w-4 h-4" />
                   <span>
-                    {isAdding ? "Add Collaboration" : "Commit Changes"}
+                    {isAdding ? "Save Collaboration" : "Save Changes"}
                   </span>
                 </button>
               </div>

@@ -6,7 +6,6 @@ import {
   Network,
   FileCheck2,
   GraduationCap,
-  TrendingUp,
   Activity,
   ArrowUpRight,
   BarChart3,
@@ -15,6 +14,7 @@ import {
   CheckCircle2,
   Circle,
   Calendar,
+  CheckSquare,
 } from "lucide-react";
 import {
   BarChart,
@@ -67,18 +67,15 @@ const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b"];
 const AVAILABLE_YEARS = ["2024", "2025", "2026"];
 
 export default function DashboardLandingPage() {
-  // Default tracking year is set to current year (2026)
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [events, setEvents] = useState<CombinedEvent[]>([]);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Re-run mock query lifecycle anytime selectedYear changes
   useEffect(() => {
     setIsLoading(true);
 
-    // Simulating database aggregations filtered by targeting specific years
     const yearlyMockDB: Record<string, DashboardStats> = {
       "2026": {
         activeProjects: 24,
@@ -164,6 +161,38 @@ export default function DashboardLandingPage() {
         bgClass: "bg-[#f5faf4]",
         badgeClass: "bg-[#5cb051]",
       },
+      {
+        id: "ev-6",
+        title: "Visayas Core facility audit",
+        date: new Date("2026-07-22"),
+        displayDate: "Jul 22",
+        bgClass: "bg-[#faf8f4]",
+        badgeClass: "bg-[#d97706]",
+      },
+      {
+        id: "ev-7",
+        title: "Metagenomics training session",
+        date: new Date("2026-07-27"),
+        displayDate: "Jul 27",
+        bgClass: "bg-[#f4faf8]",
+        badgeClass: "bg-[#0d9488]",
+      },
+      {
+        id: "ev-8",
+        title: "HPC maintenance window",
+        date: new Date("2026-08-02"),
+        displayDate: "Aug 02",
+        bgClass: "bg-[#fef2f2]",
+        badgeClass: "bg-[#dc2626]",
+      },
+      {
+        id: "ev-9",
+        title: "Monthly collaboration sync",
+        date: new Date("2026-08-05"),
+        displayDate: "Aug 05",
+        bgClass: "bg-[#f4f4f8]",
+        badgeClass: "bg-[#4f46e5]",
+      },
     ]);
 
     setTasks([
@@ -246,11 +275,11 @@ export default function DashboardLandingPage() {
     : [];
 
   return (
-    <div className="space-y-8 max-w-[1240px] mx-auto font-sans pb-16 px-4">
+    <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
       {/* Top Header Controls Area */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px]">
+          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
             Dashboard Home
           </span>
           <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
@@ -263,7 +292,7 @@ export default function DashboardLandingPage() {
           <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
           <label
             htmlFor="year-select"
-            className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider"
+            className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-quicksand"
           >
             Filtered Year:
           </label>
@@ -271,7 +300,7 @@ export default function DashboardLandingPage() {
             id="year-select"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="bg-transparent font-mono text-xs font-bold text-[#174e64] focus:outline-none cursor-pointer pr-1"
+            className="bg-transparent text-xs font-bold text-[#174e64] focus:outline-none cursor-pointer pr-1"
           >
             {AVAILABLE_YEARS.map((year) => (
               <option key={year} value={year}>
@@ -285,7 +314,7 @@ export default function DashboardLandingPage() {
       {/* Welcome Operational Banner */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="space-y-2 max-w-2xl">
-          <span className="text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] bg-[#e6f4f8] px-2.5 py-1 rounded-md">
+          <span className="text-[11px] bg-[#e6f4f8] px-2.5 py-1 rounded-md font-optima font-bold uppercase tracking-[1.5px] text-[#2a7797]">
             Internal Operations Hub
           </span>
           <h2 className="text-4xl font-extrabold text-[#11161a] leading-tight tracking-tight">
@@ -298,17 +327,17 @@ export default function DashboardLandingPage() {
             links.
           </p>
         </div>
-        <div className="flex-shrink-0 bg-slate-100 px-6 py-4 rounded-2xl border border-slate-200/60 font-mono text-xs text-slate-500">
+        <div className="flex-shrink-0 bg-slate-100 px-6 py-4 rounded-2xl border border-slate-200/60 text-xs text-slate-500 font-bold">
           🧬 PGC VISAYAS NODE
         </div>
       </div>
 
-      {/* ================= SUMMARY CARDS LAYER (DYNAMICS LOAD) ================= */}
+      {/* ================= SUMMARY CARDS LAYER ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
-        <div className="bg-[#eafafa] border border-[rgba(78,194,187,0.2)] rounded-[22px] p-6 flex flex-col justify-between shadow-sm min-h-[148px]">
+        {/* Card 1: Total Projects */}
+        <div className="bg-[#eafafa] border border-[rgba(78,194,187,0.2)] rounded-[22px] p-6 shadow-sm flex flex-col gap-4">
           <div>
-            <div className="flex items-center justify-between text-[#2e8b87] mb-1">
+            <div className="flex items-center justify-between text-[#2e8b87] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
                 Total Projects ({selectedYear})
               </span>
@@ -322,19 +351,21 @@ export default function DashboardLandingPage() {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-[#3ea39f] mt-4 pt-2 border-t border-[rgba(78,194,187,0.15)]">
-            <span className="bg-[#d5f5f5] px-1.5 py-0.5 rounded text-[#1c5c59]">
-              {stats?.activeProjects} Active
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-[rgba(78,194,187,0.15)]">
+            <span className="flex items-center gap-1 bg-[#d5f5f5] text-[#1c5c59] px-2 py-1 rounded-full">
+              <Activity className="w-3 h-3" /> {stats?.activeProjects} Active
             </span>
-            <span className="text-slate-400">•</span>
-            <span>{stats?.completedProjects} Completed</span>
+            <span className="flex items-center gap-1 bg-white/60 text-[#3ea39f] px-2 py-1 rounded-full border border-[rgba(78,194,187,0.25)]">
+              <CheckCircle2 className="w-3 h-3" /> {stats?.completedProjects}{" "}
+              Completed
+            </span>
           </div>
         </div>
 
-        {/* Card 2 */}
-        <div className="bg-[#f3faf5] border border-emerald-200/60 rounded-[22px] p-6 flex flex-col justify-between shadow-sm min-h-[148px]">
+        {/* Card 2: Collaborations */}
+        <div className="bg-[#f3faf5] border border-emerald-200/60 rounded-[22px] p-6 shadow-sm flex flex-col gap-4">
           <div>
-            <div className="flex items-center justify-between text-emerald-700 mb-1">
+            <div className="flex items-center justify-between text-emerald-700 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
                 Collaborations
               </span>
@@ -348,21 +379,22 @@ export default function DashboardLandingPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center justify-between text-[11px] font-bold text-emerald-700 mt-4 pt-2 border-t border-emerald-100">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-emerald-100">
+            <span className="flex items-center gap-1 bg-emerald-100/70 text-emerald-800 px-2 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {stats?.activeCollaborations} Active
             </span>
-            <span className="text-emerald-600 bg-emerald-100/70 px-1.5 py-0.5 rounded text-[10px]">
+            <span className="flex items-center gap-1 bg-white/60 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200/60">
+              <CheckCircle2 className="w-3 h-3" />{" "}
               {stats?.completedCollaborations} Completed
             </span>
           </div>
         </div>
 
-        {/* Card 3 */}
-        <div className="bg-[#f0f4f8] border border-[rgba(42,119,151,0.15)] rounded-[22px] p-6 flex flex-col justify-between shadow-sm min-h-[148px]">
+        {/* Card 3: Service Reports */}
+        <div className="bg-[#f0f4f8] border border-[rgba(42,119,151,0.15)] rounded-[22px] p-6 shadow-sm flex flex-col gap-4">
           <div>
-            <div className="flex items-center justify-between text-[#2a7797] mb-1">
+            <div className="flex items-center justify-between text-[#2a7797] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
                 Service Reports
               </span>
@@ -376,19 +408,20 @@ export default function DashboardLandingPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center justify-between text-[11px] font-bold text-[#356d83] mt-4 pt-2 border-t border-slate-200/60">
-            <span className="flex items-center gap-0.5 text-emerald-600">
-              <ArrowUpRight className="w-3.5 h-3.5" />+{stats?.reportsNew} Year
-              Metrics
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-slate-200/60">
+            <span className="flex items-center gap-1 bg-[#e6f4f8] text-[#174e64] px-2 py-1 rounded-full">
+              <ArrowUpRight className="w-3 h-3" /> +{stats?.reportsNew} New
             </span>
-            <span className="text-slate-400 font-normal">Active context</span>
+            <span className="flex items-center gap-1 bg-white/60 text-[#356d83] px-2 py-1 rounded-full border border-slate-200/60">
+              <FileCheck2 className="w-3 h-3" /> Year Metrics
+            </span>
           </div>
         </div>
 
-        {/* Card 4 */}
-        <div className="bg-[#fffbe6] border border-amber-200 rounded-[22px] p-6 flex flex-col justify-between shadow-sm min-h-[148px]">
+        {/* Card 4: Programs Hub */}
+        <div className="bg-[#fffbe6] border border-amber-200 rounded-[22px] p-6 shadow-sm flex flex-col gap-4">
           <div>
-            <div className="flex items-center justify-between text-amber-800 mb-1">
+            <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
                 Programs Hub
               </span>
@@ -402,27 +435,25 @@ export default function DashboardLandingPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center justify-between text-[11px] font-bold text-amber-800 mt-4 pt-2 border-t border-amber-200/40">
-            <span className="flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5 text-amber-500" />
-              {stats?.ongoingTrainings} Active
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-amber-200/40">
+            <span className="flex items-center gap-1 bg-amber-100 text-amber-900 px-2 py-1 rounded-full">
+              <Activity className="w-3 h-3" /> {stats?.ongoingTrainings} Active
             </span>
-            <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[10px]">
-              {stats?.totalInterns} Interns
+            <span className="flex items-center gap-1 bg-white/60 text-amber-800 px-2 py-1 rounded-full border border-amber-200/60">
+              <GraduationCap className="w-3 h-3" /> {stats?.totalInterns}{" "}
+              Interns
             </span>
           </div>
         </div>
       </div>
 
       {/* ================= TASKS FOR THE WEEK SECTION ================= */}
-      <div className="bg-white border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-50 pb-2">
-          <h3 className="text-sm font-extrabold text-[#11161a] uppercase tracking-wider">
+      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm">
+        <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
+          <CheckSquare className="w-4 h-4" />
+          <h3 className="text-xs font-extrabold uppercase tracking-wider">
             Tasks for the Week
           </h3>
-          <span className="text-[10px] font-bold text-[#2a7797] bg-[#e6f4f8] px-3 py-1 rounded-full uppercase tracking-wider font-mono">
-            Task Table
-          </span>
         </div>
 
         <div className="space-y-2.5">
@@ -434,8 +465,8 @@ export default function DashboardLandingPage() {
                 onClick={() => handleToggleTaskStatus(task.id)}
                 className={`border rounded-2xl p-3 flex items-center justify-between transition-all duration-250 cursor-pointer select-none group ${
                   isCompleted
-                    ? "bg-slate-50/70 border-slate-200/60 opacity-60"
-                    : "bg-[#f8f9fa] border-slate-100/80 hover:bg-slate-100/60"
+                    ? "bg-slate-50 border-slate-100 opacity-60"
+                    : "bg-white border-slate-200/60 hover:bg-slate-50/50 shadow-sm"
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -451,14 +482,14 @@ export default function DashboardLandingPage() {
                       className={`w-3.5 h-3.5 shrink-0 ${isCompleted ? "text-slate-300" : task.flagColor}`}
                     />
                     <span
-                      className={`text-xs font-mono font-medium ${isCompleted ? "line-through text-slate-400" : "text-slate-700"}`}
+                      className={`text-xs font-medium ${isCompleted ? "line-through text-slate-400" : "text-slate-700"}`}
                     >
                       {task.title}
                     </span>
                   </div>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold ${isCompleted ? "bg-slate-200/50 text-slate-400" : `${task.tagBgClass} ${task.tagColorClass}`}`}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold ${isCompleted ? "bg-slate-100 text-slate-400" : `${task.tagBgClass} ${task.tagColorClass}`}`}
                 >
                   {task.category}
                 </div>
@@ -469,73 +500,114 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* ================= CHARTS AND EVENTS BOTTOM GRID AREA ================= */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left 2 Columns: Recharts Panel */}
-        <div className="xl:col-span-2 space-y-6">
-          {/* Yearly Service Reports Bar Chart */}
-          <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm">
-            <div className="flex items-center gap-2 text-[#2a7797] mb-6">
-              <BarChart3 className="w-4 h-4" />
-              <h3 className="text-xs font-extrabold uppercase tracking-wider">
-                Service Reports Delivered by Year
-              </h3>
-            </div>
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={serviceReportsDeliveredByYear}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#f1f5f9"
-                  />
-                  <XAxis
-                    dataKey="year"
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs font-bold fill-slate-400"
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs font-mono fill-slate-400"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1e293b",
-                      borderRadius: "12px",
-                      border: "none",
-                      color: "#fff",
-                    }}
-                  />
-                  {/* Highlight current filtered year column bar */}
-                  <Bar dataKey="Delivered" radius={[6, 6, 0, 0]} barSize={24}>
-                    {serviceReportsDeliveredByYear.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          entry.year === selectedYear ? "#2a7797" : "#91247b"
-                        }
-                        opacity={entry.year === selectedYear ? 1 : 0.6}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Yearly Service Reports Bar Chart */}
+        <div className="md:col-span-2 bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm">
+          <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
+            <BarChart3 className="w-4 h-4" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider">
+              Service Reports Delivered by Year
+            </h3>
+          </div>
+          <div className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={serviceReportsDeliveredByYear}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="year"
+                  axisLine={false}
+                  tickLine={false}
+                  className="text-xs font-bold fill-slate-400 font-aileron"
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  className="text-xs fill-slate-400 font-aileron"
+                />
+
+                <Tooltip
+                  wrapperStyle={{
+                    fontFamily: "Aileron, sans-serif",
+                    zIndex: 50,
+                  }}
+                  contentStyle={{
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    padding: "8px 12px",
+                  }}
+                  itemStyle={{
+                    fontSize: "12px",
+                    fontWeight: "500",
+                  }}
+                  labelStyle={{
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    color: "#64748b",
+                    marginBottom: "2px",
+                  }}
+                />
+
+                <Bar dataKey="Delivered" radius={[6, 6, 0, 0]} barSize={24}>
+                  {serviceReportsDeliveredByYear.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.year === selectedYear ? "#2a7797" : "#91247b"}
+                      opacity={entry.year === selectedYear ? 1 : 0.6}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Upcoming Events Column */}
+        <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm xl:row-span-2">
+          <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
+            <Calendar className="w-4 h-4" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider">
+              Upcoming Events
+            </h3>
           </div>
 
-          {/* Project Distribution Donut Chart */}
-          <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm">
-            <div className="flex items-center gap-2 text-[#2a7797] mb-4">
+          <div className="space-y-2.5">
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className={`${event.bgClass} p-2.5 rounded-xl flex items-center gap-4 transition-all hover:brightness-[0.98]`}
+              >
+                <div
+                  className={`${event.badgeClass} w-[72px] py-1 rounded-lg flex items-center justify-center text-xs font-bold text-white tracking-wide shrink-0 shadow-sm`}
+                >
+                  {event.displayDate}
+                </div>
+                <span className="text-xs font-medium text-slate-700 truncate">
+                  {event.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Project Distribution Donut Chart */}
+        <div className="md:col-span-2 bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-[#2a7797] mb-4 font-quicksand">
               <PieIcon className="w-4 h-4" />
               <h3 className="text-xs font-extrabold uppercase tracking-wider">
                 Project Distribution ({selectedYear})
               </h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center my-auto py-2">
               <div className="w-full h-48 relative flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -555,23 +627,34 @@ export default function DashboardLandingPage() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      wrapperStyle={{
+                        fontFamily: "Aileron, sans-serif",
+                        zIndex: 50,
+                      }}
+                      contentStyle={{
+                        backgroundColor: "#fff",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute text-center">
+                <div className="absolute text-center pointer-events-none">
                   <span className="block text-xl font-black text-slate-800 tracking-tight">
                     {totalProjects}
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-quicksand">
                     Total
                   </span>
                 </div>
               </div>
-              <div className="space-y-2">
+
+              <div className="space-y-2.5">
                 {projectStatusDistribution.map((entry, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 border border-slate-100"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-100"
                   >
                     <div className="flex items-center gap-2">
                       <span
@@ -582,42 +665,13 @@ export default function DashboardLandingPage() {
                         {entry.name}
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-slate-800">
+                    <span className="text-xs font-bold text-slate-800">
                       {entry.value}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Right Column: Upcoming Events */}
-        <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[24px] p-6 shadow-sm h-fit space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-extrabold text-[#11161a] uppercase tracking-wider">
-              Upcoming Events
-            </h3>
-            <span className="text-[9px] font-bold text-[#2a7797] bg-[#e6f4f8] px-2.5 py-1 rounded-full uppercase tracking-wider font-mono">
-              Calendar Event
-            </span>
-          </div>
-          <div className="space-y-2.5">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className={`${event.bgClass} p-2.5 rounded-xl flex items-center gap-4 transition-all hover:brightness-[0.98]`}
-              >
-                <div
-                  className={`${event.badgeClass} w-[72px] py-1 rounded-lg flex items-center justify-center font-mono text-xs font-bold text-white tracking-wide shrink-0 shadow-sm`}
-                >
-                  {event.displayDate}
-                </div>
-                <span className="text-xs font-mono font-medium text-slate-700 truncate">
-                  {event.title}
-                </span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
