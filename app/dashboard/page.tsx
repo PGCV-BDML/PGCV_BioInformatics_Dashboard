@@ -282,7 +282,7 @@ export default function DashboardLandingPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard Home
+            Dashboard - Home
           </span>
           <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
             Landing Page
@@ -335,7 +335,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Right Side: Node Visual / Brand Signifier Placement Area */}
-        <div className="flex-shrink-0 z-10 self-end md:self-auto bg-white/60 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-200/50 flex items-center gap-3 shadow-xs">
+        <div className="flex-shrink-0 z-10 self-end md:self-auto bg-[#ffffff] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-200/50 flex items-center gap-3 shadow-xs">
           <div className="flex flex-col items-end text-right">
             <img
               src="/assets/pgcv_logo.png"

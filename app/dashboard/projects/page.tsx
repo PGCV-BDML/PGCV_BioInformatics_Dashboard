@@ -334,11 +334,20 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
-          Projects
-        </h1>
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
+      {/* Fixed Layout Header View */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+        {/* Left Side: Dynamic Text Copy and Titles Stacked Properly */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
+            Dashboard - List
+          </span>
+          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
+            List of Projects
+          </h1>
+        </div>
+
+        {/* Right Side: Search and Add Button Controls aligned horizontally */}
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
           <div className="relative w-full min-[480px]:w-72">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -352,16 +361,17 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="flex items-center justify-center gap-2 h-11 px-5 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white text-sm font-bold rounded-full shadow-sm transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-2 h-11 px-5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-full shadow-md transition-all whitespace-nowrap"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" /> Add Project
           </button>
         </div>
       </div>
 
+      {/* Main Table View */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <Network className="w-6 h-6 text-[#2a7797]" />
+          <Network className="w-6 h-6 text-[#333333]" />
           <h2 className="text-3xl font-bold text-[#333333]">
             List of Projects
           </h2>

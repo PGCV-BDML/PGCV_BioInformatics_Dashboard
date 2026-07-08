@@ -318,17 +318,25 @@ export default function CollaborationsPage() {
 
   return (
     <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
-      {/* Header View */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
-          Collaborations
-        </h1>
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
+      {/* Fixed Layout Header View */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+        {/* Left Side: Dynamic Text Copy and Titles Stacked Properly */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
+            Dashboard - List
+          </span>
+          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
+            Collaborations
+          </h1>
+        </div>
+
+        {/* Right Side: Search and Add Button Controls aligned horizontally */}
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
           <div className="relative w-full min-[480px]:w-72">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search alliances..."
+              placeholder="Search collaborations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-11 pl-11 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-[14px] outline-none focus:ring-2 focus:ring-[#4ec2bb]"
@@ -340,7 +348,7 @@ export default function CollaborationsPage() {
               setFormState(emptyForm);
               setIsAdding(true);
             }}
-            className="flex items-center justify-center gap-2 h-11 px-5 bg-[#4ec2bb] hover:bg-[#3fb0a9] text-white text-sm font-bold rounded-full shadow-sm transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-2 h-11 px-5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-full shadow-md transition-all whitespace-nowrap"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" /> Add Collaboration
           </button>
@@ -350,9 +358,9 @@ export default function CollaborationsPage() {
       {/* Main Table View */}
       <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <Users2 className="w-6 h-6 text-[#2a7797]" />
+          <Users2 className="w-6 h-6 text-[#333333]" />
           <h2 className="text-3xl font-bold text-[#333333]">
-            Collaborations List
+            List of Collaborations
           </h2>
         </div>
 
