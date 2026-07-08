@@ -26,18 +26,14 @@ interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (project: ProjectInput) => void;
-  availableClients: string[];
   availableServices: string[];
-  availableUsers: string[];
 }
 
 export default function NewProjectModal({
   isOpen,
   onClose,
   onSubmit,
-  availableClients,
   availableServices,
-  availableUsers,
 }: NewProjectModalProps) {
   const initialFormState: ProjectInput = {
     name: "",
@@ -74,12 +70,9 @@ export default function NewProjectModal({
 
   return (
     <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
-      {/* Modal Card Box wrapper */}
       <div className="relative bg-[#ffffff] w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
-        {/* Top Gradient Stripe Accent */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
-        {/* Modal Header Container */}
         <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
           <div>
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -99,7 +92,6 @@ export default function NewProjectModal({
           </button>
         </div>
 
-        {/* Modal Form Content Scrollable Body View */}
         <form
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
@@ -137,22 +129,15 @@ export default function NewProjectModal({
                 <label className="text-sm font-bold text-slate-800 ml-1">
                   Client
                 </label>
-                <select
+                <input
+                  type="text"
                   name="client_name"
                   required
+                  placeholder="Enter client name"
                   value={form.client_name}
                   onChange={handleInputChange}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
-                >
-                  <option value="" disabled className="text-slate-400">
-                    Select client
-                  </option>
-                  {availableClients.map((client) => (
-                    <option key={client} value={client} className="text-black">
-                      {client}
-                    </option>
-                  ))}
-                </select>
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -194,22 +179,15 @@ export default function NewProjectModal({
                 <label className="text-sm font-bold text-slate-800 ml-1">
                   Lead
                 </label>
-                <select
+                <input
+                  type="text"
                   name="lead"
                   required
+                  placeholder="Enter lead name"
                   value={form.lead}
                   onChange={handleInputChange}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
-                >
-                  <option value="" disabled className="text-slate-400">
-                    Assign lead
-                  </option>
-                  {availableUsers.map((user) => (
-                    <option key={user} value={user} className="text-black">
-                      {user}
-                    </option>
-                  ))}
-                </select>
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -298,7 +276,6 @@ export default function NewProjectModal({
             />
           </div>
 
-          {/* Action Navigation Footer Layout Layer links buttons group */}
           <div className="flex gap-3 justify-end pt-6 pb-2 border-t border-slate-100">
             <button
               type="button"

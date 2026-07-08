@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   X,
   Save,
@@ -52,12 +52,29 @@ export default function EditProjectModal({
     repository_link: "",
   });
 
-  // Keep form data synchronized when initialData node changes or gets loaded
   useEffect(() => {
     if (initialData) {
       setForm(initialData);
     }
   }, [initialData, isOpen]);
+
+  // Dynamically append current initial data values into options arrays if they don't already exist.
+  const dynamicClients = useMemo(() => {
+    if (
+      initialData?.client_name &&
+      !availableClients.includes(initialData.client_name)
+    ) {
+      return [...availableClients, initialData.client_name];
+    }
+    return availableClients;
+  }, [availableClients, initialData?.client_name]);
+
+  const dynamicUsers = useMemo(() => {
+    if (initialData?.lead && !availableUsers.includes(initialData.lead)) {
+      return [...availableUsers, initialData.lead];
+    }
+    return availableUsers;
+  }, [availableUsers, initialData?.lead]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -80,12 +97,9 @@ export default function EditProjectModal({
 
   return (
     <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
-      {/* Modal Card Box wrapper */}
       <div className="relative bg-[#ffffff] w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
-        {/* Top Gradient Stripe Accent */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
-        {/* Modal Header Container */}
         <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
           <div>
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -104,7 +118,6 @@ export default function EditProjectModal({
           </button>
         </div>
 
-        {/* Modal Form Content Scrollable Body View */}
         <form
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
@@ -152,7 +165,7 @@ export default function EditProjectModal({
                   <option value="" disabled className="text-slate-400">
                     Select client
                   </option>
-                  {availableClients.map((client) => (
+                  {dynamicClients.map((client) => (
                     <option key={client} value={client} className="text-black">
                       {client}
                     </option>
@@ -209,7 +222,7 @@ export default function EditProjectModal({
                   <option value="" disabled className="text-slate-400">
                     Assign lead
                   </option>
-                  {availableUsers.map((user) => (
+                  {dynamicUsers.map((user) => (
                     <option key={user} value={user} className="text-black">
                       {user}
                     </option>
@@ -303,7 +316,6 @@ export default function EditProjectModal({
             />
           </div>
 
-          {/* Action Navigation Footer Layout Layer links buttons group */}
           <div className="flex gap-3 justify-end pt-6 pb-2 border-t border-slate-100">
             <button
               type="button"

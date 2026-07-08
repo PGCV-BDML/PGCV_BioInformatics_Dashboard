@@ -31,8 +31,8 @@ export default function DeleteModal({
           <h4 className="text-lg font-bold">Confirm Record Removal</h4>
         </div>
         <p className="text-sm text-gray-500">
-          Are you certain you want to purge <strong>{itemName}</strong>? This
-          dashboard index view update cannot be undone.
+          Are you sure you want to delete <strong>{itemName}</strong>? This
+          update cannot be undone.
         </p>
         <div className="flex gap-3 justify-end pt-2">
           <button

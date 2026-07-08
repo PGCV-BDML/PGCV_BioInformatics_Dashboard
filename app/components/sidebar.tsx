@@ -78,6 +78,46 @@ export default function Sidebar() {
   const [showProfileCard, setShowProfileCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic User State Matching Google Metadata
+  const [userData, setUserData] = useState<{
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+  }>({
+    name: "PGC Visayas",
+    email: "Admin Account",
+    avatarUrl: null,
+  });
+
+  // Fetch Session Meta Identity values on mount
+  useEffect(() => {
+    async function getUserProfile() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const identityMeta =
+          user.identities?.[0]?.identity_data || user.user_metadata;
+        setUserData({
+          name: identityMeta?.full_name || identityMeta?.name || "PGC Visayas",
+          email: user.email || "Admin Account",
+          avatarUrl: identityMeta?.avatar_url || identityMeta?.picture || null,
+        });
+      }
+    }
+    getUserProfile();
+  }, []);
+
+  // Compute fallback initial tokens if avatarUrl is missing
+  const userInitials = userData.name
+    ? userData.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "PG";
+
   // Click outside to close the profile option card
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -159,12 +199,12 @@ export default function Sidebar() {
         {/* Account Menu */}
         {showProfileCard && (
           <div className="absolute bottom-[76px] left-0 w-full bg-[#FFFDF8] border border-[rgba(23,33,38,0.1)] rounded-2xl py-2 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30">
-            <div className="px-4 py-2.5 border-b border-gray-100">
-              <p className="text-[13px] font-bold text-[#333333] leading-tight">
-                PGC Visayas
+            <div className="px-4 py-2.5 border-b border-gray-100 min-w-0">
+              <p className="text-[13px] font-bold text-[#333333] leading-tight truncate">
+                {userData.name}
               </p>
-              <p className="text-[11.5px] text-[#7b7979] leading-tight mt-0.5">
-                Administrator
+              <p className="text-[11.5px] text-[#7b7979] leading-tight mt-0.5 truncate">
+                {userData.email}
               </p>
             </div>
 
@@ -183,27 +223,38 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => setShowProfileCard(!showProfileCard)}
-          className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none ${
+          className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none min-w-0 ${
             showProfileCard
               ? "bg-[#e6f5ff] text-[#2a7797]"
               : "hover:bg-[#e6f5ff]/60 hover:-translate-y-0.5 hover:scale-[1.01]"
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#2a7797] flex items-center justify-center font-bold text-white text-xs font-aileron shadow-sm">
-              PG
-            </div>
-            <div className="text-left flex flex-col">
-              <span className="text-[#333333] text-[13.5px] font-bold leading-tight">
-                PGC Visayas
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {userData.avatarUrl ? (
+              <img
+                src={userData.avatarUrl}
+                alt={`${userData.name} profile portrait`}
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-full object-cover shadow-xs border border-slate-200/60"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#2a7797] flex items-center justify-center font-bold text-white text-xs font-aileron shadow-sm flex-shrink-0">
+                {userInitials}
+              </div>
+            )}
+            <div className="text-left flex flex-col min-w-0 flex-1">
+              <span className="text-[#333333] text-[13.5px] font-bold leading-tight truncate">
+                {userData.name}
               </span>
-              <span className="text-[#7b7979] text-[11px] leading-tight mt-0.5">
-                Admin Account
+              <span className="text-[#7b7979] text-[11px] leading-tight mt-0.5 truncate">
+                {userData.email}
               </span>
             </div>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-[#7b7979] mr-1 transition-transform duration-300 ${showProfileCard ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-[#7b7979] ml-2 flex-shrink-0 transition-transform duration-300 ${
+              showProfileCard ? "rotate-180" : ""
+            }`}
           />
         </button>
       </div>
