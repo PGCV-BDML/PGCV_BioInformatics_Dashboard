@@ -5,6 +5,7 @@ import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
+import { supabase } from "@/lib/supabase"; // Import initialized Supabase client instance
 import {
   Search,
   Users2,
@@ -24,7 +25,7 @@ import {
 } from "lucide-react";
 
 type Collaboration = {
-  id: number;
+  id: string; // Changed to string since database primary keys are UUIDs
   partner_organization: string;
   lead: string;
   status: string;
@@ -32,28 +33,6 @@ type Collaboration = {
   documents_link: string;
   repository_link: string;
 };
-
-const INITIAL_COLLABORATIONS: Collaboration[] = [
-  {
-    id: 1,
-    partner_organization: "Philippine Genome Center",
-    lead: "Dr. Analyst Cruz",
-    status: "On-going",
-    start_date: "2026-01-15",
-    documents_link: "https://drive.google.com/drive/folders/mock-pgc-share",
-    repository_link:
-      "https://github.com/pgc-core/collaborative-variant-pipeline",
-  },
-  {
-    id: 2,
-    partner_organization: "International Rice Research Institute (IRRI)",
-    lead: "Prof. Lopez",
-    status: "Completed",
-    start_date: "2026-02-10",
-    documents_link: "https://irri.org/resources/mock-docs",
-    repository_link: "https://github.com/irri-genomics/rice-subspecies-mra",
-  },
-];
 
 const AVAILABLE_USERS = [
   "Dr. Analyst Cruz",
@@ -63,17 +42,12 @@ const AVAILABLE_USERS = [
   "Prof. Torres",
 ];
 
-const AVAILABLE_STATUSES = [
-  "On-going",
-  "Completed",
-  "On hold",
-  "For approval",
-  "Submitted",
-];
+// Aligned with backend Enum strings for compatibility
+const AVAILABLE_STATUSES = ["ongoing", "finished", "for_approval"];
 
 export default function CollaborationsPage() {
   const [collaborationsList, setCollaborationsList] = useState<Collaboration[]>(
-    INITIAL_COLLABORATIONS,
+    [],
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{
@@ -95,13 +69,44 @@ export default function CollaborationsPage() {
   const emptyForm: Omit<Collaboration, "id"> = {
     partner_organization: "",
     lead: AVAILABLE_USERS[0],
-    start_date: "",
-    status: "On-going",
+    start_date: new Date().toISOString().split("T")[0],
+    status: "ongoing",
     documents_link: "",
     repository_link: "",
   };
   const [formState, setFormState] =
     useState<Omit<Collaboration, "id">>(emptyForm);
+
+  // Fetch helper wrapper
+  async function fetchCollaborations() {
+    const { data, error } = await supabase
+      .from("collaboration")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      const structuredData: Collaboration[] = data.map((item: any) => ({
+        id: item.id,
+        // Fallback compatibility safely matching your db schema mapping
+        partner_organization:
+          item.partner_org || item.partner_organization || "",
+        lead: item.lead || "Dr. Analyst Cruz",
+        status: item.status || "ongoing",
+        start_date: item.start_date || "",
+        documents_link:
+          item.documents_link || (item.documents && item.documents[0]) || "",
+        repository_link: item.repository_link || item.notes || "",
+      }));
+      setCollaborationsList(structuredData);
+    } else if (error) {
+      console.error("Error fetching records:", error.message);
+    }
+  }
+
+  // Fetch from live Supabase DB on initialization
+  useEffect(() => {
+    fetchCollaborations();
+  }, []);
 
   const filteredCollaborations = useMemo(() => {
     return collaborationsList.filter((collab) =>
@@ -146,38 +151,102 @@ export default function CollaborationsPage() {
     setSortConfig({ key, direction });
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedId =
-      collaborationsList.length > 0
-        ? Math.max(...collaborationsList.map((c) => c.id)) + 1
-        : 1;
 
-    setCollaborationsList((prev) => [
-      { id: generatedId, ...formState },
-      ...prev,
-    ]);
-    setIsAdding(false);
+    // Map fields accurately to match database target definitions
+    const payload = {
+      partner_org: formState.partner_organization,
+      lead_user_id: "00000000-0000-0000-0000-000000000000", // temporary static valid UUID string if referencing user table, or update database schema
+      partner_organization: formState.partner_organization,
+      lead: formState.lead,
+      start_date: formState.start_date || null,
+      status: formState.status,
+      documents_link: formState.documents_link,
+      repository_link: formState.repository_link,
+      documents: formState.documents_link ? [formState.documents_link] : [],
+    };
+
+    const { data, error } = await supabase
+      .from("collaboration")
+      .insert([payload])
+      .select();
+
+    if (!error && data && data.length > 0) {
+      const insertedItem: Collaboration = {
+        id: data[0].id,
+        partner_organization:
+          data[0].partner_organization || data[0].partner_org || "",
+        lead: data[0].lead || formState.lead,
+        status: data[0].status || "ongoing",
+        start_date: data[0].start_date || "",
+        documents_link:
+          data[0].documents_link ||
+          (data[0].documents && data[0].documents[0]) ||
+          "",
+        repository_link: data[0].repository_link || "",
+      };
+
+      setCollaborationsList((prev) => [insertedItem, ...prev]);
+      setIsAdding(false);
+      setFormState(emptyForm);
+    } else if (error) {
+      alert(`Failed to save collaboration: ${error.message}`);
+    }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCollaboration) return;
 
-    setCollaborationsList((prev) =>
-      prev.map((item) =>
-        item.id === selectedCollaboration.id ? { ...item, ...formState } : item,
-      ),
-    );
-    setIsEditing(false);
+    const payload = {
+      partner_org: formState.partner_organization,
+      partner_organization: formState.partner_organization,
+      lead: formState.lead,
+      start_date: formState.start_date || null,
+      status: formState.status,
+      documents_link: formState.documents_link,
+      repository_link: formState.repository_link,
+      documents: formState.documents_link ? [formState.documents_link] : [],
+    };
+
+    const { error } = await supabase
+      .from("collaboration")
+      .update(payload)
+      .eq("id", selectedCollaboration.id);
+
+    if (!error) {
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === selectedCollaboration.id
+            ? { ...item, ...formState }
+            : item,
+        ),
+      );
+      setIsEditing(false);
+      setSelectedCollaboration(null);
+    } else {
+      alert(`Failed to update collaboration: ${error.message}`);
+    }
   };
 
-  const handleDeleteRecord = () => {
+  const handleDeleteRecord = async () => {
     if (!selectedCollaboration) return;
-    setCollaborationsList((prev) =>
-      prev.filter((item) => item.id !== selectedCollaboration.id),
-    );
-    setShowDeleteConfirm(false);
+
+    const { error } = await supabase
+      .from("collaboration")
+      .delete()
+      .eq("id", selectedCollaboration.id);
+
+    if (!error) {
+      setCollaborationsList((prev) =>
+        prev.filter((item) => item.id !== selectedCollaboration.id),
+      );
+      setShowDeleteConfirm(false);
+      setSelectedCollaboration(null);
+    } else {
+      alert(`Failed to delete record: ${error.message}`);
+    }
   };
 
   const renderSectionLabel = (icon: React.ReactNode, text: string) => (
@@ -189,26 +258,27 @@ export default function CollaborationsPage() {
   const renderStatusBadge = (status: string) => {
     const baseClass =
       "px-2.5 py-1 rounded-full text-[10px] font-bold text-center min-w-[92px] inline-block tracking-wide uppercase";
-    const normalizedStatus = status.toLowerCase().replace(/[\s-]/g, "");
+    const normalizedStatus = status.toLowerCase().replace(/[\s-_]/g, "");
 
     switch (normalizedStatus) {
+      case "finished":
       case "completed":
         return (
           <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
-            Completed
+            Finished
           </span>
         );
       case "ongoing":
       case "inprogress":
         return (
           <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
-            In-Progress
+            Ongoing
           </span>
         );
-      case "onhold":
+      case "forapproval":
         return (
-          <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
-            On hold
+          <span className={`${baseClass} bg-[#f1f5f9] text-slate-600`}>
+            For Approval
           </span>
         );
       default:
@@ -320,7 +390,6 @@ export default function CollaborationsPage() {
     <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
       {/* Fixed Layout Header View */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
-        {/* Left Side: Dynamic Text Copy and Titles Stacked Properly */}
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
             Dashboard - List
@@ -330,7 +399,6 @@ export default function CollaborationsPage() {
           </h1>
         </div>
 
-        {/* Right Side: Search and Add Button Controls aligned horizontally */}
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
           <div className="relative w-full min-[480px]:w-72">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -389,14 +457,12 @@ export default function CollaborationsPage() {
         )}
       </div>
 
-      {/* ADD / EDIT MODAL — styled consistent with Projects modals */}
+      {/* ADD / EDIT MODAL */}
       {(isAdding || isEditing) && (
         <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
           <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
-            {/* Top Gradient Stripe Accent */}
             <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
-            {/* Modal Header */}
             <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
               <div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -410,21 +476,20 @@ export default function CollaborationsPage() {
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  isAdding ? setIsAdding(false) : setIsEditing(false)
-                }
+                onClick={() => {
+                  isAdding ? setIsAdding(false) : setIsEditing(false);
+                  setSelectedCollaboration(null);
+                }}
                 className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Modal Form Content */}
             <form
               onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
               className="bg-[#ffffff] flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
             >
-              {/* SECTION: Partner Organization */}
               <div className="space-y-3">
                 {renderSectionLabel(
                   <FlaskConical className="w-3.5 h-3.5" />,
@@ -450,7 +515,6 @@ export default function CollaborationsPage() {
                 </div>
               </div>
 
-              {/* SECTION: Lead Coordinator & Start Date */}
               <div className="space-y-3">
                 {renderSectionLabel(
                   <User className="w-3.5 h-3.5" />,
@@ -469,7 +533,7 @@ export default function CollaborationsPage() {
                       className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                     >
                       {AVAILABLE_USERS.map((user) => (
-                        <option key={user} value={user} className="text-black">
+                        <option key={user} value={user}>
                           {user}
                         </option>
                       ))}
@@ -496,7 +560,6 @@ export default function CollaborationsPage() {
                 </div>
               </div>
 
-              {/* SECTION: Status */}
               <div className="space-y-3">
                 {renderSectionLabel(
                   <ClipboardCheck className="w-3.5 h-3.5" />,
@@ -514,19 +577,18 @@ export default function CollaborationsPage() {
                     className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
                   >
                     {AVAILABLE_STATUSES.map((status) => (
-                      <option
-                        key={status}
-                        value={status}
-                        className="text-black"
-                      >
-                        {status}
+                      <option key={status} value={status}>
+                        {status === "ongoing"
+                          ? "Ongoing"
+                          : status === "finished"
+                            ? "Finished"
+                            : "For Approval"}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* SECTION: Documents Link & Repository Link */}
               <div className="flex flex-col gap-4 pt-2 border-t border-slate-100">
                 {renderSectionLabel(
                   <Link2 className="w-3.5 h-3.5" />,
@@ -570,13 +632,13 @@ export default function CollaborationsPage() {
                 </div>
               </div>
 
-              {/* Action Footer */}
               <div className="flex gap-3 justify-end pt-6 pb-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() =>
-                    isAdding ? setIsAdding(false) : setIsEditing(false)
-                  }
+                  onClick={() => {
+                    isAdding ? setIsAdding(false) : setIsEditing(false);
+                    setSelectedCollaboration(null);
+                  }}
                   className="h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-2xl transition-colors"
                 >
                   Cancel
