@@ -16,9 +16,14 @@ create table public.analysis (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint analysis_pkey primary key (id),
-  constraint analysis_assignee_id_fkey foreign KEY (assignee_id) references "user" (id),
+  constraint analysis_assignee_id_fkey foreign KEY (assignee_id) references users (id),
   constraint analysis_project_id_fkey foreign KEY (project_id) references project (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_analysis_project_id on public.analysis using btree (project_id) TABLESPACE pg_default;
+
+create index IF not exists idx_analysis_assignee_id on public.analysis using btree (assignee_id) TABLESPACE pg_default;
+
 ```
 
 ## assessment
@@ -28,12 +33,14 @@ create table public.assessment (
   id uuid not null default gen_random_uuid (),
   program_id uuid not null,
   type public.assessment_type not null,
-  questions text[] null,
+  questions jsonb null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint assessment_pkey primary key (id),
   constraint assessment_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_assessment_program_id on public.assessment using btree (program_id) TABLESPACE pg_default;
 ```
 
 ## assessment\_response
@@ -50,8 +57,18 @@ create table public.assessment_response (
   updated_at timestamp with time zone null default now(),
   constraint assessmentResponse_pkey primary key (id),
   constraint assessment_response_assessment_id_fkey foreign KEY (assessment_id) references assessment (id),
-  constraint assessment_response_participant_id_fkey foreign KEY (participant_id) references "user" (id)
+  constraint assessment_response_participant_id_fkey foreign KEY (participant_id) references users (id),
+  constraint assessment_response_score_nonneg_chk check (
+    (
+      (score is null)
+      or (score >= 0)
+    )
+  )
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_assessment_response_assessment_id on public.assessment_response using btree (assessment_id) TABLESPACE pg_default;
+
+create index IF not exists idx_assessment_response_participant_id on public.assessment_response using btree (participant_id) TABLESPACE pg_default;
 ```
 
 ## audit\_log
@@ -60,14 +77,16 @@ create table public.assessment_response (
 create table public.audit_log (
   id uuid not null default gen_random_uuid (),
   timestamp timestamp with time zone null default now(),
-  user_id uuid not null,
+  user_id uuid null,
   action public.audit_log_action null,
   target_type text not null,
   target_id text not null,
   details jsonb null,
   constraint auditLog_pkey primary key (id),
-  constraint audit_log_user_id_fkey foreign KEY (user_id) references "user" (id)
+  constraint audit_log_user_id_fkey foreign KEY (user_id) references users (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_audit_log_user_id on public.audit_log using btree (user_id) TABLESPACE pg_default;
 ```
 
 ## certificate
@@ -82,9 +101,13 @@ create table public.certificate (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint certificate_pkey primary key (id),
-  constraint certificate_participant_id_fkey foreign KEY (participant_id) references "user" (id),
+  constraint certificate_participant_id_fkey foreign KEY (participant_id) references users (id),
   constraint certificate_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_certificate_program_id on public.certificate using btree (program_id) TABLESPACE pg_default;
+
+create index IF not exists idx_certificate_participant_id on public.certificate using btree (participant_id) TABLESPACE pg_default;
 ```
 
 ## client
@@ -115,9 +138,12 @@ create table public.collaboration (
   notes text null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  repository_link text null,
   constraint collaboration_pkey primary key (id),
-  constraint collaboration_lead_user_id_fkey foreign KEY (lead_user_id) references "user" (id)
+  constraint collaboration_lead_user_id_fkey foreign KEY (lead_user_id) references users (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_collaboration_lead_user_id on public.collaboration using btree (lead_user_id) TABLESPACE pg_default;
 ```
 
 ## document\_template
@@ -167,6 +193,8 @@ create table public.onboarding_document (
   constraint onboarding_document_pkey primary key (id),
   constraint onboarding_document_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_onboarding_document_program_id on public.onboarding_document using btree (program_id) TABLESPACE pg_default;
 ```
 
 ## project
@@ -184,11 +212,25 @@ create table public.project (
   actual_delivery_date date null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  repository_link text null,
   constraint project_pkey primary key (id),
   constraint project_client_id_fkey foreign KEY (client_id) references client (id),
-  constraint project_lead_user_id_fkey foreign KEY (lead_user_id) references "user" (id),
-  constraint project_service_id_fkey foreign KEY (service_id) references service (id)
+  constraint project_lead_user_id_fkey foreign KEY (lead_user_id) references users (id),
+  constraint project_service_id_fkey foreign KEY (service_id) references service (id),
+  constraint project_delivery_date_chk check (
+    (
+      (actual_delivery_date is null)
+      or (start_date is null)
+      or (actual_delivery_date >= start_date)
+    )
+  )
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_project_client_id on public.project using btree (client_id) TABLESPACE pg_default;
+
+create index IF not exists idx_project_service_id on public.project using btree (service_id) TABLESPACE pg_default;
+
+create index IF not exists idx_project_lead_user_id on public.project using btree (lead_user_id) TABLESPACE pg_default;
 ```
 
 ## sample
@@ -204,6 +246,8 @@ create table public.sample (
   constraint sample_pkey primary key (id),
   constraint sample_project_id_fkey foreign KEY (project_id) references project (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_sample_project_id on public.sample using btree (project_id) TABLESPACE pg_default;
 ```
 
 ## service
@@ -236,8 +280,12 @@ create table public.service_report (
   updated_at timestamp with time zone null default now(),
   constraint service_report_pkey primary key (id),
   constraint service_report_analysis_id_fkey foreign KEY (analysis_id) references analysis (id),
-  constraint service_report_delivered_by_fkey foreign KEY (delivered_by) references "user" (id)
+  constraint service_report_delivered_by_fkey foreign KEY (delivered_by) references users (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_service_report_analysis_id on public.service_report using btree (analysis_id) TABLESPACE pg_default;
+
+create index IF not exists idx_service_report_delivered_by on public.service_report using btree (delivered_by) TABLESPACE pg_default;
 ```
 
 ## task
@@ -250,13 +298,17 @@ create table public.task (
   due_date date null,
   status public.task_status not null,
   priority public.task_priority not null,
-  linked_project_id uuid not null,
+  linked_project_id uuid null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint task_pkey primary key (id),
-  constraint task_assignee_id_fkey foreign KEY (assignee_id) references "user" (id),
+  constraint task_assignee_id_fkey foreign KEY (assignee_id) references users (id),
   constraint task_linked_project_id_fkey foreign KEY (linked_project_id) references project (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_task_assignee_id on public.task using btree (assignee_id) TABLESPACE pg_default;
+
+create index IF not exists idx_task_linked_project_id on public.task using btree (linked_project_id) TABLESPACE pg_default;
 ```
 
 ## training\_program
@@ -273,8 +325,17 @@ create table public.training_program (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint training_program_pkey primary key (id),
-  constraint training_program_instructor_id_fkey foreign KEY (instructor_id) references "user" (id)
+  constraint training_program_instructor_id_fkey foreign KEY (instructor_id) references users (id),
+  constraint training_program_date_range_chk check (
+    (
+      (end_date is null)
+      or (start_date is null)
+      or (end_date > start_date)
+    )
+  )
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_training_program_instructor_id on public.training_program using btree (instructor_id) TABLESPACE pg_default;
 ```
 
 ## training\_session
@@ -297,7 +358,7 @@ create table public.training_session (
 ## user
 
 ```sql
-create table public.user (
+create table public.users (
   id uuid not null default gen_random_uuid (),
   created_at timestamp with time zone not null default now(),
   name text not null,
@@ -409,7 +470,8 @@ CREATE TYPE public.audit_log_action AS ENUM (
     'role_change', 
     'data_export', 
     'data_modification', 
-    'user_login'
+    'user_login', 
+    'user_logout'
 );
 ```
 

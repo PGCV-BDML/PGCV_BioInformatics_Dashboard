@@ -8,6 +8,10 @@ create table public.certificate (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint certificate_pkey primary key (id),
-  constraint certificate_participant_id_fkey foreign KEY (participant_id) references "user" (id),
+  constraint certificate_participant_id_fkey foreign KEY (participant_id) references users (id),
   constraint certificate_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_certificate_program_id on public.certificate using btree (program_id) TABLESPACE pg_default;
+
+create index IF not exists idx_certificate_participant_id on public.certificate using btree (participant_id) TABLESPACE pg_default;

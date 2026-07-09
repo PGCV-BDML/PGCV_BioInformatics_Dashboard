@@ -9,3 +9,5 @@ create table public.sample (
   constraint sample_pkey primary key (id),
   constraint sample_project_id_fkey foreign KEY (project_id) references project (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_sample_project_id on public.sample using btree (project_id) TABLESPACE pg_default;

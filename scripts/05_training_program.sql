@@ -10,5 +10,14 @@ create table public.training_program (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint training_program_pkey primary key (id),
-  constraint training_program_instructor_id_fkey foreign KEY (instructor_id) references "user" (id)
+  constraint training_program_instructor_id_fkey foreign KEY (instructor_id) references users (id),
+  constraint training_program_date_range_chk check (
+    (
+      (end_date is null)
+      or (start_date is null)
+      or (end_date > start_date)
+    )
+  )
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_training_program_instructor_id on public.training_program using btree (instructor_id) TABLESPACE pg_default;

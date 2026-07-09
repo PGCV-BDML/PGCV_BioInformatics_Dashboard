@@ -11,3 +11,5 @@ create table public.training_session (
   constraint training_session_pkey primary key (id),
   constraint training_session_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_training_session_program_id on public.training_session using btree (program_id) TABLESPACE pg_default;

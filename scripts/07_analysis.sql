@@ -12,6 +12,10 @@ create table public.analysis (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint analysis_pkey primary key (id),
-  constraint analysis_assignee_id_fkey foreign KEY (assignee_id) references "user" (id),
+  constraint analysis_assignee_id_fkey foreign KEY (assignee_id) references users (id),
   constraint analysis_project_id_fkey foreign KEY (project_id) references project (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_analysis_project_id on public.analysis using btree (project_id) TABLESPACE pg_default;
+
+create index IF not exists idx_analysis_assignee_id on public.analysis using btree (assignee_id) TABLESPACE pg_default;
