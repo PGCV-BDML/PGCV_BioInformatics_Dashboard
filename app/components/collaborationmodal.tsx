@@ -11,7 +11,7 @@ type FormState = {
   notes: string;
 };
 
-interface CollaborationModalProps {
+interface CollaborationSidebarProps {
   isOpen: boolean;
   isAdding: boolean;
   formState: FormState;
@@ -21,7 +21,7 @@ interface CollaborationModalProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export default function CollaborationModal({
+export default function CollaborationSidebar({
   isOpen,
   isAdding,
   formState,
@@ -29,53 +29,66 @@ export default function CollaborationModal({
   onClose,
   onChange,
   onSubmit,
-}: CollaborationModalProps) {
-  if (!isOpen) return null;
-
-  // Consistent section header helper
+}: CollaborationSidebarProps) {
   const renderSectionLabel = (icon: React.ReactNode, text: string) => (
-    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[1.5px] mb-3 mt-1">
+    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-[1.5px] mb-2 mt-0.5 font-quicksand">
       {icon} <span>{text}</span>
     </div>
   );
 
   return (
-    <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
-      <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
+    <>
+      {/* Backdrop overlay transparently handling layout actions without darkening background */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${
+          isOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      {/* Sidebar Container transforming smoothly from the right side of the screen workspace */}
+      <div
+        className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Dynamic decorative visual accent bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
 
-        {/* Modal Header */}
-        <div className="px-8 pt-8 pb-4 flex items-start justify-between bg-[#ffffff]">
+        {/* Sidebar Header Area - Tightened padding layout slightly */}
+        <div className="px-5 pt-5 pb-3 flex items-start justify-between border-b border-slate-100 bg-[#ffffff]">
           <div>
-            <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight font-aileron">
               {isAdding ? "Add New Collaboration" : "Modify Collaboration"}
             </h3>
-            <p className="text-slate-500 text-sm mt-1 font-medium">
-              Fill in the information required by the collaboration registry.
+            <p className="text-slate-500 text-[11px] mt-0.5 font-semibold font-aileron">
+              Fill in the information required by the registry.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
+            className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Form */}
+        {/* Sidebar Scrollable Form Body Context - Tightened internal layout structure padding */}
         <form
           onSubmit={onSubmit}
-          className="bg-[#ffffff] flex-1 overflow-y-auto px-8 py-4 space-y-6 custom-scrollbar"
+          className="bg-[#ffffff] flex-1 overflow-y-auto px-5 py-5 space-y-5 custom-scrollbar"
         >
           {/* Section: Identity */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {renderSectionLabel(
               <FlaskConical className="w-3.5 h-3.5" />,
               "Identity",
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-slate-800 ml-1">
+              <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                 Partner Organization
               </label>
               <input
@@ -84,28 +97,32 @@ export default function CollaborationModal({
                 value={formState.partner_org}
                 onChange={(e) => onChange("partner_org", e.target.value)}
                 placeholder="e.g., Philippine Genome Center"
-                className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
+                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
               />
             </div>
           </div>
 
           {/* Section: Assignment */}
-          <div className="space-y-3">
+          <div className="space-y-2.5 pt-1 border-t border-slate-100">
             {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Assignment")}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-slate-800 ml-1">
+              <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                 Lead Coordinator
               </label>
               <select
                 value={formState.lead_user_id}
                 onChange={(e) => onChange("lead_user_id", e.target.value)}
-                className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
+                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
               >
-                <option value="" disabled className="text-slate-400">
+                <option value="" disabled className="text-slate-400 font-bold">
                   Select a coordinator
                 </option>
                 {availableUsers.map((user) => (
-                  <option key={user.id} value={user.id} className="text-black">
+                  <option
+                    key={user.id}
+                    value={user.id}
+                    className="text-slate-800 font-bold"
+                  >
                     {user.name}
                   </option>
                 ))}
@@ -114,14 +131,14 @@ export default function CollaborationModal({
           </div>
 
           {/* Section: Resources */}
-          <div className="flex flex-col gap-4 pt-2 border-t border-slate-100">
+          <div className="space-y-3.5 pt-3 border-t border-slate-100">
             {renderSectionLabel(
               <Link2 className="w-3.5 h-3.5" />,
               "Resources & Details",
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-slate-800 ml-1">
+                <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                   Documents Link
                 </label>
                 <input
@@ -129,43 +146,43 @@ export default function CollaborationModal({
                   value={formState.documents_link}
                   onChange={(e) => onChange("documents_link", e.target.value)}
                   placeholder="https://drive.google.com/..."
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
+                  className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-slate-800 ml-1">
+                <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                   Notes
                 </label>
-                <input
-                  type="text"
+                <textarea
+                  rows={3}
                   value={formState.notes}
                   onChange={(e) => onChange("notes", e.target.value)}
                   placeholder="Additional details or repository links"
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
+                  className="w-full p-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Form Actions Footer */}
-          <div className="flex gap-3 justify-end pt-6 pb-2 border-t border-slate-100">
+          {/* Form Sticky Action Footer controls */}
+          <div className="flex gap-2.5 justify-end pt-5 pb-1 border-t border-slate-100 bg-[#ffffff]">
             <button
               type="button"
               onClick={onClose}
-              className="h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-2xl transition-colors"
+              className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors font-aileron"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 h-12 px-6 bg-slate-900 hover:bg-black text-white font-bold text-sm rounded-2xl shadow-lg shadow-slate-200 transition-all"
+              className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md shadow-slate-400/20 transition-all font-aileron"
             >
-              <Save className="w-4 h-4" />
-              <span>{isAdding ? "Save Collaboration" : "Save Changes"}</span>
+              <Save className="w-3.5 h-3.5" />
+              <span>{isAdding ? "Save" : "Save Changes"}</span>
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

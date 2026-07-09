@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-// [SUPABASE IMPORT CONFIG]
-// import { supabase } from "@/lib/supabase";
 import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
@@ -33,7 +31,6 @@ type Project = {
 
 const ITEMS_PER_PAGE = 10;
 
-// Internal client mocks used for standard testing
 const INITIAL_PROJECTS: Project[] = [
   {
     id: 1,
@@ -114,7 +111,6 @@ const AVAILABLE_USERS = [
 ];
 
 export default function ProjectsPage() {
-  // --- STATE CONFIGURATION ---
   const [projectsList, setProjectsList] = useState<Project[]>(INITIAL_PROJECTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,33 +119,24 @@ export default function ProjectsPage() {
     direction: "asc" | "desc";
   } | null>(null);
 
-  // Structural display controllers
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // Reset pagination dynamically when query parameters change
+  const isPanelOpen = isAdding || isEditing;
+
+  useEffect(() => {
+    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
+      detail: { isOpen: isPanelOpen },
+    });
+    window.dispatchEvent(toggleEvent);
+  }, [isPanelOpen]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // --- 1. DATA INITIALIZATION & LIFECYCLE SYNC ---
-  useEffect(() => {
-    async function syncDatabaseLayer() {
-      try {
-        // [SUPABASE SELECT REGION]
-        // Wire in database connection routine:
-        // const { data } = await supabase.from("projects").select("*").order("created_at");
-        // if(data) setProjectsList(data);
-      } catch (err) {
-        console.error("Failed to fetch primary project entries:", err);
-      }
-    }
-    syncDatabaseLayer();
-  }, []);
-
-  // --- 2. CONTROL CLICKS & INPUT UTILITIES ---
   const handleSort = (key: keyof Project) => {
     let direction: "asc" | "desc" = "asc";
     if (
@@ -162,18 +149,12 @@ export default function ProjectsPage() {
     setSortConfig({ key, direction });
   };
 
-  // --- 3. MUTATION HANDLERS (PREPARED FOR SUPABASE) ---
   const handleAddSubmit = async (formData: Omit<Project, "id">) => {
-    // Local processing calculations (Safeguarded against array mutations)
     const nextNumericId =
       projectsList.length > 0
         ? Math.max(...projectsList.map((p) => p.id)) + 1
         : 1;
     const runtimePayload: Project = { id: nextNumericId, ...formData };
-
-    // [SUPABASE INSERT PIPELINE]
-    // const { data, error } = await supabase.from("projects").insert([formData]).select().single();
-    // if(!error) setProjectsList(prev => [data, ...prev]);
 
     setProjectsList((prev) => [runtimePayload, ...prev]);
     setIsAdding(false);
@@ -181,9 +162,6 @@ export default function ProjectsPage() {
 
   const handleEditSubmit = async (formData: Omit<Project, "id">) => {
     if (!selectedProject) return;
-
-    // [SUPABASE UPDATE PIPELINE]
-    // const { data, error } = await supabase.from("projects").update(formData).eq("id", selectedProject.id);
 
     setProjectsList((prev) =>
       prev.map((item) =>
@@ -196,16 +174,12 @@ export default function ProjectsPage() {
   const handleDeleteRecord = async () => {
     if (!selectedProject) return;
 
-    // [SUPABASE REMOVE PIPELINE]
-    // const { error } = await supabase.from("projects").delete().eq("id", selectedProject.id);
-
     setProjectsList((prev) =>
       prev.filter((item) => item.id !== selectedProject.id),
     );
     setShowDeleteConfirm(false);
   };
 
-  // --- 4. DATA COMPILATION MEMOS ---
   const filteredProjects = useMemo(() => {
     const cleansedQuery = searchQuery.toLowerCase().trim();
     if (!cleansedQuery) return projectsList;
@@ -238,38 +212,47 @@ export default function ProjectsPage() {
     return sortedProjects.slice(startOffset, startOffset + ITEMS_PER_PAGE);
   }, [sortedProjects, currentPage]);
 
-  // --- 5. INTERFACE COMPONENT CHUNKS ---
   const renderStatusBadge = (status: string) => {
     const baseClass =
-      "px-2.5 py-1 rounded-full text-[10px] font-bold font-aileron text-center min-w-[92px] inline-block tracking-wide uppercase";
+      "px-2 py-0.5 rounded-full text-[10px] font-bold text-center min-w-[85px] inline-block tracking-wide uppercase shadow-sm border";
     const normal = status.toLowerCase().replace(/[\s-]/g, "");
 
     if (normal === "completed")
       return (
-        <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
+        <span
+          className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`}
+        >
           Completed
         </span>
       );
     if (normal === "ongoing" || normal === "inprogress")
       return (
-        <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
+        <span
+          className={`${baseClass} bg-[#fffde7] text-[#f57f17] border-[#fff9c4]`}
+        >
           In-Progress
         </span>
       );
     if (normal === "onhold" || normal === "overdue")
       return (
-        <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
-          Overdue
+        <span
+          className={`${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`}
+        >
+          On Hold
         </span>
       );
     if (normal === "submitted")
       return (
-        <span className={`${baseClass} bg-[#f5f5f5] text-[#616161]`}>
+        <span
+          className={`${baseClass} bg-[#f1f5f9] text-[#475569] border-[#e2e8f0]`}
+        >
           Submitted
         </span>
       );
     return (
-      <span className={`${baseClass} bg-[#efebe9] text-[#4e342e]`}>
+      <span
+        className={`${baseClass} bg-[#f5f3ff] text-[#6d28d9] border-[#ede9fe]`}
+      >
         For Approval
       </span>
     );
@@ -279,17 +262,31 @@ export default function ProjectsPage() {
     {
       key: "name",
       label: "Project Name",
-      width: "16%",
+      width: "22%",
       sortable: true,
-      render: (p) => <span className="font-bold text-[#11161a]">{p.name}</span>,
+      render: (p) => (
+        <span className="font-bold text-[#11161a] block whitespace-normal break-words leading-snug py-1">
+          {p.name}
+        </span>
+      ),
     },
-    { key: "client_name", label: "Client", width: "14%", sortable: true },
+    {
+      key: "client_name",
+      label: "Client",
+      width: "14%",
+      sortable: true,
+      render: (p) => (
+        <span className="block truncate max-w-[120px]" title={p.client_name}>
+          {p.client_name}
+        </span>
+      ),
+    },
     {
       key: "service_type",
       label: "Service Type",
       width: "12%",
       render: (p) => (
-        <span className="px-2.5 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[12px] font-bold inline-block">
+        <span className="px-2 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[10px] font-bold inline-block shadow-sm">
           {p.service_type}
         </span>
       ),
@@ -297,31 +294,33 @@ export default function ProjectsPage() {
     {
       key: "status",
       label: "Status",
-      width: "10%",
+      width: "11%",
       render: (p) => renderStatusBadge(p.status),
     },
-    { key: "lead", label: "Lead", width: "10%", sortable: true },
-    { key: "start_date", label: "Start Date", width: "11%", sortable: true },
+    { key: "lead", label: "Lead", width: "11%", sortable: true },
     {
-      key: "target_delivery_date",
-      label: "Target Delivery",
-      width: "11%",
+      key: "start_date",
+      label: "Start Date",
+      width: "9%",
       sortable: true,
+      render: (p) => (
+        <span className="text-xs text-slate-600">{p.start_date}</span>
+      ),
     },
     {
       key: "repository_link",
       label: "Repository Link",
-      width: "12%",
+      width: "16%",
       render: (p) =>
         p.repository_link ? (
           <a
             href={p.repository_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-black font-semibold bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200"
+            className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted whitespace-nowrap"
           >
-            <Link2 className="w-3.5 h-3.5 text-slate-500" /> <span>Repo</span>
-            <ExternalLink className="w-3 h-3 text-slate-400" />
+            <Link2 className="w-3.5 h-3.5 flex-shrink-0" /> Repo
+            <ExternalLink className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
           </a>
         ) : (
           <span className="text-xs text-slate-400 italic">None</span>
@@ -330,18 +329,18 @@ export default function ProjectsPage() {
     {
       key: "id",
       label: "Actions",
-      width: "8%",
+      width: "7%",
       render: (p) => (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-0.5">
           <button
             type="button"
             onClick={() => {
               setSelectedProject(p);
               setIsEditing(true);
             }}
-            className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
+            className="p-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors shadow-sm hover:shadow"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
@@ -349,9 +348,9 @@ export default function ProjectsPage() {
               setSelectedProject(p);
               setShowDeleteConfirm(true);
             }}
-            className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors"
+            className="p-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors shadow-sm hover:shadow"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ),
@@ -359,27 +358,31 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
+    <div
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      }`}
+    >
       {/* Control Navigation Header Panel */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
             Dashboard - List
           </span>
-          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
-            List of Projects
+          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+            Projects
           </h1>
         </div>
 
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full min-[480px]:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative w-full min-[480px]:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search entries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-11 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-[14px] outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:shadow-[0_4px_16px_rgba(78,194,187,0.15)] transition-all"
             />
           </div>
           <button
@@ -388,18 +391,18 @@ export default function ProjectsPage() {
               setSelectedProject(null);
               setIsAdding(true);
             }}
-            className="flex items-center justify-center gap-2 h-11 px-5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> Add Project
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Project
           </button>
         </div>
       </div>
 
       {/* Main Table Interface */}
-      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Network className="w-6 h-6 text-[#333333]" />
-          <h2 className="text-3xl font-bold text-[#333333]">
+      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+        <div className="flex items-center gap-2 mb-5">
+          <Network className="w-5 h-5 text-[#333333]" />
+          <h2 className="text-2xl font-bold text-[#333333]">
             List of Projects
           </h2>
         </div>
@@ -412,7 +415,7 @@ export default function ProjectsPage() {
             </span>
           </div>
         ) : (
-          <>
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed">
             <DataTable
               columns={columns}
               data={displayedProjects}
@@ -425,13 +428,12 @@ export default function ProjectsPage() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
-          </>
+          </div>
         )}
       </div>
 
-      {/* Reusable Project Layout Configuration Modal */}
       <ProjectModal
-        isOpen={isAdding || isEditing}
+        isOpen={isPanelOpen}
         isAdding={isAdding}
         initialData={
           selectedProject
