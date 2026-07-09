@@ -26,14 +26,18 @@ interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (project: ProjectInput) => void;
+  availableClients: string[];
   availableServices: string[];
+  availableUsers: string[];
 }
 
 export default function NewProjectModal({
   isOpen,
   onClose,
   onSubmit,
+  availableClients,
   availableServices,
+  availableUsers,
 }: NewProjectModalProps) {
   const initialFormState: ProjectInput = {
     name: "",
@@ -129,15 +133,22 @@ export default function NewProjectModal({
                 <label className="text-sm font-bold text-slate-800 ml-1">
                   Client
                 </label>
-                <input
-                  type="text"
+                <select
                   name="client_name"
                   required
-                  placeholder="Enter client name"
                   value={form.client_name}
                   onChange={handleInputChange}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
-                />
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
+                >
+                  <option value="" disabled className="text-slate-400">
+                    Select client
+                  </option>
+                  {availableClients.map((client) => (
+                    <option key={client} value={client} className="text-black">
+                      {client}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -179,15 +190,22 @@ export default function NewProjectModal({
                 <label className="text-sm font-bold text-slate-800 ml-1">
                   Lead
                 </label>
-                <input
-                  type="text"
+                <select
                   name="lead"
                   required
-                  placeholder="Enter lead name"
                   value={form.lead}
                   onChange={handleInputChange}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black placeholder:text-slate-400 transition-all"
-                />
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-sm font-medium text-black transition-all"
+                >
+                  <option value="" disabled className="text-slate-400">
+                    Select lead user
+                  </option>
+                  {availableUsers.map((user) => (
+                    <option key={user} value={user} className="text-black">
+                      {user}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
