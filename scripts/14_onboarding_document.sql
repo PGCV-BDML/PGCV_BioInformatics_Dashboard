@@ -10,3 +10,5 @@ create table public.onboarding_document (
   constraint onboarding_document_pkey primary key (id),
   constraint onboarding_document_program_id_fkey foreign KEY (program_id) references training_program (id)
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_onboarding_document_program_id on public.onboarding_document using btree (program_id) TABLESPACE pg_default;

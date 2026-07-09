@@ -1,5 +1,5 @@
 -- Table: public.user
-create table public.user (
+create table public.users (
   id uuid not null default gen_random_uuid (),
   created_at timestamp with time zone not null default now(),
   name text not null,
