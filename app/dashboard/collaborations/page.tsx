@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-// Import statement remains intact; uncomment or keep prepared for final integration
-// import { supabase } from "@/lib/supabase";
 import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
@@ -27,7 +25,6 @@ type CollaborationFormState = {
 };
 
 const ITEMS_PER_PAGE = 10;
-
 const EMPTY_FORM: CollaborationFormState = {
   partner_org: "",
   lead_user_id: "",
@@ -36,7 +33,6 @@ const EMPTY_FORM: CollaborationFormState = {
 };
 
 export default function CollaborationsPage() {
-  // --- STATE MANAGEMENT ---
   const [collaborationsList, setCollaborationsList] = useState<
     CollaborationRow[]
   >([]);
@@ -46,35 +42,35 @@ export default function CollaborationsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [formState, setFormState] =
     useState<CollaborationFormState>(EMPTY_FORM);
-
-  // Sorting state configuration
   const [sortConfig, setSortConfig] = useState<{
     key: keyof CollaborationRow;
     direction: "asc" | "desc";
   } | null>(null);
 
-  // Modal display controllers
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedCollaboration, setSelectedCollaboration] =
     useState<CollaborationRow | null>(null);
 
-  // --- 1. DATA INITIALIZATION (PREPARED FOR SUPABASE) ---
+  const isPanelOpen = isAdding || isEditing;
+
+  // Broadcast layout state mutations to hide/show the left main sidebar
+  useEffect(() => {
+    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
+      detail: { isOpen: isPanelOpen },
+    });
+    window.dispatchEvent(toggleEvent);
+  }, [isPanelOpen]);
+
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
       try {
-        // [SUPABASE DISCONNECT PREPARATION]
-        // Replace fake data blocks below with actual supabase queries later:
-        // const { data: usersData } = await supabase.from("users").select("id, name");
-        // const { data: collabData } = await supabase.from("collaboration").select(...);
-
         const mockUsers: UserOption[] = [
           { id: "u1", name: "Alex Jones" },
           { id: "u2", name: "Maria Santos" },
         ];
-
         const mockCollaborations: CollaborationRow[] = [
           {
             id: "collab-1",
@@ -89,7 +85,6 @@ export default function CollaborationsPage() {
             updated_at: new Date().toISOString(),
           },
         ];
-
         setAvailableUsers(mockUsers);
         setCollaborationsList(mockCollaborations);
       } catch (error) {
@@ -98,23 +93,21 @@ export default function CollaborationsPage() {
         setIsLoading(false);
       }
     }
-
     loadInitialData();
   }, []);
 
-  // Sync form default leader whenever user options become available
   useEffect(() => {
     if (availableUsers.length > 0 && !formState.lead_user_id) {
-      setFormState((prev) => ({ ...prev, lead_user_id: availableUsers[0].id }));
+      setFormState(
+        (prev) => ({ ...prev, lead_user_id: availableUsers[0].id }) as any,
+      );
     }
   }, [availableUsers, formState.lead_user_id]);
 
-  // Reset pagination indexes dynamically during lookups
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // --- 2. CLIENT HANDLERS & INPUT UTILITIES ---
   const handleInputChange = (
     key: keyof CollaborationFormState,
     value: string,
@@ -134,10 +127,8 @@ export default function CollaborationsPage() {
     setSortConfig({ key, direction });
   };
 
-  // --- 3. MUTATION LAYERS (PREPARED FOR SUPABASE CONNECTIVITY) ---
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const newRecord: CollaborationRow = {
       id: `local-id-${Date.now()}`,
       partner_org: formState.partner_org,
@@ -154,11 +145,6 @@ export default function CollaborationsPage() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    // [SUPABASE INSERT REGION]
-    // const { data, error } = await supabase.from("collaboration").insert([...]).select().single();
-    // Use data payload returned by database instead of local push logic below.
-
     setCollaborationsList((prev) => [newRecord, ...prev]);
     setIsAdding(false);
     setFormState(EMPTY_FORM);
@@ -167,9 +153,6 @@ export default function CollaborationsPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCollaboration) return;
-
-    // [SUPABASE UPDATE REGION]
-    // const { data, error } = await supabase.from("collaboration").update({...}).eq("id", id);
 
     setCollaborationsList((prev) =>
       prev.map((item) =>
@@ -198,21 +181,15 @@ export default function CollaborationsPage() {
 
   const handleDeleteRecord = async () => {
     if (!selectedCollaboration) return;
-
-    // [SUPABASE DELETE REGION]
-    // const { error } = await supabase.from("collaboration").delete().eq("id", id);
-
     setCollaborationsList((prev) =>
       prev.filter((item) => item.id !== selectedCollaboration.id),
     );
     setShowDeleteConfirm(false);
   };
 
-  // --- 4. COMPUTED CLIENT MEMOS ---
   const filteredCollaborations = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return collaborationsList;
-
     return collaborationsList.filter((collab) => {
       return (
         collab.partner_org.toLowerCase().includes(query) ||
@@ -226,7 +203,6 @@ export default function CollaborationsPage() {
   const sortedCollaborations = useMemo(() => {
     const sortableItems = [...filteredCollaborations];
     if (!sortConfig) return sortableItems;
-
     return sortableItems.sort((a, b) => {
       let valA =
         sortConfig.key === "lead_user_id"
@@ -236,10 +212,8 @@ export default function CollaborationsPage() {
         sortConfig.key === "lead_user_id"
           ? b.user?.name || ""
           : (b[sortConfig.key] ?? "");
-
       const strA = String(valA).toLowerCase();
       const strB = String(valB).toLowerCase();
-
       if (strA < strB) return sortConfig.direction === "asc" ? -1 : 1;
       if (strA > strB) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
@@ -254,11 +228,10 @@ export default function CollaborationsPage() {
     );
   }, [sortedCollaborations, currentPage]);
 
-  // --- 5. RENDER CHUNKS & COLUMN SCHEMAS ---
   const renderStatusBadge = (status: string) => {
     const baseClass =
-      "px-2.5 py-1 rounded-full text-[10px] font-bold text-center min-w-[92px] inline-block tracking-wide uppercase";
-    if (status === "finished")
+      "px-2 py-0.5 rounded-full text-[10px] font-bold text-center min-w-[80px] inline-block tracking-wide uppercase shadow-sm";
+    if (status === "finished" || status === "completed")
       return (
         <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
           Completed
@@ -281,31 +254,45 @@ export default function CollaborationsPage() {
     {
       key: "partner_org",
       label: "Partner Organization",
-      width: "20%",
+      width: "25%",
       sortable: true,
       render: (c) => (
-        <span className="font-bold text-[#11161a]">{c.partner_org}</span>
+        <span
+          className="font-bold text-[#11161a] block truncate max-w-[150px] xl:max-w-[200px]"
+          title={c.partner_org}
+        >
+          {c.partner_org}
+        </span>
       ),
     },
     {
       key: "lead_user_id",
       label: "Lead Coordinator",
-      width: "14%",
+      width: "18%",
       sortable: true,
-      render: (c) => <span>{c.user?.name || "Unassigned"}</span>,
+      render: (c) => (
+        <span
+          className="block truncate max-w-[100px] xl:max-w-[140px]"
+          title={c.user?.name || "Unassigned"}
+        >
+          {c.user?.name || "Unassigned"}
+        </span>
+      ),
     },
     {
       key: "status",
       label: "Status",
-      width: "12%",
+      width: "14%",
       render: (c) => renderStatusBadge(c.status),
     },
     {
       key: "start_date",
       label: "Start Date",
-      width: "12%",
+      width: "13%",
       sortable: true,
-      render: (c) => <span>{c.start_date || "-"}</span>,
+      render: (c) => (
+        <span className="text-xs text-slate-600">{c.start_date || "-"}</span>
+      ),
     },
     {
       key: "documents",
@@ -319,9 +306,9 @@ export default function CollaborationsPage() {
             href={primaryDoc}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
+            className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted whitespace-nowrap"
           >
-            <FileText className="w-3.5 h-3.5 flex-shrink-0" /> View Docs
+            <FileText className="w-3.5 h-3.5 flex-shrink-0" /> Docs
           </a>
         ) : (
           <span className="text-xs text-slate-400 italic">None</span>
@@ -331,10 +318,13 @@ export default function CollaborationsPage() {
     {
       key: "notes",
       label: "Notes / Repo Link",
-      width: "15%",
+      width: "18%",
       render: (c) =>
         c.notes ? (
-          <span className="text-xs text-slate-700 font-medium truncate max-w-[180px] inline-block">
+          <span
+            className="text-xs text-slate-500 font-medium truncate max-w-[100px] xl:max-w-[140px] block"
+            title={c.notes}
+          >
             {c.notes}
           </span>
         ) : (
@@ -346,7 +336,7 @@ export default function CollaborationsPage() {
       label: "Actions",
       width: "10%",
       render: (c) => (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-0.5">
           <button
             type="button"
             onClick={() => {
@@ -360,9 +350,9 @@ export default function CollaborationsPage() {
               });
               setIsEditing(true);
             }}
-            className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
+            className="p-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors shadow-sm hover:shadow"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
@@ -370,9 +360,9 @@ export default function CollaborationsPage() {
               setSelectedCollaboration(c);
               setShowDeleteConfirm(true);
             }}
-            className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors"
+            className="p-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors shadow-sm hover:shadow"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ),
@@ -380,27 +370,31 @@ export default function CollaborationsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
+    <div
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      }`}
+    >
       {/* Top Controls Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
             Dashboard - List
           </span>
-          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
+          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
             Collaborations
           </h1>
         </div>
 
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full min-[480px]:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative w-full min-[480px]:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search collaborations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-11 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-[14px] outline-none focus:ring-2 focus:ring-[#4ec2bb]"
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:shadow-[0_4px_16px_rgba(78,194,187,0.15)] transition-all"
             />
           </div>
           <button
@@ -412,18 +406,18 @@ export default function CollaborationsPage() {
               });
               setIsAdding(true);
             }}
-            className="flex items-center justify-center gap-2 h-11 px-5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> Add Collaboration
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Collaboration
           </button>
         </div>
       </div>
 
       {/* Main Table Interface Box */}
-      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Users2 className="w-6 h-6 text-[#333333]" />
-          <h2 className="text-3xl font-bold text-[#333333]">
+      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+        <div className="flex items-center gap-2 mb-5">
+          <Users2 className="w-5 h-5 text-[#333333]" />
+          <h2 className="text-2xl font-bold text-[#333333]">
             List of Collaborations
           </h2>
         </div>
@@ -442,7 +436,7 @@ export default function CollaborationsPage() {
             </span>
           </div>
         ) : (
-          <>
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[760px]">
             <DataTable
               columns={columns}
               data={displayedCollaborations}
@@ -455,13 +449,12 @@ export default function CollaborationsPage() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
-          </>
+          </div>
         )}
       </div>
 
-      {/* Extracted Shared Form Modal */}
       <CollaborationModal
-        isOpen={isAdding || isEditing}
+        isOpen={isPanelOpen}
         isAdding={isAdding}
         formState={formState}
         availableUsers={availableUsers}
@@ -479,7 +472,6 @@ export default function CollaborationsPage() {
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
       />
-
       <ComplianceFooter />
     </div>
   );
