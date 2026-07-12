@@ -2,11 +2,10 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
-import TaskModal from "../../components/taskmodal"; // Imported clean modularized component
+import TaskModal from "../../components/taskmodal";
 import {
   ArrowLeft,
   Search,
@@ -15,6 +14,9 @@ import {
   Trash2,
   Plus,
   Inbox,
+  ChevronRight,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 
 type Task = {
@@ -74,18 +76,20 @@ const AVAILABLE_USERS = [
 ];
 
 const STATUS_OPTIONS = ["Pending", "In-Progress", "Completed", "On Hold"];
+const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
 const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"];
 
 export default function TasksPage() {
   const [tasksList, setTasksList] = useState<Task[]>(INITIAL_TASKS);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Task;
     direction: "asc" | "desc";
   } | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -105,8 +109,46 @@ export default function TasksPage() {
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
 
+  useEffect(() => {
+    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
+      detail: { isOpen: isSidebarOpen },
+    });
+    window.dispatchEvent(toggleEvent);
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter, itemsPerPage]);
+
+  const updateTaskStatus = (taskId: number, newStatus: string) => {
+    setTasksList((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task,
+      ),
+    );
+  };
+
+  const updateTaskPriority = (taskId: number, newPriority: string) => {
+    setTasksList((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, priority: newPriority } : task,
+      ),
+    );
+  };
+
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
+      // Apply Active Horizontal Status Tab Filter
+      if (activeFilter !== "All") {
+        const normalizedTaskStatus = (task.status || "")
+          .toLowerCase()
+          .replace(/[\s-]/g, "");
+        const normalizedFilter = activeFilter
+          .toLowerCase()
+          .replace(/[\s-]/g, "");
+        if (normalizedTaskStatus !== normalizedFilter) return false;
+      }
+
       const project = AVAILABLE_PROJECTS.find((p) => p.id === task.project_id);
       const searchPool = [
         task.title,
@@ -118,19 +160,12 @@ export default function TasksPage() {
       ]
         .join(" ")
         .toLowerCase();
-      return searchPool.includes(searchQuery.toLowerCase());
+      return searchPool.includes(searchQuery.toLowerCase().trim());
     });
-  }, [searchQuery, tasksList]);
-
-  useEffect(() => {
-    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
-      detail: { isOpen: isSidebarOpen },
-    });
-    window.dispatchEvent(toggleEvent);
-  }, [isSidebarOpen]);
+  }, [searchQuery, tasksList, activeFilter]);
 
   const sortedTasks = useMemo(() => {
-    let sortableItems = [...filteredTasks];
+    const sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         const valA = a[sortConfig.key];
@@ -146,7 +181,7 @@ export default function TasksPage() {
   const displayedTasks = useMemo(() => {
     const startOffset = (currentPage - 1) * itemsPerPage;
     return sortedTasks.slice(startOffset, startOffset + itemsPerPage);
-  }, [sortedTasks, currentPage]);
+  }, [sortedTasks, currentPage, itemsPerPage]);
 
   const handleSort = (key: keyof Task) => {
     let direction: "asc" | "desc" = "asc";
@@ -197,81 +232,35 @@ export default function TasksPage() {
     setShowDeleteConfirm(false);
   };
 
-  const renderStatusBadge = (status: string) => {
+  const getStatusClass = (status: string) => {
     const baseClass =
-      "px-2 py-0.5 rounded-full text-[10px] font-bold text-center min-w-[85px] inline-block tracking-wide uppercase shadow-sm border";
-    switch (status) {
-      case "Completed":
-        return (
-          <span
-            className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`}
-          >
-            Completed
-          </span>
-        );
-      case "In-Progress":
-        return (
-          <span
-            className={`${baseClass} bg-[#fffde7] text-[#f57f17] border-[#fff9c4]`}
-          >
-            In-Progress
-          </span>
-        );
-      case "On Hold":
-        return (
-          <span
-            className={`${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`}
-          >
-            On Hold
-          </span>
-        );
-      default:
-        return (
-          <span
-            className={`${baseClass} bg-[#f5f5f5] text-[#616161] border-[#e0e0e0]`}
-          >
-            Pending
-          </span>
-        );
+      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
+    const normal = status.toLowerCase().replace(/[\s-]/g, "");
+
+    if (normal === "completed") {
+      return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
     }
+    if (normal === "inprogress") {
+      return `${baseClass} bg-[#fffde7] text-[#f57f17] border-[#fff9c4]`;
+    }
+    if (normal === "onhold") {
+      return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+    }
+    return `${baseClass} bg-[#f5f5f5] text-[#616161] border-[#e0e0e0]`;
   };
 
-  const renderPriorityBadge = (priority: string) => {
+  const getPriorityClass = (priority: string) => {
     const baseClass =
-      "px-2 py-0.5 rounded-md text-[10px] font-bold inline-block uppercase tracking-wide";
+      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-md border inline-block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 w-full";
     switch (priority) {
       case "Critical":
-        return (
-          <span
-            className={`${baseClass} bg-red-100 text-red-700 border border-red-200`}
-          >
-            Critical
-          </span>
-        );
+        return `${baseClass} bg-red-100 text-red-700 border-red-200`;
       case "High":
-        return (
-          <span
-            className={`${baseClass} bg-orange-100 text-orange-700 border border-orange-200`}
-          >
-            High
-          </span>
-        );
+        return `${baseClass} bg-orange-100 text-orange-700 border-orange-200`;
       case "Medium":
-        return (
-          <span
-            className={`${baseClass} bg-amber-100 text-amber-700 border border-amber-200`}
-          >
-            Medium
-          </span>
-        );
+        return `${baseClass} bg-amber-100 text-amber-700 border-amber-200`;
       default:
-        return (
-          <span
-            className={`${baseClass} bg-slate-100 text-slate-600 border border-slate-200`}
-          >
-            Low
-          </span>
-        );
+        return `${baseClass} bg-slate-100 text-slate-600 border-slate-200`;
     }
   };
 
@@ -317,16 +306,54 @@ export default function TasksPage() {
     {
       key: "priority",
       label: "Priority",
-      width: "10%",
+      width: "11%",
       sortable: true,
-      render: (t) => renderPriorityBadge(t.priority),
+      render: (t) => (
+        <div className="relative inline-block w-full">
+          <select
+            value={t.priority}
+            onChange={(e) => updateTaskPriority(t.id, e.target.value)}
+            className={getPriorityClass(t.priority)}
+          >
+            {PRIORITY_OPTIONS.map((opt) => (
+              <option
+                key={opt}
+                value={opt}
+                className="bg-white text-slate-900 normal-case"
+              >
+                {opt}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        </div>
+      ),
     },
     {
       key: "status",
       label: "Status",
       width: "12%",
       sortable: true,
-      render: (t) => renderStatusBadge(t.status),
+      render: (t) => (
+        <div className="relative min-w-[95px] w-full">
+          <select
+            value={t.status}
+            onChange={(e) => updateTaskStatus(t.id, e.target.value)}
+            className={getStatusClass(t.status)}
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option
+                key={opt}
+                value={opt}
+                className="bg-white text-slate-900 normal-case"
+              >
+                {opt}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        </div>
+      ),
     },
     {
       key: "due_date",
@@ -342,9 +369,9 @@ export default function TasksPage() {
     {
       key: "id",
       label: "Actions",
-      width: "8%",
+      width: "12%",
       render: (t) => (
-        <div className="flex items-center justify-center gap-0.5">
+        <div className="flex items-center justify-center gap-1.5">
           <button
             type="button"
             onClick={() => {
@@ -359,19 +386,24 @@ export default function TasksPage() {
               });
               setIsEditing(true);
             }}
-            className="p-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors shadow-sm"
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+            title="Edit Task"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
           </button>
+
           <button
             type="button"
             onClick={() => {
               setSelectedTask(t);
               setShowDeleteConfirm(true);
             }}
-            className="p-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors shadow-sm"
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
+            title="Delete Task"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
           </button>
         </div>
       ),
@@ -407,6 +439,21 @@ export default function TasksPage() {
         </div>
 
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
+          {/* Row Limit Control Switcher */}
+          <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="bg-transparent text-xs text-slate-700 outline-none pr-1 cursor-pointer font-medium appearance-none"
+            >
+              <option value={5}>Show 5 rows</option>
+              <option value={7}>Show 7 rows</option>
+              <option value={10}>Show 10 rows</option>
+              <option value={20}>Show 20 rows</option>
+            </select>
+          </div>
+
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -432,16 +479,39 @@ export default function TasksPage() {
 
       {/* Main Table Spreadsheet Framework Box */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 w-full max-w-full overflow-hidden">
-        <div className="flex items-center gap-2 mb-5">
-          <CheckSquare className="w-5 h-5 text-[#333333]" />
-          <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 text-[#333333]" />
+            <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
+          </div>
+
+          {/* Custom Capsule Filter Wrapper */}
+          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+            {FILTER_OPTIONS.map((filter) => {
+              const isActive = activeFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                    isActive
+                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      : "text-slate-500 hover:text-slate-800 font-medium"
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {tasksList.length === 0 ? (
+        {filteredTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
             <Inbox className="w-10 h-10 text-slate-300 mb-2" />
             <span className="text-sm font-medium text-slate-500">
-              No core tasks indexed
+              No matching tasks discovered
             </span>
           </div>
         ) : (
@@ -462,7 +532,6 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* MODULARIZED RIGHT-SIDEBAR FORM DRAWER */}
       <TaskModal
         isOpen={isSidebarOpen}
         isAdding={isAdding}
@@ -480,7 +549,6 @@ export default function TasksPage() {
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />
 
-      {/* Delete Confirmation Lifecycle Modal */}
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={selectedTask?.title || ""}
@@ -490,8 +558,6 @@ export default function TasksPage() {
         }}
         onConfirm={handleDeleteRecord}
       />
-
-      <ComplianceFooter />
     </div>
   );
 }

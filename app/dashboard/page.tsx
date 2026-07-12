@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   BarChart3,
   PieChart as PieIcon,
-  Flag,
   CheckCircle2,
   Circle,
   Calendar,
@@ -46,15 +45,6 @@ type DashboardStats = {
   totalInterns: number;
 };
 
-interface CombinedEvent {
-  id: string;
-  title: string;
-  date: Date;
-  displayDate: string;
-  bgClass: string;
-  badgeClass: string;
-}
-
 interface WeeklyTask {
   id: string;
   title: string;
@@ -63,16 +53,21 @@ interface WeeklyTask {
   category: "Biology" | "CompSci" | "Both";
   tagColorClass: string;
   tagBgClass: string;
-  flagColor: string;
+  priority: "high" | "medium" | "low";
 }
 
 const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b", "#6366f1", "#94a3b8"];
 const AVAILABLE_YEARS = ["2024", "2025", "2026"];
 
+const priorityConfig = {
+  high: { bar: "bg-red-500", text: "text-red-600" },
+  medium: { bar: "bg-amber-500", text: "text-amber-600" },
+  low: { bar: "bg-emerald-500", text: "text-emerald-600" },
+};
+
 export default function DashboardLandingPage() {
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [events, setEvents] = useState<CombinedEvent[]>([]);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -126,81 +121,6 @@ export default function DashboardLandingPage() {
 
     setStats(yearlyMockDB[selectedYear] || yearlyMockDB["2026"]);
 
-    setEvents([
-      {
-        id: "ev-1",
-        title: "Sprint planning",
-        date: new Date("2026-06-29"),
-        displayDate: "Jun 29",
-        bgClass: "bg-[#f4f7f6]",
-        badgeClass: "bg-[#2a7797]",
-      },
-      {
-        id: "ev-2",
-        title: "Omics workflow review",
-        date: new Date("2026-07-03"),
-        displayDate: "Jul 03",
-        bgClass: "bg-[#f4faf8]",
-        badgeClass: "bg-[#4ec2bb]",
-      },
-      {
-        id: "ev-3",
-        title: "User testing with BDML",
-        date: new Date("2026-07-08"),
-        displayDate: "Jul 08",
-        bgClass: "bg-[#f4f4f8]",
-        badgeClass: "bg-[#2b347c]",
-      },
-      {
-        id: "ev-4",
-        title: "Final demo + transition",
-        date: new Date("2026-07-12"),
-        displayDate: "Jul 12",
-        bgClass: "bg-[#faf4f8]",
-        badgeClass: "bg-[#9d2482]",
-      },
-      {
-        id: "ev-5",
-        title: "WGS pipeline handoff",
-        date: new Date("2026-07-18"),
-        displayDate: "Jul 18",
-        bgClass: "bg-[#f5faf4]",
-        badgeClass: "bg-[#5cb051]",
-      },
-      {
-        id: "ev-6",
-        title: "Visayas Core facility audit",
-        date: new Date("2026-07-22"),
-        displayDate: "Jul 22",
-        bgClass: "bg-[#faf8f4]",
-        badgeClass: "bg-[#d97706]",
-      },
-      {
-        id: "ev-7",
-        title: "Metagenomics training session",
-        date: new Date("2026-07-27"),
-        displayDate: "Jul 27",
-        bgClass: "bg-[#f4faf8]",
-        badgeClass: "bg-[#0d9488]",
-      },
-      {
-        id: "ev-8",
-        title: "HPC maintenance window",
-        date: new Date("2026-08-02"),
-        displayDate: "Aug 02",
-        bgClass: "bg-[#fef2f2]",
-        badgeClass: "bg-[#dc2626]",
-      },
-      {
-        id: "ev-9",
-        title: "Monthly collaboration sync",
-        date: new Date("2026-08-05"),
-        displayDate: "Aug 05",
-        bgClass: "bg-[#f4f4f8]",
-        badgeClass: "bg-[#4f46e5]",
-      },
-    ]);
-
     setTasks([
       {
         id: "task-1",
@@ -210,7 +130,7 @@ export default function DashboardLandingPage() {
         category: "Biology",
         tagColorClass: "text-amber-700",
         tagBgClass: "bg-amber-50",
-        flagColor: "text-amber-500",
+        priority: "high",
       },
       {
         id: "task-2",
@@ -220,7 +140,7 @@ export default function DashboardLandingPage() {
         category: "CompSci",
         tagColorClass: "text-slate-600",
         tagBgClass: "bg-slate-100",
-        flagColor: "text-slate-500",
+        priority: "medium",
       },
       {
         id: "task-3",
@@ -230,7 +150,7 @@ export default function DashboardLandingPage() {
         category: "CompSci",
         tagColorClass: "text-[#2a7797]",
         tagBgClass: "bg-[#e6f4f8]",
-        flagColor: "text-[#4ec2bb]",
+        priority: "low",
       },
       {
         id: "task-4",
@@ -240,7 +160,7 @@ export default function DashboardLandingPage() {
         category: "Both",
         tagColorClass: "text-emerald-700",
         tagBgClass: "bg-emerald-50",
-        flagColor: "text-emerald-500",
+        priority: "medium",
       },
     ]);
 
@@ -349,14 +269,13 @@ export default function DashboardLandingPage() {
           </p>
         </div>
 
-        <div className="flex-shrink-0 z-10 self-end md:self-auto bg-[#ffffff] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-300 shadow-md shadow-slate-400/30 flex items-center gap-3">
-          <div className="flex flex-col items-end text-right">
-            <img
-              src="/assets/pgcv_logo.png"
-              alt="Philippine Genome Center Visayas logo"
-              className="h-12 w-auto object-contain"
-            />
-          </div>
+        {/* MODIFIED: Increased logo size for better visibility */}
+        <div className="flex-shrink-0 z-10 self-end md:self-auto">
+          <img
+            src="/assets/pgcv_logo.png"
+            alt="Philippine Genome Center Visayas logo"
+            className="h-28 w-auto object-contain"
+          />
         </div>
 
         <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
@@ -365,7 +284,7 @@ export default function DashboardLandingPage() {
       {/* Summary Cards Layer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total Projects */}
-        <div className="bg-[#eafafa] border border-teal-300/40 rounded-[22px] p-6 shadow-md shadow-[#1c5c59]/20 flex flex-col justify-between gap-4 transition-all duration-200 hover:shadow-lg hover:shadow-[#1c5c59]/30 hover:-translate-y-0.5">
+        <div className="bg-[#eafafa] border border-teal-300/40 rounded-[22px] p-6 shadow-md shadow-[#1c5c59]/20 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2e8b87] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -393,7 +312,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 2: Collaborations */}
-        <div className="bg-[#f3faf5] border border-emerald-300/40 rounded-[22px] p-6 shadow-md shadow-emerald-950/20 flex flex-col justify-between gap-4 transition-all duration-200 hover:shadow-lg hover:shadow-emerald-950/30 hover:-translate-y-0.5">
+        <div className="bg-[#f3faf5] border border-emerald-300/40 rounded-[22px] p-6 shadow-md shadow-emerald-950/20 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-emerald-700 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -423,7 +342,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 3: Service Reports */}
-        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-md shadow-slate-700/20 flex flex-col justify-between gap-4 transition-all duration-200 hover:shadow-lg hover:shadow-slate-700/30 hover:-translate-y-0.5">
+        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-md shadow-slate-700/20 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2a7797] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -450,7 +369,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 4: Programs Hub */}
-        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-md shadow-amber-950/15 flex flex-col justify-between gap-4 transition-all duration-200 hover:shadow-lg hover:shadow-amber-950/25 hover:-translate-y-0.5">
+        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-md shadow-amber-950/15 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -500,6 +419,9 @@ export default function DashboardLandingPage() {
         <div className="space-y-2.5">
           {tasks.map((task) => {
             const isCompleted = task.status === "completed";
+            const currentPriority =
+              priorityConfig[task.priority] || priorityConfig.low;
+
             return (
               <div
                 key={task.id}
@@ -510,7 +432,7 @@ export default function DashboardLandingPage() {
                     : "bg-slate-50 border-slate-300 shadow-md shadow-slate-400/10 hover:bg-slate-200/80 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-400/15"
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 h-full">
                   <div className="shrink-0">
                     {isCompleted ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -518,19 +440,30 @@ export default function DashboardLandingPage() {
                       <Circle className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
                     )}
                   </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Flag
-                      className={`w-3.5 h-3.5 shrink-0 ${isCompleted ? "text-slate-300" : task.flagColor}`}
+                  <div className="flex items-center gap-3 min-w-0 self-stretch">
+                    {/* Visual Priority Bar replaces the Flag icon */}
+                    <div
+                      className={`w-1 self-stretch rounded-full shrink-0 min-h-[16px] ${
+                        isCompleted ? "bg-slate-300" : currentPriority.bar
+                      }`}
                     />
                     <span
-                      className={`text-xs font-medium ${isCompleted ? "line-through text-slate-400" : "text-slate-700"}`}
+                      className={`text-xs font-semibold ${
+                        isCompleted
+                          ? "line-through text-slate-400"
+                          : currentPriority.text
+                      }`}
                     >
                       {task.title}
                     </span>
                   </div>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold ${isCompleted ? "bg-slate-200 text-slate-500" : `${task.tagBgClass} ${task.tagColorClass}`}`}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                    isCompleted
+                      ? "bg-slate-200 text-slate-500"
+                      : `${task.tagBgClass} ${task.tagColorClass}`
+                  }`}
                 >
                   {task.category}
                 </div>
@@ -617,33 +550,39 @@ export default function DashboardLandingPage() {
             </h3>
           </div>
 
-          <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1 subtle-scrollbar">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className={`${event.bgClass} p-2.5 rounded-xl flex items-center gap-4 transition-all hover:brightness-[0.97] shadow-md shadow-slate-400/10 border border-slate-200/50`}
-              >
-                <div
-                  className={`${event.badgeClass} w-[72px] py-1 rounded-lg flex items-center justify-center text-xs font-bold text-white tracking-wide shrink-0 shadow-md shadow-black/10`}
-                >
-                  {event.displayDate}
-                </div>
-                <span className="text-xs font-medium text-slate-700 truncate">
-                  {event.title}
-                </span>
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center h-full pb-10 text-center">
+            <div className="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-slate-100 border border-slate-200 shadow-inner">
+              <Calendar className="w-6 h-6 text-[#7a8e9b]" />
+            </div>
+            <span className="text-xs font-extrabold uppercase tracking-[2px] text-[#2a7797] font-quicksand block mb-1">
+              Coming Soon
+            </span>
+            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-sm">
+              The automated event tracker and synchronization feature is
+              currently under development. Check back later for updates.
+            </p>
           </div>
         </div>
 
         {/* Project Distribution Donut Chart */}
         <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 text-[#2a7797] mb-4 font-quicksand">
-              <PieIcon className="w-4 h-4" />
-              <h3 className="text-xs font-extrabold uppercase tracking-wider">
-                Project Distribution ({selectedYear})
-              </h3>
+            <div className="flex items-center justify-between mb-4 font-quicksand">
+              <div className="flex items-center gap-2 text-[#2a7797]">
+                <PieIcon className="w-4 h-4" />
+                <h3 className="text-xs font-extrabold uppercase tracking-wider">
+                  Project Distribution ({selectedYear})
+                </h3>
+              </div>
+
+              {/* Added Button leading to the Projects page */}
+              <Link
+                href="/dashboard/projects"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-md shadow-slate-400/10"
+              >
+                <span>View Projects Page</span>
+                <ExternalLink className="w-3 h-3" />
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center my-auto py-2">

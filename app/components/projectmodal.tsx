@@ -84,7 +84,7 @@ export default function ProjectModal({
   };
 
   const renderSectionLabel = (icon: React.ReactNode, text: string) => (
-    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-[1.5px] mb-2 mt-0.5 font-quicksand">
+    <div className="flex items-center gap-2 text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] mb-2 mt-0.5 font-quicksand">
       {icon} <span>{text}</span>
     </div>
   );
@@ -108,12 +108,12 @@ export default function ProjectModal({
         }`}
       >
         {/* Dynamic decorative visual accent bar */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-[#2a7797] via-[#4ec2bb] to-[#2a7797]" />
+        <div className="h-1.5 w-full bg-[#4ec2bb]" />
 
         {/* Sidebar Header Area */}
         <div className="px-5 pt-5 pb-3 flex items-start justify-between border-b border-slate-100 bg-[#ffffff]">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight font-aileron">
+            <h3 className="text-lg font-bold text-[#2a7797] tracking-tight font-aileron">
               {isAdding ? "Add New Project" : "Modify Project Details"}
             </h3>
             <p className="text-slate-500 text-[11px] mt-0.5 font-semibold font-aileron">

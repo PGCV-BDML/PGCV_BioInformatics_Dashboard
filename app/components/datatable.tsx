@@ -27,7 +27,7 @@ export default function DataTable<T extends { id: string | number }>({
   emptyMessage = "No active records found matching your criteria.",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
       <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
         <thead>
           <tr className="bg-[#f4f6f7] text-[#55656e] text-[13px] font-bold border-b border-gray-200 select-none">
@@ -39,10 +39,14 @@ export default function DataTable<T extends { id: string | number }>({
                   key={index}
                   style={{ width: col.width }}
                   onClick={() => isSortable && onSort(col.key as keyof T)}
-                  className={`py-4 px-4 ${isSortable ? "cursor-pointer hover:bg-[#e9ecef] group" : ""}`}
+                  className={`py-3 px-4 font-bold tracking-tight ${
+                    isSortable
+                      ? "cursor-pointer hover:bg-gray-200/60 transition-colors group"
+                      : ""
+                  }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    {col.label}
+                    <span>{col.label}</span>
                     {isSortable &&
                       (sortConfig?.key === col.key ? (
                         sortConfig.direction === "asc" ? (
@@ -63,10 +67,13 @@ export default function DataTable<T extends { id: string | number }>({
           {data.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-[#ffffff] even:bg-white border-b border-gray-200/40 hover:bg-gray-100/70 transition-colors"
+              className="odd:bg-[#ffffff] even:bg-white border-b border-gray-200/40 hover:bg-gray-100/40 transition-colors"
             >
               {columns.map((col, colIndex) => (
-                <td key={colIndex} className="py-4 px-4 break-words">
+                <td
+                  key={colIndex}
+                  className="py-3 px-4 break-words align-middle"
+                >
                   {col.render
                     ? col.render(item)
                     : String(item[col.key as keyof T] || "—")}

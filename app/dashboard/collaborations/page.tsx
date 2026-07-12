@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import ComplianceFooter from "../../components/compliancefooter";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
-import CollaborationModal from "../../components/collaborationmodal";
+import CollaborationSidebar from "../../components/collaborationmodal";
 import { CollaborationRow, UserOption } from "../../../types/database";
 import {
   Search,
@@ -15,22 +14,38 @@ import {
   Trash2,
   Plus,
   Inbox,
+  GitBranch, // Added for clean Repository rendering
 } from "lucide-react";
 
 type CollaborationFormState = {
   partner_org: string;
   lead_user_id: string;
-  documents_link: string;
+  documents_links: string[];
   notes: string;
+  start_date: string;
+  status: string;
+  repository_link: string;
 };
 
 const ITEMS_PER_PAGE = 10;
 const EMPTY_FORM: CollaborationFormState = {
   partner_org: "",
   lead_user_id: "",
-  documents_link: "",
+  documents_links: [""],
   notes: "",
+  start_date: "",
+  status: "On-going",
+  repository_link: "",
 };
+
+const FILTER_OPTIONS = [
+  "All",
+  "Completed",
+  "On-going",
+  "Submitted",
+  "For approval",
+  "On hold",
+];
 
 export default function CollaborationsPage() {
   const [collaborationsList, setCollaborationsList] = useState<
@@ -39,6 +54,7 @@ export default function CollaborationsPage() {
   const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [formState, setFormState] =
     useState<CollaborationFormState>(EMPTY_FORM);
@@ -50,6 +66,8 @@ export default function CollaborationsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // FIXED: Corrected useState type annotation and initial state definition
   const [selectedCollaboration, setSelectedCollaboration] =
     useState<CollaborationRow | null>(null);
 
@@ -78,7 +96,7 @@ export default function CollaborationsPage() {
             lead_user_id: "u1",
             start_date: "2026-01-15",
             status: "ongoing",
-            documents: ["https://drive.google.com"],
+            documents: ["https://drive.google.com", "https://dropbox.com"],
             notes: "Primary repository linked",
             user: { name: "Alex Jones" },
             created_at: new Date().toISOString(),
@@ -106,12 +124,9 @@ export default function CollaborationsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, activeFilter]);
 
-  const handleInputChange = (
-    key: keyof CollaborationFormState,
-    value: string,
-  ) => {
+  const handleInputChange = (key: keyof CollaborationFormState, value: any) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -129,13 +144,18 @@ export default function CollaborationsPage() {
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
+
     const newRecord: CollaborationRow = {
       id: `local-id-${Date.now()}`,
       partner_org: formState.partner_org,
       lead_user_id: formState.lead_user_id,
-      start_date: new Date().toISOString().split("T")[0],
-      status: "ongoing",
-      documents: formState.documents_link ? [formState.documents_link] : null,
+      start_date:
+        formState.start_date || new Date().toISOString().split("T")[0],
+      status: formState.status
+        .toLowerCase()
+        .replace(" ", "") as CollaborationRow["status"],
+      documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
       user: {
         name:
@@ -153,6 +173,7 @@ export default function CollaborationsPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCollaboration) return;
+    const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
 
     setCollaborationsList((prev) =>
       prev.map((item) =>
@@ -161,9 +182,11 @@ export default function CollaborationsPage() {
               ...item,
               partner_org: formState.partner_org,
               lead_user_id: formState.lead_user_id,
-              documents: formState.documents_link
-                ? [formState.documents_link]
-                : null,
+              start_date: formState.start_date,
+              status: formState.status
+                .toLowerCase()
+                .replace(" ", "") as CollaborationRow["status"],
+              documents: cleanDocs.length > 0 ? cleanDocs : null,
               notes: formState.notes || null,
               user: {
                 name:
@@ -188,9 +211,25 @@ export default function CollaborationsPage() {
   };
 
   const filteredCollaborations = useMemo(() => {
+    let records = collaborationsList;
+
+    if (activeFilter !== "All") {
+      records = records.filter((collab) => {
+        const normalCollabStatus = (collab.status || "")
+          .toLowerCase()
+          .replace(/[\s-]/g, "");
+        const normalFilter = activeFilter.toLowerCase().replace(/[\s-]/g, "");
+
+        if (normalFilter === "ongoing" && normalCollabStatus === "inprogress")
+          return true;
+        return normalCollabStatus === normalFilter;
+      });
+    }
+
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return collaborationsList;
-    return collaborationsList.filter((collab) => {
+    if (!query) return records;
+
+    return records.filter((collab) => {
       return (
         collab.partner_org.toLowerCase().includes(query) ||
         (collab.user?.name || "").toLowerCase().includes(query) ||
@@ -198,7 +237,7 @@ export default function CollaborationsPage() {
         (collab.notes || "").toLowerCase().includes(query)
       );
     });
-  }, [searchQuery, collaborationsList]);
+  }, [searchQuery, collaborationsList, activeFilter]);
 
   const sortedCollaborations = useMemo(() => {
     const sortableItems = [...filteredCollaborations];
@@ -237,7 +276,7 @@ export default function CollaborationsPage() {
           Completed
         </span>
       );
-    if (status === "ongoing")
+    if (status === "ongoing" || status === "inprogress")
       return (
         <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
           In-Progress
@@ -254,11 +293,11 @@ export default function CollaborationsPage() {
     {
       key: "partner_org",
       label: "Partner Organization",
-      width: "25%",
+      width: "22%",
       sortable: true,
       render: (c) => (
         <span
-          className="font-bold text-[#11161a] block truncate max-w-[150px] xl:max-w-[200px]"
+          className="font-bold text-[#11161a] block truncate max-w-[150px] xl:max-w-[180px]"
           title={c.partner_org}
         >
           {c.partner_org}
@@ -268,11 +307,11 @@ export default function CollaborationsPage() {
     {
       key: "lead_user_id",
       label: "Lead Coordinator",
-      width: "18%",
+      width: "15%",
       sortable: true,
       render: (c) => (
         <span
-          className="block truncate max-w-[100px] xl:max-w-[140px]"
+          className="block truncate max-w-[100px] xl:max-w-[130px]"
           title={c.user?.name || "Unassigned"}
         >
           {c.user?.name || "Unassigned"}
@@ -282,13 +321,13 @@ export default function CollaborationsPage() {
     {
       key: "status",
       label: "Status",
-      width: "14%",
+      width: "12%",
       render: (c) => renderStatusBadge(c.status),
     },
     {
       key: "start_date",
       label: "Start Date",
-      width: "13%",
+      width: "11%",
       sortable: true,
       render: (c) => (
         <span className="text-xs text-slate-600">{c.start_date || "-"}</span>
@@ -299,17 +338,21 @@ export default function CollaborationsPage() {
       label: "Documents",
       width: "12%",
       render: (c) => {
-        const primaryDoc =
-          c.documents && c.documents.length > 0 ? c.documents[0] : "";
-        return primaryDoc ? (
-          <a
-            href={primaryDoc}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted whitespace-nowrap"
-          >
-            <FileText className="w-3.5 h-3.5 flex-shrink-0" /> Docs
-          </a>
+        return c.documents && c.documents.length > 0 ? (
+          <div className="flex flex-wrap gap-1 max-w-[120px]">
+            {c.documents.map((doc, index) => (
+              <a
+                key={index}
+                href={doc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-[11px] text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted bg-slate-50 hover:bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200"
+                title={doc}
+              >
+                <FileText className="w-3 h-3 flex-shrink-0" /> Doc {index + 1}
+              </a>
+            ))}
+          </div>
         ) : (
           <span className="text-xs text-slate-400 italic">None</span>
         );
@@ -317,12 +360,12 @@ export default function CollaborationsPage() {
     },
     {
       key: "notes",
-      label: "Notes / Repo Link",
-      width: "18%",
+      label: "Notes",
+      width: "13%",
       render: (c) =>
         c.notes ? (
           <span
-            className="text-xs text-slate-500 font-medium truncate max-w-[100px] xl:max-w-[140px] block"
+            className="text-xs text-slate-500 font-medium truncate max-w-[100px] xl:max-w-[130px] block"
             title={c.notes}
           >
             {c.notes}
@@ -330,6 +373,28 @@ export default function CollaborationsPage() {
         ) : (
           <span className="text-xs text-slate-400 italic">-</span>
         ),
+    },
+    {
+      key: "id", // Using 'id' for custom lookup context if specific key isn't inside CollaborationRow yet
+      label: "Repository Link",
+      width: "15%",
+      render: (c) => {
+        // Accessing repository link safely assuming it exists or maps contextually
+        const repoUrl = (c as any).repository_link || "";
+        return repoUrl ? (
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted truncate max-w-[120px]"
+            title={repoUrl}
+          >
+            <GitBranch className="w-3.5 h-3.5 text-slate-500" /> Repo Link
+          </a>
+        ) : (
+          <span className="text-xs text-slate-400 italic">-</span>
+        );
+      },
     },
     {
       key: "id",
@@ -344,9 +409,12 @@ export default function CollaborationsPage() {
               setFormState({
                 partner_org: c.partner_org,
                 lead_user_id: c.lead_user_id,
-                documents_link:
-                  c.documents && c.documents.length > 0 ? c.documents[0] : "",
+                documents_links:
+                  c.documents && c.documents.length > 0 ? c.documents : [""],
                 notes: c.notes || "",
+                start_date: c.start_date || "",
+                status: c.status || "On-going",
+                repository_link: (c as any).repository_link || "",
               });
               setIsEditing(true);
             }}
@@ -379,7 +447,7 @@ export default function CollaborationsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - List
+            Dashboard - Collaborations Page
           </span>
           <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
             Collaborations
@@ -415,11 +483,33 @@ export default function CollaborationsPage() {
 
       {/* Main Table Interface Box */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
-        <div className="flex items-center gap-2 mb-5">
-          <Users2 className="w-5 h-5 text-[#333333]" />
-          <h2 className="text-2xl font-bold text-[#333333]">
-            List of Collaborations
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <Users2 className="w-5 h-5 text-[#333333]" />
+            <h2 className="text-2xl font-bold text-[#333333]">
+              List of Collaborations
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+            {FILTER_OPTIONS.map((filter) => {
+              const isActive = activeFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                    isActive
+                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      : "text-slate-500 hover:text-slate-800 font-medium"
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {isLoading ? (
@@ -436,7 +526,7 @@ export default function CollaborationsPage() {
             </span>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[760px]">
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[920px]">
             <DataTable
               columns={columns}
               data={displayedCollaborations}
@@ -453,7 +543,7 @@ export default function CollaborationsPage() {
         )}
       </div>
 
-      <CollaborationModal
+      <CollaborationSidebar
         isOpen={isPanelOpen}
         isAdding={isAdding}
         formState={formState}
@@ -472,7 +562,6 @@ export default function CollaborationsPage() {
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
       />
-      <ComplianceFooter />
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function ServicesListPage() {
       {/* Top Header */}
       <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
         <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-          Dashboard - List
+          Dashboard - List of Services
         </span>
         <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
           Services List
@@ -42,7 +42,8 @@ export default function ServicesListPage() {
               className="bg-white border border-slate-200/60 rounded-2xl p-4 flex items-center justify-between shadow-xs hover:border-[#4ec2bb]/40 transition-colors group"
             >
               <div className="flex items-center gap-4 min-w-0">
-                <span className="text-xs font-black text-slate-300 font-quicksand group-hover:text-[#4ec2bb] transition-colors w-5">
+                {/* FIXED: Changed from text-slate-300 to text-slate-600 for a darker visual layout */}
+                <span className="text-xs font-black text-slate-600 font-quicksand group-hover:text-slate-900 transition-colors w-5">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="text-xs font-semibold text-slate-700 truncate">
