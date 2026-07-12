@@ -1,8 +1,15 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function SignInPage() {
+  const [currentYear, setCurrentYear] = useState<string>("2026");
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear().toString());
+  }, []);
+
   const handleSignInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -13,16 +20,45 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="min-h-screen w-full flex bg-[#fffdf8]">
+      {/* Safe injection of subtle, ambient keyframes */}
+      <style jsx global>{`
+        @keyframes dynamicDnaPulse {
+          0%,
+          100% {
+            transform: translateY(var(--wave-y)) scale(0.95);
+            filter: drop-shadow(0 0 2px rgba(7, 216, 255, 0.3));
+            opacity: 0.65;
+          }
+          50% {
+            /* Smooth, subtle displacement and minor scaling */
+            transform: translateY(calc(var(--wave-y) - 4px)) scale(1.08);
+            filter: drop-shadow(0 0 6px rgba(7, 216, 255, 0.7));
+            opacity: 0.95;
+          }
+        }
+        @keyframes linePulse {
+          0%,
+          100% {
+            opacity: 0.5;
+            transform: scaleY(0.98);
+          }
+          50% {
+            opacity: 0.85;
+            transform: scaleY(1.02);
+          }
+        }
+      `}</style>
+
       {/* ── Left hero panel ───────────────────────────────────────────── */}
       <div className="hidden md:flex flex-1 bg-[#2a7797] relative overflow-hidden flex-col justify-between p-12">
-        {/* ── Engineered DNA Double Helix Strands Field (Isolated to the right side) ── */}
+        {/* ── Engineered DNA Double Helix Strands Field (Subtle Ambient Engine) ── */}
         <div
-          className="absolute inset-y-0 right-0 w-1/2 pointer-events-none opacity-[0.25] mix-blend-screen select-none z-0 flex flex-col justify-around py-20 overflow-hidden"
+          className="absolute inset-y-0 right-0 w-1/2 pointer-events-none opacity-[0.75] mix-blend-screen select-none z-0 flex flex-col justify-around py-20 overflow-hidden"
           style={{
             WebkitMaskImage:
-              "linear-gradient(to right, transparent 0%, black 50%)",
-            maskImage: "linear-gradient(to right, transparent 0%, black 50%)",
+              "linear-gradient(to right, transparent 0%, black 80%)",
+            maskImage: "linear-gradient(to right, transparent 0%, black 80%)",
           }}
         >
           {[...Array(4)].map((_, helixIndex) => (
@@ -30,19 +66,19 @@ export default function SignInPage() {
               key={helixIndex}
               className="relative w-full h-16 flex items-center"
               style={{
-                transform: `translateY(${(helixIndex - 1.5) * 12}px)`,
+                transform: `translateY(${(helixIndex - 1.5) * 16}px)`,
               }}
             >
               {[...Array(12)].map((_, baseIndex) => {
                 const angle = (baseIndex / 12) * Math.PI * 3.5;
                 const positionX = (baseIndex / 11) * 100;
 
-                const strandA_Y = Math.sin(angle) * 26;
-                const strandB_Y = Math.sin(angle + Math.PI) * 26;
-
+                const strandA_Y = Math.sin(angle) * 28;
+                const strandB_Y = Math.sin(angle + Math.PI) * 28;
                 const isFrontA = Math.cos(angle) > 0;
 
                 return (
+                  /* Outer Container: Dedicated solely to absolute horizontal spacing and height bounds */
                   <div
                     key={baseIndex}
                     className="absolute top-1/2 flex flex-col items-center justify-center"
@@ -53,43 +89,50 @@ export default function SignInPage() {
                       width: "2px",
                     }}
                   >
+                    {/* Top Node Layer */}
                     <div
                       className={`w-2 h-2 rounded-full absolute top-0 -translate-y-1/2 shadow-lg transition-all ${
-                        isFrontA
-                          ? "bg-[#07d8ff] shadow-[#07d8ff]/80 w-2.5 h-2.5 z-20"
-                          : "bg-white/80 z-10"
+                        isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
                       }`}
-                      style={{
-                        animationName: "pulse",
-                        animationDuration: "2s",
-                        animationTimingFunction: "ease-in-out",
-                        animationIterationCount: "infinite",
-                        animationDelay: `${baseIndex * 0.12}s`,
-                      }}
+                      style={
+                        {
+                          "--wave-y": "0px",
+                          animationName: "dynamicDnaPulse",
+                          animationDuration: "5.0s",
+                          animationTimingFunction: "ease-in-out",
+                          animationIterationCount: "infinite",
+                          animationDelay: `${baseIndex * 0.25}s`,
+                        } as React.CSSProperties
+                      }
                     />
+
+                    {/* Connecting Vertical Bar Layer */}
                     <div
-                      className="w-[1px] h-full bg-gradient-to-b from-[#07d8ff] via-white/40 to-white opacity-60"
+                      className="w-[1px] h-full bg-gradient-to-b from-[#07d8ff] via-white/70 to-white origin-center"
                       style={{
-                        animationName: "pulse",
-                        animationDuration: "3s",
+                        animationName: "linePulse",
+                        animationDuration: "5.0s",
                         animationTimingFunction: "ease-in-out",
                         animationIterationCount: "infinite",
-                        animationDelay: `${baseIndex * 0.08}s`,
+                        animationDelay: `${baseIndex * 0.25}s`,
                       }}
                     />
+
+                    {/* Bottom Node Layer */}
                     <div
                       className={`w-2 h-2 rounded-full absolute bottom-0 translate-y-1/2 shadow-lg transition-all ${
-                        !isFrontA
-                          ? "bg-[#07d8ff] shadow-[#07d8ff]/80 w-2.5 h-2.5 z-20"
-                          : "bg-white/80 z-10"
+                        !isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
                       }`}
-                      style={{
-                        animationName: "pulse",
-                        animationDuration: "2s",
-                        animationTimingFunction: "ease-in-out",
-                        animationIterationCount: "infinite",
-                        animationDelay: `${baseIndex * 0.12 + 0.4}s`,
-                      }}
+                      style={
+                        {
+                          "--wave-y": "0px",
+                          animationName: "dynamicDnaPulse",
+                          animationDuration: "5.0s",
+                          animationTimingFunction: "ease-in-out",
+                          animationIterationCount: "infinite",
+                          animationDelay: `${baseIndex * 0.25 + 1.0}s`,
+                        } as React.CSSProperties
+                      }
                     />
                   </div>
                 );
@@ -139,16 +182,16 @@ export default function SignInPage() {
           </p>
         </div>
 
-        {/* Clean lower footer space alignment anchor */}
+        {/* Lower footer copyright container block */}
         <div className="text-[rgba(255,255,255,0.4)] text-[12px] font-quicksand relative z-10">
-          © {new Date().getFullYear()} PGC Visayas. All rights reserved.
+          © {currentYear} PGC Visayas. All rights reserved.
         </div>
       </div>
 
       {/* ── Right sign-in panel ───────────────────────────────────────── */}
-      <div className="w-full md:w-[480px] flex-shrink-0 bg-[#fffdf8] flex items-center justify-center p-8">
+      <div className="w-full md:w-[480px] flex-shrink-0 flex items-center justify-center p-6 md:p-8">
         <div
-          className="bg-[#fffdf8] rounded-[28px] w-full max-w-[416px] p-[32px] relative"
+          className="bg-[#fffdf8] rounded-[28px] w-full max-w-[416px] p-6 sm:p-[32px] relative"
           style={{
             boxShadow:
               "0px 40px 64px -12px rgba(40, 37, 96, 0.16), 0px 16px 32px -8px rgba(40, 37, 96, 0.10), 0px 4px 16px rgba(40, 37, 96, 0.04)",
@@ -167,6 +210,7 @@ export default function SignInPage() {
             Use your authorized Google account to access the dashboard.
           </p>
 
+          {/* Custom Action Trigger Blue Gradient Button */}
           <button
             type="button"
             onClick={handleSignInWithGoogle}

@@ -138,7 +138,6 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
-      // Apply Active Horizontal Status Tab Filter
       if (activeFilter !== "All") {
         const normalizedTaskStatus = (task.status || "")
           .toLowerCase()
@@ -234,7 +233,7 @@ export default function TasksPage() {
 
   const getStatusClass = (status: string) => {
     const baseClass =
-      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
+      "text-[10px] font-bold uppercase tracking-wide pl-4 pr-6 py-1 rounded-full border shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 text-center truncate";
     const normal = status.toLowerCase().replace(/[\s-]/g, "");
 
     if (normal === "completed") {
@@ -251,7 +250,7 @@ export default function TasksPage() {
 
   const getPriorityClass = (priority: string) => {
     const baseClass =
-      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
+      "text-[10px] font-bold uppercase tracking-wide pl-4 pr-6 py-1 rounded-full border shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 text-center truncate";
     const normal = priority.toLowerCase().replace(/[\s-]/g, "");
 
     if (normal === "high") {
@@ -278,7 +277,7 @@ export default function TasksPage() {
     {
       key: "project_id",
       label: "Linked Project",
-      width: "21%",
+      width: "20%",
       render: (t) => {
         const project = AVAILABLE_PROJECTS.find((p) => p.id === t.project_id);
         return (
@@ -294,10 +293,13 @@ export default function TasksPage() {
     {
       key: "assignee",
       label: "Assignee",
-      width: "14%",
+      width: "13%",
       sortable: true,
       render: (t) => (
-        <span className="block truncate max-w-full" title={t.assignee}>
+        <span
+          className="block truncate max-w-full text-xs text-slate-700 font-medium"
+          title={t.assignee}
+        >
           {t.assignee}
         </span>
       ),
@@ -305,52 +307,56 @@ export default function TasksPage() {
     {
       key: "priority",
       label: "Priority",
-      width: "11%",
+      width: "12%",
       sortable: true,
       render: (t) => (
-        <div className="relative min-w-[95px] w-full">
-          <select
-            value={t.priority}
-            onChange={(e) => updateTaskPriority(t.id, e.target.value)}
-            className={getPriorityClass(t.priority)}
-          >
-            {PRIORITY_OPTIONS.map((opt) => (
-              <option
-                key={opt}
-                value={opt}
-                className="bg-white text-slate-900 normal-case"
-              >
-                {opt}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        <div className="flex items-center justify-center w-full py-1">
+          <div className="relative min-w-[105px] max-w-[130px] w-full">
+            <select
+              value={t.priority}
+              onChange={(e) => updateTaskPriority(t.id, e.target.value)}
+              className={getPriorityClass(t.priority)}
+            >
+              {PRIORITY_OPTIONS.map((opt) => (
+                <option
+                  key={opt}
+                  value={opt}
+                  className="bg-white text-slate-900 normal-case"
+                >
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+          </div>
         </div>
       ),
     },
     {
       key: "status",
       label: "Status",
-      width: "12%",
+      width: "13%",
       sortable: true,
       render: (t) => (
-        <div className="relative min-w-[95px] w-full">
-          <select
-            value={t.status}
-            onChange={(e) => updateTaskStatus(t.id, e.target.value)}
-            className={getStatusClass(t.status)}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option
-                key={opt}
-                value={opt}
-                className="bg-white text-slate-900 normal-case"
-              >
-                {opt}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        <div className="flex items-center justify-center w-full py-1">
+          <div className="relative min-w-[115px] max-w-[140px] w-full">
+            <select
+              value={t.status}
+              onChange={(e) => updateTaskStatus(t.id, e.target.value)}
+              className={getStatusClass(t.status)}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option
+                  key={opt}
+                  value={opt}
+                  className="bg-white text-slate-900 normal-case"
+                >
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+          </div>
         </div>
       ),
     },
@@ -360,7 +366,7 @@ export default function TasksPage() {
       width: "13%",
       sortable: true,
       render: (t) => (
-        <span className="text-xs text-slate-600 whitespace-nowrap">
+        <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
           {t.due_date}
         </span>
       ),
@@ -415,7 +421,6 @@ export default function TasksPage() {
         isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
       }`}
     >
-      {/* Back Button Action Area */}
       <div className="pt-2">
         <Link
           href="/"
@@ -426,7 +431,6 @@ export default function TasksPage() {
         </Link>
       </div>
 
-      {/* Main Tasks Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
@@ -438,7 +442,6 @@ export default function TasksPage() {
         </div>
 
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
-          {/* Row Limit Control Switcher */}
           <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
             <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
             <select
@@ -466,6 +469,8 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => {
+              setSelectedTask(null);
+              setIsEditing(false);
               setFormState(emptyForm);
               setIsAdding(true);
             }}
@@ -476,7 +481,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Main Table Spreadsheet Framework Box */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 w-full max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -484,7 +488,6 @@ export default function TasksPage() {
             <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
           </div>
 
-          {/* Custom Capsule Filter Wrapper */}
           <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter;

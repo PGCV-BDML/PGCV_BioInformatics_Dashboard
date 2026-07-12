@@ -39,7 +39,6 @@ const EMPTY_FORM: CollaborationFormState = {
   repository_link: "",
 };
 
-// Updated to align perfectly with the target strict values
 const FILTER_OPTIONS = [
   { value: "All", label: "All" },
   { value: "for_approval", label: "For Approval" },
@@ -172,6 +171,8 @@ export default function CollaborationsPage() {
       status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
+      // Add this line to pass down the repository link:
+      repository_link: formState.repository_link || "",
       user: {
         name:
           availableUsers.find((u) => u.id === formState.lead_user_id)?.name ||
@@ -179,7 +180,7 @@ export default function CollaborationsPage() {
       },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    };
+    } as any; // Cast as any if CollaborationRow types do not natively accept it yet
     setCollaborationsList((prev) => [newRecord, ...prev]);
     setIsAdding(false);
     setFormState(EMPTY_FORM);
@@ -201,6 +202,8 @@ export default function CollaborationsPage() {
               status: formState.status as CollaborationRow["status"],
               documents: cleanDocs.length > 0 ? cleanDocs : null,
               notes: formState.notes || null,
+              // Add this line to update the repository link:
+              repository_link: formState.repository_link || "",
               user: {
                 name:
                   availableUsers.find((u) => u.id === formState.lead_user_id)
@@ -291,11 +294,11 @@ export default function CollaborationsPage() {
     }
 
     return (
-      <div className="relative inline-block min-w-[125px]">
+      <div className="relative flex items-center justify-center w-full max-w-[140px]">
         <select
           value={status}
           onChange={(e) => handleStatusChange(id, e.target.value)}
-          className={`w-full pl-3 pr-7 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-0 outline-none focus:outline-none focus:ring-0 text-left transition-all appearance-none ${colorClasses}`}
+          className={`pl-1 pr-6 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-0 outline-none focus:outline-none focus:ring-0 text-center transition-all appearance-none whitespace-nowrap w-full ${colorClasses}`}
         >
           {STATUS_OPTIONS.map((opt) => (
             <option
@@ -346,8 +349,12 @@ export default function CollaborationsPage() {
     {
       key: "status",
       label: "Status",
-      width: "14%",
-      render: (c) => renderStatusDropdown(c.id, c.status),
+      width: "15%",
+      render: (c) => (
+        <div className="flex items-center justify-center w-full">
+          {renderStatusDropdown(c.id, c.status)}
+        </div>
+      ),
     },
     {
       key: "start_date",
@@ -400,7 +407,7 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "id",
+      key: "reposityory_link" as any,
       label: "Repository Link",
       width: "14%",
       render: (c) => {
@@ -467,7 +474,6 @@ export default function CollaborationsPage() {
         isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
       }`}
     >
-      {/* Top Controls Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
@@ -505,7 +511,6 @@ export default function CollaborationsPage() {
         </div>
       </div>
 
-      {/* Main Table Interface Box */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -515,7 +520,6 @@ export default function CollaborationsPage() {
             </h2>
           </div>
 
-          {/* Adjusted Filter Menu Bar */}
           <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
             {FILTER_OPTIONS.map((opt) => {
               const isActive = activeFilter === opt.value;
