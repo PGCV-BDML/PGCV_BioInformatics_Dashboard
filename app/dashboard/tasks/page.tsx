@@ -77,7 +77,7 @@ const AVAILABLE_USERS = [
 
 const STATUS_OPTIONS = ["Pending", "In-Progress", "Completed", "On Hold"];
 const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
-const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"];
+const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 
 export default function TasksPage() {
   const [tasksList, setTasksList] = useState<Task[]>(INITIAL_TASKS);
@@ -241,7 +241,7 @@ export default function TasksPage() {
       return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
     }
     if (normal === "inprogress") {
-      return `${baseClass} bg-[#fffde7] text-[#f57f17] border-[#fff9c4]`;
+      return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
     }
     if (normal === "onhold") {
       return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
@@ -251,17 +251,16 @@ export default function TasksPage() {
 
   const getPriorityClass = (priority: string) => {
     const baseClass =
-      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-md border inline-block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 w-full";
-    switch (priority) {
-      case "Critical":
-        return `${baseClass} bg-red-100 text-red-700 border-red-200`;
-      case "High":
-        return `${baseClass} bg-orange-100 text-orange-700 border-orange-200`;
-      case "Medium":
-        return `${baseClass} bg-amber-100 text-amber-700 border-amber-200`;
-      default:
-        return `${baseClass} bg-slate-100 text-slate-600 border-slate-200`;
+      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
+    const normal = priority.toLowerCase().replace(/[\s-]/g, "");
+
+    if (normal === "high") {
+      return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
     }
+    if (normal === "medium") {
+      return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
+    }
+    return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
   };
 
   const columns: Column<Task>[] = [
@@ -309,7 +308,7 @@ export default function TasksPage() {
       width: "11%",
       sortable: true,
       render: (t) => (
-        <div className="relative inline-block w-full">
+        <div className="relative min-w-[95px] w-full">
           <select
             value={t.priority}
             onChange={(e) => updateTaskPriority(t.id, e.target.value)}
@@ -325,7 +324,7 @@ export default function TasksPage() {
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
         </div>
       ),
     },

@@ -141,6 +141,8 @@ export default function ProjectModal({
               <ClipboardCheck className="w-3.5 h-3.5" />,
               "Project Scope",
             )}
+
+            {/* Project Name */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                 Project Name
@@ -156,9 +158,10 @@ export default function ProjectModal({
             </div>
 
             <div className="flex flex-col gap-3.5">
+              {/* Client Affiliation */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Client Affiliation
+                  Client
                 </label>
                 <select
                   value={formState.client_name}
@@ -175,9 +178,10 @@ export default function ProjectModal({
                 </select>
               </div>
 
+              {/* Service Classification */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Service Classification
+                  Service Category
                 </label>
                 <select
                   value={formState.service_type}
@@ -203,9 +207,10 @@ export default function ProjectModal({
               "Management & Status",
             )}
             <div className="flex flex-col gap-3.5">
+              {/* Assigned Lead */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Assigned Lead
+                  Lead
                 </label>
                 <select
                   value={formState.lead}
@@ -220,9 +225,10 @@ export default function ProjectModal({
                 </select>
               </div>
 
+              {/* Lifecycle Status */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Lifecycle Status
+                  Status
                 </label>
                 <select
                   value={formState.status}
@@ -246,9 +252,10 @@ export default function ProjectModal({
               "Timeline Deadlines",
             )}
             <div className="flex flex-col gap-3.5">
+              {/* Commencement Date */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Commencement Date
+                  Start Date
                 </label>
                 <input
                   type="date"
@@ -261,9 +268,10 @@ export default function ProjectModal({
                 />
               </div>
 
+              {/* Target Delivery Date */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Target Delivery Date
+                  Delivery Date
                 </label>
                 <input
                   type="date"
@@ -284,9 +292,10 @@ export default function ProjectModal({
               <Link2 className="w-3.5 h-3.5" />,
               "Repository Assets",
             )}
+            {/* Repository Link */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                VCS Repository URL
+                Repository Link
               </label>
               <input
                 type="url"
@@ -314,7 +323,7 @@ export default function ProjectModal({
               className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md shadow-slate-400/20 transition-all font-aileron"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{isAdding ? "Register Project" : "Save Changes"}</span>
+              <span>{isAdding ? "Save" : "Save"}</span>
             </button>
           </div>
         </form>

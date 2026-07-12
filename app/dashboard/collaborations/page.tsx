@@ -14,7 +14,8 @@ import {
   Trash2,
   Plus,
   Inbox,
-  GitBranch, // Added for clean Repository rendering
+  GitBranch,
+  ChevronDown,
 } from "lucide-react";
 
 type CollaborationFormState = {
@@ -34,17 +35,22 @@ const EMPTY_FORM: CollaborationFormState = {
   documents_links: [""],
   notes: "",
   start_date: "",
-  status: "On-going",
+  status: "ongoing",
   repository_link: "",
 };
 
+// Updated to align perfectly with the target strict values
 const FILTER_OPTIONS = [
-  "All",
-  "Completed",
-  "On-going",
-  "Submitted",
-  "For approval",
-  "On hold",
+  { value: "All", label: "All" },
+  { value: "for_approval", label: "For Approval" },
+  { value: "ongoing", label: "On-going" },
+  { value: "finished", label: "Finished" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "for_approval", label: "For Approval" },
+  { value: "ongoing", label: "On-going" },
+  { value: "finished", label: "Finished" },
 ];
 
 export default function CollaborationsPage() {
@@ -66,14 +72,11 @@ export default function CollaborationsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  // FIXED: Corrected useState type annotation and initial state definition
   const [selectedCollaboration, setSelectedCollaboration] =
     useState<CollaborationRow | null>(null);
 
   const isPanelOpen = isAdding || isEditing;
 
-  // Broadcast layout state mutations to hide/show the left main sidebar
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
       detail: { isOpen: isPanelOpen },
@@ -130,6 +133,20 @@ export default function CollaborationsPage() {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setCollaborationsList((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: newStatus as CollaborationRow["status"],
+              updated_at: new Date().toISOString(),
+            }
+          : item,
+      ),
+    );
+  };
+
   const handleSort = (key: keyof CollaborationRow) => {
     let direction: "asc" | "desc" = "asc";
     if (
@@ -152,9 +169,7 @@ export default function CollaborationsPage() {
       lead_user_id: formState.lead_user_id,
       start_date:
         formState.start_date || new Date().toISOString().split("T")[0],
-      status: formState.status
-        .toLowerCase()
-        .replace(" ", "") as CollaborationRow["status"],
+      status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
       user: {
@@ -183,9 +198,7 @@ export default function CollaborationsPage() {
               partner_org: formState.partner_org,
               lead_user_id: formState.lead_user_id,
               start_date: formState.start_date,
-              status: formState.status
-                .toLowerCase()
-                .replace(" ", "") as CollaborationRow["status"],
+              status: formState.status as CollaborationRow["status"],
               documents: cleanDocs.length > 0 ? cleanDocs : null,
               notes: formState.notes || null,
               user: {
@@ -214,16 +227,9 @@ export default function CollaborationsPage() {
     let records = collaborationsList;
 
     if (activeFilter !== "All") {
-      records = records.filter((collab) => {
-        const normalCollabStatus = (collab.status || "")
-          .toLowerCase()
-          .replace(/[\s-]/g, "");
-        const normalFilter = activeFilter.toLowerCase().replace(/[\s-]/g, "");
-
-        if (normalFilter === "ongoing" && normalCollabStatus === "inprogress")
-          return true;
-        return normalCollabStatus === normalFilter;
-      });
+      records = records.filter(
+        (collab) => (collab.status || "") === activeFilter,
+      );
     }
 
     const query = searchQuery.toLowerCase().trim();
@@ -267,25 +273,44 @@ export default function CollaborationsPage() {
     );
   }, [sortedCollaborations, currentPage]);
 
-  const renderStatusBadge = (status: string) => {
-    const baseClass =
-      "px-2 py-0.5 rounded-full text-[10px] font-bold text-center min-w-[80px] inline-block tracking-wide uppercase shadow-sm";
-    if (status === "finished" || status === "completed")
-      return (
-        <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
-          Completed
-        </span>
-      );
-    if (status === "ongoing" || status === "inprogress")
-      return (
-        <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
-          In-Progress
-        </span>
-      );
+  const renderStatusDropdown = (id: string, currentStatus: string) => {
+    const status = currentStatus || "for_approval";
+
+    let colorClasses = "bg-gray-100 text-gray-700";
+    let chevronClass = "text-gray-500";
+
+    if (status === "finished") {
+      colorClasses = "bg-[#eaf7ee] text-[#2e7d32]";
+      chevronClass = "text-[#2e7d32]";
+    } else if (status === "ongoing") {
+      colorClasses = "bg-[#fffde7] text-[#f57f17]";
+      chevronClass = "text-[#f57f17]";
+    } else if (status === "for_approval") {
+      colorClasses = "bg-blue-50 text-blue-700";
+      chevronClass = "text-blue-700";
+    }
+
     return (
-      <span className={`${baseClass} bg-gray-100 text-gray-600`}>
-        {status || "For approval"}
-      </span>
+      <div className="relative inline-block min-w-[125px]">
+        <select
+          value={status}
+          onChange={(e) => handleStatusChange(id, e.target.value)}
+          className={`w-full pl-3 pr-7 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-0 outline-none focus:outline-none focus:ring-0 text-left transition-all appearance-none ${colorClasses}`}
+        >
+          {STATUS_OPTIONS.map((opt) => (
+            <option
+              key={opt.value}
+              value={opt.value}
+              className="bg-white text-slate-800 normal-case text-xs"
+            >
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+        />
+      </div>
     );
   };
 
@@ -321,8 +346,8 @@ export default function CollaborationsPage() {
     {
       key: "status",
       label: "Status",
-      width: "12%",
-      render: (c) => renderStatusBadge(c.status),
+      width: "14%",
+      render: (c) => renderStatusDropdown(c.id, c.status),
     },
     {
       key: "start_date",
@@ -361,7 +386,7 @@ export default function CollaborationsPage() {
     {
       key: "notes",
       label: "Notes",
-      width: "13%",
+      width: "12%",
       render: (c) =>
         c.notes ? (
           <span
@@ -375,11 +400,10 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "id", // Using 'id' for custom lookup context if specific key isn't inside CollaborationRow yet
+      key: "id",
       label: "Repository Link",
-      width: "15%",
+      width: "14%",
       render: (c) => {
-        // Accessing repository link safely assuming it exists or maps contextually
         const repoUrl = (c as any).repository_link || "";
         return repoUrl ? (
           <a
@@ -413,7 +437,7 @@ export default function CollaborationsPage() {
                   c.documents && c.documents.length > 0 ? c.documents : [""],
                 notes: c.notes || "",
                 start_date: c.start_date || "",
-                status: c.status || "On-going",
+                status: c.status || "ongoing",
                 repository_link: (c as any).repository_link || "",
               });
               setIsEditing(true);
@@ -491,21 +515,22 @@ export default function CollaborationsPage() {
             </h2>
           </div>
 
+          {/* Adjusted Filter Menu Bar */}
           <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
-            {FILTER_OPTIONS.map((filter) => {
-              const isActive = activeFilter === filter;
+            {FILTER_OPTIONS.map((opt) => {
+              const isActive = activeFilter === opt.value;
               return (
                 <button
-                  key={filter}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => setActiveFilter(opt.value)}
                   className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
                     isActive
                       ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >
-                  {filter}
+                  {opt.label}
                 </button>
               );
             })}

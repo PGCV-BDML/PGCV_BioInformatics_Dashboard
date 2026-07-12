@@ -298,11 +298,11 @@ export default function ProjectsPage() {
       label: "Service Category",
       width: "13%",
       render: (p) => (
-        <div className="relative inline-block w-full min-w-[110px]">
+        <div className="relative block w-full whitespace-normal break-words">
           <select
             value={p.service_type}
             onChange={(e) => updateProjectService(p.id, e.target.value)}
-            className="w-full text-[10px] font-bold pl-2 pr-6 py-0.5 bg-[#f0f2f3] text-[#4a5963] border border-gray-200/50 rounded-full inline-block shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400"
+            className="w-full text-[10px] font-bold pl-2 pr-6 py-1 bg-[#f0f2f3] text-[#4a5963] border border-gray-200/50 rounded-xl block shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 whitespace-normal break-words leading-tight"
           >
             {AVAILABLE_SERVICES.map((srv) => (
               <option

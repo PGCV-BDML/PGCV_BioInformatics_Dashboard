@@ -211,20 +211,6 @@ export default function TaskModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  name="due_date"
-                  required
-                  value={formState.due_date}
-                  onChange={onInputChange}
-                  className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
                   Status
                 </label>
                 <select
@@ -245,6 +231,20 @@ export default function TaskModal({
                   ))}
                 </select>
               </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  name="due_date"
+                  required
+                  value={formState.due_date}
+                  onChange={onInputChange}
+                  className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                />
+              </div>
             </div>
           </div>
 
@@ -262,7 +262,7 @@ export default function TaskModal({
               className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md shadow-slate-400/20 transition-all font-aileron"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{isAdding ? "Save" : "Save Changes"}</span>
+              <span>{isAdding ? "Save" : "Save"}</span>
             </button>
           </div>
         </form>
