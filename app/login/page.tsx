@@ -21,38 +21,9 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen w-full flex bg-[#fffdf8]">
-      {/* Safe injection of subtle, ambient keyframes */}
-      <style jsx global>{`
-        @keyframes dynamicDnaPulse {
-          0%,
-          100% {
-            transform: translateY(var(--wave-y)) scale(0.95);
-            filter: drop-shadow(0 0 2px rgba(7, 216, 255, 0.3));
-            opacity: 0.65;
-          }
-          50% {
-            /* Smooth, subtle displacement and minor scaling */
-            transform: translateY(calc(var(--wave-y) - 4px)) scale(1.08);
-            filter: drop-shadow(0 0 6px rgba(7, 216, 255, 0.7));
-            opacity: 0.95;
-          }
-        }
-        @keyframes linePulse {
-          0%,
-          100% {
-            opacity: 0.5;
-            transform: scaleY(0.98);
-          }
-          50% {
-            opacity: 0.85;
-            transform: scaleY(1.02);
-          }
-        }
-      `}</style>
-
       {/* ── Left hero panel ───────────────────────────────────────────── */}
       <div className="hidden md:flex flex-1 bg-[#2a7797] relative overflow-hidden flex-col justify-between p-12">
-        {/* ── Engineered DNA Double Helix Strands Field (Subtle Ambient Engine) ── */}
+        {/* ── Engineered DNA Double Helix Strands Field (Static Blueprint Design) ── */}
         <div
           className="absolute inset-y-0 right-0 w-1/2 pointer-events-none opacity-[0.75] mix-blend-screen select-none z-0 flex flex-col justify-around py-20 overflow-hidden"
           style={{
@@ -78,7 +49,6 @@ export default function SignInPage() {
                 const isFrontA = Math.cos(angle) > 0;
 
                 return (
-                  /* Outer Container: Dedicated solely to absolute horizontal spacing and height bounds */
                   <div
                     key={baseIndex}
                     className="absolute top-1/2 flex flex-col items-center justify-center"
@@ -91,48 +61,23 @@ export default function SignInPage() {
                   >
                     {/* Top Node Layer */}
                     <div
-                      className={`w-2 h-2 rounded-full absolute top-0 -translate-y-1/2 shadow-lg transition-all ${
-                        isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
+                      className={`w-2 h-2 rounded-full absolute top-0 -translate-y-1/2 shadow-[0_0_6px_1px_rgba(7,216,255,0.6)] ${
+                        isFrontA
+                          ? "bg-[#07d8ff] z-20"
+                          : "bg-white z-10 opacity-75"
                       }`}
-                      style={
-                        {
-                          "--wave-y": "0px",
-                          animationName: "dynamicDnaPulse",
-                          animationDuration: "5.0s",
-                          animationTimingFunction: "ease-in-out",
-                          animationIterationCount: "infinite",
-                          animationDelay: `${baseIndex * 0.25}s`,
-                        } as React.CSSProperties
-                      }
                     />
 
                     {/* Connecting Vertical Bar Layer */}
-                    <div
-                      className="w-[1px] h-full bg-gradient-to-b from-[#07d8ff] via-white/70 to-white origin-center"
-                      style={{
-                        animationName: "linePulse",
-                        animationDuration: "5.0s",
-                        animationTimingFunction: "ease-in-out",
-                        animationIterationCount: "infinite",
-                        animationDelay: `${baseIndex * 0.25}s`,
-                      }}
-                    />
+                    <div className="w-[1px] h-full bg-gradient-to-b from-[#07d8ff] via-white/60 to-white opacity-60 origin-center" />
 
                     {/* Bottom Node Layer */}
                     <div
-                      className={`w-2 h-2 rounded-full absolute bottom-0 translate-y-1/2 shadow-lg transition-all ${
-                        !isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
+                      className={`w-2 h-2 rounded-full absolute bottom-0 translate-y-1/2 shadow-[0_0_6px_1px_rgba(7,216,255,0.6)] ${
+                        !isFrontA
+                          ? "bg-[#07d8ff] z-20"
+                          : "bg-white z-10 opacity-75"
                       }`}
-                      style={
-                        {
-                          "--wave-y": "0px",
-                          animationName: "dynamicDnaPulse",
-                          animationDuration: "5.0s",
-                          animationTimingFunction: "ease-in-out",
-                          animationIterationCount: "infinite",
-                          animationDelay: `${baseIndex * 0.25 + 1.0}s`,
-                        } as React.CSSProperties
-                      }
                     />
                   </div>
                 );
@@ -152,7 +97,6 @@ export default function SignInPage() {
 
         {/* Content Layer */}
         <div className="relative z-10 w-full flex flex-col items-start pt-2">
-          {/* Integrated branding header layout block */}
           <div className="flex items-center gap-4 max-w-[560px] mb-6">
             <img
               src="/assets/PGC-VSF_Logo-W.png"
@@ -166,7 +110,6 @@ export default function SignInPage() {
             </p>
           </div>
 
-          {/* Main Title Header */}
           <h1
             className="text-[#f0e8f2] font-bold leading-[1.15] max-w-[560px] font-aileron"
             style={{ fontSize: "clamp(30px, 3.8vw, 46px)" }}
@@ -174,7 +117,6 @@ export default function SignInPage() {
             Bioinformatics and Data Management Laboratory Workflow Dashboard
           </h1>
 
-          {/* Description Prose */}
           <p className="mt-6 text-[rgba(230,245,255,0.8)] leading-relaxed max-w-[480px] text-[15px] font-quicksand">
             Internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and
@@ -182,9 +124,8 @@ export default function SignInPage() {
           </p>
         </div>
 
-        {/* Lower footer copyright container block */}
         <div className="text-[rgba(255,255,255,0.4)] text-[12px] font-quicksand relative z-10">
-          © {currentYear} PGC Visayas. All rights reserved.
+          © {currentYear} Philippine Genome Center Visayas. All rights reserved.
         </div>
       </div>
 
@@ -210,7 +151,6 @@ export default function SignInPage() {
             Use your authorized Google account to access the dashboard.
           </p>
 
-          {/* Custom Action Trigger Blue Gradient Button */}
           <button
             type="button"
             onClick={handleSignInWithGoogle}
