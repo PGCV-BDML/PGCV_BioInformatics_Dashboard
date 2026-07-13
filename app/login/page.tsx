@@ -5,18 +5,25 @@ import { supabase } from "@/lib/supabase";
 
 export default function SignInPage() {
   const [currentYear, setCurrentYear] = useState<string>("2026");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear().toString());
   }, []);
 
   const handleSignInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
+    setIsLoading(true);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+    } catch (error) {
+      console.error("Sign in failed:", error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -153,43 +160,67 @@ export default function SignInPage() {
 
           <button
             type="button"
+            disabled={isLoading}
             onClick={handleSignInWithGoogle}
-            className="mt-8 w-full h-[52px] rounded-2xl flex items-center justify-center gap-3 text-white text-[14px] font-bold font-quicksand transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]"
+            className="mt-8 w-full h-[52px] rounded-2xl flex items-center justify-center gap-3 text-white text-[14px] font-bold font-quicksand transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797] disabled:opacity-75 disabled:cursor-not-allowed"
             style={{
               backgroundImage:
                 "linear-gradient(171.559deg, #388dae 0%, #2a7797 100%)",
             }}
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 18 18"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M16.5 9.188c0-.563-.05-1.125-.15-1.688H9v3.188h4.2a3.6 3.6 0 0 1-1.575 2.362v1.95h2.55c1.5-1.388 2.325-3.45 2.325-5.812Z"
-                fill="#fff"
-                fillOpacity=".9"
-              />
-              <path
-                d="M9 16.5c2.1 0 3.863-.694 5.175-1.875l-2.55-1.95c-.712.47-1.612.75-2.625.75-2.025 0-3.75-1.35-4.35-3.188H2.025v2.025A7.5 7.5 0 0 0 9 16.5Z"
-                fill="#fff"
-                fillOpacity=".9"
-              />
-              <path
-                d="M4.65 10.237A4.47 4.47 0 0 1 4.425 9c0-.431.075-.844.225-1.237V5.737H2.025A7.5 7.5 0 0 0 1.5 9c0 1.219.3 2.363.825 3.338l2.325-1.1Z"
-                fill="#fff"
-                fillOpacity=".8"
-              />
-              <path
-                d="M9 4.575c1.125 0 2.138.394 2.925 1.144l2.213-2.213C12.862 2.306 11.1 1.5 9 1.5A7.5 7.5 0 0 0 2.025 5.738L4.35 7.762C4.95 5.925 6.675 4.575 9 4.575Z"
-                fill="#fff"
-                fillOpacity=".8"
-              />
-            </svg>
-            Sign in with Google
+            {isLoading ? (
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M16.5 9.188c0-.563-.05-1.125-.15-1.688H9v3.188h4.2a3.6 3.6 0 0 1-1.575 2.362v1.95h2.55c1.5-1.388 2.325-3.45 2.325-5.812Z"
+                  fill="#fff"
+                  fillOpacity=".9"
+                />
+                <path
+                  d="M9 16.5c2.1 0 3.863-.694 5.175-1.875l-2.55-1.95c-.712.47-1.612.75-2.625.75-2.025 0-3.75-1.35-4.35-3.188H2.025v2.025A7.5 7.5 0 0 0 9 16.5Z"
+                  fill="#fff"
+                  fillOpacity=".9"
+                />
+                <path
+                  d="M4.65 10.237A4.47 4.47 0 0 1 4.425 9c0-.431.075-.844.225-1.237V5.737H2.025A7.5 7.5 0 0 0 1.5 9c0 1.219.3 2.363.825 3.338l2.325-1.1Z"
+                  fill="#fff"
+                  fillOpacity=".8"
+                />
+                <path
+                  d="M9 4.575c1.125 0 2.138.394 2.925 1.144l2.213-2.213C12.862 2.306 11.1 1.5 9 1.5A7.5 7.5 0 0 0 2.025 5.738L4.35 7.762C4.95 5.925 6.675 4.575 9 4.575Z"
+                  fill="#fff"
+                  fillOpacity=".8"
+                />
+              </svg>
+            )}
+            {isLoading ? "Signing in..." : "Sign in with Google"}
           </button>
 
           <div className="mt-5 bg-[#e6f5ff] rounded-2xl p-4">
