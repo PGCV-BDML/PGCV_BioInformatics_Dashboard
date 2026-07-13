@@ -8,7 +8,7 @@ export default function AccomplishmentsComingSoonPage() {
       {/* Top Header */}
       <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
         <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-          Dashboard - List
+          Dashboard - Accomplishments Page
         </span>
         <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
           Accomplishments

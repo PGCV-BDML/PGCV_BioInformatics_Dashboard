@@ -1,8 +1,15 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function SignInPage() {
+  const [currentYear, setCurrentYear] = useState<string>("2026");
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear().toString());
+  }, []);
+
   const handleSignInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -13,96 +20,206 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="min-h-screen w-full flex bg-[#fffdf8]">
+      {/* Safe injection of subtle, ambient keyframes */}
+      <style jsx global>{`
+        @keyframes dynamicDnaPulse {
+          0%,
+          100% {
+            transform: translateY(var(--wave-y)) scale(0.95);
+            filter: drop-shadow(0 0 2px rgba(7, 216, 255, 0.3));
+            opacity: 0.65;
+          }
+          50% {
+            /* Smooth, subtle displacement and minor scaling */
+            transform: translateY(calc(var(--wave-y) - 4px)) scale(1.08);
+            filter: drop-shadow(0 0 6px rgba(7, 216, 255, 0.7));
+            opacity: 0.95;
+          }
+        }
+        @keyframes linePulse {
+          0%,
+          100% {
+            opacity: 0.5;
+            transform: scaleY(0.98);
+          }
+          50% {
+            opacity: 0.85;
+            transform: scaleY(1.02);
+          }
+        }
+      `}</style>
+
       {/* ── Left hero panel ───────────────────────────────────────────── */}
-      <div className="hidden md:flex flex-1 bg-[#282560] relative overflow-hidden flex-col justify-between p-10">
-        {/* Top-left radial glow */}
+      <div className="hidden md:flex flex-1 bg-[#2a7797] relative overflow-hidden flex-col justify-between p-12">
+        {/* ── Engineered DNA Double Helix Strands Field (Subtle Ambient Engine) ── */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-y-0 right-0 w-1/2 pointer-events-none opacity-[0.75] mix-blend-screen select-none z-0 flex flex-col justify-around py-20 overflow-hidden"
           style={{
-            backgroundImage:
-              "radial-gradient(ellipse 60% 40% at 0% 0%, rgba(90,43,237,0.35) 0%, rgba(45,22,119,0.18) 35%, transparent 70%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, black 80%)",
+            maskImage: "linear-gradient(to right, transparent 0%, black 80%)",
           }}
-        />
-        {/* Bottom-right radial glow */}
+        >
+          {[...Array(4)].map((_, helixIndex) => (
+            <div
+              key={helixIndex}
+              className="relative w-full h-16 flex items-center"
+              style={{
+                transform: `translateY(${(helixIndex - 1.5) * 16}px)`,
+              }}
+            >
+              {[...Array(12)].map((_, baseIndex) => {
+                const angle = (baseIndex / 12) * Math.PI * 3.5;
+                const positionX = (baseIndex / 11) * 100;
+
+                const strandA_Y = Math.sin(angle) * 28;
+                const strandB_Y = Math.sin(angle + Math.PI) * 28;
+                const isFrontA = Math.cos(angle) > 0;
+
+                return (
+                  /* Outer Container: Dedicated solely to absolute horizontal spacing and height bounds */
+                  <div
+                    key={baseIndex}
+                    className="absolute top-1/2 flex flex-col items-center justify-center"
+                    style={{
+                      left: `${positionX}%`,
+                      height: `${Math.abs(strandA_Y - strandB_Y)}px`,
+                      transform: `translateY(${Math.min(strandA_Y, strandB_Y)}px)`,
+                      width: "2px",
+                    }}
+                  >
+                    {/* Top Node Layer */}
+                    <div
+                      className={`w-2 h-2 rounded-full absolute top-0 -translate-y-1/2 shadow-lg transition-all ${
+                        isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
+                      }`}
+                      style={
+                        {
+                          "--wave-y": "0px",
+                          animationName: "dynamicDnaPulse",
+                          animationDuration: "5.0s",
+                          animationTimingFunction: "ease-in-out",
+                          animationIterationCount: "infinite",
+                          animationDelay: `${baseIndex * 0.25}s`,
+                        } as React.CSSProperties
+                      }
+                    />
+
+                    {/* Connecting Vertical Bar Layer */}
+                    <div
+                      className="w-[1px] h-full bg-gradient-to-b from-[#07d8ff] via-white/70 to-white origin-center"
+                      style={{
+                        animationName: "linePulse",
+                        animationDuration: "5.0s",
+                        animationTimingFunction: "ease-in-out",
+                        animationIterationCount: "infinite",
+                        animationDelay: `${baseIndex * 0.25}s`,
+                      }}
+                    />
+
+                    {/* Bottom Node Layer */}
+                    <div
+                      className={`w-2 h-2 rounded-full absolute bottom-0 translate-y-1/2 shadow-lg transition-all ${
+                        !isFrontA ? "bg-[#07d8ff] z-20" : "bg-white z-10"
+                      }`}
+                      style={
+                        {
+                          "--wave-y": "0px",
+                          animationName: "dynamicDnaPulse",
+                          animationDuration: "5.0s",
+                          animationTimingFunction: "ease-in-out",
+                          animationIterationCount: "infinite",
+                          animationDelay: `${baseIndex * 0.25 + 1.0}s`,
+                        } as React.CSSProperties
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Ambient Top Subtle Overlay Glow */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none z-0"
           style={{
             backgroundImage:
-              "radial-gradient(ellipse 50% 40% at 100% 100%, rgba(7,216,255,0.12) 0%, rgba(4,108,128,0.06) 35%, transparent 70%)",
+              "radial-gradient(ellipse 60% 50% at 20% 20%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)",
           }}
         />
 
-        {/* Label */}
-        <div className="relative z-10">
-          <p className="text-[#07d8ff] text-[11px] tracking-[2.64px] uppercase font-optima">
-            PGCV-BDML
-          </p>
+        {/* Content Layer */}
+        <div className="relative z-10 w-full flex flex-col items-start pt-2">
+          {/* Integrated branding header layout block */}
+          <div className="flex items-center gap-4 max-w-[560px] mb-6">
+            <img
+              src="/assets/PGC-VSF_Logo-W.png"
+              alt="Philippine Genome Center Visayas logo"
+              className="h-12 w-auto object-contain select-none pointer-events-none flex-shrink-0"
+            />
+            <div className="w-[1px] h-8 bg-white/20 flex-shrink-0" />
+            <p className="text-[#f0e8f2] text-[11px] tracking-[2.64px] uppercase font-quicksand font-bold leading-relaxed">
+              PHILIPPINE GENOME CENTER VISAYAS - Bioinformatics and Data
+              Management Laboratory
+            </p>
+          </div>
 
-          {/* Heading - Switched to font-aileron */}
+          {/* Main Title Header */}
           <h1
-            className="mt-5 text-[#f0e8f2] font-bold leading-[1.1] max-w-[560px] font-aileron"
-            style={{ fontSize: "clamp(32px, 4vw, 52px)" }}
+            className="text-[#f0e8f2] font-bold leading-[1.15] max-w-[560px] font-aileron"
+            style={{ fontSize: "clamp(30px, 3.8vw, 46px)" }}
           >
-            Bioinformatics Workflow Dashboard
+            Bioinformatics and Data Management Laboratory Workflow Dashboard
           </h1>
 
-          {/* Subtitle - Switched to font-aileron */}
-          <p className="mt-6 text-[rgba(230,245,255,0.65)] leading-relaxed max-w-[480px] text-[15px] font-aileron">
+          {/* Description Prose */}
+          <p className="mt-6 text-[rgba(230,245,255,0.8)] leading-relaxed max-w-[480px] text-[15px] font-quicksand">
             Internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and
             repositories.
           </p>
         </div>
 
-        {/* Logo box */}
-        <div className="relative z-10 mt-10">
-          <div className="bg-[rgba(7,216,255,0.06)] rounded-3xl border border-dashed border-[rgba(7,216,255,0.2)] flex items-center justify-center py-8 px-6 max-w-[606px]">
-            <img
-              src="/assets/PGC-VSF_Logo-W.png"
-              alt="Philippine Genome Center Visayas logo"
-              className="h-[142px] w-auto object-contain"
-            />
-          </div>
+        {/* Lower footer copyright container block */}
+        <div className="text-[rgba(255,255,255,0.4)] text-[12px] font-quicksand relative z-10">
+          © {currentYear} PGC Visayas. All rights reserved.
         </div>
       </div>
 
       {/* ── Right sign-in panel ───────────────────────────────────────── */}
-      <div className="w-full md:w-[480px] flex-shrink-0 bg-[#e6f5ff] flex items-center justify-center p-8">
+      <div className="w-full md:w-[480px] flex-shrink-0 flex items-center justify-center p-6 md:p-8">
         <div
-          className="bg-[#fffdf8] rounded-[28px] w-full max-w-[416px] p-[32px] relative"
+          className="bg-[#fffdf8] rounded-[28px] w-full max-w-[416px] p-6 sm:p-[32px] relative"
           style={{
             boxShadow:
-              "0px 24px 24px rgba(40,37,96,0.12), 0px 4px 8px rgba(40,37,96,0.08)",
-            border: "0.8px solid rgba(23,33,38,0.14)",
+              "0px 40px 64px -12px rgba(40, 37, 96, 0.16), 0px 16px 32px -8px rgba(40, 37, 96, 0.10), 0px 4px 16px rgba(40, 37, 96, 0.04)",
+            border: "0.8px solid rgba(23,33,38,0.12)",
           }}
         >
-          {/* Internal access label */}
-          <p className="text-[#2a7797] text-[11px] tracking-[2.16px] uppercase font-optima">
+          <p className="text-[#2a7797] text-[11px] tracking-[2.16px] uppercase font-quicksand font-bold">
             Internal access
           </p>
 
-          {/* Heading */}
           <h2 className="mt-3 text-[#172126] font-bold text-[44px] leading-[1.1] font-aileron">
             Sign in
           </h2>
 
-          {/* Subtitle */}
-          <p className="mt-4 text-[#4d6470] text-[14px] leading-6 max-w-[351px] font-aileron">
+          <p className="mt-4 text-[#4d6470] text-[14px] leading-6 max-w-[351px] font-quicksand">
             Use your authorized Google account to access the dashboard.
           </p>
 
-          {/* Sign-in button - Switched to font-quicksand layout token */}
+          {/* Custom Action Trigger Blue Gradient Button */}
           <button
             type="button"
             onClick={handleSignInWithGoogle}
-            className="mt-8 w-full h-[52px] rounded-2xl flex items-center justify-center gap-3 text-white text-[14px] font-bold font-quicksand transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1071ff]"
+            className="mt-8 w-full h-[52px] rounded-2xl flex items-center justify-center gap-3 text-white text-[14px] font-bold font-quicksand transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]"
             style={{
               backgroundImage:
-                "linear-gradient(171.559deg, rgb(16,113,255) 0%, rgb(42,119,151) 100%)",
+                "linear-gradient(171.559deg, #388dae 0%, #2a7797 100%)",
             }}
           >
-            {/* Google SVG Graphic */}
             <svg
               width="18"
               height="18"
@@ -135,20 +252,18 @@ export default function SignInPage() {
             Sign in with Google
           </button>
 
-          {/* Access notice */}
           <div className="mt-5 bg-[#e6f5ff] rounded-2xl p-4">
-            <p className="text-[#172126] text-[14px] leading-6 font-aileron">
+            <p className="text-[#172126] text-[14px] leading-6 font-quicksand">
               For authorized PGCV-BDML users only. Contact your supervisor if
               you need access.
             </p>
           </div>
 
-          {/* Privacy notice */}
           <div
             className="mt-5 pt-5 relative"
             style={{ borderTop: "0.8px solid rgba(23,33,38,0.12)" }}
           >
-            <p className="text-[12px] leading-5 font-aileron">
+            <p className="text-[12px] leading-5 font-quicksand">
               <span className="font-bold text-[#172126]">
                 Data Privacy Notice.
               </span>{" "}

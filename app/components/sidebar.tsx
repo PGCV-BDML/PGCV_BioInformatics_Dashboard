@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   LayoutGrid,
+  CheckSquare,
   Calendar,
   Microscope,
   Users2,
@@ -24,6 +25,13 @@ const navItems = [
     href: "/dashboard",
     icon: LayoutGrid,
     animationClass: "group-hover:rotate-12 transition-transform duration-300",
+  },
+  {
+    name: "Tasks",
+    href: "/dashboard/tasks",
+    icon: CheckSquare,
+    animationClass:
+      "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
     name: "Calendar",
@@ -207,31 +215,32 @@ export default function Sidebar({
 
         {/* Profile Controls */}
         <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
-          {showProfileCard && (
-            <div className="absolute bottom-[76px] left-0 w-full bg-[#FFFDF8] border border-[rgba(23,33,38,0.1)] rounded-2xl py-2 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30">
-              <div className="px-4 py-2.5 border-b border-gray-100 min-w-0">
-                <p className="text-[13px] font-bold text-[#1e293b] leading-tight truncate">
-                  {userData.name}
-                </p>
-                <p className="text-[11.5px] font-semibold text-[#64748b] leading-tight mt-0.5 truncate">
-                  {userData.email}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 mt-1 text-[#1e293b] hover:bg-[#f5f5f4] font-bold text-[13px] font-aileron transition-colors"
-              >
-                <LogOut className="w-4 h-4 text-[#64748b] stroke-[2.5]" />
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
+          {/* Animated Popout Container */}
+          <div
+            className={`absolute bottom-[76px] left-0 w-full bg-[#FFFDF8] border border-[rgba(23,33,38,0.1)] rounded-2xl py-1 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30 transition-all duration-200 ease-out origin-bottom ${
+              showProfileCard
+                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                : "opacity-0 translate-y-2 scale-95 pointer-events-none"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#1e293b] hover:bg-[#f5f5f4] rounded-xl font-bold text-[13px] font-aileron transition-colors"
+            >
+              <LogOut className="w-4 h-4 text-[#64748b] stroke-[2.5]" />
+              <span>Sign out</span>
+            </button>
+          </div>
 
           <button
             type="button"
             onClick={() => setShowProfileCard(!showProfileCard)}
-            className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none min-w-0 ${showProfileCard ? "bg-[#e6f5ff] text-[#2a7797]" : "hover:bg-[#e6f5ff]/60 hover:-translate-y-0.5 hover:scale-[1.01]"}`}
+            className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none min-w-0 group ${
+              showProfileCard
+                ? "bg-[#e6f5ff] text-[#2a7797] -translate-y-0.5 scale-[1.01]"
+                : "text-[#1e293b] hover:bg-[#e6f5ff] hover:text-[#2a7797] hover:-translate-y-0.5 hover:scale-[1.01]"
+            }`}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {userData.avatarUrl ? (
@@ -241,20 +250,44 @@ export default function Sidebar({
                   className="w-10 h-10 rounded-full object-cover border border-slate-200/60"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#2a7797] text-white flex items-center justify-center font-bold text-sm">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-200 ${
+                    showProfileCard
+                      ? "bg-[#2a7797] text-white"
+                      : "bg-[#2a7797] text-white group-hover:bg-[#2a7797] group-hover:text-white"
+                  }`}
+                >
                   {userData.name[0]}
                 </div>
               )}
               <div className="flex flex-col text-left min-w-0">
-                <p className="text-[13px] font-bold text-[#1e293b] truncate">
+                <p
+                  className={`text-[13px] font-bold truncate transition-colors duration-200 ${
+                    showProfileCard
+                      ? "text-[#2a7797]"
+                      : "text-[#1e293b] group-hover:text-[#2a7797]"
+                  }`}
+                >
                   {userData.name}
                 </p>
-                <p className="text-[11px] font-medium text-[#64748b] truncate">
+                <p
+                  className={`text-[11px] font-medium truncate transition-colors duration-200 ${
+                    showProfileCard
+                      ? "text-[#2a7797]/80"
+                      : "text-[#64748b] group-hover:text-[#2a7797]/80"
+                  }`}
+                >
                   {userData.email}
                 </p>
               </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-[#64748b] ml-2 flex-shrink-0" />
+            <ChevronDown
+              className={`w-4 h-4 ml-2 flex-shrink-0 transition-all duration-200 ${
+                showProfileCard
+                  ? "rotate-180 text-[#2a7797]"
+                  : "text-[#64748b] group-hover:text-[#2a7797]"
+              }`}
+            />
           </button>
         </div>
       </div>
