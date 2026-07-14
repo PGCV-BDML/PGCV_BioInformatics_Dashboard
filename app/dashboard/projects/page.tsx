@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import ComplianceFooter from "../../components/compliancefooter";
+import { useState, useMemo, useEffect } from "react";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
-import EditModal from "../../components/editmodal";
-import { Search, Network, Edit3, Trash2, Save, Link2 } from "lucide-react";
+import ProjectModal from "../../components/projectmodal";
+import {
+  Search,
+  Network,
+  Edit3,
+  Trash2,
+  Link2,
+  ExternalLink,
+  Plus,
+  Inbox,
+  ChevronRight,
+  ChevronDown,
+  SlidersHorizontal,
+} from "lucide-react";
 
 type Project = {
   id: number;
@@ -101,52 +112,59 @@ const AVAILABLE_USERS = [
   "Prof. Torres",
 ];
 
+const FILTER_OPTIONS = [
+  "All",
+  "Completed",
+  "On-going",
+  "Submitted",
+  "For approval",
+  "On hold",
+];
+
 export default function ProjectsPage() {
   const [projectsList, setProjectsList] = useState<Project[]>(INITIAL_PROJECTS);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Project;
     direction: "asc" | "desc";
   } | null>(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
+  const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [editForm, setEditForm] = useState<Project | null>(null);
 
-  const filteredProjects = useMemo(() => {
-    return projectsList.filter((project) =>
-      Object.values(project).some((val) =>
-        String(val).toLowerCase().includes(searchQuery.toLowerCase()),
+  const isPanelOpen = isAdding || isEditing;
+
+  useEffect(() => {
+    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
+      detail: { isOpen: isPanelOpen },
+    });
+    window.dispatchEvent(toggleEvent);
+  }, [isPanelOpen]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter, itemsPerPage]);
+
+  const updateProjectStatus = (projectId: number, newStatus: string) => {
+    setProjectsList((prev) =>
+      prev.map((proj) =>
+        proj.id === projectId ? { ...proj, status: newStatus } : proj,
       ),
     );
-  }, [searchQuery, projectsList]);
+  };
 
-  useMemo(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  const sortedProjects = useMemo(() => {
-    let sortableItems = [...filteredProjects];
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        if (a[sortConfig.key]! < b[sortConfig.key]!)
-          return sortConfig.direction === "asc" ? -1 : 1;
-        if (a[sortConfig.key]! > b[sortConfig.key]!)
-          return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [filteredProjects, sortConfig]);
-
-  const displayedProjects = useMemo(() => {
-    const startOffset = (currentPage - 1) * itemsPerPage;
-    return sortedProjects.slice(startOffset, startOffset + itemsPerPage);
-  }, [sortedProjects, currentPage]);
+  const updateProjectService = (projectId: number, newService: string) => {
+    setProjectsList((prev) =>
+      prev.map((proj) =>
+        proj.id === projectId ? { ...proj, service_type: newService } : proj,
+      ),
+    );
+  };
 
   const handleSort = (key: keyof Project) => {
     let direction: "asc" | "desc" = "asc";
@@ -160,79 +178,100 @@ export default function ProjectsPage() {
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    if (editForm) {
-      setEditForm({ ...editForm, [e.target.name]: e.target.value });
-    }
+  const handleAddSubmit = async (formData: Omit<Project, "id">) => {
+    const nextNumericId =
+      projectsList.length > 0
+        ? Math.max(...projectsList.map((p) => p.id)) + 1
+        : 1;
+    const runtimePayload: Project = { id: nextNumericId, ...formData };
+
+    setProjectsList((prev) => [runtimePayload, ...prev]);
+    setIsAdding(false);
   };
 
-  const handleSaveChanges = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editForm) return;
+  const handleEditSubmit = async (formData: Omit<Project, "id">) => {
+    if (!selectedProject) return;
 
     setProjectsList((prev) =>
-      prev.map((item) => (item.id === editForm.id ? editForm : item)),
+      prev.map((item) =>
+        item.id === selectedProject.id ? { ...item, ...formData } : item,
+      ),
     );
     setIsEditing(false);
   };
 
-  const handleDeleteRecord = () => {
+  const handleDeleteRecord = async () => {
     if (!selectedProject) return;
+
     setProjectsList((prev) =>
       prev.filter((item) => item.id !== selectedProject.id),
     );
     setShowDeleteConfirm(false);
   };
 
-  // Safe case-insensitive color badge lookup
-  const renderStatusBadge = (status: string) => {
-    const baseClass =
-      "px-2.5 py-1 rounded-full text-[10px] font-bold font-aileron text-center min-w-[92px] inline-block tracking-wide uppercase";
+  const filteredProjects = useMemo(() => {
+    let records = projectsList;
 
-    const normalizedStatus = status.toLowerCase().replace(/[\s-]/g, "");
-
-    switch (normalizedStatus) {
-      case "completed":
-        return (
-          <span className={`${baseClass} bg-[#eaf7ee] text-[#2e7d32]`}>
-            Completed
-          </span>
-        );
-      case "ongoing":
-      case "inprogress":
-        return (
-          <span className={`${baseClass} bg-[#fffde7] text-[#f57f17]`}>
-            In-Progress
-          </span>
-        );
-      case "onhold":
-      case "overdue":
-        return (
-          <span className={`${baseClass} bg-[#ffebee] text-[#c62828]`}>
-            Overdue
-          </span>
-        );
-      case "submitted":
-        return (
-          <span className={`${baseClass} bg-[#f5f5f5] text-[#616161]`}>
-            Submitted
-          </span>
-        );
-      case "forapproval":
-        return (
-          <span className={`${baseClass} bg-[#efebe9] text-[#4e342e]`}>
-            For Approval
-          </span>
-        );
-      default:
-        return (
-          <span className={`${baseClass} bg-gray-100 text-gray-600`}>
-            {status}
-          </span>
-        );
+    // Apply Active Horizontal Capsule Filter
+    if (activeFilter !== "All") {
+      records = records.filter((project) => {
+        const normalProjectStatus = (project.status || "")
+          .toLowerCase()
+          .replace(/[\s-]/g, "");
+        const normalFilter = activeFilter.toLowerCase().replace(/[\s-]/g, "");
+        return normalProjectStatus === normalFilter;
+      });
     }
+
+    const cleansedQuery = searchQuery.toLowerCase().trim();
+    if (!cleansedQuery) return records;
+
+    return records.filter((project) =>
+      Object.values(project).some((fieldValue) =>
+        String(fieldValue ?? "")
+          .toLowerCase()
+          .includes(cleansedQuery),
+      ),
+    );
+  }, [searchQuery, projectsList, activeFilter]);
+
+  const sortedProjects = useMemo(() => {
+    const itemsToProcess = [...filteredProjects];
+    if (!sortConfig) return itemsToProcess;
+
+    return itemsToProcess.sort((a, b) => {
+      const valA = String(a[sortConfig.key] ?? "").toLowerCase();
+      const valB = String(b[sortConfig.key] ?? "").toLowerCase();
+
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredProjects, sortConfig]);
+
+  const displayedProjects = useMemo(() => {
+    const startOffset = (currentPage - 1) * itemsPerPage;
+    return sortedProjects.slice(startOffset, startOffset + itemsPerPage);
+  }, [sortedProjects, currentPage, itemsPerPage]);
+
+  const getStatusClass = (status: string) => {
+    const baseClass =
+      "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
+    const normal = status.toLowerCase().replace(/[\s-]/g, "");
+
+    if (normal === "completed") {
+      return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
+    }
+    if (normal === "ongoing" || normal === "inprogress") {
+      return `${baseClass} bg-[#fffde7] text-[#f57f17] border-[#fff9c4]`;
+    }
+    if (normal === "onhold" || normal === "overdue") {
+      return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+    }
+    if (normal === "submitted") {
+      return `${baseClass} bg-[#f1f5f9] text-[#475569] border-[#e2e8f0]`;
+    }
+    return `${baseClass} bg-[#f5f3ff] text-[#6d28d9] border-[#ede9fe]`;
   };
 
   const columns: Column<Project>[] = [
@@ -241,52 +280,124 @@ export default function ProjectsPage() {
       label: "Project Name",
       width: "20%",
       sortable: true,
-      render: (p) => <span className="font-bold text-[#11161a]">{p.name}</span>,
+      render: (p) => (
+        <span className="font-bold text-[#11161a] block whitespace-normal break-words leading-snug py-1">
+          {p.name}
+        </span>
+      ),
     },
-    { key: "client_name", label: "Client", width: "16%", sortable: true },
+    {
+      key: "client_name",
+      label: "Client",
+      width: "13%",
+      sortable: true,
+      render: (p) => <span className="block">{p.client_name}</span>,
+    },
     {
       key: "service_type",
-      label: "Service Type",
-      width: "14%",
+      label: "Service Category",
+      width: "13%",
       render: (p) => (
-        <span className="px-2.5 py-0.5 bg-[#f0f2f3] text-[#4a5963] rounded-full text-[12px] font-bold inline-block">
-          {p.service_type}
-        </span>
+        <div className="relative block w-full whitespace-normal break-words">
+          <select
+            value={p.service_type}
+            onChange={(e) => updateProjectService(p.id, e.target.value)}
+            className="w-full text-[10px] font-bold pl-2 pr-6 py-1 bg-[#f0f2f3] text-[#4a5963] border border-gray-200/50 rounded-xl block shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 whitespace-normal break-words leading-tight"
+          >
+            {AVAILABLE_SERVICES.map((srv) => (
+              <option
+                key={srv}
+                value={srv}
+                className="bg-white text-slate-900 font-normal normal-case"
+              >
+                {srv}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        </div>
       ),
     },
     {
       key: "status",
       label: "Status",
       width: "12%",
-      render: (p) => renderStatusBadge(p.status),
+      render: (p) => (
+        <div className="relative inline-block w-full min-w-[95px]">
+          <select
+            value={p.status}
+            onChange={(e) => updateProjectStatus(p.id, e.target.value)}
+            className={getStatusClass(p.status)}
+          >
+            {FILTER_OPTIONS.filter((o) => o !== "All").map((opt) => (
+              <option
+                key={opt}
+                value={opt}
+                className="bg-white text-slate-900 font-normal normal-case"
+              >
+                {opt}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+        </div>
+      ),
     },
-    { key: "lead", label: "Lead", width: "12%", sortable: true },
-    { key: "start_date", label: "Start Date", width: "13%", sortable: true },
+    { key: "lead", label: "Lead", width: "10%", sortable: true },
+    {
+      key: "start_date",
+      label: "Start Date",
+      width: "9%",
+      sortable: true,
+      render: (p) => (
+        <span className="text-xs text-slate-600">{p.start_date}</span>
+      ),
+    },
     {
       key: "target_delivery_date",
-      label: "Target Delivery",
-      width: "13%",
+      label: "Delivery Date",
+      width: "9%",
       sortable: true,
+      render: (p) => (
+        <span className="text-xs text-slate-600">{p.target_delivery_date}</span>
+      ),
     },
     {
-      key: "actions",
+      key: "repository_link",
+      label: "Repository Link",
+      width: "14%",
+      render: (p) =>
+        p.repository_link ? (
+          <a
+            href={p.repository_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted whitespace-nowrap"
+          >
+            <Link2 className="w-3.5 h-3.5 flex-shrink-0" /> Repo
+            <ExternalLink className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
+          </a>
+        ) : (
+          <span className="text-xs text-slate-400 italic">None</span>
+        ),
+    },
+    {
+      key: "id",
       label: "Actions",
       width: "10%",
       render: (p) => (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-1.5">
           <button
             type="button"
             onClick={() => {
               setSelectedProject(p);
-              setEditForm({
-                ...p,
-                repository_link: p.repository_link || "",
-              });
               setIsEditing(true);
             }}
-            className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+            title="Edit Project"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
           </button>
           <button
             type="button"
@@ -294,9 +405,11 @@ export default function ProjectsPage() {
               setSelectedProject(p);
               setShowDeleteConfirm(true);
             }}
-            className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-colors"
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
+            title="Delete Project"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
           </button>
         </div>
       ),
@@ -304,45 +417,144 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-[1240px] mx-auto font-aileron">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
-          Projects
-        </h1>
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search entries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-11 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-[14px] outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-          />
+    <div
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      }`}
+    >
+      {/* Control Navigation Header Panel */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
+            Dashboard - Projects
+          </span>
+          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+            Projects
+          </h1>
+        </div>
+
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
+          {/* Row Limit Control Switcher */}
+          <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="bg-transparent text-xs text-slate-700 outline-none pr-1 cursor-pointer font-medium appearance-none"
+            >
+              <option value={5}>Show 5 rows</option>
+              <option value={7}>Show 7 rows</option>
+              <option value={10}>Show 10 rows</option>
+              <option value={20}>Show 20 rows</option>
+            </select>
+          </div>
+
+          <div className="relative w-full min-[480px]:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:shadow-[0_4px_16px_rgba(78,194,187,0.15)] transition-all"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedProject(null);
+              setIsAdding(true);
+            }}
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Project
+          </button>
         </div>
       </div>
 
-      <div className="bg-[#fffdf8] border border-[rgba(23,33,38,0.06)] rounded-[28px] p-8 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Network className="w-6 h-6 text-[#2a7797]" />
-          <h2 className="text-3xl font-bold text-[#333333]">
-            Project Tracking Workspace
-          </h2>
+      {/* Main Table Interface */}
+      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <Network className="w-5 h-5 text-[#333333]" />
+            <h2 className="text-2xl font-bold text-[#333333]">
+              List of Projects
+            </h2>
+          </div>
+
+          {/* New Cream Filter Bar Capsule matching your design image */}
+          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+            {FILTER_OPTIONS.map((filter) => {
+              const isActive = activeFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                    isActive
+                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      : "text-slate-500 hover:text-slate-800 font-medium"
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={displayedProjects}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-        />
-
-        <Pagination
-          totalItems={filteredProjects.length}
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+        {filteredProjects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
+            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
+            <span className="text-sm font-medium text-slate-500">
+              No matching projects discovered
+            </span>
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[760px]">
+            <DataTable
+              columns={columns}
+              data={displayedProjects}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+            <Pagination
+              totalItems={filteredProjects.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
+
+      <ProjectModal
+        isOpen={isPanelOpen}
+        isAdding={isAdding}
+        initialData={
+          selectedProject
+            ? {
+                name: selectedProject.name,
+                client_name: selectedProject.client_name,
+                service_type: selectedProject.service_type,
+                status: selectedProject.status,
+                lead: selectedProject.lead,
+                start_date: selectedProject.start_date,
+                target_delivery_date: selectedProject.target_delivery_date,
+                repository_link: selectedProject.repository_link || "",
+              }
+            : null
+        }
+        availableClients={AVAILABLE_CLIENTS}
+        availableServices={AVAILABLE_SERVICES}
+        availableUsers={AVAILABLE_USERS}
+        onClose={() => {
+          setIsAdding(false);
+          setIsEditing(false);
+        }}
+        onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
+      />
 
       <DeleteModal
         isOpen={showDeleteConfirm}
@@ -350,177 +562,6 @@ export default function ProjectsPage() {
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
       />
-
-      <EditModal
-        isOpen={isEditing}
-        onClose={() => setIsEditing(false)}
-        title="Update Record Parameters"
-        subtitle="Configuration Form"
-      >
-        {editForm && (
-          <form onSubmit={handleSaveChanges} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Project Name */}
-              <div className="flex flex-col gap-1 sm:col-span-2">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={editForm.name}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                />
-              </div>
-
-              {/* Client Dropdown */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Client
-                </label>
-                <select
-                  name="client_name"
-                  required
-                  value={editForm.client_name}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                >
-                  {AVAILABLE_CLIENTS.map((client) => (
-                    <option key={client} value={client}>
-                      {client}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Service Type Dropdown */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Service Type
-                </label>
-                <select
-                  name="service_type"
-                  required
-                  value={editForm.service_type}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                >
-                  {AVAILABLE_SERVICES.map((service) => (
-                    <option key={service} value={service}>
-                      {service}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Dropdown */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Pipeline Status
-                </label>
-                <select
-                  name="status"
-                  value={editForm.status}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                >
-                  <option value="On-going">On-going</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On hold">On hold</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="For approval">For approval</option>
-                </select>
-              </div>
-
-              {/* Lead Dropdown */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Lead Coordinator
-                </label>
-                <select
-                  name="lead"
-                  required
-                  value={editForm.lead}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                >
-                  {AVAILABLE_USERS.map((user) => (
-                    <option key={user} value={user}>
-                      {user}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Start Date */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={editForm.start_date}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                />
-              </div>
-
-              {/* Target Delivery Date */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold text-[#172126]">
-                  Target Delivery
-                </label>
-                <input
-                  type="date"
-                  name="target_delivery_date"
-                  value={editForm.target_delivery_date}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                />
-              </div>
-
-              {/* Repository Link */}
-              <div className="flex flex-col gap-1 sm:col-span-2 pt-2 border-t border-gray-100">
-                <div className="flex items-center gap-1.5">
-                  <Link2 className="w-3.5 h-3.5 text-[#2a7797]" />
-                  <label className="text-[12px] font-bold text-[#172126]">
-                    Linked Repository Link
-                  </label>
-                </div>
-                <input
-                  type="url"
-                  name="repository_link"
-                  placeholder="https://github.com/..."
-                  value={editForm.repository_link}
-                  onChange={handleInputChange}
-                  className="h-10 px-3 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb]"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="h-11 px-5 bg-gray-100 text-gray-600 font-bold text-sm rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex items-center gap-2 h-11 px-5 bg-[#4ec2bb] text-white font-bold text-sm rounded-xl shadow-md"
-              >
-                <Save className="w-4 h-4" /> Save Changes
-              </button>
-            </div>
-          </form>
-        )}
-      </EditModal>
-
-      <ComplianceFooter />
     </div>
   );
 }
