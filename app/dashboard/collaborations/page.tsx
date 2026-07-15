@@ -192,31 +192,32 @@ export default function CollaborationsPage() {
     if (!selectedCollaboration) return;
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
 
-    setCollaborationsList((prev) =>
-      prev.map((item) =>
-        item.id === selectedCollaboration.id
-          ? {
-            ...item,
-            partner_org: formState.partner_org,
-            lead_user_id: formState.lead_user_id,
-            start_date: formState.start_date,
-            status: formState.status as CollaborationRow["status"],
-            documents: cleanDocs.length > 0 ? cleanDocs : null,
-            notes: formState.notes || null,
-            // Add this line to update the repository link:
-            repository_link: formState.repository_link || "",
-            user: {
-              name:
-                availableUsers.find((u) => u.id === formState.lead_user_id)
-                  ?.name || "Unassigned",
-            },
-            updated_at: new Date().toISOString(),
-          }
-          : item,
-      ),
-    );
-    setIsEditing(false);
-    setFormState(EMPTY_FORM);
+    const updatedData = {
+      partner_org: formState.partner_org,
+      lead_user_id: formState.lead_user_id,
+      start_date: formState.start_date,
+      status: formState.status as CollaborationRow["status"],
+      documents: cleanDocs.length > 0 ? cleanDocs : null,
+      notes: formState.notes || null,
+      repository_link: formState.repository_link || "",
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      await saveDataToDB("collaboration", selectedCollaboration.id, updatedData);
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === selectedCollaboration.id
+            ? { ...item, ...updatedData }
+            : item,
+        ),
+      );
+
+      setIsEditing(false);
+      setFormState(EMPTY_FORM);
+    } catch (error) {
+      console.error("Error saving edited data:", error);
+    }
   };
 
   const handleDeleteRecord = async () => {
