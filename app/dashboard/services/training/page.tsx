@@ -3,12 +3,6 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  GraduationCap,
-  BookOpen,
-  ClipboardCheck,
-  BarChart3,
-  Award,
-  FileText,
   Search,
   Calendar,
   Clock,
@@ -16,7 +10,6 @@ import {
   Users,
   Sparkles,
   ArrowRight,
-  Plus,
 } from "lucide-react";
 
 /* ================= CONFIGURATION & INITIAL MOCK SETUP ================= */
@@ -36,35 +29,6 @@ const SERVICES_CONFIG = [
     title: "3.3 — Internship",
     href: "/dashboard/services/internship",
   },
-];
-
-const WORKSPACE_TABS = [
-  {
-    id: "programs",
-    label: "Training Programs",
-    icon: GraduationCap,
-    href: "/dashboard/services/training",
-  },
-  {
-    id: "modules",
-    label: "Modules",
-    icon: BookOpen,
-    href: "/dashboard/services/training/modules",
-  },
-  {
-    id: "tests",
-    label: "Pre/Post Tests",
-    icon: ClipboardCheck,
-    href: "/dashboard/services/training/assessment",
-  },
-  {
-    id: "evaluation",
-    label: "Evaluation",
-    icon: BarChart3,
-    href: "/dashboard/services/training/evaluation",
-  },
-  { id: "certificate", label: "Certificate", icon: Award, href: "#" },
-  { id: "docs", label: "Docs & Forms", icon: FileText, href: "#" },
 ];
 
 interface Participant {
@@ -156,7 +120,6 @@ const MOCK_TRAINING_PROGRAMS: TrainingProgram[] = [
 
 export default function TrainingProgramsPage() {
   const activeServiceTab = "training";
-  const activeWorkspaceTab = "programs";
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredPrograms = useMemo(() => {
@@ -183,13 +146,6 @@ export default function TrainingProgramsPage() {
             Bioinformatics Services
           </h1>
         </div>
-
-        <button
-          type="button"
-          className="flex items-center gap-1.5 h-10 px-5 bg-[#2a7797] hover:bg-[#1e5870] text-white text-xs font-bold rounded-full transition-all self-start md:self-auto shadow-md shadow-sky-900/10"
-        >
-          <Plus className="w-4 h-4" /> Add Training Program
-        </button>
       </div>
 
       {/* Service Selection Capsules */}
@@ -207,28 +163,6 @@ export default function TrainingProgramsPage() {
               }`}
             >
               {service.title}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Workspace Sub-Tabs */}
-      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap flex items-center gap-1">
-        {WORKSPACE_TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeWorkspaceTab === tab.id;
-          return (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-[18px] text-xs font-bold transition-all ${
-                isActive
-                  ? "bg-[#4ec2bb] text-white shadow-md shadow-[#4ec2bb]/10"
-                  : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800"
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{tab.label}</span>
             </Link>
           );
         })}

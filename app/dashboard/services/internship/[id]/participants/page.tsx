@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { Column } from "../../../../../components/datatable"; // Adjust based on your imports pathing
+import DataTable, { Column } from "../../../../../components/datatable"; // Adjust based on your imports pathing
 
 interface Intern {
   id: string;
@@ -72,7 +72,7 @@ export default function InternshipPerformanceTab({
 }) {
   const resolvedParams = use(params);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig] = useState<{
+  const [sortConfig, setSortConfig] = useState<{
     key: keyof Intern;
     direction: "asc" | "desc";
   } | null>(null);
@@ -81,25 +81,51 @@ export default function InternshipPerformanceTab({
     return MOCK_INTERNSHIP_PARTICIPANTS[resolvedParams.id] || [];
   }, [resolvedParams.id]);
 
-  const sortedAndFiltered = useMemo(() => {
+  const handleSort = (key: keyof Intern) => {
+    let direction: "asc" | "desc" = "asc";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "asc"
+    ) {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredAndSorted = useMemo(() => {
     let result = [...cohortParticipants];
     const q = searchQuery.toLowerCase().trim();
+
+    // 1. Filter matches
     if (q) {
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.institution.toLowerCase().includes(q),
+          p.institution.toLowerCase().includes(q) ||
+          p.email.toLowerCase().includes(q),
       );
     }
+
+    // 2. Sort matches
     if (sortConfig) {
       result.sort((a, b) => {
         const valA = a[sortConfig.key];
         const valB = b[sortConfig.key];
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        if (typeof valA === "string" && typeof valB === "string") {
+          const stringA = valA.toLowerCase();
+          const stringB = valB.toLowerCase();
+          if (stringA < stringB) return sortConfig.direction === "asc" ? -1 : 1;
+          if (stringA > stringB) return sortConfig.direction === "asc" ? 1 : -1;
+        } else {
+          if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+          if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+        }
         return 0;
       });
     }
+
     return result;
   }, [cohortParticipants, searchQuery, sortConfig]);
 
@@ -110,36 +136,38 @@ export default function InternshipPerformanceTab({
       width: "40%",
       sortable: true,
       render: (p) => (
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-slate-900">{p.name}</span>
+        <div className="flex flex-col gap-0.5 py-1">
+          <span className="font-bold text-slate-900 leading-snug">
+            {p.name}
+          </span>
           <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
             <Mail className="w-3 h-3" /> {p.email}
           </span>
-          <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1 mt-0.5">
-            <School className="w-3 h-3" /> {p.institution}
+          <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mt-0.5">
+            <School className="w-3.5 h-3.5 text-slate-400" /> {p.institution}
           </span>
         </div>
       ),
     },
     {
       key: "pre_test_score",
-      label: "Baseline Score",
+      label: "Pre-Test Score",
       width: "20%",
       sortable: true,
       render: (p) => (
-        <span className="font-mono font-bold text-slate-600">
-          {p.pre_test_score}%
+        <span className="font-mono font-bold text-slate-600 block pl-1">
+          {p.pre_test_score}
         </span>
       ),
     },
     {
       key: "post_test_score",
-      label: "Placement Score",
+      label: "Post-Test Score",
       width: "20%",
       sortable: true,
       render: (p) => (
-        <span className="font-mono font-bold text-[#2a7797]">
-          {p.post_test_score}%
+        <span className="font-mono font-bold text-[#2a7797] block pl-1">
+          {p.post_test_score}
         </span>
       ),
     },
@@ -150,11 +178,11 @@ export default function InternshipPerformanceTab({
       sortable: true,
       render: (p) =>
         p.has_certificate ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] font-bold uppercase">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] font-bold uppercase tracking-wider font-quicksand">
             <CheckCircle2 className="w-3 h-3" /> Issued
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-200 rounded-full text-[10px] font-bold uppercase">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-200 rounded-full text-[10px] font-bold uppercase tracking-wider font-quicksand">
             <XCircle className="w-3 h-3" /> Pending
           </span>
         ),
@@ -162,17 +190,18 @@ export default function InternshipPerformanceTab({
   ];
 
   return (
-    <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl space-y-6">
+    <div className="font-aileron bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 space-y-6">
+      {/* Table Action Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-[#2a7797]" />
           <div>
-            <h3 className="text-lg font-bold text-slate-800">
+            <h3 className="text-xl font-bold text-slate-800 tracking-tight">
               Intern Performance Index
             </h3>
-            <p className="text-[11px] font-medium text-slate-400">
-              Verify placement scores, operational milestones, and dynamic
-              baseline records.
+            <p className="text-[11px] font-semibold text-slate-400">
+              Verify pre-test scores, post-test scores, and certification status
+              across dynamic baseline records.
             </p>
           </div>
         </div>
@@ -183,54 +212,20 @@ export default function InternshipPerformanceTab({
             placeholder="Search interns..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-4 bg-white border border-gray-200 rounded-full text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/30"
+            className="w-full h-9 pl-9 pr-4 bg-white border border-gray-200 rounded-full text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/30 transition-all shadow-sm"
           />
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
-          <thead>
-            <tr className="bg-[#f4f6f7] text-[#55656e] text-[13px] font-bold border-b border-gray-200">
-              {columns.map((col, idx) => (
-                <th
-                  key={idx}
-                  style={{ width: col.width }}
-                  className="py-3 px-4 font-bold"
-                >
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="text-[13px] text-[#2c3a42]">
-            {sortedAndFiltered.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="p-8 text-center text-slate-400 font-medium italic"
-                >
-                  No active interns mapped to this cohort track.
-                </td>
-              </tr>
-            ) : (
-              sortedAndFiltered.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-gray-100 hover:bg-slate-50/50"
-                >
-                  {columns.map((col, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 align-middle">
-                      {col.render
-                        ? col.render(p)
-                        : String(p[col.key as keyof Intern])}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Shared DataTable System Wrapper */}
+      <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[800px]">
+        <DataTable
+          columns={columns}
+          data={filteredAndSorted}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          emptyMessage="No active interns mapped to this cohort track."
+        />
       </div>
     </div>
   );
