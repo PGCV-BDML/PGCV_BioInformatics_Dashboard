@@ -18,6 +18,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+//Database imports
+import { getCollabFromDB, getUsersFromDB } from "@/lib/supabase";
+
 type CollaborationFormState = {
   partner_org: string;
   lead_user_id: string;
@@ -87,26 +90,12 @@ export default function CollaborationsPage() {
     async function loadInitialData() {
       setIsLoading(true);
       try {
-        const mockUsers: UserOption[] = [
-          { id: "u1", name: "Alex Jones" },
-          { id: "u2", name: "Maria Santos" },
-        ];
-        const mockCollaborations: CollaborationRow[] = [
-          {
-            id: "collab-1",
-            partner_org: "Philippine Genome Center",
-            lead_user_id: "u1",
-            start_date: "2026-01-15",
-            status: "ongoing",
-            documents: ["https://drive.google.com", "https://dropbox.com"],
-            notes: "Primary repository linked",
-            user: { name: "Alex Jones" },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ];
-        setAvailableUsers(mockUsers);
-        setCollaborationsList(mockCollaborations);
+        const [users, collaborations] = await Promise.all([
+          getUsersFromDB(),
+          getCollabFromDB(),
+        ]);
+        setAvailableUsers(users);
+        setCollaborationsList(collaborations);
       } catch (error) {
         console.error("Error launching client data layer:", error);
       } finally {
