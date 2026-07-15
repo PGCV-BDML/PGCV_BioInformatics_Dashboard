@@ -126,10 +126,10 @@ export default function CollaborationsPage() {
       prev.map((item) =>
         item.id === id
           ? {
-              ...item,
-              status: newStatus as CollaborationRow["status"],
-              updated_at: new Date().toISOString(),
-            }
+            ...item,
+            status: newStatus as CollaborationRow["status"],
+            updated_at: new Date().toISOString(),
+          }
           : item,
       ),
     );
@@ -184,22 +184,22 @@ export default function CollaborationsPage() {
       prev.map((item) =>
         item.id === selectedCollaboration.id
           ? {
-              ...item,
-              partner_org: formState.partner_org,
-              lead_user_id: formState.lead_user_id,
-              start_date: formState.start_date,
-              status: formState.status as CollaborationRow["status"],
-              documents: cleanDocs.length > 0 ? cleanDocs : null,
-              notes: formState.notes || null,
-              // Add this line to update the repository link:
-              repository_link: formState.repository_link || "",
-              user: {
-                name:
-                  availableUsers.find((u) => u.id === formState.lead_user_id)
-                    ?.name || "Unassigned",
-              },
-              updated_at: new Date().toISOString(),
-            }
+            ...item,
+            partner_org: formState.partner_org,
+            lead_user_id: formState.lead_user_id,
+            start_date: formState.start_date,
+            status: formState.status as CollaborationRow["status"],
+            documents: cleanDocs.length > 0 ? cleanDocs : null,
+            notes: formState.notes || null,
+            // Add this line to update the repository link:
+            repository_link: formState.repository_link || "",
+            user: {
+              name:
+                availableUsers.find((u) => u.id === formState.lead_user_id)
+                  ?.name || "Unassigned",
+            },
+            updated_at: new Date().toISOString(),
+          }
           : item,
       ),
     );
@@ -459,9 +459,8 @@ export default function CollaborationsPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
-        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-      }`}
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        }`}
     >
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
@@ -517,11 +516,10 @@ export default function CollaborationsPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
-                    isActive
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
                       ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
                       : "text-slate-500 hover:text-slate-800 font-medium"
-                  }`}
+                    }`}
                 >
                   {opt.label}
                 </button>
