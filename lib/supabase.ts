@@ -14,20 +14,6 @@ export function getCurrentUser() {
   return supabase.auth.getSession().then(({ data }) => data.session?.user ?? null);
 }
 
-//Get all collab rows from database
-export async function getCollabFromDB() {
-  const { data: collabs, error: fetchError } = await supabase
-    .from("collaboration")
-    .select("*")
-
-  if (fetchError) {
-    console.error("Error retrieving collab data:", fetchError);
-    throw fetchError;
-  }
-
-  return collabs;
-}
-
 //Get all user rows from database
 export async function getUsersFromDB(chosenRoles: string[]) {
   const roleValues = ["team_lead", "team_member", "intern", "trainee"]
@@ -52,11 +38,27 @@ export async function getUsersFromDB(chosenRoles: string[]) {
   return users;
 }
 
+// Projects and Collab function =========================================================
+//Get all collab rows from database
+type TableNames = "collaboration" | "project";
+export async function getRowsFromDB(table: TableNames) {
+  const { data: rows, error: fetchError } = await supabase
+    .from(table)
+    .select("*")
+
+  if (fetchError) {
+    console.error(`Error retrieving ${table} data:`, fetchError);
+    throw fetchError;
+  }
+
+  return rows ?? [];
+}
+
 //For Updating Public.Collab table
-export async function saveCollabToDB(uid: string, data: any) {
+export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
   // Check if the row already exists
   const { data: existing, error: fetchError } = await supabase
-    .from("collaboration")
+    .from(table)
     .select("*")
     .eq("id", uid)
     .maybeSingle();
@@ -69,7 +71,7 @@ export async function saveCollabToDB(uid: string, data: any) {
   if (existing) {
     // Modify an existing row
     const { error } = await supabase
-      .from("collaboration")
+      .from(table)
       .update(data)
       .eq("id", uid);
 
@@ -80,7 +82,7 @@ export async function saveCollabToDB(uid: string, data: any) {
   } else {
     // Add new row data
     const { error } = await supabase
-      .from("collaboration")
+      .from(table)
       .upsert({ ...data });
 
     if (error) {
@@ -92,14 +94,14 @@ export async function saveCollabToDB(uid: string, data: any) {
   return { uid, ...data };
 }
 
-export async function deleteCollabFromDB(id: string) {
+export async function deleteDataFromDB(table: TableNames, id: string) {
   const { error } = await supabase
-    .from("collaboration")
+    .from(table)
     .delete()
     .eq("id", id)
 
   if (error) {
-    console.error("Error deleting collaboration:", error);
+    console.error(`Error deleting ${table} data:`, error);
     throw error;
   }
 }

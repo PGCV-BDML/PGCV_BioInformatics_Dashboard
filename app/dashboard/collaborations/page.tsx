@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 //Database imports
-import { getCollabFromDB, getUsersFromDB, saveCollabToDB, deleteCollabFromDB } from "@/lib/supabase";
+import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB } from "@/lib/supabase";
 
 type CollaborationFormState = {
   partner_org: string;
@@ -92,7 +92,7 @@ export default function CollaborationsPage() {
       try {
         const [users, collaborations] = await Promise.all([
           getUsersFromDB(["team_lead", "team_member"]),
-          getCollabFromDB(),
+          getRowsFromDB("collaboration"),
         ]);
         setAvailableUsers(users);
         setCollaborationsList(collaborations);
@@ -124,7 +124,7 @@ export default function CollaborationsPage() {
   //Save changes to DB and change the value of collaborations list to update what is displayed
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await saveCollabToDB(id, {
+      await saveDataToDB("collaboration", id, {
         status: newStatus,
         updated_at: new Date().toISOString()
       });
@@ -176,7 +176,7 @@ export default function CollaborationsPage() {
       updated_at: new Date().toISOString(),
     };
     try {
-      await saveCollabToDB(id, newRecord);
+      await saveDataToDB("collaboration", id, newRecord);
       setCollaborationsList((prev) => [newRecord, ...prev]);
     } catch (error) {
       console.error("Error checking collab data:", error);
@@ -222,7 +222,7 @@ export default function CollaborationsPage() {
   const handleDeleteRecord = async () => {
     if (!selectedCollaboration) return;
     try {
-      await deleteCollabFromDB(selectedCollaboration.id);
+      await deleteDataFromDB("collaboration", selectedCollaboration.id);
       setCollaborationsList((prev) =>
         prev.filter((item) => item.id !== selectedCollaboration.id),
       );
