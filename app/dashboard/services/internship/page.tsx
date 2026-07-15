@@ -1,21 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   GraduationCap,
-  Calendar,
-  User,
-  Sparkles,
-  ArrowRight,
-  Clock,
   BookOpen,
   ClipboardCheck,
   BarChart3,
   Award,
   FileText,
+  Search,
+  Calendar,
+  Clock,
+  User,
+  Users,
+  Sparkles,
+  ArrowRight,
+  Plus,
 } from "lucide-react";
 
+/* ================= CONFIGURATION & INITIAL MOCK SETUP ================= */
 const SERVICES_CONFIG = [
   {
     id: "sequence-analysis",
@@ -35,58 +39,129 @@ const SERVICES_CONFIG = [
 ];
 
 const WORKSPACE_TABS = [
-  { id: "programs", label: "Internship Programs", icon: GraduationCap },
-  { id: "modules", label: "Modules", icon: BookOpen },
-  { id: "tests", label: "Pre/Post Tests", icon: ClipboardCheck },
-  { id: "evaluation", label: "Evaluation", icon: BarChart3 },
-  { id: "certificate", label: "Certificate", icon: Award },
-  { id: "docs", label: "Docs & Forms", icon: FileText },
+  {
+    id: "programs",
+    label: "Internship Programs",
+    icon: GraduationCap,
+    href: "/dashboard/services/internship",
+  },
+  {
+    id: "modules",
+    label: "Modules",
+    icon: BookOpen,
+    href: "/dashboard/services/internship/modules",
+  },
+  {
+    id: "tests",
+    label: "Pre/Post Tests",
+    icon: ClipboardCheck,
+    href: "/dashboard/services/internship/assessment",
+  },
+  {
+    id: "evaluation",
+    label: "Evaluation",
+    icon: BarChart3,
+    href: "/dashboard/services/internship/evaluation",
+  },
+  { id: "certificate", label: "Certificate", icon: Award, href: "#" },
+  { id: "docs", label: "Docs & Forms", icon: FileText, href: "#" },
 ];
 
-const MOCK_INTERNSHIP_PROGRAMS = [
+interface Intern {
+  id: string;
+  name: string;
+  email: string;
+  institution: string;
+  midterm_score: number;
+  final_score: number;
+  has_certificate: boolean;
+}
+
+interface InternshipProgram {
+  id: string;
+  title: string;
+  type: string;
+  start_date: string;
+  end_date: string;
+  duration: string;
+  description: string;
+  mentor: { name: string };
+  interns: Intern[];
+}
+
+const MOCK_INTERNSHIP_PROGRAMS: InternshipProgram[] = [
   {
     id: "int-1",
-    title: "Clinical Genomics Research Internship (Cohort Delta)",
+    title: "Clinical Bioinformatics & Transcriptomics Internship",
     type: "internship",
-    start_date: "2026-07-01",
-    end_date: "2026-12-31",
-    duration: "6 months",
+    start_date: "2026-06-01",
+    end_date: "2026-08-31",
+    duration: "12 weeks",
     description:
-      "Hands-on immersion in a clinical diagnostic workspace. Interns handle variant validation, processing pipelines, and raw DNA cleanroom protocols.",
-    instructor: { name: "Dr. Sarah Jenkins" },
-  },
-  {
-    id: "int-2",
-    title: "Metagenomics Environmental Lab Internship",
-    type: "internship",
-    start_date: "2026-09-01",
-    end_date: "2026-11-30",
-    duration: "3 months",
-    description:
-      "Practical environmental sample processing, mapping biological contamination matrices, and analyzing microbial diversity in soil samples.",
-    instructor: { name: "Dr. Liam Patel" },
+      "Hands-on professional cohort internship focusing on raw RNA-Seq pipeline builds, differential expression analysis, pathway enrichment systems, and production variant pipeline clinical configurations.",
+    mentor: { name: "Dr. Elena Rostova" },
+    interns: [
+      {
+        id: "i-1",
+        name: "Marcus Vance",
+        email: "m.vance@mit.edu",
+        institution: "MIT Broad Institute",
+        midterm_score: 85,
+        final_score: 95,
+        has_certificate: true,
+      },
+      {
+        id: "i-2",
+        name: "Claire Redfield",
+        email: "credfield@stanford.edu",
+        institution: "Stanford Medicine",
+        midterm_score: 90,
+        final_score: 98,
+        has_certificate: true,
+      },
+    ],
   },
 ];
 
-export default function InternshipPage() {
+export default function InternshipProgramsPage() {
   const activeServiceTab = "internship";
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState("programs");
+  const activeWorkspaceTab = "programs";
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPrograms = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return MOCK_INTERNSHIP_PROGRAMS;
+
+    return MOCK_INTERNSHIP_PROGRAMS.filter(
+      (prog) =>
+        prog.title.toLowerCase().includes(query) ||
+        prog.description.toLowerCase().includes(query) ||
+        prog.mentor.name.toLowerCase().includes(query),
+    );
+  }, [searchQuery]);
 
   return (
     <div className="space-y-6 mx-auto font-aileron w-full max-w-[1240px] px-4 py-6">
-      {/* Top Header Section */}
+      {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - Bioinformation Services
+            Dashboard - Client Services
           </span>
           <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
             Bioinformatics Services
           </h1>
         </div>
+
+        <button
+          type="button"
+          className="flex items-center gap-1.5 h-10 px-5 bg-[#2a7797] hover:bg-[#1e5870] text-white text-xs font-bold rounded-full transition-all self-start md:self-auto shadow-md shadow-sky-900/10"
+        >
+          <Plus className="w-4 h-4" /> Add Internship Program
+        </button>
       </div>
 
-      {/* Persistent Top Service Capsule Row */}
+      {/* Service Selection Capsules */}
       <div className="flex flex-wrap items-center gap-3 pt-1">
         {SERVICES_CONFIG.map((service) => {
           const isActive = activeServiceTab === service.id;
@@ -106,16 +181,15 @@ export default function InternshipPage() {
         })}
       </div>
 
-      {/* Workspace Inner Navigation Bar */}
+      {/* Workspace Sub-Tabs */}
       <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap flex items-center gap-1">
         {WORKSPACE_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeWorkspaceTab === tab.id;
           return (
-            <button
+            <Link
               key={tab.id}
-              type="button"
-              onClick={() => setActiveWorkspaceTab(tab.id)}
+              href={tab.href}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-[18px] text-xs font-bold transition-all ${
                 isActive
                   ? "bg-[#4ec2bb] text-white shadow-md shadow-[#4ec2bb]/10"
@@ -124,81 +198,107 @@ export default function InternshipPage() {
             >
               <Icon className="w-4 h-4 shrink-0" />
               <span>{tab.label}</span>
-            </button>
+            </Link>
           );
         })}
       </div>
 
-      {/* Main Content Render Box */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20 space-y-6">
-        {activeWorkspaceTab === "programs" ? (
-          <>
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <GraduationCap className="w-6 h-6 text-[#f57f17]" />
-              <h2 className="text-2xl font-bold text-[#333333]">
-                Internship Registry
-              </h2>
-            </div>
+      {/* Top filter utility block */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#fffdf8] border border-slate-200 p-4 rounded-2xl shadow-sm">
+        <div className="space-y-0.5">
+          <h3 className="text-sm font-bold text-slate-800">
+            Cohorts Directory
+          </h3>
+          <p className="text-xs text-slate-400">
+            Select an internship program sequence to manage documents, syllabus
+            and grading records.
+          </p>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search programs or mentors..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-9 pl-10 pr-4 bg-white border border-gray-200 rounded-full text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/30 transition-all shadow-sm"
+          />
+        </div>
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {MOCK_INTERNSHIP_PROGRAMS.map((program) => (
-                <div
-                  key={program.id}
-                  className="group relative bg-white border border-slate-200 hover:border-[#4ec2bb] rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#4ec2bb] opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
-                        <Sparkles className="w-3 h-3" />{" "}
-                        {program.type.toUpperCase()} TRACK
-                      </span>
-                      <h3 className="text-lg font-bold text-slate-800 tracking-tight leading-snug group-hover:text-[#2a7797] transition-colors">
-                        {program.title}
-                      </h3>
-                    </div>
-
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-3">
-                      {program.description}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-[11px] font-semibold text-slate-600">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">
-                          {program.instructor.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{program.duration}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 col-span-2">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>
-                          {program.start_date} — {program.end_date}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-5 mt-auto">
-                    <Link
-                      href={`/dashboard/services/internship/${program.id}`}
-                      className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-[#2a7797] hover:bg-[#205d77] px-4 py-2.5 rounded-xl transition-all shadow-sm"
-                    >
-                      Go to Workspace <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
+      {/* Programs Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {filteredPrograms.map((prog) => (
+          <div
+            key={prog.id}
+            className="flex flex-col justify-between bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">
+                  <Sparkles className="w-2.5 h-2.5" /> Track Cohort
+                </span>
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                  <Users className="w-3.5 h-3.5 text-slate-300" />
+                  <span>{prog.interns.length} Active Interns</span>
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-slate-800 leading-snug group-hover:text-[#2a7797] transition-colors">
+                  {prog.title}
+                </h3>
+                <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                  {prog.description}
+                </p>
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px] font-semibold text-slate-500">
+                <div className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    Mentor:{" "}
+                    <strong className="text-slate-700">
+                      {prog.mentor.name}
+                    </strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    Duration:{" "}
+                    <strong className="text-slate-700">{prog.duration}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    Timeline:{" "}
+                    <strong className="text-slate-700">
+                      {prog.start_date} to {prog.end_date}
+                    </strong>
+                  </span>
+                </div>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="py-12 text-center text-sm text-slate-400 font-medium italic">
-            No items mapped to the workspace view. Select a running tracking
-            card first.
+
+            <div className="pt-6">
+              <Link
+                href={`/dashboard/services/internship/${prog.id}`}
+                className="flex items-center justify-center gap-1.5 w-full h-10 bg-[#eaf7f6] hover:bg-[#4ec2bb] text-[#247974] hover:text-white text-xs font-bold rounded-xl transition-all border border-[#4ec2bb]/25"
+              >
+                <span>See Details & Participants</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        ))}
+
+        {filteredPrograms.length === 0 && (
+          <div className="col-span-1 md:col-span-2 text-center py-16 bg-white border border-slate-200 rounded-[24px]">
+            <p className="text-sm text-slate-400 font-medium">
+              No internship programs match your search criteria.
+            </p>
           </div>
         )}
       </div>
