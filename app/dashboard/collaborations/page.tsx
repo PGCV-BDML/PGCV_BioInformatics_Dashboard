@@ -529,8 +529,8 @@ export default function CollaborationsPage() {
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
                   className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
-                      : "text-slate-500 hover:text-slate-800 font-medium"
+                    ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                    : "text-slate-500 hover:text-slate-800 font-medium"
                     }`}
                 >
                   {opt.label}

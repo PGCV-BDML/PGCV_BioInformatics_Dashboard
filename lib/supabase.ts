@@ -21,7 +21,7 @@ export async function getCollabFromDB() {
     .select("*")
 
   if (fetchError) {
-    console.error("Error checking user data:", fetchError);
+    console.error("Error retrieving collab data:", fetchError);
     throw fetchError;
   }
 
@@ -36,7 +36,7 @@ export async function getUsersFromDB() {
     .select("*")
 
   if (fetchError) {
-    console.error("Error checking user data:", fetchError);
+    console.error("Error checking collab data:", fetchError);
     throw fetchError;
   }
 
