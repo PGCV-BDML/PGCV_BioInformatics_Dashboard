@@ -418,9 +418,8 @@ export default function ProjectsPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
-        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-      }`}
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        }`}
     >
       {/* Control Navigation Header Panel */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
@@ -491,11 +490,10 @@ export default function ProjectsPage() {
                   key={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
-                    isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
-                      : "text-slate-500 hover:text-slate-800 font-medium"
-                  }`}
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
+                    ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                    : "text-slate-500 hover:text-slate-800 font-medium"
+                    }`}
                 >
                   {filter}
                 </button>
@@ -535,15 +533,15 @@ export default function ProjectsPage() {
         initialData={
           selectedProject
             ? {
-                name: selectedProject.name,
-                client_name: selectedProject.client_name,
-                service_type: selectedProject.service_type,
-                status: selectedProject.status,
-                lead: selectedProject.lead,
-                start_date: selectedProject.start_date,
-                target_delivery_date: selectedProject.target_delivery_date,
-                repository_link: selectedProject.repository_link || "",
-              }
+              name: selectedProject.name,
+              client_name: selectedProject.client_name,
+              service_type: selectedProject.service_type,
+              status: selectedProject.status,
+              lead: selectedProject.lead,
+              start_date: selectedProject.start_date,
+              target_delivery_date: selectedProject.target_delivery_date,
+              repository_link: selectedProject.repository_link || "",
+            }
             : null
         }
         availableClients={AVAILABLE_CLIENTS}
