@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 //Database imports
-import { getCollabFromDB, getUsersFromDB, saveCollabToDB } from "@/lib/supabase";
+import { getCollabFromDB, getUsersFromDB, saveCollabToDB, deleteCollabFromDB } from "@/lib/supabase";
 
 type CollaborationFormState = {
   partner_org: string;
@@ -221,10 +221,15 @@ export default function CollaborationsPage() {
 
   const handleDeleteRecord = async () => {
     if (!selectedCollaboration) return;
-    setCollaborationsList((prev) =>
-      prev.filter((item) => item.id !== selectedCollaboration.id),
-    );
-    setShowDeleteConfirm(false);
+    try {
+      await deleteCollabFromDB(selectedCollaboration.id);
+      setCollaborationsList((prev) =>
+        prev.filter((item) => item.id !== selectedCollaboration.id),
+      );
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.log("Error in deleting collab", error)
+    }
   };
 
   const filteredCollaborations = useMemo(() => {

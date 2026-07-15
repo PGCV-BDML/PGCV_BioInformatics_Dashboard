@@ -82,3 +82,15 @@ export async function saveCollabToDB(uid: string, data: any) {
 
   return { uid, ...data };
 }
+
+export async function deleteCollabFromDB(id: string) {
+  const { error } = await supabase
+    .from("collaboration")
+    .delete()
+    .eq("id", id)
+
+  if (error) {
+    console.error("Error deleting collaboration:", error);
+    throw error;
+  }
+}
