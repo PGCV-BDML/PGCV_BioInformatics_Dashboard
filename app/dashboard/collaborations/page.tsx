@@ -91,7 +91,7 @@ export default function CollaborationsPage() {
       setIsLoading(true);
       try {
         const [users, collaborations] = await Promise.all([
-          getUsersFromDB(),
+          getUsersFromDB(["team_lead", "team_member"]),
           getCollabFromDB(),
         ]);
         setAvailableUsers(users);

@@ -29,11 +29,20 @@ export async function getCollabFromDB() {
 }
 
 //Get all user rows from database
-export async function getUsersFromDB() {
-  // Check if the row already exists
+export async function getUsersFromDB(chosenRoles: string[]) {
+  const roleValues = ["team_lead", "team_member", "intern", "trainee"]
+
+  const isValid = chosenRoles.every(role => roleValues.includes(role));
+
+  if (!isValid || chosenRoles.length === 0) {
+    console.error("Error: One or more invalid roles provided");
+    return [];
+  }
+
   const { data: users, error: fetchError } = await supabase
     .from("users")
     .select("*")
+    .in("role", chosenRoles)
 
   if (fetchError) {
     console.error("Error checking collab data:", fetchError);
