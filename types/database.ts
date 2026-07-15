@@ -11,6 +11,7 @@ export interface CollaborationRow {
   status: "for_approval" | "ongoing" | "finished"; // Matches your database public.collab_status enum
   documents: string[] | null;
   notes: string | null;
+  repository_link: string | null;
   created_at: string;
   updated_at: string;
   // Included via joins

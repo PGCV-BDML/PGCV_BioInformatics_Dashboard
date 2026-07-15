@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 //Database imports
-import { getCollabFromDB, getUsersFromDB } from "@/lib/supabase";
+import { getCollabFromDB, getUsersFromDB, saveCollabToDB } from "@/lib/supabase";
 
 type CollaborationFormState = {
   partner_org: string;
@@ -121,18 +121,28 @@ export default function CollaborationsPage() {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setCollaborationsList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-            ...item,
-            status: newStatus as CollaborationRow["status"],
-            updated_at: new Date().toISOString(),
-          }
-          : item,
-      ),
-    );
+  //Save changes to DB and change the value of collaborations list to update what is displayed
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await saveCollabToDB(id, {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
+
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+              ...item,
+              status: newStatus as CollaborationRow["status"],
+              updated_at: new Date().toISOString(),
+            }
+            : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update collaboration status:", error);
+    }
   };
 
   const handleSort = (key: keyof CollaborationRow) => {
@@ -150,9 +160,10 @@ export default function CollaborationsPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
+    const id = crypto.randomUUID();
 
     const newRecord: CollaborationRow = {
-      id: `local-id-${Date.now()}`,
+      id,
       partner_org: formState.partner_org,
       lead_user_id: formState.lead_user_id,
       start_date:
@@ -160,17 +171,18 @@ export default function CollaborationsPage() {
       status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
-      // Add this line to pass down the repository link:
-      repository_link: formState.repository_link || "",
-      user: {
-        name:
-          availableUsers.find((u) => u.id === formState.lead_user_id)?.name ||
-          "Unassigned",
-      },
+      repository_link: formState.repository_link || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as any; // Cast as any if CollaborationRow types do not natively accept it yet
-    setCollaborationsList((prev) => [newRecord, ...prev]);
+    };
+    try {
+      await saveCollabToDB(id, newRecord);
+      setCollaborationsList((prev) => [newRecord, ...prev]);
+    } catch (error) {
+      console.error("Error checking collab data:", error);
+      return;
+    }
+
     setIsAdding(false);
     setFormState(EMPTY_FORM);
   };
