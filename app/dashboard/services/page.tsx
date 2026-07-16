@@ -35,6 +35,7 @@ interface ServiceProjectRow {
 }
 
 const SERVICES_CONFIG = [
+  //TODO: turn buttons into component
   {
     id: "sequence-analysis",
     title: "3.1 — Client Sequence Analysis",
@@ -505,7 +506,7 @@ export default function ServicesPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search pipelines, projects..."
+              placeholder="Search analysis..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/50 shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all"
@@ -516,7 +517,7 @@ export default function ServicesPage() {
             onClick={() => setIsSidebarOpen(true)}
             className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Run New Pipeline
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
           </button>
         </div>
       </div>
@@ -532,8 +533,8 @@ export default function ServicesPage() {
               onClick={() => setActiveTab(service.id)}
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
-                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-sm"
-                  : "bg-white text-slate-600 border-gray-200 hover:bg-gray-50 hover:text-slate-800"
+                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
+                  : "bg-[#fffdf8] text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -548,7 +549,7 @@ export default function ServicesPage() {
           <div className="flex items-center gap-2">
             <Dna className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
-              Sequence Alignment Queue
+              Service Report Tracker
             </h2>
           </div>
 

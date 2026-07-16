@@ -158,8 +158,8 @@ export default function TrainingProgramsPage() {
               href={service.href}
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
-                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-sm"
-                  : "bg-white text-slate-600 border-gray-200 hover:bg-gray-50 hover:text-slate-800"
+                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
+                  : "bg-[#fffdf8] text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -196,12 +196,12 @@ export default function TrainingProgramsPage() {
         {filteredPrograms.map((prog) => (
           <div
             key={prog.id}
-            className="flex flex-col justify-between bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group"
+            className="flex flex-col justify-between bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-sm transition-all duration-200 relative group"
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">
-                  <Sparkles className="w-2.5 h-2.5" /> Track Cohort
+                  Training
                 </span>
                 <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
                   <Users className="w-3.5 h-3.5 text-slate-300" />
@@ -210,7 +210,7 @@ export default function TrainingProgramsPage() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-slate-800 leading-snug group-hover:text-[#2a7797] transition-colors">
+                <h3 className="text-lg font-bold text-slate-800 leading-snug">
                   {prog.title}
                 </h3>
                 <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
@@ -250,10 +250,10 @@ export default function TrainingProgramsPage() {
             <div className="pt-6">
               <Link
                 href={`/dashboard/services/training/${prog.id}`}
-                className="flex items-center justify-center gap-1.5 w-full h-10 bg-[#eaf7f6] hover:bg-[#4ec2bb] text-[#247974] hover:text-white text-xs font-bold rounded-xl transition-all border border-[#4ec2bb]/25"
+                className="flex items-center justify-center gap-1.5 w-full h-10 bg-[#f0fdfa] border border-[#ccfbf1] text-[#115e59] hover:bg-[#14b8a6] hover:border-[#14b8a6] hover:text-white text-xs font-bold rounded-xl shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
-                <span>See Details & Participants</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>See Details</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
             </div>
           </div>

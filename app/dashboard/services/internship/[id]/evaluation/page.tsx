@@ -76,8 +76,8 @@ export default function InternshipEvaluationForm({
   };
 
   return (
-    <div className="space-y-6 max-w-2xl bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
-      <div className="border-b border-slate-100 pb-3">
+    <div className="space-y-6 w-full bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+      <div className="border-b border-slate-200/60 pb-4">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-[#2a7797]" />
           <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
@@ -87,28 +87,29 @@ export default function InternshipEvaluationForm({
       </div>
 
       {!isSubmitted ? (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Metadata Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1.5 pl-1">
                 Intern Full Name
               </label>
               <input
                 type="text"
                 value={participantName}
                 onChange={(e) => setParticipantName(e.target.value)}
-                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+                className="w-full text-xs font-semibold rounded-xl border border-slate-200 focus:border-[#4ec2bb] focus:ring-4 focus:ring-[#4ec2bb]/10 p-3 text-slate-700 bg-white placeholder-slate-300 shadow-inner-sm transition-all duration-200"
                 required
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1.5 pl-1">
                 Internship Track Placement
               </label>
               <select
                 value={selectedProgram}
                 onChange={(e) => setSelectedProgram(e.target.value)}
-                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+                className="w-full text-xs font-semibold rounded-xl border border-slate-200 focus:border-[#4ec2bb] focus:ring-4 focus:ring-[#4ec2bb]/10 p-3 text-slate-700 bg-white shadow-inner-sm cursor-pointer transition-all duration-200"
               >
                 {INTERNSHIP_TRACKS.map((track) => (
                   <option key={track} value={track}>
@@ -119,17 +120,19 @@ export default function InternshipEvaluationForm({
             </div>
           </div>
 
-          <div className="space-y-3 pt-2">
+          {/* Questions Stack */}
+          <div className="space-y-4">
             {EVALUATION_QUESTIONS.map((q) => (
               <div
                 key={q.id}
-                className="bg-white border border-slate-200/80 p-4 rounded-[16px] space-y-2"
+                className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3 transition-all duration-200"
               >
-                <label className="text-xs font-bold text-slate-700 block leading-snug">
+                <label className="text-xs font-extrabold text-slate-700 block leading-snug">
                   {q.label}
                 </label>
+
                 {q.type === "rating" ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2 bg-white/60 p-2.5 rounded-xl border border-slate-200/40 inline-flex">
                     {[1, 2, 3, 4, 5].map((starValue) => (
                       <button
                         type="button"
@@ -140,13 +143,13 @@ export default function InternshipEvaluationForm({
                             [q.id]: starValue,
                           })
                         }
-                        className="focus:outline-none transition-transform active:scale-95"
+                        className="focus:outline-none transition-transform hover:scale-115 active:scale-90"
                       >
                         <Star
-                          className={`w-5 h-5 ${
+                          className={`w-6 h-6 transition-all duration-150 ${
                             starValue <= formValues[q.id]
-                              ? "fill-[#f57f17] text-[#f57f17]"
-                              : "text-slate-200"
+                              ? "fill-[#f57f17] text-[#f57f17] drop-shadow-[0_1px_3px_rgba(245,127,23,0.15)]"
+                              : "text-slate-300 hover:text-slate-400"
                           }`}
                         />
                       </button>
@@ -154,7 +157,7 @@ export default function InternshipEvaluationForm({
                   </div>
                 ) : (
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={formValues[q.id]}
                     onChange={(e) =>
                       setFormValues({
@@ -163,7 +166,7 @@ export default function InternshipEvaluationForm({
                       })
                     }
                     placeholder="Provide structural and mentorship improvements here..."
-                    className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2 text-slate-600 bg-slate-50/50"
+                    className="w-full text-xs font-semibold rounded-xl border border-slate-200 focus:border-[#4ec2bb] focus:ring-4 focus:ring-[#4ec2bb]/10 p-3 text-slate-600 bg-white placeholder-slate-400 shadow-inner-sm transition-all duration-200 resize-none"
                     required
                   />
                 )}
@@ -173,14 +176,15 @@ export default function InternshipEvaluationForm({
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-[#2a7797] text-white font-bold text-xs rounded-xl hover:bg-[#1f5a73] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+            className="w-full py-3 bg-[#2a7797] text-white font-bold text-xs rounded-xl hover:bg-[#1f5a73] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 shadow-md shadow-slate-300/20"
           >
             <Send className="w-3.5 h-3.5" /> Submit Metrics & Generate
             Internship Certificate
           </button>
         </form>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-center space-y-4 max-w-md mx-auto">
+        /* Submission Success Screen */
+        <div className="bg-[#f2f2f2] border border-slate-300/60 rounded-[24px] p-8 text-center space-y-4 max-w-md mx-auto">
           <CheckCircle className="w-12 h-12 text-[#4ec2bb] mx-auto" />
           <div>
             <h3 className="text-lg font-bold text-slate-800 font-sans">
@@ -200,7 +204,7 @@ export default function InternshipEvaluationForm({
             </button>
             <button
               onClick={handleResetForm}
-              className="w-full py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors"
+              className="w-full py-2 bg-white text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 border border-slate-200 transition-colors"
             >
               Submit New Evaluation Track
             </button>

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Calendar,
   User,
-  Sparkles,
   Clock,
   BookOpen,
   ClipboardCheck,
@@ -148,6 +147,12 @@ export default function InternshipProgramLayout({
     ];
   }, [resolvedParams.id]);
 
+  // Determine active index for sliding translations (Pure CSS Grid Hack)
+  const activeIndex = useMemo(() => {
+    const index = workspaceTabs.findIndex((tab) => pathname === tab.href);
+    return index !== -1 ? index : 0;
+  }, [pathname, workspaceTabs]);
+
   if (!selectedProgram) {
     return (
       <div className="text-center py-20 space-y-4">
@@ -178,11 +183,13 @@ export default function InternshipProgramLayout({
           </h1>
         </div>
 
+        {/* Back to Programs Button - Arrow icon matches text-slate-700 by default and transitions to white on hover */}
         <Link
           href="/dashboard/services/internship"
-          className="flex items-center gap-1.5 h-10 px-4 bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-bold rounded-full transition-all self-start md:self-auto shadow-sm"
+          className="group flex items-center gap-2 h-10 px-5 bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-300 hover:border-[#4ec2bb] text-slate-700 hover:text-white text-xs font-extrabold rounded-full transition-all duration-200 self-start md:self-auto shadow-sm hover:shadow-md hover:-translate-y-0.5"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Programs
+          <ArrowLeft className="w-4 h-4 text-slate-700 group-hover:text-white transition-colors duration-200" />
+          <span>Back to Programs</span>
         </Link>
       </div>
 
@@ -197,7 +204,7 @@ export default function InternshipProgramLayout({
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
                   ? "bg-[#2a7797] text-white border-[#2a7797] shadow-sm"
-                  : "bg-white text-slate-600 border-gray-200 hover:bg-gray-50 hover:text-slate-800"
+                  : "bg-[#fffdf8] text-slate-600 border-slate-200 hover:bg-gray-50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -210,7 +217,7 @@ export default function InternshipProgramLayout({
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
         <div className="space-y-1">
           <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
-            <Sparkles className="w-3 h-3" /> ACTIVE COHORT SEGMENT
+            Philippine Genome Center Visayas - Bioinformatics Internship Program
           </span>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
             {selectedProgram.title}
@@ -250,29 +257,42 @@ export default function InternshipProgramLayout({
         </div>
       </div>
 
-      {/* Workspace Sub-Tabs */}
-      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap flex items-center gap-1">
-        {workspaceTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-[18px] text-xs font-bold transition-all ${
-                isActive
-                  ? "bg-[#4ec2bb] text-white shadow-md shadow-[#4ec2bb]/10"
-                  : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800"
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{tab.label}</span>
-            </Link>
-          );
-        })}
+      {/* Workspace Sub-Tabs (Pure CSS Grid Sliding Animation) */}
+      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
+        {/* Responsive grid mapping matches exactly to our 6 configured tabs */}
+        <div className="relative grid grid-cols-6 gap-1 min-w-[760px] md:min-w-full">
+          {/* Active Highlight Slider Element (Solid Teal Background) */}
+          <div
+            style={{
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+            className="absolute top-0 bottom-0 left-0 w-1/6 p-0.5 transition-transform duration-300 ease-out pointer-events-none"
+          >
+            <div className="w-full h-full bg-[#4ec2bb] rounded-[18px] shadow-md shadow-[#4ec2bb]/10" />
+          </div>
+
+          {workspaceTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = pathname === tab.href;
+            return (
+              <Link
+                key={tab.id}
+                href={tab.href}
+                className={`relative z-10 flex items-center justify-center gap-2 px-3 py-2.5 rounded-[18px] text-xs font-bold transition-colors duration-300 text-center ${
+                  isActive
+                    ? "text-white"
+                    : "text-slate-500 hover:text-[#4ec2bb]"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Dynamic Children Content */}
+      {/* Dynamic Children Content (Sub-Tabs Load Here) */}
       <div className="transition-all duration-200">{children}</div>
     </div>
   );

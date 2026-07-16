@@ -58,7 +58,6 @@ interface WeeklyTask {
 const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b", "#6366f1", "#94a3b8"];
 const AVAILABLE_YEARS = ["2024", "2025", "2026"];
 
-// Color configurations mapped directly to task priority
 const priorityConfig = {
   high: {
     bar: "bg-red-500",
@@ -88,9 +87,8 @@ export default function DashboardLandingPage() {
 
   const selectRef = useRef<HTMLSelectElement>(null);
 
-  // Toggle state to make click as done interactable
   const toggleTaskStatus = (id: string, e: React.MouseEvent) => {
-    e.preventDefault(); // Prevents navigating to the task link when checking the box
+    e.preventDefault();
     e.stopPropagation();
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
@@ -223,9 +221,9 @@ export default function DashboardLandingPage() {
   return (
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
       {/* Top Header Controls Area */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-300/40 pb-4">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
+          <span className="text-[10px] font-bold text-[#6a7d8a] uppercase tracking-[2px] font-quicksand">
             Dashboard - Home
           </span>
           <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight font-aileron">
@@ -235,7 +233,7 @@ export default function DashboardLandingPage() {
 
         {/* Global Pipeline Year Filter Button Control */}
         <div className="relative self-start sm:self-auto group">
-          <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm shadow-slate-300/10 text-left pointer-events-none">
+          <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] text-left pointer-events-none">
             <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-quicksand select-none">
               Filtered Year:
@@ -267,7 +265,7 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-lg shadow-slate-400/15 border border-slate-300/70 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-[0_20px_50px_rgba(15,23,42,0.12)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
         <div className="space-y-4 max-w-2xl z-10">
           <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
             Internal Operations Hub
@@ -296,10 +294,10 @@ export default function DashboardLandingPage() {
         <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      {/* Summary Cards Layer */}
+      {/* Summary Cards Layer - Upgraded ambient color-matching shadows */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total Projects */}
-        <div className="bg-[#eafafa] border border-teal-300/40 rounded-[22px] p-6 shadow-sm shadow-[#1c5c59]/10 flex flex-col justify-between gap-4">
+        <div className="bg-[#eafafa] border border-teal-300/50 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(28,92,89,0.12)] flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2e8b87] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -327,7 +325,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 2: Collaborations */}
-        <div className="bg-[#f3faf5] border border-emerald-300/40 rounded-[22px] p-6 shadow-sm shadow-emerald-950/10 flex flex-col justify-between gap-4">
+        <div className="bg-[#f3faf5] border border-emerald-300/50 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(6,78,59,0.1)] flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-emerald-700 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -357,7 +355,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 3: Service Reports */}
-        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-sm shadow-slate-700/10 flex flex-col justify-between gap-4">
+        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(23,78,100,0.1)] flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2a7797] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -384,7 +382,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 4: Programs Hub */}
-        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-sm shadow-amber-950/10 flex flex-col justify-between gap-4">
+        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(146,64,14,0.08)] flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -413,7 +411,7 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Tasks for the Week Section */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 xl:row-span-2">
+      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
         <div className="flex items-center justify-between mb-6 font-quicksand">
           <div className="flex items-center gap-2 text-[#2a7797]">
             <CheckSquare className="w-4 h-4" />
@@ -424,7 +422,7 @@ export default function DashboardLandingPage() {
 
           <Link
             href="/dashboard/tasks"
-            className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-sm shadow-slate-300/5 font-quicksand"
+            className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-[0_4px_10px_rgba(15,23,42,0.04)] font-quicksand"
           >
             <span>View Tasks Page</span>
             <ExternalLink className="w-3 h-3" />
@@ -442,15 +440,14 @@ export default function DashboardLandingPage() {
               <Link
                 key={task.id}
                 href={`/dashboard/tasks?search=${encodeURIComponent(task.title)}`}
-                className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-150 cursor-pointer select-none group font-aileron ${
+                className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 cursor-pointer select-none group font-aileron ${
                   isCompleted
-                    ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-sm"
-                    : "bg-[#fffdf8] border-slate-300 shadow-md shadow-slate-300/15 hover:bg-slate-50 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-300/25"
+                    ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-[0_4px_12px_rgba(0,0,0,0.02)]"
+                    : "bg-[#fffdf8] border-slate-300 shadow-[0_8px_20px_rgba(15,23,42,0.06)] hover:bg-slate-50 hover:border-slate-400 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5"
                 }`}
               >
                 {/* Left Area */}
                 <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                  {/* Interactive toggle wrapper */}
                   <button
                     onClick={(e) => toggleTaskStatus(task.id, e)}
                     className="shrink-0 mt-1 cursor-pointer transition-transform duration-100 hover:scale-110 active:scale-95 focus:outline-none"
@@ -482,7 +479,6 @@ export default function DashboardLandingPage() {
                       {task.title}
                     </span>
 
-                    {/* Description replaced with Project Link layout */}
                     <div
                       className={`flex items-center gap-1.5 text-xs font-bold font-aileron ${
                         isCompleted
@@ -525,7 +521,7 @@ export default function DashboardLandingPage() {
       {/* Charts and Events Bottom Grid Area */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Yearly Service Reports Bar Chart */}
-        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10">
+        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)]">
           <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
             <BarChart3 className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
@@ -564,6 +560,7 @@ export default function DashboardLandingPage() {
                     borderRadius: "12px",
                     border: "1px solid #e2e8f0",
                     padding: "8px 12px",
+                    boxShadow: "0 10px 25px rgba(15,23,42,0.08)",
                   }}
                   itemStyle={{
                     fontSize: "12px",
@@ -593,7 +590,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Upcoming Events Column */}
-        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 xl:row-span-2">
+        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
           <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
             <Calendar className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
@@ -616,7 +613,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Project Distribution Donut Chart */}
-        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 flex flex-col justify-between">
+        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 font-quicksand">
               <div className="flex items-center gap-2 text-[#2a7797]">
@@ -628,7 +625,7 @@ export default function DashboardLandingPage() {
 
               <Link
                 href="/dashboard/projects"
-                className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-sm shadow-slate-300/5 font-quicksand"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-[0_4px_10px_rgba(15,23,42,0.04)] font-quicksand"
               >
                 <span>View Projects Page</span>
                 <ExternalLink className="w-3 h-3" />
@@ -664,6 +661,7 @@ export default function DashboardLandingPage() {
                         backgroundColor: "#fff",
                         borderRadius: "8px",
                         border: "1px solid #e2e8f0",
+                        boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
                       }}
                     />
                   </PieChart>
@@ -682,7 +680,7 @@ export default function DashboardLandingPage() {
                 {projectStatusDistribution.map((entry, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-200 shadow-sm shadow-slate-300/5"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-200 shadow-[0_4px_12px_rgba(15,23,42,0.02)]"
                   >
                     <div className="flex items-center gap-2">
                       <span
