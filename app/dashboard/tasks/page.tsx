@@ -7,6 +7,7 @@ import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
 import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs"; // Ensure this import path matches your directory structure
+import { Task, TaskStatus, TaskPriority } from "../../../types/database";
 import {
   Search,
   CheckSquare,
@@ -19,65 +20,55 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-type Task = {
-  id: number;
-  title: string;
-  assignee: string;
-  due_date: string;
-  status: string;
-  priority: string;
-  project_id: number;
-};
-
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 1,
-    title: "Configure multi-node SLURM job matrix parameters",
-    assignee: "Dr. Analyst Cruz",
-    due_date: "2026-07-15",
-    status: "In-Progress",
-    priority: "High",
-    project_id: 1,
-  },
-  {
-    id: 2,
-    title: "Verify fastq adapter filtering thresholds via MultiQC reports",
-    assignee: "Prof. Lopez",
-    due_date: "2026-07-22",
-    status: "Pending",
-    priority: "Medium",
-    project_id: 2,
-  },
-  {
-    id: 3,
-    title: "Deploy downstream R Shiny expression rendering visualization app",
-    assignee: "Engr. Santos",
-    due_date: "2026-08-05",
-    status: "Completed",
-    priority: "Low",
-    project_id: 4,
-  },
-];
-
 const AVAILABLE_PROJECTS = [
-  { id: 1, name: "De Novo Transcriptome Assembly Pipeline" },
-  { id: 2, name: "Metagenomic Sequencing Validation" },
-  { id: 3, name: "Variant Calling on Rice Subspecies" },
-  { id: 4, name: "RNA-Seq Differential Expression Analysis" },
-  { id: 5, name: "ChIP-Seq Transcription Profiling" },
+  { id: "b1a1c1e0-0000-0000-0000-000000000001", name: "De Novo Transcriptome Assembly Pipeline" },
+  { id: "b1a1c1e0-0000-0000-0000-000000000002", name: "Metagenomic Sequencing Validation" },
+  { id: "b1a1c1e0-0000-0000-0000-000000000003", name: "Variant Calling on Rice Subspecies" },
+  { id: "b1a1c1e0-0000-0000-0000-000000000004", name: "RNA-Seq Differential Expression Analysis" },
+  { id: "b1a1c1e0-0000-0000-0000-000000000005", name: "ChIP-Seq Transcription Profiling" },
 ];
 
 const AVAILABLE_USERS = [
-  "Dr. Analyst Cruz",
-  "Prof. Lopez",
-  "Engr. Santos",
-  "Dr. Cruz",
-  "Prof. Torres",
+  { id: "c2b2d2f0-0000-0000-0000-000000000001", name: "Dr. Analyst Cruz" },
+  { id: "c2b2d2f0-0000-0000-0000-000000000002", name: "Prof. Lopez" },
+  { id: "c2b2d2f0-0000-0000-0000-000000000003", name: "Engr. Santos" },
+  { id: "c2b2d2f0-0000-0000-0000-000000000004", name: "Dr. Cruz" },
+  { id: "c2b2d2f0-0000-0000-0000-000000000005", name: "Prof. Torres" },
 ];
 
-const STATUS_OPTIONS = ["Pending", "In-Progress", "Completed", "On Hold"];
+const INITIAL_TASKS: Task[] = [
+  {
+    id: "a1a1a1a1-0000-0000-0000-000000000001",
+    title: "Configure multi-node SLURM job matrix parameters",
+    assignee_id: AVAILABLE_USERS[0].id,
+    due_date: "2026-07-15",
+    status: "In-Progress",
+    priority: "High",
+    linked_project_id: AVAILABLE_PROJECTS[0].id,
+  },
+  {
+    id: "a1a1a1a1-0000-0000-0000-000000000002",
+    title: "Verify fastq adapter filtering thresholds via MultiQC reports",
+    assignee_id: AVAILABLE_USERS[1].id,
+    due_date: "2026-07-22",
+    status: "Pending",
+    priority: "Medium",
+    linked_project_id: AVAILABLE_PROJECTS[1].id,
+  },
+  {
+    id: "a1a1a1a1-0000-0000-0000-000000000003",
+    title: "Deploy downstream R Shiny expression rendering visualization app",
+    assignee_id: AVAILABLE_USERS[2].id,
+    due_date: "2026-08-05",
+    status: "Completed",
+    priority: "Low",
+    linked_project_id: AVAILABLE_PROJECTS[3].id,
+  },
+];
+
+const STATUS_OPTIONS: TaskStatus[] = ["Pending", "In-Progress", "Completed", "On Hold"];
 const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
-const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
+const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
 // Helper function to format dates to MM/DD/YYYY
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -113,11 +104,11 @@ export default function TasksPage() {
 
   const emptyForm: Omit<Task, "id"> = {
     title: "",
-    assignee: AVAILABLE_USERS[0],
+    assignee_id: AVAILABLE_USERS[0].id,
     due_date: "",
     status: "Pending",
     priority: "Medium",
-    project_id: AVAILABLE_PROJECTS[0].id,
+    linked_project_id: AVAILABLE_PROJECTS[0].id,
   };
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
@@ -163,7 +154,7 @@ export default function TasksPage() {
     }
   }, [activeFilter]);
 
-  const updateTaskStatus = (taskId: number, newStatus: string) => {
+  const updateTaskStatus = (taskId: string, newStatus: TaskStatus) => {
     setTasksList((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, status: newStatus } : task,
@@ -171,7 +162,7 @@ export default function TasksPage() {
     );
   };
 
-  const updateTaskPriority = (taskId: number, newPriority: string) => {
+  const updateTaskPriority = (taskId: string, newPriority: TaskPriority) => {
     setTasksList((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, priority: newPriority } : task,
@@ -190,11 +181,11 @@ export default function TasksPage() {
           .replace(/[\s-]/g, "");
         if (normalizedTaskStatus !== normalizedFilter) return false;
       }
-
-      const project = AVAILABLE_PROJECTS.find((p) => p.id === task.project_id);
+      const assignee = AVAILABLE_USERS.find((u) => u.id === task.assignee_id);
+      const project = AVAILABLE_PROJECTS.find((p) => p.id === task.linked_project_id);
       const searchPool = [
-        task.title,
-        task.assignee,
+        task.title ?? "",
+        assignee ? assignee.name : "",
         task.status,
         task.priority,
         task.due_date,
@@ -285,17 +276,12 @@ export default function TasksPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    setFormState((prev) => ({
-      ...prev,
-      [name]: name === "project_id" ? parseInt(value, 10) : value,
-    }));
+    setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedId =
-      tasksList.length > 0 ? Math.max(...tasksList.map((t) => t.id)) + 1 : 1;
-
+    const generatedId = crypto.randomUUID();
     setTasksList((prev) => [{ id: generatedId, ...formState }, ...prev]);
     setIsAdding(false);
   };
@@ -362,11 +348,13 @@ export default function TasksPage() {
       ),
     },
     {
-      key: "project_id",
+      key: "linked_project_id",
       label: "Linked Project",
       width: "20%",
       render: (t) => {
-        const project = AVAILABLE_PROJECTS.find((p) => p.id === t.project_id);
+        const project = AVAILABLE_PROJECTS.find(
+          (p) => p.id === t.linked_project_id,
+        );
         return (
           <span
             className="text-slate-600 text-xs font-medium block truncate max-w-full"
@@ -378,18 +366,20 @@ export default function TasksPage() {
       },
     },
     {
-      key: "assignee",
+      key: "assignee_id",
       label: "Assignee",
       width: "13%",
-      sortable: true,
-      render: (t) => (
-        <span
-          className="block truncate max-w-full text-xs text-slate-700 font-medium"
-          title={t.assignee}
-        >
-          {t.assignee}
-        </span>
-      ),
+      render: (t) => {
+        const assignee = AVAILABLE_USERS.find((u) => u.id === t.assignee_id);
+        return (
+          <span
+            className="block truncate max-w-full text-xs text-slate-700 font-medium"
+            title={assignee ? assignee.name : "Unassigned"}
+          >
+            {assignee ? assignee.name : "Unassigned"}
+          </span>
+        );
+      },
     },
     {
       key: "priority",
@@ -401,7 +391,7 @@ export default function TasksPage() {
           <div className="relative min-w-[105px] max-w-[130px] w-full">
             <select
               value={t.priority}
-              onChange={(e) => updateTaskPriority(t.id, e.target.value)}
+              onChange={(e) => updateTaskPriority(t.id, e.target.value as TaskPriority)}
               className={getPriorityClass(t.priority)}
             >
               {PRIORITY_OPTIONS.map((opt) => (
@@ -429,7 +419,7 @@ export default function TasksPage() {
           <div className="relative min-w-[115px] max-w-[140px] w-full">
             <select
               value={t.status}
-              onChange={(e) => updateTaskStatus(t.id, e.target.value)}
+              onChange={(e) => updateTaskStatus(t.id, e.target.value as TaskStatus)}
               className={getStatusClass(t.status)}
             >
               {STATUS_OPTIONS.map((opt) => (
@@ -471,11 +461,11 @@ export default function TasksPage() {
               setSelectedTask(t);
               setFormState({
                 title: t.title,
-                assignee: t.assignee,
+                assignee_id: t.assignee_id,
                 due_date: t.due_date,
                 status: t.status,
                 priority: t.priority,
-                project_id: t.project_id,
+                linked_project_id: t.linked_project_id,
               });
               setIsEditing(true);
             }}
@@ -505,9 +495,8 @@ export default function TasksPage() {
 
   return (
     <div
-      className={`space-y-8 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
-        isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-      }`}
+      className={`space-y-8 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        }`}
     >
       {/* Top Header Controls Area formatted exactly like the landing page */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
@@ -599,11 +588,10 @@ export default function TasksPage() {
                   data-filter={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs transition-colors duration-300 whitespace-nowrap ${
-                    isActive
+                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs transition-colors duration-300 whitespace-nowrap ${isActive
                       ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
-                  }`}
+                    }`}
                 >
                   {filter}
                 </button>

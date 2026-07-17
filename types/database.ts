@@ -58,6 +58,21 @@ export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" |
   target_delivery_date: string;     // same reasoning applies here (see below)
 };
 
+//For Tasks ===========================================================================
+export type TaskStatus = "Pending" | "In-Progress" | "Completed" | "On Hold";
+export type TaskPriority = "Low" | "Medium" | "High";
+
+export type Task = {
+  id: string;
+  title: string;
+  assignee_id: string;
+  due_date: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  linked_project_id: string;
+  updated_at?: string;
+};
+
 // ============================================================
 // 3.1 Client Sequence Analysis types
 // ============================================================

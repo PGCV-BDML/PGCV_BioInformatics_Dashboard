@@ -1,6 +1,7 @@
 "use client";
-
+//taskmodal.tsx
 import React from "react";
+import { Task, TaskStatus, TaskPriority } from "../../types/database";
 import {
   X,
   Save,
@@ -10,24 +11,14 @@ import {
   Calendar,
 } from "lucide-react";
 
-type Task = {
-  id: number;
-  title: string;
-  assignee: string;
-  due_date: string;
-  status: string;
-  priority: string;
-  project_id: number;
-};
-
 interface TaskModalProps {
   isOpen: boolean;
   isAdding: boolean;
   formState: Omit<Task, "id">;
-  availableProjects: { id: number; name: string }[];
-  availableUsers: string[];
-  statusOptions: string[];
-  priorityOptions: string[];
+  availableProjects: { id: string; name: string }[];
+  availableUsers: { id: string; name: string }[];
+  statusOptions: TaskStatus[];
+  priorityOptions: TaskPriority[];
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
@@ -59,8 +50,8 @@ export default function TaskModal({
       <div
         onClick={onClose}
         className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${isOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
           }`}
       />
 
@@ -129,9 +120,9 @@ export default function TaskModal({
                 Linked Project
               </label>
               <select
-                name="project_id"
+                name="linked_project_id"
                 required
-                value={formState.project_id}
+                value={formState.linked_project_id ?? ""}
                 onChange={onInputChange}
                 className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
               >
@@ -157,19 +148,19 @@ export default function TaskModal({
                   Assignee
                 </label>
                 <select
-                  name="assignee"
+                  name="assignee_id"
                   required
-                  value={formState.assignee}
+                  value={formState.assignee_id}
                   onChange={onInputChange}
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 >
                   {availableUsers.map((user) => (
                     <option
-                      key={user}
-                      value={user}
+                      key={user.id}
+                      value={user.id}
                       className="text-slate-800 font-bold"
                     >
-                      {user}
+                      {user.name}
                     </option>
                   ))}
                 </select>
@@ -238,7 +229,7 @@ export default function TaskModal({
                   type="date"
                   name="due_date"
                   required
-                  value={formState.due_date}
+                  value={formState.due_date ?? ""}
                   onChange={onInputChange}
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 />
