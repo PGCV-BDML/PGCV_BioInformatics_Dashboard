@@ -7,6 +7,7 @@ import Pagination from "../../components/pagination";
 import AnalysisSidebar, {
   AnalysisFormState,
 } from "../../components/analysismodal";
+import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs";
 import {
   Search,
   Dna,
@@ -28,7 +29,6 @@ interface ServiceProjectRow {
   started: string;
   completed: string;
   report_link: string;
-  // Tracked fields for fallback report generation
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
@@ -38,7 +38,7 @@ const SERVICES_CONFIG = [
   {
     id: "sequence-analysis",
     title: "3.1 — Client Sequence Analysis",
-    href: "/dashboard/services",
+    href: "/dashboard/services", // Primary entrypoint for Bioinformatics Services
   },
   {
     id: "training",
@@ -172,6 +172,13 @@ export default function ServicesPage() {
   const [fallbackUrl, setFallbackUrl] = useState("");
   const [clientAck, setClientAck] = useState(false);
 
+  // Dynamic breadcrumbs trail mapping configuration
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Bioinformatics Services", href: "/dashboard/services" },
+    { label: "3.1 Client Sequence Analysis" },
+  ];
+
   // Dispatches framework side shifts for primary outer layout layout nodes
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
@@ -254,19 +261,16 @@ export default function ServicesPage() {
     setIsSidebarOpen(false);
   };
 
-  // Helper to construct external report generator URL parameters
   const generateExternalReportUrl = (row: ServiceProjectRow) => {
     const matchedProj = PROJECT_REGISTRY.find(
       (p) => p.name === row.project_name,
     );
     const projectId = matchedProj ? matchedProj.id : "unknown-proj";
-    // Using a sanitized version of client name as client ID fallback
     const clientId = row.client.toLowerCase().replace(/\s+/g, "-");
 
     return `/dashboard/services/report-generator?project_id=${encodeURIComponent(projectId)}&client_id=${encodeURIComponent(clientId)}&analysis_id=${encodeURIComponent(row.id)}`;
   };
 
-  // Fallback Local Form Submission handler
   const handleFallbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReportRow) return;
@@ -277,7 +281,7 @@ export default function ServicesPage() {
           ? {
               ...item,
               report_link: fallbackUrl,
-              delivered_by: "Current User", // Replace with auth hook user name if dynamic
+              delivered_by: "Current User",
               delivered_at: new Date()
                 .toISOString()
                 .replace("T", " ")
@@ -290,7 +294,6 @@ export default function ServicesPage() {
       ),
     );
 
-    // Reset Modal
     setSelectedReportRow(null);
     setFallbackUrl("");
     setClientAck(false);
@@ -318,12 +321,51 @@ export default function ServicesPage() {
   const sortedServices = useMemo(() => {
     const sortableItems = [...filteredServices];
     if (!sortConfig) return sortableItems;
+
+    const { key, direction } = sortConfig;
+    const isAsc = direction === "asc";
+
+    const statusWeights: Record<string, number> = {
+      for_approval: 1,
+      ongoing: 2,
+      finished: 3,
+    };
+
     return sortableItems.sort((a, b) => {
-      const valA = String(a[sortConfig.key] || "").toLowerCase();
-      const valB = String(b[sortConfig.key] || "").toLowerCase();
-      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
+      const valA = a[key];
+      const valB = b[key];
+
+      if (key === "status") {
+        const weightA = statusWeights[String(valA)] || 99;
+        const weightB = statusWeights[String(valB)] || 99;
+        return isAsc ? weightA - weightB : weightB - weightA;
+      }
+
+      if (key === "started" || key === "completed") {
+        const strA = String(valA || "").trim();
+        const strB = String(valB || "").trim();
+
+        const timeA =
+          strA === "—" || !strA ? Infinity : new Date(strA).getTime();
+        const timeB =
+          strB === "—" || !strB ? Infinity : new Date(strB).getTime();
+
+        if (timeA === timeB) return 0;
+        return isAsc ? timeA - timeB : timeB - timeA;
+      }
+
+      const stringA = String(valA || "").trim();
+      const stringB = String(valB || "").trim();
+
+      return isAsc
+        ? stringA.localeCompare(stringB, undefined, {
+            sensitivity: "base",
+            numeric: true,
+          })
+        : stringB.localeCompare(stringA, undefined, {
+            sensitivity: "base",
+            numeric: true,
+          });
     });
   }, [filteredServices, sortConfig]);
 
@@ -331,6 +373,10 @@ export default function ServicesPage() {
     const startOffset = (currentPage - 1) * ITEMS_PER_PAGE;
     return sortedServices.slice(startOffset, startOffset + ITEMS_PER_PAGE);
   }, [sortedServices, currentPage]);
+
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
+  }, [activeFilter]);
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
     let colorClasses = "bg-gray-100 text-gray-700";
@@ -484,44 +530,53 @@ export default function ServicesPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron w-full max-w-[1240px] px-4 py-6 transition-all duration-300 ease-in-out ${
-        isSidebarOpen ? "mr-96 xl:mr-[440px]" : "mr-auto"
+      className={`space-y-8 mx-auto font-aileron w-full transition-all duration-300 ease-in-out ${
+        isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
       }`}
     >
-      {/* Top Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+      {/* Top Header Controls Layout */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - Bioinformation Services
-          </span>
-          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+          {/* Breadcrumbs Component trail mapping */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* Standardized Title Typography */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Bioinformatics Services
           </h1>
+
+          {/* Core Subheader layout line */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            Operational workflows · Review active sequences, configurations, and
+            analytical reporting metrics
+          </p>
         </div>
 
-        {/* Search Input Box & Sidebar Trigger button */}
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
+        {/* Action Controls Input alignment mapping */}
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search pipelines, projects..."
+              placeholder="Search analysis..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/50 shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all"
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
             />
           </div>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Run New Pipeline
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
           </button>
         </div>
       </div>
 
-      {/* Navigation Capsule Navigation Row */}
+      {/* Navigation Capsule Row */}
       <div className="flex flex-wrap items-center gap-3 pt-1">
         {SERVICES_CONFIG.map((service) => {
           const isActive = activeTab === service.id;
@@ -532,8 +587,8 @@ export default function ServicesPage() {
               onClick={() => setActiveTab(service.id)}
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
-                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-sm"
-                  : "bg-white text-slate-600 border-gray-200 hover:bg-gray-50 hover:text-slate-800"
+                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
+                  : "bg-[#fffdf8] text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -542,17 +597,25 @@ export default function ServicesPage() {
         })}
       </div>
 
-      {/* Main Table Design Box Segment */}
+      {/* Main Table Design Layout */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Dna className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
-              Sequence Alignment Queue
+              Service Report Tracker
             </h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full overflow-x-auto max-w-full">
+          {/* Animated Filter Bar Capsule */}
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full w-fit overflow-hidden shadow-inner">
+            <div
+              className="absolute top-1 bottom-1 left-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100/80 transition-transform duration-300 ease-in-out"
+              style={{
+                width: "112px",
+                transform: `translateX(${activeFilterIndex * 112}px)`,
+              }}
+            />
             {FILTER_OPTIONS.map((opt) => {
               const isActive = activeFilter === opt.value;
               return (
@@ -560,9 +623,9 @@ export default function ServicesPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 select-none whitespace-nowrap ${
                     isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >
@@ -573,7 +636,7 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* DataTable Content Matrix Loader */}
+        {/* DataTable Wrapper */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <span className="text-sm font-medium text-slate-400 animate-pulse">
@@ -605,7 +668,7 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {/* Service Report Generator Modal & Fallback Flow */}
+      {/* Service Report Generator Modal */}
       {selectedReportRow && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
@@ -621,7 +684,6 @@ export default function ServicesPage() {
               </p>
             </div>
 
-            {/* Option A: Preferred Integration Pathway */}
             <div className="bg-[#f0f9ff] border border-blue-100 rounded-2xl p-4 mb-6">
               <span className="text-[10px] uppercase font-bold text-[#2a7797] tracking-wider block mb-2">
                 Primary Integration Method
@@ -648,7 +710,6 @@ export default function ServicesPage() {
               <div className="flex-grow border-t border-slate-200"></div>
             </div>
 
-            {/* Option B: Fallback Flow Local Form */}
             <form onSubmit={handleFallbackSubmit} className="mt-4 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
@@ -708,7 +769,7 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {/* Slide-over Analysis configuration panel */}
+      {/* Slide-over analysis matrix panel */}
       <AnalysisSidebar
         isOpen={isSidebarOpen}
         formState={formState}

@@ -5,6 +5,7 @@ import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import CollaborationSidebar from "../../components/collaborationmodal";
+import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs"; // Relative to components folder
 import { CollaborationRow, UserOption } from "../../../types/database";
 import {
   Search,
@@ -55,6 +56,15 @@ const STATUS_OPTIONS = [
   { value: "finished", label: "Finished" },
 ];
 
+// Split-based MM/DD/YYYY formatter
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
+
 export default function CollaborationsPage() {
   const [collaborationsList, setCollaborationsList] = useState<
     CollaborationRow[]
@@ -78,6 +88,17 @@ export default function CollaborationsPage() {
     useState<CollaborationRow | null>(null);
 
   const isPanelOpen = isAdding || isEditing;
+
+  // Breadcrumb Trail Config
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Collaborations" },
+  ];
+
+  // Selected Index of Active Filter for Slider
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
+  }, [activeFilter]);
 
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
@@ -182,7 +203,6 @@ export default function CollaborationsPage() {
       console.error("Error checking collab data:", error);
       return;
     }
-
     setIsAdding(false);
     setFormState(EMPTY_FORM);
   };
@@ -318,7 +338,7 @@ export default function CollaborationsPage() {
           ))}
         </select>
         <ChevronDown
-          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+          className={`w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
         />
       </div>
     );
@@ -357,6 +377,7 @@ export default function CollaborationsPage() {
       key: "status",
       label: "Status",
       width: "15%",
+      sortable: true,
       render: (c) => (
         <div className="flex items-center justify-center w-full">
           {renderStatusDropdown(c.id, c.status)}
@@ -369,7 +390,9 @@ export default function CollaborationsPage() {
       width: "11%",
       sortable: true,
       render: (c) => (
-        <span className="text-xs text-slate-600">{c.start_date || "-"}</span>
+        <span className="text-xs text-slate-600">
+          {formatDate(c.start_date) || "-"}
+        </span>
       ),
     },
     {
@@ -414,7 +437,7 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "reposityory_link" as any,
+      key: "repository_link" as any,
       label: "Repository Link",
       width: "14%",
       render: (c) => {
@@ -477,20 +500,31 @@ export default function CollaborationsPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
         }`}
     >
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+      {/* Top Header Controls Area formatted exactly like the landing/tasks page */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - Collaborations Page
-          </span>
-          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+          {/* Breadcrumbs Wrapper */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* Main Title formatted with landing page styling */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Collaborations
           </h1>
+
+          {/* Subheader styled to match landing page secondary details */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            Strategic partnerships · Academic connections and inter-agency
+            alignments
+          </p>
         </div>
 
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
+        {/* Action controls aligned to the right side of the header */}
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -498,7 +532,7 @@ export default function CollaborationsPage() {
               placeholder="Search collaborations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:shadow-[0_4px_16px_rgba(78,194,187,0.15)] transition-all"
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
             />
           </div>
           <button
@@ -510,7 +544,7 @@ export default function CollaborationsPage() {
               });
               setIsAdding(true);
             }}
-            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Collaboration
           </button>
@@ -518,7 +552,7 @@ export default function CollaborationsPage() {
       </div>
 
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div className="flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Users2 className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
@@ -526,7 +560,12 @@ export default function CollaborationsPage() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] self-start min-[600px]:self-auto overflow-hidden">
+            <div
+              style={{ transform: `translateX(${activeFilterIndex * 100}%)` }}
+              className="absolute top-1 bottom-1 left-1 w-28 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-transform duration-300 ease-out pointer-events-none"
+            />
+
             {FILTER_OPTIONS.map((opt) => {
               const isActive = activeFilter === opt.value;
               return (
@@ -534,8 +573,8 @@ export default function CollaborationsPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
-                    ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${isActive
+                    ? "text-[#2a7797] font-semibold"
                     : "text-slate-500 hover:text-slate-800 font-medium"
                     }`}
                 >

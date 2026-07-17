@@ -6,6 +6,7 @@ import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import ProjectModal from "../../components/projectmodal";
 import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../../types/database";
+import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs";
 import {
   Search,
   Network,
@@ -23,17 +24,19 @@ import {
 //Database imports
 import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB, getNameIdFromDB } from "@/lib/supabase";
 
-// These would normally come from your DB (clients/services/users tables)
-// const AVAILABLE_CLIENTS: UserOption[] = await getNameIdFromDB("client")
-// const AVAILABLE_SERVICES: UserOption[] = await getNameIdFromDB("service")
-// const AVAILABLE_USERS: UserOption[] = await getUsersFromDB(["team_lead", "team_member"])
+// Helper function to safely format "YYYY-MM-DD" to "MM/DD/YYYY"
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
 
 const FILTER_OPTIONS: { value: ProjectStatus | "All"; label: string }[] = [
   { value: "All", label: "All" },
   ...STATUS_OPTIONS,
 ];
-
-// types/database.ts (or a shared constants file)
 
 
 export default function ProjectsPage() {
@@ -59,6 +62,16 @@ export default function ProjectsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const isPanelOpen = isAdding || isEditing;
+
+  // Breadcrumb configuration matching dashboard subpage design rules
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Projects" },
+  ];
+
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
+  }, [activeFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,7 +264,6 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     let records = projectsList;
 
-    // Apply Active Horizontal Capsule Filter
     if (activeFilter !== "All") {
       records = records.filter((project) => project.status === activeFilter);
     }
@@ -359,6 +371,7 @@ export default function ProjectsPage() {
       key: "status",
       label: "Status",
       width: "12%",
+      sortable: true,
       render: (p) => (
         <div className="relative inline-block w-full min-w-[95px]">
           <select
@@ -393,7 +406,9 @@ export default function ProjectsPage() {
       width: "9%",
       sortable: true,
       render: (p) => (
-        <span className="text-xs text-slate-600">{p.start_date}</span>
+        <span className="text-xs text-slate-600">
+          {formatDate(p.start_date)}
+        </span>
       ),
     },
     {
@@ -402,7 +417,9 @@ export default function ProjectsPage() {
       width: "9%",
       sortable: true,
       render: (p) => (
-        <span className="text-xs text-slate-600">{p.target_delivery_date}</span>
+        <span className="text-xs text-slate-600">
+          {formatDate(p.target_delivery_date)}
+        </span>
       ),
     },
     {
@@ -461,34 +478,46 @@ export default function ProjectsPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
         }`}
     >
-      {/* Control Navigation Header Panel */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+      {/* Top Header Controls Area completely standardized to match styling specs */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - Projects
-          </span>
-          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+          {/* Breadcrumbs Component placement */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* Main Title standard size layout */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Projects
           </h1>
+
+          {/* Subheader tracking text layout */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            Operational workflows · Manage genomic execution matrices and
+            project pipelines
+          </p>
         </div>
 
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
-          {/* Row Limit Control Switcher */}
-          <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="bg-transparent text-xs text-slate-700 outline-none pr-1 cursor-pointer font-medium appearance-none"
-            >
-              <option value={5}>Show 5 rows</option>
-              <option value={7}>Show 7 rows</option>
-              <option value={10}>Show 10 rows</option>
-              <option value={20}>Show 20 rows</option>
-            </select>
+        {/* Action Controls uniform structure alignment */}
+        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full min-[480px]:w-44">
+            <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-transparent text-xs text-slate-700 outline-none pr-5 cursor-pointer font-medium appearance-none w-full"
+              >
+                <option value={5}>Show 5 rows</option>
+                <option value={7}>Show 7 rows</option>
+                <option value={10}>Show 10 rows</option>
+                <option value={20}>Show 20 rows</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-slate-500" />
+            </div>
           </div>
 
           <div className="relative w-full min-[480px]:w-64">
@@ -498,7 +527,7 @@ export default function ProjectsPage() {
               placeholder="Search projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:shadow-[0_4px_16px_rgba(78,194,187,0.15)] transition-all"
+              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
             />
           </div>
           <button
@@ -508,16 +537,15 @@ export default function ProjectsPage() {
               setSelectedProject(null);
               setIsAdding(true);
             }}
-            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-[0_8px_20px_rgba(15,23,42,0.25)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Project
           </button>
         </div>
       </div>
 
-      {/* Main Table Interface */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Network className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
@@ -525,8 +553,12 @@ export default function ProjectsPage() {
             </h2>
           </div>
 
-          {/* New Cream Filter Bar Capsule matching your design image */}
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full self-start lg:self-auto">
+            <div
+              style={{ transform: `translateX(${activeFilterIndex * 100}%)` }}
+              className="absolute top-1 bottom-1 left-1 w-28 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-transform duration-300 ease-out pointer-events-none"
+            />
+
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter.value;
               return (
@@ -534,8 +566,8 @@ export default function ProjectsPage() {
                   key={filter.value}
                   type="button"
                   onClick={() => setActiveFilter(filter.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
-                    ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${isActive
+                    ? "text-[#2a7797] font-semibold"
                     : "text-slate-500 hover:text-slate-800 font-medium"
                     }`}
                 >
@@ -562,7 +594,7 @@ export default function ProjectsPage() {
             </span>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[760px]">
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[960px]">
             <DataTable
               columns={columns}
               data={displayedProjects}
