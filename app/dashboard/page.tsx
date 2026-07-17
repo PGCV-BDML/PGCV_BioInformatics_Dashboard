@@ -48,21 +48,36 @@ type DashboardStats = {
 interface WeeklyTask {
   id: string;
   title: string;
+  description: string;
+  linkedProject: string;
   dueDate: Date;
   status: "pending" | "completed";
-  category: "Biology" | "CompSci" | "Both";
-  tagColorClass: string;
-  tagBgClass: string;
   priority: "high" | "medium" | "low";
 }
 
 const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b", "#6366f1", "#94a3b8"];
 const AVAILABLE_YEARS = ["2024", "2025", "2026"];
 
+// Color configurations mapped directly to task priority
 const priorityConfig = {
-  high: { bar: "bg-red-500", text: "text-red-600" },
-  medium: { bar: "bg-amber-500", text: "text-amber-600" },
-  low: { bar: "bg-emerald-500", text: "text-emerald-600" },
+  high: {
+    bar: "bg-red-500",
+    text: "text-red-600",
+    tagBg: "bg-red-50 border-red-200/60",
+    tagText: "text-red-700",
+  },
+  medium: {
+    bar: "bg-amber-500",
+    text: "text-amber-600",
+    tagBg: "bg-amber-50 border-amber-200/60",
+    tagText: "text-amber-700",
+  },
+  low: {
+    bar: "bg-emerald-500",
+    text: "text-emerald-600",
+    tagBg: "bg-emerald-50 border-emerald-200/60",
+    tagText: "text-emerald-700",
+  },
 };
 
 export default function DashboardLandingPage() {
@@ -71,8 +86,23 @@ export default function DashboardLandingPage() {
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Ref to target the hidden/styled select click handler dynamically
   const selectRef = useRef<HTMLSelectElement>(null);
+
+  // Toggle state to make click as done interactable
+  const toggleTaskStatus = (id: string, e: React.MouseEvent) => {
+    e.preventDefault(); // Prevents navigating to the task link when checking the box
+    e.stopPropagation();
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === id
+          ? {
+              ...task,
+              status: task.status === "completed" ? "pending" : "completed",
+            }
+          : task,
+      ),
+    );
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -124,61 +154,49 @@ export default function DashboardLandingPage() {
     setTasks([
       {
         id: "task-1",
-        title: "Validate service status states",
-        dueDate: new Date(),
+        title: "Configure multi-node SLURM job matrix parameters",
+        description:
+          "Optimize node allocation profiles for heavy variant-calling execution schedules.",
+        linkedProject: "NextFlow Pipeline Optimization",
+        dueDate: new Date("2026-07-18"),
         status: "pending",
-        category: "Biology",
-        tagColorClass: "text-amber-700",
-        tagBgClass: "bg-amber-50",
         priority: "high",
       },
       {
         id: "task-2",
-        title: "Review access permissions",
-        dueDate: new Date(),
+        title: "Verify fastq adapter filtering thresholds via MultiQC reports",
+        description:
+          "Cross-examine adapter trimming stats on run batch #419 to ensure baseline index retention.",
+        linkedProject: "Genomic Surveillance Batch-419",
+        dueDate: new Date("2026-07-20"),
         status: "pending",
-        category: "CompSci",
-        tagColorClass: "text-slate-600",
-        tagBgClass: "bg-slate-100",
         priority: "medium",
       },
       {
         id: "task-3",
-        title: "Prepare deployment check",
-        dueDate: new Date(),
+        title:
+          "Deploy downstream R Shiny expression rendering visualization app",
+        description:
+          "Publish latest hotfixes to container server for differential transcript expression plots.",
+        linkedProject: "Transcriptomics Visualizer",
+        dueDate: new Date("2026-07-22"),
         status: "pending",
-        category: "CompSci",
-        tagColorClass: "text-[#2a7797]",
-        tagBgClass: "bg-[#e6f4f8]",
         priority: "low",
       },
       {
         id: "task-4",
         title: "Import activity-sheet exports",
-        dueDate: new Date(),
+        description:
+          "Parse incoming external sequencers logs to match internally recorded operational metrics.",
+        linkedProject: "Sequencing Data Ingestion Engine",
+        dueDate: new Date("2026-07-25"),
         status: "pending",
-        category: "Both",
-        tagColorClass: "text-emerald-700",
-        tagBgClass: "bg-emerald-50",
         priority: "medium",
       },
     ]);
 
     setIsLoading(false);
   }, [selectedYear]);
-
-  const handleToggleTaskStatus = (id: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status: task.status === "pending" ? "completed" : "pending",
-            }
-          : task,
-      ),
-    );
-  };
 
   const totalProjects = stats
     ? stats.activeProjects + stats.completedProjects + stats.backlogProjects
@@ -210,38 +228,36 @@ export default function DashboardLandingPage() {
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
             Dashboard - Home
           </span>
-          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight">
+          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight font-aileron">
             Landing Page
           </h1>
         </div>
 
         {/* Global Pipeline Year Filter Button Control */}
         <div className="relative self-start sm:self-auto group">
-          {/* Visual Presentation Layout */}
-          <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-md shadow-slate-400/20 text-left pointer-events-none">
+          <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm shadow-slate-300/10 text-left pointer-events-none">
             <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-quicksand select-none">
               Filtered Year:
             </span>
-            <span className="text-xs font-bold text-[#174e64]">
+            <span className="text-xs font-bold text-[#174e64] font-quicksand">
               {selectedYear}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-[#174e64] ml-1" />
           </div>
 
-          {/* Invisible, Full-Width Native Select to drive dropdown expansion */}
           <select
             ref={selectRef}
             id="year-select"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-bold text-xs"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-bold text-xs font-quicksand"
           >
             {AVAILABLE_YEARS.map((year) => (
               <option
                 key={year}
                 value={year}
-                className="bg-white text-slate-700 font-medium"
+                className="bg-white text-slate-700 font-medium font-quicksand"
               >
                 {year}
               </option>
@@ -250,8 +266,8 @@ export default function DashboardLandingPage() {
         </div>
       </div>
 
-      {/* Welcome Operational Banner */}
-      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-xl shadow-slate-400/25 border border-slate-300/70 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-lg shadow-slate-400/15 border border-slate-300/70 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
         <div className="space-y-4 max-w-2xl z-10">
           <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
             Internal Operations Hub
@@ -262,14 +278,13 @@ export default function DashboardLandingPage() {
             Dashboard
           </h2>
 
-          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1">
+          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1 font-aileron">
             One internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and repository
             links.
           </p>
         </div>
 
-        {/* MODIFIED: Increased logo size for better visibility */}
         <div className="flex-shrink-0 z-10 self-end md:self-auto">
           <img
             src="/assets/pgcv_logo.png"
@@ -284,7 +299,7 @@ export default function DashboardLandingPage() {
       {/* Summary Cards Layer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total Projects */}
-        <div className="bg-[#eafafa] border border-teal-300/40 rounded-[22px] p-6 shadow-md shadow-[#1c5c59]/20 flex flex-col justify-between gap-4">
+        <div className="bg-[#eafafa] border border-teal-300/40 rounded-[22px] p-6 shadow-sm shadow-[#1c5c59]/10 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2e8b87] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -295,12 +310,12 @@ export default function DashboardLandingPage() {
             {isLoading || !stats ? (
               <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
             ) : (
-              <div className="text-4xl font-black text-[#1c5c59] tracking-tight">
+              <div className="text-4xl font-black text-[#1c5c59] tracking-tight font-aileron">
                 {totalProjects}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-[rgba(78,194,187,0.25)]">
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-[rgba(78,194,187,0.25)] font-aileron">
             <span className="flex items-center gap-1 bg-[#d5f5f5] text-[#1c5c59] px-2 py-1 rounded-full">
               <Activity className="w-3 h-3" /> {stats?.activeProjects} Active
             </span>
@@ -312,7 +327,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 2: Collaborations */}
-        <div className="bg-[#f3faf5] border border-emerald-300/40 rounded-[22px] p-6 shadow-md shadow-emerald-950/20 flex flex-col justify-between gap-4">
+        <div className="bg-[#f3faf5] border border-emerald-300/40 rounded-[22px] p-6 shadow-sm shadow-emerald-950/10 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-emerald-700 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -323,13 +338,13 @@ export default function DashboardLandingPage() {
             {isLoading || !stats ? (
               <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
             ) : (
-              <div className="text-4xl font-black text-emerald-900 tracking-tight">
+              <div className="text-4xl font-black text-emerald-900 tracking-tight font-aileron">
                 {(stats?.activeCollaborations ?? 0) +
                   (stats?.completedCollaborations ?? 0)}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-emerald-200">
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-emerald-200 font-aileron">
             <span className="flex items-center gap-1 bg-emerald-100/70 text-emerald-800 px-2 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {stats?.activeCollaborations} Active
@@ -342,7 +357,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 3: Service Reports */}
-        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-md shadow-slate-700/20 flex flex-col justify-between gap-4">
+        <div className="bg-[#f0f4f8] border border-blue-200 rounded-[22px] p-6 shadow-sm shadow-slate-700/10 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[#2a7797] mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -353,12 +368,12 @@ export default function DashboardLandingPage() {
             {isLoading || !stats ? (
               <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
             ) : (
-              <div className="text-4xl font-black text-[#174e64] tracking-tight">
+              <div className="text-4xl font-black text-[#174e64] tracking-tight font-aileron">
                 {stats.reportsDelivered}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-slate-200/60">
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-slate-200/60 font-aileron">
             <span className="flex items-center gap-1 bg-[#e6f4f8] text-[#174e64] px-2 py-1 rounded-full">
               <ArrowUpRight className="w-3 h-3" /> +{stats?.reportsNew} New
             </span>
@@ -369,7 +384,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Card 4: Programs Hub */}
-        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-md shadow-amber-950/15 flex flex-col justify-between gap-4">
+        <div className="bg-[#fffbe6] border border-amber-300/60 rounded-[22px] p-6 shadow-sm shadow-amber-950/10 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -380,16 +395,16 @@ export default function DashboardLandingPage() {
             {isLoading || !stats ? (
               <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
             ) : (
-              <div className="text-4xl font-black text-amber-900 tracking-tight">
+              <div className="text-4xl font-black text-amber-900 tracking-tight font-aileron">
                 {stats.totalTrainings}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-amber-200">
+          <div className="flex items-center gap-2 text-[11px] font-bold pt-3 border-t border-amber-200 font-aileron">
             <span className="flex items-center gap-1 bg-amber-100 text-amber-900 px-2 py-1 rounded-full">
               <Activity className="w-3 h-3" /> {stats?.ongoingTrainings} Active
             </span>
-            <span className="flex items-center gap-1 bg-white/60 text-amber-800 px-2 py-1 rounded-full border border-amber-200/60">
+            <span className="flex items-center gap-1 bg-white/60 text-[#b58105] px-2 py-1 rounded-full border border-amber-200/60 font-aileron">
               <GraduationCap className="w-3 h-3" /> {stats?.totalInterns}{" "}
               Interns
             </span>
@@ -398,7 +413,7 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Tasks for the Week Section */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20 xl:row-span-2">
+      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 xl:row-span-2">
         <div className="flex items-center justify-between mb-6 font-quicksand">
           <div className="flex items-center gap-2 text-[#2a7797]">
             <CheckSquare className="w-4 h-4" />
@@ -409,65 +424,99 @@ export default function DashboardLandingPage() {
 
           <Link
             href="/dashboard/tasks"
-            className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-md shadow-slate-400/10"
+            className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-sm shadow-slate-300/5 font-quicksand"
           >
             <span>View Tasks Page</span>
             <ExternalLink className="w-3 h-3" />
           </Link>
         </div>
 
-        <div className="space-y-2.5">
+        {/* List showing Details */}
+        <div className="space-y-3.5">
           {tasks.map((task) => {
             const isCompleted = task.status === "completed";
             const currentPriority =
               priorityConfig[task.priority] || priorityConfig.low;
 
             return (
-              <div
+              <Link
                 key={task.id}
-                onClick={() => handleToggleTaskStatus(task.id)}
-                className={`border rounded-2xl p-3 flex items-center justify-between transition-all duration-150 cursor-pointer select-none group ${
+                href={`/dashboard/tasks?search=${encodeURIComponent(task.title)}`}
+                className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-150 cursor-pointer select-none group font-aileron ${
                   isCompleted
-                    ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-none"
-                    : "bg-slate-50 border-slate-300 shadow-md shadow-slate-400/10 hover:bg-slate-200/80 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-400/15"
+                    ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-sm"
+                    : "bg-[#fffdf8] border-slate-300 shadow-md shadow-slate-300/15 hover:bg-slate-50 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-300/25"
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0 h-full">
-                  <div className="shrink-0">
+                {/* Left Area */}
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  {/* Interactive toggle wrapper */}
+                  <button
+                    onClick={(e) => toggleTaskStatus(task.id, e)}
+                    className="shrink-0 mt-1 cursor-pointer transition-transform duration-100 hover:scale-110 active:scale-95 focus:outline-none"
+                    title={
+                      isCompleted ? "Mark as pending" : "Mark as completed"
+                    }
+                  >
                     {isCompleted ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
                     ) : (
-                      <Circle className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                      <Circle className="w-4.5 h-4.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
                     )}
-                  </div>
-                  <div className="flex items-center gap-3 min-w-0 self-stretch">
-                    {/* Visual Priority Bar replaces the Flag icon */}
-                    <div
-                      className={`w-1 self-stretch rounded-full shrink-0 min-h-[16px] ${
-                        isCompleted ? "bg-slate-300" : currentPriority.bar
-                      }`}
-                    />
+                  </button>
+
+                  <div
+                    className={`w-1 rounded-full shrink-0 min-h-[44px] ${
+                      isCompleted ? "bg-slate-300" : currentPriority.bar
+                    }`}
+                  />
+
+                  <div className="flex flex-col gap-1.5 min-w-0">
                     <span
-                      className={`text-xs font-semibold ${
+                      className={`text-sm font-bold tracking-tight ${
                         isCompleted
                           ? "line-through text-slate-400"
-                          : currentPriority.text
+                          : "text-slate-800"
                       }`}
                     >
                       {task.title}
                     </span>
+
+                    {/* Description replaced with Project Link layout */}
+                    <div
+                      className={`flex items-center gap-1.5 text-xs font-bold font-aileron ${
+                        isCompleted
+                          ? "text-slate-400"
+                          : "text-[#2a7797] hover:underline"
+                      }`}
+                    >
+                      <FolderGit2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{task.linkedProject}</span>
+                    </div>
                   </div>
                 </div>
-                <div
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                    isCompleted
-                      ? "bg-slate-200 text-slate-500"
-                      : `${task.tagBgClass} ${task.tagColorClass}`
-                  }`}
-                >
-                  {task.category}
+
+                {/* Right Area */}
+                <div className="shrink-0 self-end md:self-center">
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border font-quicksand ${
+                      isCompleted
+                        ? "bg-slate-200 text-slate-500 border-slate-300"
+                        : `${currentPriority.tagBg} ${currentPriority.tagText}`
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      Due:{" "}
+                      {task.dueDate.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -476,7 +525,7 @@ export default function DashboardLandingPage() {
       {/* Charts and Events Bottom Grid Area */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Yearly Service Reports Bar Chart */}
-        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20">
+        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10">
           <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
             <BarChart3 className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
@@ -498,12 +547,12 @@ export default function DashboardLandingPage() {
                   dataKey="year"
                   axisLine={false}
                   tickLine={false}
-                  className="text-xs font-bold fill-slate-400 font-aileron"
+                  className="text-xs font-bold fill-slate-400 font-quicksand"
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  className="text-xs fill-slate-400 font-aileron"
+                  className="text-xs fill-slate-400 font-quicksand"
                 />
                 <Tooltip
                   wrapperStyle={{
@@ -519,12 +568,14 @@ export default function DashboardLandingPage() {
                   itemStyle={{
                     fontSize: "12px",
                     fontWeight: "500",
+                    fontFamily: "Aileron, sans-serif",
                   }}
                   labelStyle={{
                     fontSize: "12px",
                     fontWeight: "700",
                     color: "#64748b",
                     marginBottom: "2px",
+                    fontFamily: "Aileron, sans-serif",
                   }}
                 />
                 <Bar dataKey="Delivered" radius={[6, 6, 0, 0]} barSize={24}>
@@ -542,7 +593,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Upcoming Events Column */}
-        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20 xl:row-span-2">
+        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 xl:row-span-2">
           <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
             <Calendar className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
@@ -557,7 +608,7 @@ export default function DashboardLandingPage() {
             <span className="text-xs font-extrabold uppercase tracking-[2px] text-[#2a7797] font-quicksand block mb-1">
               Coming Soon
             </span>
-            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-sm">
+            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-sm font-aileron">
               The automated event tracker and synchronization feature is
               currently under development. Check back later for updates.
             </p>
@@ -565,7 +616,7 @@ export default function DashboardLandingPage() {
         </div>
 
         {/* Project Distribution Donut Chart */}
-        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/20 flex flex-col justify-between">
+        <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-md shadow-slate-300/10 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 font-quicksand">
               <div className="flex items-center gap-2 text-[#2a7797]">
@@ -575,10 +626,9 @@ export default function DashboardLandingPage() {
                 </h3>
               </div>
 
-              {/* Added Button leading to the Projects page */}
               <Link
                 href="/dashboard/projects"
-                className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-md shadow-slate-400/10"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-sm shadow-slate-300/5 font-quicksand"
               >
                 <span>View Projects Page</span>
                 <ExternalLink className="w-3 h-3" />
@@ -619,7 +669,7 @@ export default function DashboardLandingPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute text-center pointer-events-none">
-                  <span className="block text-xl font-black text-slate-800 tracking-tight">
+                  <span className="block text-xl font-black text-slate-800 tracking-tight font-aileron">
                     {totalProjects}
                   </span>
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-quicksand">
@@ -628,11 +678,11 @@ export default function DashboardLandingPage() {
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 font-aileron">
                 {projectStatusDistribution.map((entry, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-200 shadow-md shadow-slate-400/5"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-200 shadow-sm shadow-slate-300/5"
                   >
                     <div className="flex items-center gap-2">
                       <span
