@@ -58,18 +58,16 @@ export default function TaskModal({
       {/* Backdrop overlay transparently handling layout actions without darkening background */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${
-          isOpen
+        className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${isOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
-        }`}
+          }`}
       />
 
       {/* Sidebar Container transforming smoothly from the right side of the screen workspace */}
       <div
-        className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {/* Dynamic decorative visual accent bar */}
         <div className="h-1.5 w-full bg-[#4ec2bb]" />

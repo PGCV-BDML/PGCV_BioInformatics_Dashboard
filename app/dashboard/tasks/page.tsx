@@ -417,9 +417,8 @@ export default function TasksPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
-        isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-      }`}
+      className={`space-y-6 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        }`}
     >
       <div className="pt-2">
         <Link
@@ -496,11 +495,10 @@ export default function TasksPage() {
                   key={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
-                    isActive
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
                       ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
                       : "text-slate-500 hover:text-slate-800 font-medium"
-                  }`}
+                    }`}
                 >
                   {filter}
                 </button>
