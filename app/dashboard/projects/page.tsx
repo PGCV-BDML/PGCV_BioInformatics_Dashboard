@@ -31,6 +31,15 @@ type Project = {
   repository_link?: string;
 };
 
+// Helper function to safely format "YYYY-MM-DD" to "MM/DD/YYYY"
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr; // Fallback to raw string if format is unexpected
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
+
 const INITIAL_PROJECTS: Project[] = [
   {
     id: 1,
@@ -139,6 +148,10 @@ export default function ProjectsPage() {
 
   const isPanelOpen = isAdding || isEditing;
 
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt === activeFilter);
+  }, [activeFilter]);
+
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
       detail: { isOpen: isPanelOpen },
@@ -212,7 +225,6 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     let records = projectsList;
 
-    // Apply Active Horizontal Capsule Filter
     if (activeFilter !== "All") {
       records = records.filter((project) => {
         const normalProjectStatus = (project.status || "")
@@ -322,6 +334,7 @@ export default function ProjectsPage() {
       key: "status",
       label: "Status",
       width: "12%",
+      sortable: true,
       render: (p) => (
         <div className="relative inline-block w-full min-w-[95px]">
           <select
@@ -350,7 +363,9 @@ export default function ProjectsPage() {
       width: "9%",
       sortable: true,
       render: (p) => (
-        <span className="text-xs text-slate-600">{p.start_date}</span>
+        <span className="text-xs text-slate-600">
+          {formatDate(p.start_date)}
+        </span>
       ),
     },
     {
@@ -359,7 +374,9 @@ export default function ProjectsPage() {
       width: "9%",
       sortable: true,
       render: (p) => (
-        <span className="text-xs text-slate-600">{p.target_delivery_date}</span>
+        <span className="text-xs text-slate-600">
+          {formatDate(p.target_delivery_date)}
+        </span>
       ),
     },
     {
@@ -422,7 +439,6 @@ export default function ProjectsPage() {
         isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
       }`}
     >
-      {/* Control Navigation Header Panel */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
@@ -434,19 +450,21 @@ export default function ProjectsPage() {
         </div>
 
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full md:w-auto">
-          {/* Row Limit Control Switcher */}
-          <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="bg-transparent text-xs text-slate-700 outline-none pr-1 cursor-pointer font-medium appearance-none"
-            >
-              <option value={5}>Show 5 rows</option>
-              <option value={7}>Show 7 rows</option>
-              <option value={10}>Show 10 rows</option>
-              <option value={20}>Show 20 rows</option>
-            </select>
+          <div className="relative w-full min-[480px]:w-44">
+            <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-transparent text-xs text-slate-700 outline-none pr-5 cursor-pointer font-medium appearance-none w-full"
+              >
+                <option value={5}>Show 5 rows</option>
+                <option value={7}>Show 7 rows</option>
+                <option value={10}>Show 10 rows</option>
+                <option value={20}>Show 20 rows</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-slate-500" />
+            </div>
           </div>
 
           <div className="relative w-full min-[480px]:w-64">
@@ -472,9 +490,8 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Main Table Interface */}
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Network className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
@@ -482,8 +499,12 @@ export default function ProjectsPage() {
             </h2>
           </div>
 
-          {/* New Cream Filter Bar Capsule matching your design image */}
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full self-start lg:self-auto">
+            <div
+              style={{ transform: `translateX(${activeFilterIndex * 100}%)` }}
+              className="absolute top-1 bottom-1 left-1 w-28 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-transform duration-300 ease-out pointer-events-none"
+            />
+
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter;
               return (
@@ -491,9 +512,9 @@ export default function ProjectsPage() {
                   key={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${
                     isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >
@@ -512,7 +533,7 @@ export default function ProjectsPage() {
             </span>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[760px]">
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[960px]">
             <DataTable
               columns={columns}
               data={displayedProjects}

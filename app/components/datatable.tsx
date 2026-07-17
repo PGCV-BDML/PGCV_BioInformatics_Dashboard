@@ -27,35 +27,37 @@ export default function DataTable<T extends { id: string | number }>({
   emptyMessage = "No active records found matching your criteria.",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-      <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-[#fffdf8] shadow-sm">
+      <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
         <thead>
-          <tr className="bg-[#f4f6f7] text-[#55656e] text-[13px] font-bold border-b border-gray-200 select-none">
+          <tr className="border-b border-gray-200 text-[13px] font-semibold text-[#55656e] select-none">
             {columns.map((col, index) => {
               const isSortable =
                 col.sortable && onSort && col.key !== "actions";
+
               return (
                 <th
                   key={index}
                   style={{ width: col.width }}
                   onClick={() => isSortable && onSort(col.key as keyof T)}
-                  className={`py-3 px-4 font-bold tracking-tight ${
+                  className={`px-4 py-3.5 bg-[#2A7797]/10 transition-colors ${
                     isSortable
-                      ? "cursor-pointer hover:bg-gray-200/60 transition-colors group"
+                      ? "group cursor-pointer hover:bg-[#2A7797]/20"
                       : ""
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span>{col.label}</span>
+                    <span className="truncate">{col.label}</span>
+
                     {isSortable &&
                       (sortConfig?.key === col.key ? (
                         sortConfig.direction === "asc" ? (
-                          <ChevronUp className="w-3.5 h-3.5 text-[#2a7797]" />
+                          <ChevronUp className="h-3.5 w-3.5 text-[#2A7797] flex-shrink-0" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-[#2a7797]" />
+                          <ChevronDown className="h-3.5 w-3.5 text-[#2A7797] flex-shrink-0" />
                         )
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5 opacity-30 group-hover:opacity-100 transition-opacity" />
+                        <ChevronUp className="h-3.5 w-3.5 opacity-30 transition-opacity group-hover:opacity-100 flex-shrink-0" />
                       ))}
                   </div>
                 </th>
@@ -63,29 +65,40 @@ export default function DataTable<T extends { id: string | number }>({
             })}
           </tr>
         </thead>
-        <tbody className="text-[13px] text-[#2c3a42]">
+
+        <tbody className="text-[12px] text-[#2c3a42]">
           {data.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-[#ffffff] even:bg-white border-b border-gray-200/40 hover:bg-gray-100/40 transition-colors"
+              className="odd:bg-[#FFFDF8] even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
             >
               {columns.map((col, colIndex) => (
                 <td
                   key={colIndex}
-                  className="py-3 px-4 break-words align-middle"
+                  className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
                 >
-                  {col.render
-                    ? col.render(item)
-                    : String(item[col.key as keyof T] || "—")}
+                  {col.render ? (
+                    <div className="w-full h-full overflow-hidden text-ellipsis">
+                      {col.render(item)}
+                    </div>
+                  ) : (
+                    <span
+                      className="block truncate"
+                      title={String(item[col.key as keyof T] || "")}
+                    >
+                      {String(item[col.key as keyof T] || "—")}
+                    </span>
+                  )}
                 </td>
               ))}
             </tr>
           ))}
+
           {data.length === 0 && (
             <tr>
               <td
                 colSpan={columns.length}
-                className="text-center py-12 text-gray-400 font-medium"
+                className="py-12 text-center font-medium text-gray-400"
               >
                 {emptyMessage}
               </td>

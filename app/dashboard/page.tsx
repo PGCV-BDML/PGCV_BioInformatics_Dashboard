@@ -30,6 +30,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { DashboardBreadcrumbs } from "../components/dashboardbreadcrumbs"; // Adjust path if needed
 
 type DashboardStats = {
   activeProjects: number;
@@ -86,6 +87,12 @@ export default function DashboardLandingPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const selectRef = useRef<HTMLSelectElement>(null);
+
+  // Breadcrumb structure with lighter opacity for inactive items
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Home" },
+  ];
 
   const toggleTaskStatus = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -221,18 +228,26 @@ export default function DashboardLandingPage() {
   return (
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
       {/* Top Header Controls Area */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-300/40 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#6a7d8a] uppercase tracking-[2px] font-quicksand">
-            Dashboard - Home
-          </span>
-          <h1 className="text-4xl font-bold text-[#2a7797] tracking-tight font-aileron">
+          {/* 1. Breadcrumbs with lighter blue opacity for parent items */}
+          <div className="opacity-95 [&_a]:text-[#2a7797]/60 hover:[&_a]:text-[#2a7797] [&_span]:text-[#2a7797]/40 [&_li:last-child]:text-[#2a7797] [&_li:last-child]:font-semibold text-xs tracking-wide">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* 2. Main Title - Set to a larger, bolder size */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Landing Page
           </h1>
+
+          {/* 3. Subheader - Sized smaller and formatted in light muted slate gray */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            All statistics — Overview & Systems Status · {selectedYear}
+          </p>
         </div>
 
         {/* Global Pipeline Year Filter Button Control */}
-        <div className="relative self-start sm:self-auto group">
+        <div className="relative self-start sm:self-auto group mb-1">
           <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] text-left pointer-events-none">
             <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-quicksand select-none">
@@ -294,7 +309,7 @@ export default function DashboardLandingPage() {
         <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      {/* Summary Cards Layer - Upgraded ambient color-matching shadows */}
+      {/* Summary Cards Layer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total Projects */}
         <div className="bg-[#eafafa] border border-teal-300/50 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(28,92,89,0.12)] flex flex-col justify-between gap-4">

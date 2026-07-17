@@ -28,14 +28,12 @@ interface ServiceProjectRow {
   started: string;
   completed: string;
   report_link: string;
-  // Tracked fields for fallback report generation
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
 }
 
 const SERVICES_CONFIG = [
-  //TODO: turn buttons into component
   {
     id: "sequence-analysis",
     title: "3.1 — Client Sequence Analysis",
@@ -255,19 +253,16 @@ export default function ServicesPage() {
     setIsSidebarOpen(false);
   };
 
-  // Helper to construct external report generator URL parameters
   const generateExternalReportUrl = (row: ServiceProjectRow) => {
     const matchedProj = PROJECT_REGISTRY.find(
       (p) => p.name === row.project_name,
     );
     const projectId = matchedProj ? matchedProj.id : "unknown-proj";
-    // Using a sanitized version of client name as client ID fallback
     const clientId = row.client.toLowerCase().replace(/\s+/g, "-");
 
     return `/dashboard/services/report-generator?project_id=${encodeURIComponent(projectId)}&client_id=${encodeURIComponent(clientId)}&analysis_id=${encodeURIComponent(row.id)}`;
   };
 
-  // Fallback Local Form Submission handler
   const handleFallbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReportRow) return;
@@ -278,7 +273,7 @@ export default function ServicesPage() {
           ? {
               ...item,
               report_link: fallbackUrl,
-              delivered_by: "Current User", // Replace with auth hook user name if dynamic
+              delivered_by: "Current User",
               delivered_at: new Date()
                 .toISOString()
                 .replace("T", " ")
@@ -291,7 +286,6 @@ export default function ServicesPage() {
       ),
     );
 
-    // Reset Modal
     setSelectedReportRow(null);
     setFallbackUrl("");
     setClientAck(false);
@@ -319,12 +313,56 @@ export default function ServicesPage() {
   const sortedServices = useMemo(() => {
     const sortableItems = [...filteredServices];
     if (!sortConfig) return sortableItems;
+
+    const { key, direction } = sortConfig;
+    const isAsc = direction === "asc";
+
+    // Weight map matching the task progression timeline status
+    const statusWeights: Record<string, number> = {
+      for_approval: 1,
+      ongoing: 2,
+      finished: 3,
+    };
+
     return sortableItems.sort((a, b) => {
-      const valA = String(a[sortConfig.key] || "").toLowerCase();
-      const valB = String(b[sortConfig.key] || "").toLowerCase();
-      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
+      const valA = a[key];
+      const valB = b[key];
+
+      // 1. Column Rule: Status Custom Weights Logic
+      if (key === "status") {
+        const weightA = statusWeights[String(valA)] || 99;
+        const weightB = statusWeights[String(valB)] || 99;
+        return isAsc ? weightA - weightB : weightB - weightA;
+      }
+
+      // 2. Column Rule: Date Sorting (Earliest and Latest Timeline checks)
+      if (key === "started" || key === "completed") {
+        const strA = String(valA || "").trim();
+        const strB = String(valB || "").trim();
+
+        // Treat dashes, blanks, or empty states as infinite future dates so they gather at the bottom
+        const timeA =
+          strA === "—" || !strA ? Infinity : new Date(strA).getTime();
+        const timeB =
+          strB === "—" || !strB ? Infinity : new Date(strB).getTime();
+
+        if (timeA === timeB) return 0;
+        return isAsc ? timeA - timeB : timeB - timeA;
+      }
+
+      // 3. Fallback Rule: Stable Alphabetical Sort (Project Name, Client, Service Type, Pipeline, Assignee)
+      const stringA = String(valA || "").trim();
+      const stringB = String(valB || "").trim();
+
+      return isAsc
+        ? stringA.localeCompare(stringB, undefined, {
+            sensitivity: "base",
+            numeric: true,
+          })
+        : stringB.localeCompare(stringA, undefined, {
+            sensitivity: "base",
+            numeric: true,
+          });
     });
   }, [filteredServices, sortConfig]);
 
@@ -332,6 +370,11 @@ export default function ServicesPage() {
     const startOffset = (currentPage - 1) * ITEMS_PER_PAGE;
     return sortedServices.slice(startOffset, startOffset + ITEMS_PER_PAGE);
   }, [sortedServices, currentPage]);
+
+  // Find index of current active filter option for sliding offset
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
+  }, [activeFilter]);
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
     let colorClasses = "bg-gray-100 text-gray-700";
@@ -553,7 +596,16 @@ export default function ServicesPage() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full overflow-x-auto max-w-full">
+          {/* Animated Filter Bar Wrapper */}
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full w-fit overflow-hidden shadow-inner">
+            {/* Sliding Pill Background Indicator */}
+            <div
+              className="absolute top-1 bottom-1 left-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100/80 transition-transform duration-300 ease-in-out"
+              style={{
+                width: "112px", // Matches button width (w-28 = 112px)
+                transform: `translateX(${activeFilterIndex * 112}px)`,
+              }}
+            />
             {FILTER_OPTIONS.map((opt) => {
               const isActive = activeFilter === opt.value;
               return (
@@ -561,9 +613,9 @@ export default function ServicesPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 select-none whitespace-nowrap ${
                     isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >
@@ -622,7 +674,6 @@ export default function ServicesPage() {
               </p>
             </div>
 
-            {/* Option A: Preferred Integration Pathway */}
             <div className="bg-[#f0f9ff] border border-blue-100 rounded-2xl p-4 mb-6">
               <span className="text-[10px] uppercase font-bold text-[#2a7797] tracking-wider block mb-2">
                 Primary Integration Method
@@ -649,7 +700,6 @@ export default function ServicesPage() {
               <div className="flex-grow border-t border-slate-200"></div>
             </div>
 
-            {/* Option B: Fallback Flow Local Form */}
             <form onSubmit={handleFallbackSubmit} className="mt-4 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">

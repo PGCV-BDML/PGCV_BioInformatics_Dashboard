@@ -52,6 +52,15 @@ const STATUS_OPTIONS = [
   { value: "finished", label: "Finished" },
 ];
 
+// Replaced previous helper with your explicit split-based MM/DD/YYYY formatter
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr; // Fallback to raw string if format is unexpected
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
+
 export default function CollaborationsPage() {
   const [collaborationsList, setCollaborationsList] = useState<
     CollaborationRow[]
@@ -75,6 +84,11 @@ export default function CollaborationsPage() {
     useState<CollaborationRow | null>(null);
 
   const isPanelOpen = isAdding || isEditing;
+
+  // Kinukuha ang kasalukuyang index ng active filter para sa animation positions
+  const activeFilterIndex = useMemo(() => {
+    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
+  }, [activeFilter]);
 
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
@@ -171,7 +185,6 @@ export default function CollaborationsPage() {
       status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
-      // Add this line to pass down the repository link:
       repository_link: formState.repository_link || "",
       user: {
         name:
@@ -180,7 +193,7 @@ export default function CollaborationsPage() {
       },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as any; // Cast as any if CollaborationRow types do not natively accept it yet
+    } as any;
     setCollaborationsList((prev) => [newRecord, ...prev]);
     setIsAdding(false);
     setFormState(EMPTY_FORM);
@@ -202,7 +215,6 @@ export default function CollaborationsPage() {
               status: formState.status as CollaborationRow["status"],
               documents: cleanDocs.length > 0 ? cleanDocs : null,
               notes: formState.notes || null,
-              // Add this line to update the repository link:
               repository_link: formState.repository_link || "",
               user: {
                 name:
@@ -311,7 +323,7 @@ export default function CollaborationsPage() {
           ))}
         </select>
         <ChevronDown
-          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+          className={`w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
         />
       </div>
     );
@@ -350,6 +362,7 @@ export default function CollaborationsPage() {
       key: "status",
       label: "Status",
       width: "15%",
+      sortable: true,
       render: (c) => (
         <div className="flex items-center justify-center w-full">
           {renderStatusDropdown(c.id, c.status)}
@@ -362,7 +375,10 @@ export default function CollaborationsPage() {
       width: "11%",
       sortable: true,
       render: (c) => (
-        <span className="text-xs text-slate-600">{c.start_date || "-"}</span>
+        <span className="text-xs text-slate-600">
+          {/* Uses the updated split formatting */}
+          {formatDate(c.start_date) || "-"}
+        </span>
       ),
     },
     {
@@ -407,7 +423,7 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "reposityory_link" as any,
+      key: "repository_link" as any,
       label: "Repository Link",
       width: "14%",
       render: (c) => {
@@ -512,7 +528,7 @@ export default function CollaborationsPage() {
       </div>
 
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div className="flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Users2 className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">
@@ -520,7 +536,12 @@ export default function CollaborationsPage() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] self-start min-[600px]:self-auto overflow-hidden">
+            <div
+              style={{ transform: `translateX(${activeFilterIndex * 100}%)` }}
+              className="absolute top-1 bottom-1 left-1 w-28 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-transform duration-300 ease-out pointer-events-none"
+            />
+
             {FILTER_OPTIONS.map((opt) => {
               const isActive = activeFilter === opt.value;
               return (
@@ -528,9 +549,9 @@ export default function CollaborationsPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${
                     isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >

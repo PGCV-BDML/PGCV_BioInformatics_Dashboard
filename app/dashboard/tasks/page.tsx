@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
@@ -79,6 +79,15 @@ const STATUS_OPTIONS = ["Pending", "In-Progress", "Completed", "On Hold"];
 const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
 const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 
+// Helper function to format dates to MM/DD/YYYY
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr; // Fallback to raw string if format is unexpected
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
+
 export default function TasksPage() {
   const [tasksList, setTasksList] = useState<Task[]>(INITIAL_TASKS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,6 +104,10 @@ export default function TasksPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Refs and state for the sliding filter bar mechanism
+  const filterContainerRef = useRef<HTMLDivElement>(null);
+  const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
 
   const isSidebarOpen = isAdding || isEditing;
 
@@ -119,6 +132,30 @@ export default function TasksPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter, itemsPerPage]);
+
+  // Recalculate slider dimensions and offset whenever activeFilter changes
+  useEffect(() => {
+    if (filterContainerRef.current) {
+      const container = filterContainerRef.current;
+      const activeButton = container.querySelector(
+        `[data-filter="${activeFilter}"]`,
+      ) as HTMLButtonElement;
+
+      if (activeButton) {
+        const containerRect = container.getBoundingClientRect();
+        const buttonRect = activeButton.getBoundingClientRect();
+
+        // Calculate position relative to container, accounting for container scroll position
+        const relativeLeft =
+          buttonRect.left - containerRect.left + container.scrollLeft;
+
+        setSlideStyle({
+          left: relativeLeft,
+          width: buttonRect.width,
+        });
+      }
+    }
+  }, [activeFilter]);
 
   const updateTaskStatus = (taskId: number, newStatus: string) => {
     setTasksList((prev) =>
@@ -166,11 +203,55 @@ export default function TasksPage() {
   const sortedTasks = useMemo(() => {
     const sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
+      const { key, direction } = sortConfig;
+      const isAsc = direction === "asc";
+
+      // Define weight weights for Priority mapping: High needs to be first on 'asc'
+      const priorityWeights: Record<string, number> = {
+        High: 1,
+        Medium: 2,
+        Low: 3,
+      };
+
+      // Define weights for Status mapping: customize order logically (e.g., progression sequence)
+      const statusWeights: Record<string, number> = {
+        Pending: 1,
+        "In-Progress": 2,
+        "On Hold": 3,
+        Completed: 4,
+      };
+
       sortableItems.sort((a, b) => {
-        const valA = a[sortConfig.key];
-        const valB = b[sortConfig.key];
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+        let valA = a[key];
+        let valB = b[key];
+
+        // 1. Column Rule: Priority Custom Weights
+        if (key === "priority") {
+          const weightA = priorityWeights[String(valA)] || 99;
+          const weightB = priorityWeights[String(valB)] || 99;
+          return isAsc ? weightA - weightB : weightB - weightA;
+        }
+
+        // 2. Column Rule: Status Custom Weights
+        if (key === "status") {
+          const weightA = statusWeights[String(valA)] || 99;
+          const weightB = statusWeights[String(valB)] || 99;
+          return isAsc ? weightA - weightB : weightB - weightA;
+        }
+
+        // 3. Column Rule: Due Date Chronological Sort
+        if (key === "due_date") {
+          const timeA = new Date(String(valA) || 0).getTime();
+          const timeB = new Date(String(valB) || 0).getTime();
+          return isAsc ? timeA - timeB : timeB - timeA;
+        }
+
+        // 4. Fallback Rule: Standard Alphabetical (Task Title, Assignee, etc.)
+        const stringA = String(valA).toLowerCase().trim();
+        const stringB = String(valB).toLowerCase().trim();
+
+        if (stringA < stringB) return isAsc ? -1 : 1;
+        if (stringA > stringB) return isAsc ? 1 : -1;
         return 0;
       });
     }
@@ -367,7 +448,8 @@ export default function TasksPage() {
       sortable: true,
       render: (t) => (
         <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
-          {t.due_date}
+          {/* Formats standard YYYY-MM-DD input to MM/DD/YYYY using the helper */}
+          {formatDate(t.due_date) || "-"}
         </span>
       ),
     },
@@ -488,17 +570,31 @@ export default function TasksPage() {
             <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          {/* Sliding Filter Bar Container */}
+          <div
+            ref={filterContainerRef}
+            className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full"
+          >
+            {/* Sliding Highlight Block */}
+            <div
+              className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-all duration-300 ease-out pointer-events-none"
+              style={{
+                left: `${slideStyle.left}px`,
+                width: `${slideStyle.width}px`,
+              }}
+            />
+
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter;
               return (
                 <button
                   key={filter}
+                  data-filter={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
+                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs transition-colors duration-300 whitespace-nowrap ${
                     isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
                   }`}
                 >
