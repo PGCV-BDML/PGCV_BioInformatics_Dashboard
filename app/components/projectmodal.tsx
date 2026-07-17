@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../types/database";
 import {
   X,
   Save,
@@ -10,23 +11,12 @@ import {
   Link2,
 } from "lucide-react";
 
-type ProjectFormData = {
-  name: string;
-  client_name: string;
-  service_type: string;
-  status: string;
-  lead: string;
-  start_date: string;
-  target_delivery_date: string;
-  repository_link: string;
-};
-
 const EMPTY_FORM: ProjectFormData = {
   name: "",
-  client_name: "",
-  service_type: "",
-  status: "On-going",
-  lead: "",
+  client_id: "",
+  service_id: "",
+  status: "ongoing",
+  lead_user_id: "",
   start_date: "",
   target_delivery_date: "",
   repository_link: "",
@@ -35,10 +25,11 @@ const EMPTY_FORM: ProjectFormData = {
 interface ProjectModalProps {
   isOpen: boolean;
   isAdding: boolean;
+  isSaving: boolean;
   initialData: ProjectFormData | null;
-  availableClients: string[];
-  availableServices: string[];
-  availableUsers: string[];
+  availableClients: UserOption[];
+  availableServices: UserOption[];
+  availableUsers: UserOption[];
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => void;
 }
@@ -46,6 +37,7 @@ interface ProjectModalProps {
 export default function ProjectModal({
   isOpen,
   isAdding,
+  isSaving,
   initialData,
   availableClients,
   availableServices,
@@ -60,9 +52,9 @@ export default function ProjectModal({
       setFormState(
         initialData || {
           ...EMPTY_FORM,
-          client_name: availableClients[0] || "",
-          service_type: availableServices[0] || "",
-          lead: availableUsers[0] || "",
+          client_id: availableClients[0]?.id || "",
+          service_id: availableServices[0]?.id || "",
+          lead_user_id: availableUsers[0]?.id || "",
         },
       );
     }
@@ -94,18 +86,16 @@ export default function ProjectModal({
       {/* Backdrop overlay transparently handling layout actions without darkening background */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${
-          isOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${isOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+          }`}
       />
 
       {/* Sidebar Container transforming smoothly from the right side of the screen workspace */}
       <div
-        className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {/* Dynamic decorative visual accent bar */}
         <div className="h-1.5 w-full bg-[#4ec2bb]" />
@@ -164,15 +154,15 @@ export default function ProjectModal({
                   Client
                 </label>
                 <select
-                  value={formState.client_name}
+                  value={formState.client_id}
                   onChange={(e) =>
-                    handleInputChange("client_name", e.target.value)
+                    handleInputChange("client_id", e.target.value)
                   }
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 >
                   {availableClients.map((client) => (
-                    <option key={client} value={client}>
-                      {client}
+                    <option key={client.id} value={client.id}>
+                      {client.name}
                     </option>
                   ))}
                 </select>
@@ -184,15 +174,15 @@ export default function ProjectModal({
                   Service Category
                 </label>
                 <select
-                  value={formState.service_type}
+                  value={formState.service_id}
                   onChange={(e) =>
-                    handleInputChange("service_type", e.target.value)
+                    handleInputChange("service_id", e.target.value)
                   }
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 >
                   {availableServices.map((service) => (
-                    <option key={service} value={service}>
-                      {service}
+                    <option key={service.id} value={service.id}>
+                      {service.name}
                     </option>
                   ))}
                 </select>
@@ -213,13 +203,13 @@ export default function ProjectModal({
                   Lead
                 </label>
                 <select
-                  value={formState.lead}
-                  onChange={(e) => handleInputChange("lead", e.target.value)}
+                  value={formState.lead_user_id}
+                  onChange={(e) => handleInputChange("lead_user_id", e.target.value)}
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 >
                   {availableUsers.map((user) => (
-                    <option key={user} value={user}>
-                      {user}
+                    <option key={user.id} value={user.id}>
+                      {user.name}
                     </option>
                   ))}
                 </select>
@@ -235,11 +225,11 @@ export default function ProjectModal({
                   onChange={(e) => handleInputChange("status", e.target.value)}
                   className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
                 >
-                  <option value="On-going">On-going</option>
-                  <option value="For approval">For Approval</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On hold">On hold</option>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -275,7 +265,6 @@ export default function ProjectModal({
                 </label>
                 <input
                   type="date"
-                  required
                   value={formState.target_delivery_date}
                   onChange={(e) =>
                     handleInputChange("target_delivery_date", e.target.value)
@@ -323,7 +312,7 @@ export default function ProjectModal({
               className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md shadow-slate-400/20 transition-all font-aileron"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{isAdding ? "Save" : "Save"}</span>
+              <span>{isSaving ? "Saving..." : "Save"}</span>
             </button>
           </div>
         </form>

@@ -18,6 +18,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+//Database imports
+import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB } from "@/lib/supabase";
+
 type CollaborationFormState = {
   partner_org: string;
   lead_user_id: string;
@@ -87,26 +90,12 @@ export default function CollaborationsPage() {
     async function loadInitialData() {
       setIsLoading(true);
       try {
-        const mockUsers: UserOption[] = [
-          { id: "u1", name: "Alex Jones" },
-          { id: "u2", name: "Maria Santos" },
-        ];
-        const mockCollaborations: CollaborationRow[] = [
-          {
-            id: "collab-1",
-            partner_org: "Philippine Genome Center",
-            lead_user_id: "u1",
-            start_date: "2026-01-15",
-            status: "ongoing",
-            documents: ["https://drive.google.com", "https://dropbox.com"],
-            notes: "Primary repository linked",
-            user: { name: "Alex Jones" },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ];
-        setAvailableUsers(mockUsers);
-        setCollaborationsList(mockCollaborations);
+        const [users, collaborations] = await Promise.all([
+          getUsersFromDB(["team_lead", "team_member"]),
+          getRowsFromDB("collaboration"),
+        ]);
+        setAvailableUsers(users);
+        setCollaborationsList(collaborations);
       } catch (error) {
         console.error("Error launching client data layer:", error);
       } finally {
@@ -132,18 +121,28 @@ export default function CollaborationsPage() {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setCollaborationsList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
+  //Save changes to DB and change the value of collaborations list to update what is displayed
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await saveDataToDB("collaboration", id, {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
+
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
               ...item,
               status: newStatus as CollaborationRow["status"],
               updated_at: new Date().toISOString(),
             }
-          : item,
-      ),
-    );
+            : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update collaboration status:", error);
+    }
   };
 
   const handleSort = (key: keyof CollaborationRow) => {
@@ -161,9 +160,10 @@ export default function CollaborationsPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
+    const id = crypto.randomUUID();
 
     const newRecord: CollaborationRow = {
-      id: `local-id-${Date.now()}`,
+      id,
       partner_org: formState.partner_org,
       lead_user_id: formState.lead_user_id,
       start_date:
@@ -171,17 +171,18 @@ export default function CollaborationsPage() {
       status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
-      // Add this line to pass down the repository link:
-      repository_link: formState.repository_link || "",
-      user: {
-        name:
-          availableUsers.find((u) => u.id === formState.lead_user_id)?.name ||
-          "Unassigned",
-      },
+      repository_link: formState.repository_link || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as any; // Cast as any if CollaborationRow types do not natively accept it yet
-    setCollaborationsList((prev) => [newRecord, ...prev]);
+    };
+    try {
+      await saveDataToDB("collaboration", id, newRecord);
+      setCollaborationsList((prev) => [newRecord, ...prev]);
+    } catch (error) {
+      console.error("Error checking collab data:", error);
+      return;
+    }
+
     setIsAdding(false);
     setFormState(EMPTY_FORM);
   };
@@ -191,39 +192,45 @@ export default function CollaborationsPage() {
     if (!selectedCollaboration) return;
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
 
-    setCollaborationsList((prev) =>
-      prev.map((item) =>
-        item.id === selectedCollaboration.id
-          ? {
-              ...item,
-              partner_org: formState.partner_org,
-              lead_user_id: formState.lead_user_id,
-              start_date: formState.start_date,
-              status: formState.status as CollaborationRow["status"],
-              documents: cleanDocs.length > 0 ? cleanDocs : null,
-              notes: formState.notes || null,
-              // Add this line to update the repository link:
-              repository_link: formState.repository_link || "",
-              user: {
-                name:
-                  availableUsers.find((u) => u.id === formState.lead_user_id)
-                    ?.name || "Unassigned",
-              },
-              updated_at: new Date().toISOString(),
-            }
-          : item,
-      ),
-    );
-    setIsEditing(false);
-    setFormState(EMPTY_FORM);
+    const updatedData = {
+      partner_org: formState.partner_org,
+      lead_user_id: formState.lead_user_id,
+      start_date: formState.start_date,
+      status: formState.status as CollaborationRow["status"],
+      documents: cleanDocs.length > 0 ? cleanDocs : null,
+      notes: formState.notes || null,
+      repository_link: formState.repository_link || "",
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      await saveDataToDB("collaboration", selectedCollaboration.id, updatedData);
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === selectedCollaboration.id
+            ? { ...item, ...updatedData }
+            : item,
+        ),
+      );
+
+      setIsEditing(false);
+      setFormState(EMPTY_FORM);
+    } catch (error) {
+      console.error("Error saving edited data:", error);
+    }
   };
 
   const handleDeleteRecord = async () => {
     if (!selectedCollaboration) return;
-    setCollaborationsList((prev) =>
-      prev.filter((item) => item.id !== selectedCollaboration.id),
-    );
-    setShowDeleteConfirm(false);
+    try {
+      await deleteDataFromDB("collaboration", selectedCollaboration.id);
+      setCollaborationsList((prev) =>
+        prev.filter((item) => item.id !== selectedCollaboration.id),
+      );
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.log("Error in deleting collab", error)
+    }
   };
 
   const filteredCollaborations = useMemo(() => {
@@ -470,9 +477,8 @@ export default function CollaborationsPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
-        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-      }`}
+      className={`space-y-6 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        }`}
     >
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex flex-col gap-1">
@@ -528,11 +534,10 @@ export default function CollaborationsPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${
-                    isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
-                      : "text-slate-500 hover:text-slate-800 font-medium"
-                  }`}
+                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
+                    ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                    : "text-slate-500 hover:text-slate-800 font-medium"
+                    }`}
                 >
                   {opt.label}
                 </button>
