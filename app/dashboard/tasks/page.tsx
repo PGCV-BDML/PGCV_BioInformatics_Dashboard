@@ -6,8 +6,8 @@ import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
+import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs"; // Ensure this import path matches your directory structure
 import {
-  ArrowLeft,
   Search,
   CheckSquare,
   Edit3,
@@ -121,6 +121,12 @@ export default function TasksPage() {
   };
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
+
+  // Breadcrumb Trail Config
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Tasks" },
+  ];
 
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
@@ -499,30 +505,31 @@ export default function TasksPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+      className={`space-y-8 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
         isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
       }`}
     >
-      <div className="pt-2">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#2a7797] bg-slate-50 hover:bg-[#e6f4f8] transition-all duration-200 px-4 py-2 rounded-xl border border-slate-200/60 shadow-xs group"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
-          <span>Back to Landing Page</span>
-        </Link>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+      {/* Top Header Controls Area formatted exactly like the landing page */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - List
-          </span>
-          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+          {/* Breadcrumbs Wrapper */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* Main Title formatted with landing page style styling */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Tasks for the Week
           </h1>
+
+          {/* Subheader styled to match landing page secondary details */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            Operational activities schedule · Pipeline execution & manual tasks
+            queue
+          </p>
         </div>
 
+        {/* Action controls aligned to the right side of the header */}
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
           <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
             <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />

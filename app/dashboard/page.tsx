@@ -88,10 +88,10 @@ export default function DashboardLandingPage() {
 
   const selectRef = useRef<HTMLSelectElement>(null);
 
-  // Breadcrumb structure with lighter opacity for inactive items
+  // Breadcrumb trail where "Dashboard" is the first element, and "Home" is second and hoverable
   const breadcrumbTrail = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Home" },
+    { label: "Dashboard" },
+    { label: "Home", href: "/dashboard" },
   ];
 
   const toggleTaskStatus = (id: string, e: React.MouseEvent) => {
@@ -230,8 +230,8 @@ export default function DashboardLandingPage() {
       {/* Top Header Controls Area */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          {/* 1. Breadcrumbs with lighter blue opacity for parent items */}
-          <div className="opacity-95 [&_a]:text-[#2a7797]/60 hover:[&_a]:text-[#2a7797] [&_span]:text-[#2a7797]/40 [&_li:last-child]:text-[#2a7797] [&_li:last-child]:font-semibold text-xs tracking-wide">
+          {/* 1. Breadcrumbs Wrapper */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
             <DashboardBreadcrumbs items={breadcrumbTrail} />
           </div>
 
