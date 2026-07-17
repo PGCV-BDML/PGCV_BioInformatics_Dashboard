@@ -3,7 +3,17 @@
 import React, { use, useMemo } from "react";
 import { FileText, AlertCircle, Download } from "lucide-react";
 
-const MOCK_ONBOARDING_DOCUMENTS = [
+interface OnboardingDocument {
+  id: string;
+  program_id: string;
+  title: string;
+  file_name: string;
+  file_size: string;
+  is_required: boolean;
+}
+
+/* ================= TRAINING DOCUMENTS DATA ================= */
+const MOCK_ONBOARDING_DOCUMENTS: OnboardingDocument[] = [
   {
     id: "doc-1",
     program_id: "tp-1",
@@ -30,7 +40,7 @@ const MOCK_ONBOARDING_DOCUMENTS = [
   },
 ];
 
-export default function OnboardingTab({
+export default function TrainingOnboardingTab({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -52,21 +62,22 @@ export default function OnboardingTab({
             Onboarding Documents
           </h3>
           <p className="text-[11px] font-medium text-slate-400">
-            Compliance records and onboarding materials linked to this cohort.
+            Compliance records and onboarding materials linked to this training
+            cohort.
           </p>
         </div>
       </div>
 
       {cohortDocuments.length === 0 ? (
         <p className="text-xs text-slate-400 italic py-2">
-          No active compliance parameters mapped to this cohort track.
+          No active compliance parameters mapped to this training cohort track.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {cohortDocuments.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-start justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-all shadow-sm"
+              className="flex items-start justify-between p-4 bg-[#fffdf8] border border-slate-200 rounded-[20px] transition-all shadow-sm cursor-default"
             >
               <div className="space-y-1 max-w-[80%]">
                 <div className="flex flex-wrap items-center gap-2">
@@ -88,7 +99,11 @@ export default function OnboardingTab({
               </div>
               <a
                 href="#"
-                className="p-2 text-slate-400 hover:text-[#2a7797] bg-slate-50 border border-slate-100 rounded-lg shrink-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log(`Downloading document: ${doc.title}`);
+                }}
+                className="p-2 text-slate-400 hover:text-white bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
               >
                 <Download className="w-4 h-4" />
               </a>

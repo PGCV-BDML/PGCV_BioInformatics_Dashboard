@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   Award,
   HelpCircle,
+  Play,
+  Eye,
 } from "lucide-react";
 
 /* ================= TYPES & CONFIG ================= */
@@ -125,9 +127,9 @@ export default function InternshipAssessmentPage({
   return (
     <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
       {!activeTest ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Workspace Title Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
@@ -139,81 +141,124 @@ export default function InternshipAssessmentPage({
             </span>
           </div>
 
-          {/* Test Matrix List */}
-          <div className="space-y-3">
-            {MOCK_TESTS_DATA.map((test) => (
-              <div
-                key={test.id}
-                className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 shadow-sm"
-              >
-                <h3 className="text-sm font-bold text-slate-800 tracking-tight">
-                  {test.title}
+          {/* Separated Sections Container */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* ================= PRE-TESTS SECTION ================= */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200/40">
+                <div className="w-2 h-2 rounded-full bg-[#4ec2bb]" />
+                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+                  Pre-Test Milestones
                 </h3>
-
-                <div className="flex items-center gap-6 justify-between sm:justify-end shrink-0">
-                  <div className="flex flex-col items-center gap-1 min-w-[55px]">
-                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                      Pre-test
-                    </span>
-                    {test.preStatus === "completed" ? (
-                      <CheckCircle2 className="w-[18px] h-[18px] text-[#4ec2bb]" />
-                    ) : (
-                      <div
-                        onClick={() => handleStartTest(test, "Pre-test")}
-                        className="w-[18px] h-[18px] rounded-full border-2 border-slate-200 cursor-pointer hover:border-[#4ec2bb]"
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-center gap-1 min-w-[55px]">
-                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                      Post-test
-                    </span>
-                    {test.postStatus === "completed" ? (
-                      <CheckCircle2 className="w-[18px] h-[18px] text-[#4ec2bb]" />
-                    ) : test.postStatus === "pending" ? (
-                      <Clock className="w-[18px] h-[18px] text-[#f57f17]" />
-                    ) : (
-                      <div
-                        onClick={() => handleStartTest(test, "Post-test")}
-                        className="w-[18px] h-[18px] rounded-full border-2 border-slate-200 cursor-pointer hover:border-[#4ec2bb]"
-                      />
-                    )}
-                  </div>
-
-                  {test.preStatus === "none" ? (
-                    <button
-                      onClick={() => handleStartTest(test, "Pre-test")}
-                      className="text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
-                    >
-                      Start pre-test
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleStartTest(test, "Post-test")}
-                      className="text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
-                    >
-                      {test.postStatus === "completed"
-                        ? "Review"
-                        : "Start post-test"}
-                    </button>
-                  )}
-                </div>
               </div>
-            ))}
+
+              <div className="space-y-3">
+                {MOCK_TESTS_DATA.map((test) => (
+                  <div
+                    key={`pre-${test.id}`}
+                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Assessment {test.id.toUpperCase()}
+                      </h4>
+                      <h3 className="text-sm font-bold text-slate-800 tracking-tight leading-tight">
+                        {test.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-center">
+                      {test.preStatus === "completed" ? (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#4ec2bb] bg-[#eaf7f6] px-3 py-1.5 rounded-xl border border-[#4ec2bb]/10">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Passed</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleStartTest(test, "Pre-test")}
+                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all shadow-sm"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" /> Start
+                          Pre-Test
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ================= POST-TESTS SECTION ================= */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200/40">
+                <div className="w-2 h-2 rounded-full bg-[#2a7797]" />
+                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+                  Post-Test Milestones
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {MOCK_TESTS_DATA.map((test) => (
+                  <div
+                    key={`post-${test.id}`}
+                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Assessment {test.id.toUpperCase()}
+                      </h4>
+                      <h3 className="text-sm font-bold text-slate-800 tracking-tight leading-tight">
+                        {test.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-center">
+                      {test.postStatus === "completed" ? (
+                        <button
+                          onClick={() => handleStartTest(test, "Post-test")}
+                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Review
+                        </button>
+                      ) : test.postStatus === "pending" ? (
+                        <button
+                          onClick={() => handleStartTest(test, "Post-test")}
+                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#fff8e1] text-[#b78103] border border-[#ffe082] rounded-xl hover:bg-[#fff3cd] transition-all"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-[#f57f17]" />{" "}
+                          Complete Post-Test
+                        </button>
+                      ) : (
+                        <button
+                          disabled={test.preStatus !== "completed"}
+                          onClick={() => handleStartTest(test, "Post-test")}
+                          className={`flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 rounded-xl transition-all ${
+                            test.preStatus === "completed"
+                              ? "bg-[#2a7797] text-white hover:bg-[#1f5a73] shadow-sm"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/40"
+                          }`}
+                        >
+                          Start Post-Test
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ) : (
         /* Active Testing Screen View */
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
             <button
               onClick={() => setActiveTest(null)}
               className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Assessments Matrix
             </button>
-            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-slate-100 text-slate-600">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-slate-150 text-slate-600 border border-slate-200/40">
               {testType} — {activeTest.title}
             </span>
           </div>
@@ -223,7 +268,7 @@ export default function InternshipAssessmentPage({
               {MOCK_QUESTIONS.map((q, idx) => (
                 <div
                   key={q.id}
-                  className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+                  className="bg-[#fffdf8] border border-slate-300/60 p-5 rounded-[20px] space-y-4 shadow-sm"
                 >
                   <div className="flex gap-2 items-start">
                     <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
@@ -238,7 +283,7 @@ export default function InternshipAssessmentPage({
                         className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                           selectedAnswers[q.id] === oIdx
                             ? "border-[#4ec2bb] bg-[#f2fdfc]"
-                            : "border-slate-100 hover:bg-slate-50"
+                            : "border-slate-300/40 bg-white hover:bg-slate-100/50"
                         }`}
                       >
                         <input
@@ -269,7 +314,7 @@ export default function InternshipAssessmentPage({
             </div>
           ) : (
             /* Submission Summary Panel */
-            <div className="bg-white border border-slate-200/80 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
+            <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
               <Award className="w-12 h-12 text-[#f57f17] mx-auto" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-slate-800">
@@ -280,7 +325,7 @@ export default function InternshipAssessmentPage({
                   portfolio records.
                 </p>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-4 inline-block min-w-[120px]">
+              <div className="bg-white border border-slate-200/50 rounded-2xl p-4 inline-block min-w-[120px]">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold block">
                   Scored Record
                 </span>
@@ -290,7 +335,7 @@ export default function InternshipAssessmentPage({
               </div>
               <button
                 onClick={() => setActiveTest(null)}
-                className="w-full py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
+                className="w-full py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors border border-slate-300/40"
               >
                 Return to Matrix Panel
               </button>

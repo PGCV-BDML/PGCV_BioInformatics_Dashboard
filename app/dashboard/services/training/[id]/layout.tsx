@@ -4,10 +4,8 @@ import React, { useMemo, use } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  GraduationCap,
   Calendar,
   User,
-  Sparkles,
   Clock,
   BookOpen,
   ClipboardCheck,
@@ -80,28 +78,6 @@ const MOCK_TRAINING_PROGRAMS: TrainingProgram[] = [
         pre_test_score: 55,
         post_test_score: 82,
         has_certificate: false,
-      },
-    ],
-  },
-  {
-    id: "tp-2",
-    title: "16S Metagenomics Analysis Framework",
-    type: "training",
-    start_date: "2026-10-10",
-    end_date: "2026-11-20",
-    duration: "5 weeks",
-    description:
-      "Curriculum centered on microbial community analysis using QIIME2 pipelines, taxonomic allocation, and alpha/beta diversity quantification metrics.",
-    instructor: { name: "Prof. Marcus Vance" },
-    participants: [
-      {
-        id: "p-4",
-        name: "Dr. Elena Rostova",
-        email: "e.rostova@lab.org",
-        institution: "BioBiome Labs",
-        pre_test_score: 88,
-        post_test_score: 100,
-        has_certificate: true,
       },
     ],
   },
@@ -180,6 +156,12 @@ export default function DynamicProgramLayout({
     ];
   }, [resolvedParams.id]);
 
+  // Determine active index for absolute slider translations (Pure CSS Grid Hack)
+  const activeIndex = useMemo(() => {
+    const index = workspaceTabs.findIndex((tab) => pathname === tab.href);
+    return index !== -1 ? index : 0;
+  }, [pathname, workspaceTabs]);
+
   if (!selectedProgram) {
     return (
       <div className="text-center py-20 space-y-4">
@@ -242,7 +224,7 @@ export default function DynamicProgramLayout({
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
         <div className="space-y-1">
           <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
-            <Sparkles className="w-3 h-3" /> ACTIVE COHORT SEGMENT
+            Philippine Genome Center Visayas - Bioinformatics Training Program
           </span>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
             {selectedProgram.title}
@@ -282,26 +264,39 @@ export default function DynamicProgramLayout({
         </div>
       </div>
 
-      {/* Workspace Sub-Tabs (Dynamically highlights tab based on current pathname) */}
-      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap flex items-center gap-1">
-        {workspaceTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-[18px] text-xs font-bold transition-all ${
-                isActive
-                  ? "bg-[#4ec2bb] text-white shadow-md shadow-[#4ec2bb]/10"
-                  : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800"
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{tab.label}</span>
-            </Link>
-          );
-        })}
+      {/* Workspace Sub-Tabs (Pure CSS Grid Sliding Animation) */}
+      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
+        {/* We use grid-cols-6 to distribute equal layout widths to all 6 sub-tabs */}
+        <div className="relative grid grid-cols-6 gap-1 min-w-[760px] md:min-w-full">
+          {/* Hardware Accelerated Pure CSS Slider */}
+          <div
+            style={{
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+            className="absolute top-0 bottom-0 left-0 w-1/6 p-0.5 transition-transform duration-300 ease-out pointer-events-none"
+          >
+            <div className="w-full h-full bg-[#4ec2bb] rounded-[18px] shadow-md shadow-[#4ec2bb]/10" />
+          </div>
+
+          {workspaceTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = pathname === tab.href;
+            return (
+              <Link
+                key={tab.id}
+                href={tab.href}
+                className={`relative z-10 flex items-center justify-center gap-2 px-3 py-2.5 rounded-[18px] text-xs font-bold transition-colors duration-300 text-center ${
+                  isActive
+                    ? "text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {/* Dynamic Children Content (Sub-Tabs Load Here) */}
