@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, use } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
+import DataTable, { Column } from "../../../../../components/datatable";
 import {
   Award,
   Trash2,
@@ -10,7 +10,6 @@ import {
   FileBadge,
   Printer,
   CheckCircle,
-  BarChart3,
 } from "lucide-react";
 
 interface CertificateRecord {
@@ -20,13 +19,7 @@ interface CertificateRecord {
   date: string;
 }
 
-export default function CertificateRegistryPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = use(params);
-
+export default function CertificateRegistryPage() {
   // Simulated Certificate Registry Database
   const [certificates, setCertificates] = useState<CertificateRecord[]>([
     {
@@ -46,26 +39,108 @@ export default function CertificateRegistryPage({
   const [viewingCertificate, setViewingCertificate] =
     useState<CertificateRecord | null>(null);
 
+  // Sorting State configuration required by your custom DataTable component
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof CertificateRecord;
+    direction: "asc" | "desc";
+  } | null>(null);
+
   const handleDeleteCertificate = (id: string) => {
     setCertificates((prev) => prev.filter((cert) => cert.id !== id));
   };
 
+  const handleSort = (key: keyof CertificateRecord) => {
+    let direction: "asc" | "desc" = "asc";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "asc"
+    ) {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+
+    setCertificates((prev) =>
+      [...prev].sort((a, b) => {
+        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        return 0;
+      }),
+    );
+  };
+
+  // Structured Columns layout definitions mapped to your reusable DataTable definitions
+  const columns: Column<CertificateRecord>[] = [
+    {
+      key: "id",
+      label: "Certificate ID",
+      width: "18%",
+      sortable: true,
+      render: (item) => (
+        <span className="font-mono font-bold text-[#2a7797] text-[11px]">
+          {item.id}
+        </span>
+      ),
+    },
+    {
+      key: "name",
+      label: "Participant Name",
+      width: "25%",
+      sortable: true,
+      render: (item) => (
+        <span className="font-bold text-slate-900">{item.name}</span>
+      ),
+    },
+    {
+      key: "programTitle",
+      label: "Program Track Title",
+      width: "37%",
+      sortable: true,
+      render: (item) => (
+        <span className="font-medium block truncate" title={item.programTitle}>
+          {item.programTitle}
+        </span>
+      ),
+    },
+    {
+      key: "date",
+      label: "Verification Date",
+      width: "18%",
+      sortable: true,
+      render: (item) => (
+        <span className="text-slate-500 font-semibold font-mono">
+          {item.date}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "14%",
+      render: (item) => (
+        <div className="flex items-center justify-start gap-2">
+          <button
+            onClick={() => setViewingCertificate(item)}
+            className="px-2.5 py-1.5 bg-[#eaf7f6] hover:bg-[#deefed] text-[#247974] font-bold text-[11px] rounded-lg transition-colors inline-flex items-center gap-1"
+            title="View & Print Certificate HTML Layout"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>View</span>
+          </button>
+          <button
+            onClick={() => handleDeleteCertificate(item.id)}
+            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+            title="Delete Row Log Entry"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Sub-tab Navigation */}
-      <div className="print:hidden flex items-center gap-2 border-b border-slate-100 pb-3">
-        <Link
-          href={`/${resolvedParams.id}/evaluation`}
-          className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
-        >
-          1. Submit Evaluation{" "}
-          <BarChart3 className="w-3.5 h-3.5 text-[#2a7797]" />
-        </Link>
-        <span className="px-4 py-2 text-xs font-bold rounded-lg bg-[#2a7797]/10 text-[#2a7797]">
-          2. Certificate Registry ({certificates.length})
-        </span>
-      </div>
-
       {/* Main Workspace Card Area */}
       <div className="print:hidden bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="space-y-4">
@@ -78,70 +153,14 @@ export default function CertificateRegistryPage({
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                  <th className="p-4">Certificate ID</th>
-                  <th className="p-4">Participant Name</th>
-                  <th className="p-4">Program Track Title</th>
-                  <th className="p-4">Verification Date</th>
-                  <th className="p-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {certificates.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="p-8 text-center text-slate-400 font-medium italic"
-                    >
-                      No verification rows found inside table schema parameters.
-                    </td>
-                  </tr>
-                ) : (
-                  certificates.map((cert) => (
-                    <tr
-                      key={cert.id}
-                      className="hover:bg-slate-50/40 transition-colors"
-                    >
-                      <td className="p-4 font-mono font-bold text-[#2a7797] text-[11px] whitespace-nowrap">
-                        {cert.id}
-                      </td>
-                      <td className="p-4 font-bold text-slate-900 whitespace-nowrap">
-                        {cert.name}
-                      </td>
-                      <td className="p-4 font-medium max-w-[260px] truncate">
-                        {cert.programTitle}
-                      </td>
-                      <td className="p-4 text-slate-500 font-semibold font-mono whitespace-nowrap">
-                        {cert.date}
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setViewingCertificate(cert)}
-                            className="px-3 py-1.5 bg-[#eaf7f6] hover:bg-[#deefed] text-[#247974] font-bold text-[11px] rounded-lg transition-colors inline-flex items-center gap-1"
-                            title="View & Print Certificate HTML Layout"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>View Certificate</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCertificate(cert.id)}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                            title="Delete Row Log Entry"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {/* Render target mapped explicitly to DataTable component template metrics */}
+          <DataTable
+            columns={columns}
+            data={certificates}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            emptyMessage="No verification rows found inside table schema parameters."
+          />
         </div>
       </div>
 
@@ -262,7 +281,7 @@ export default function CertificateRegistryPage({
           .fixed * {
             visibility: visible !important;
           }
-          .print\\:hidden {
+          .print\:hidden {
             display: none !important;
           }
           .aspect-\\[1\\.414\\/1\\] {

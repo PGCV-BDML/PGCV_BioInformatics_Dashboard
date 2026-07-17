@@ -156,7 +156,7 @@ export default function InternshipAssessmentPage({
                 {MOCK_TESTS_DATA.map((test) => (
                   <div
                     key={`pre-${test.id}`}
-                    className="w-full rounded-[20px] p-5 border border-slate-200/80 bg-[#f2f2f2] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
+                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
                   >
                     <div className="space-y-1">
                       <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
@@ -201,7 +201,7 @@ export default function InternshipAssessmentPage({
                 {MOCK_TESTS_DATA.map((test) => (
                   <div
                     key={`post-${test.id}`}
-                    className="w-full rounded-[20px] p-5 border border-slate-200/80 bg-[#f2f2f2] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
+                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
                   >
                     <div className="space-y-1">
                       <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
@@ -268,7 +268,7 @@ export default function InternshipAssessmentPage({
               {MOCK_QUESTIONS.map((q, idx) => (
                 <div
                   key={q.id}
-                  className="bg-[#f2f2f2] border border-slate-300/60 p-5 rounded-[20px] space-y-4 shadow-sm"
+                  className="bg-[#fffdf8] border border-slate-300/60 p-5 rounded-[20px] space-y-4 shadow-sm"
                 >
                   <div className="flex gap-2 items-start">
                     <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
@@ -314,7 +314,7 @@ export default function InternshipAssessmentPage({
             </div>
           ) : (
             /* Submission Summary Panel */
-            <div className="bg-[#f2f2f2] border border-slate-300/60 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
+            <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
               <Award className="w-12 h-12 text-[#f57f17] mx-auto" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-slate-800">
