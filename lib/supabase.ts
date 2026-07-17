@@ -38,9 +38,24 @@ export async function getUsersFromDB(chosenRoles: string[]) {
   return users;
 }
 
+type TableNames = "collaboration" | "project" | "client" | "service";
+
+export async function getNameIdFromDB(table: TableNames) {
+  const { data: users, error: fetchError } = await supabase
+    .from(table)
+    .select("id,name")
+
+  if (fetchError) {
+    console.error("Error checking collab data:", fetchError);
+    throw fetchError;
+  }
+
+  return users;
+}
+
 // Projects and Collab function =========================================================
 //Get all collab rows from database
-type TableNames = "collaboration" | "project";
+
 export async function getRowsFromDB(table: TableNames) {
   const { data: rows, error: fetchError } = await supabase
     .from(table)

@@ -5,6 +5,7 @@ import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import ProjectModal from "../../components/projectmodal";
+import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../../types/database";
 import {
   Search,
   Network,
@@ -19,112 +20,31 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-type Project = {
-  id: number;
-  name: string;
-  client_name: string;
-  service_type: string;
-  status: string;
-  lead: string;
-  start_date: string;
-  target_delivery_date: string;
-  repository_link?: string;
-};
+//Database imports
+import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB, getNameIdFromDB } from "@/lib/supabase";
 
-const INITIAL_PROJECTS: Project[] = [
-  {
-    id: 1,
-    name: "De Novo Transcriptome Assembly Pipeline",
-    client_name: "UP Visayas Marine Science",
-    service_type: "Bioinformatics Analysis",
-    status: "On-going",
-    lead: "Dr. Analyst Cruz",
-    start_date: "2026-05-10",
-    target_delivery_date: "2026-07-20",
-    repository_link: "https://github.com/upv-marine/transcriptome-pipeline",
-  },
-  {
-    id: 2,
-    name: "Metagenomic Sequencing Validation",
-    client_name: "DOST Region VI",
-    service_type: "Sequencing Service",
-    status: "For approval",
-    lead: "Prof. Lopez",
-    start_date: "2026-06-01",
-    target_delivery_date: "2026-08-15",
-  },
-  {
-    id: 3,
-    name: "Variant Calling on Rice Subspecies",
-    client_name: "PhilRice",
-    service_type: "Custom Workflow",
-    status: "Submitted",
-    lead: "Engr. Santos",
-    start_date: "2026-04-12",
-    target_delivery_date: "2026-06-30",
-  },
-  {
-    id: 4,
-    name: "RNA-Seq Differential Expression Analysis",
-    client_name: "UP Manila",
-    service_type: "Bioinformatics Analysis",
-    status: "Completed",
-    lead: "Dr. Cruz",
-    start_date: "2026-02-10",
-    target_delivery_date: "2026-04-15",
-  },
-  {
-    id: 5,
-    name: "ChIP-Seq Transcription Profiling",
-    client_name: "MSU-IIT",
-    service_type: "Custom Workflow",
-    status: "On hold",
-    lead: "Prof. Torres",
-    start_date: "2026-03-01",
-    target_delivery_date: "2026-06-15",
-  },
+// These would normally come from your DB (clients/services/users tables)
+// const AVAILABLE_CLIENTS: UserOption[] = await getNameIdFromDB("client")
+// const AVAILABLE_SERVICES: UserOption[] = await getNameIdFromDB("service")
+// const AVAILABLE_USERS: UserOption[] = await getUsersFromDB(["team_lead", "team_member"])
+
+const FILTER_OPTIONS: { value: ProjectStatus | "All"; label: string }[] = [
+  { value: "All", label: "All" },
+  ...STATUS_OPTIONS,
 ];
 
-const AVAILABLE_CLIENTS = [
-  "UP Visayas Marine Science",
-  "DOST Region VI",
-  "PhilRice",
-  "UP Manila",
-  "MSU-IIT",
-  "DOST-PCHRD",
-  "PGH Pediatric Labs",
-  "IRRI",
-  "UP Diliman NIMBB",
-  "Philippine Genome Center",
-];
+// types/database.ts (or a shared constants file)
 
-const AVAILABLE_SERVICES = [
-  "Bioinformatics Analysis",
-  "Sequencing Service",
-  "Custom Workflow",
-];
-
-const AVAILABLE_USERS = [
-  "Dr. Analyst Cruz",
-  "Prof. Lopez",
-  "Engr. Santos",
-  "Dr. Cruz",
-  "Prof. Torres",
-];
-
-const FILTER_OPTIONS = [
-  "All",
-  "Completed",
-  "On-going",
-  "Submitted",
-  "For approval",
-  "On hold",
-];
 
 export default function ProjectsPage() {
-  const [projectsList, setProjectsList] = useState<Project[]>(INITIAL_PROJECTS);
+  const [projectsList, setProjectsList] = useState<Project[]>([]);
+  const [availableClients, setAvailableClients] = useState<UserOption[]>([]);
+  const [availableServices, setAvailableServices] = useState<UserOption[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState<ProjectStatus | "All">("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState<{
@@ -136,8 +56,70 @@ export default function ProjectsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isPanelOpen = isAdding || isEditing;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setOptionsLoading(true);
+      setOptionsError(null);
+      try {
+        const [clients, services, users, rows] = await Promise.all([
+          getNameIdFromDB("client"),
+          getNameIdFromDB("service"),
+          getUsersFromDB(["team_lead", "team_member"]),
+          getRowsFromDB("project"),
+        ]);
+
+        if (cancelled) return;
+        setAvailableClients(clients as UserOption[]);
+        setAvailableServices(services as UserOption[]);
+        setAvailableUsers(users as UserOption[]);
+        setProjectsList(rows as Project[]);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+        if (!cancelled) {
+          setOptionsError(
+            "Couldn't load clients, services, or team members. Please refresh the page.",
+          );
+        }
+      } finally {
+        if (!cancelled) setOptionsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // --- Lookup maps so the table can resolve id -> display name ---
+  const clientMap = useMemo(
+    () => Object.fromEntries(availableClients.map((c) => [c.id, c.name])),
+    [availableClients],
+  );
+  const serviceMap = useMemo(
+    () => Object.fromEntries(availableServices.map((s) => [s.id, s.name])),
+    [availableServices],
+  );
+  const userMap = useMemo(
+    () => Object.fromEntries(availableUsers.map((u) => [u.id, u.name])),
+    [availableUsers],
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await getRowsFromDB("project"); // adjust to actual signature
+        setProjectsList(rows as Project[]);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
@@ -150,19 +132,39 @@ export default function ProjectsPage() {
     setCurrentPage(1);
   }, [searchQuery, activeFilter, itemsPerPage]);
 
-  const updateProjectStatus = (projectId: number, newStatus: string) => {
+  const updateProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
+    const previous = projectsList.find((p) => p.id === projectId)?.status;
+
+    // Update the frontend immediately
     setProjectsList((prev) =>
       prev.map((proj) =>
         proj.id === projectId ? { ...proj, status: newStatus } : proj,
       ),
     );
+
+    try {
+      await saveDataToDB("project", projectId, { status: newStatus });
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      // Rollback the frontend update if error occurs when saving to the database
+      setProjectsList((prev) =>
+        prev.map((proj) =>
+          proj.id === projectId && previous !== undefined
+            ? { ...proj, status: previous }
+            : proj,
+        ),
+      );
+    }
   };
 
-  const updateProjectService = (projectId: number, newService: string) => {
+  const updateProjectService = (projectId: string, newServiceId: string) => {
     setProjectsList((prev) =>
       prev.map((proj) =>
-        proj.id === projectId ? { ...proj, service_type: newService } : proj,
+        proj.id === projectId ? { ...proj, service_id: newServiceId } : proj,
       ),
+    );
+    saveDataToDB("project", projectId, { service_id: newServiceId }).catch((error) =>
+      console.error("Failed to update service:", error),
     );
   };
 
@@ -178,35 +180,72 @@ export default function ProjectsPage() {
     setSortConfig({ key, direction });
   };
 
-  const handleAddSubmit = async (formData: Omit<Project, "id">) => {
-    const nextNumericId =
-      projectsList.length > 0
-        ? Math.max(...projectsList.map((p) => p.id)) + 1
-        : 1;
-    const runtimePayload: Project = { id: nextNumericId, ...formData };
+  const handleAddSubmit = async (formData: ProjectFormData) => {
+    const newId = crypto.randomUUID();
+    const payload = {
+      id: newId,
+      name: formData.name,
+      client_id: formData.client_id,
+      service_id: formData.service_id,
+      status: formData.status,
+      lead_user_id: formData.lead_user_id,
+      start_date: formData.start_date,
+      target_delivery_date: formData.target_delivery_date || null,
+      repository_link: formData.repository_link || null,
+    };
 
-    setProjectsList((prev) => [runtimePayload, ...prev]);
-    setIsAdding(false);
+    setIsSaving(true);
+
+    try {
+      const saved = await saveDataToDB("project", newId, payload);
+      setProjectsList((prev) => [saved, ...prev]);
+      setIsAdding(false);
+    } catch (error) {
+      console.error("Failed to save new project:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleEditSubmit = async (formData: Omit<Project, "id">) => {
+  const handleEditSubmit = async (formData: ProjectFormData) => {
     if (!selectedProject) return;
 
-    setProjectsList((prev) =>
-      prev.map((item) =>
-        item.id === selectedProject.id ? { ...item, ...formData } : item,
-      ),
-    );
-    setIsEditing(false);
+    const payload = {
+      name: formData.name,
+      client_id: formData.client_id,
+      service_id: formData.service_id,
+      status: formData.status,
+      lead_user_id: formData.lead_user_id,
+      start_date: formData.start_date,
+      target_delivery_date: formData.target_delivery_date || null,
+      repository_link: formData.repository_link || null,
+    };
+
+    setIsSaving(true);
+    try {
+      const saved = await saveDataToDB("project", selectedProject.id, payload);
+      setProjectsList((prev) =>
+        prev.map((item) => (item.id === selectedProject.id ? { ...item, ...(saved as Project) } : item)),
+      );
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update project:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteRecord = async () => {
     if (!selectedProject) return;
-
-    setProjectsList((prev) =>
-      prev.filter((item) => item.id !== selectedProject.id),
-    );
-    setShowDeleteConfirm(false);
+    try {
+      await deleteDataFromDB("project", selectedProject.id);
+      setProjectsList((prev) =>
+        prev.filter((item) => item.id !== selectedProject.id),
+      );
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+    }
   };
 
   const filteredProjects = useMemo(() => {
@@ -214,26 +253,24 @@ export default function ProjectsPage() {
 
     // Apply Active Horizontal Capsule Filter
     if (activeFilter !== "All") {
-      records = records.filter((project) => {
-        const normalProjectStatus = (project.status || "")
-          .toLowerCase()
-          .replace(/[\s-]/g, "");
-        const normalFilter = activeFilter.toLowerCase().replace(/[\s-]/g, "");
-        return normalProjectStatus === normalFilter;
-      });
+      records = records.filter((project) => project.status === activeFilter);
     }
 
     const cleansedQuery = searchQuery.toLowerCase().trim();
     if (!cleansedQuery) return records;
 
-    return records.filter((project) =>
-      Object.values(project).some((fieldValue) =>
-        String(fieldValue ?? "")
-          .toLowerCase()
-          .includes(cleansedQuery),
-      ),
-    );
-  }, [searchQuery, projectsList, activeFilter]);
+    return records.filter((project) => {
+      const searchable = {
+        ...project,
+        client_name: clientMap[project.client_id] ?? "",
+        service_name: serviceMap[project.service_id] ?? "",
+        lead_name: userMap[project.lead_user_id] ?? "",
+      };
+      return Object.values(searchable).some((v) =>
+        String(v ?? "").toLowerCase().includes(cleansedQuery),
+      );
+    });
+  }, [searchQuery, projectsList, activeFilter, clientMap, serviceMap, userMap]);
 
   const sortedProjects = useMemo(() => {
     const itemsToProcess = [...filteredProjects];
@@ -254,7 +291,7 @@ export default function ProjectsPage() {
     return sortedProjects.slice(startOffset, startOffset + itemsPerPage);
   }, [sortedProjects, currentPage, itemsPerPage]);
 
-  const getStatusClass = (status: string) => {
+  const getStatusClass = (status: ProjectStatus) => {
     const baseClass =
       "text-[10px] font-bold uppercase tracking-wide pl-2 pr-6 py-0.5 rounded-full border text-center shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400";
     const normal = status.toLowerCase().replace(/[\s-]/g, "");
@@ -287,30 +324,30 @@ export default function ProjectsPage() {
       ),
     },
     {
-      key: "client_name",
+      key: "client_id",
       label: "Client",
       width: "13%",
       sortable: true,
-      render: (p) => <span className="block">{p.client_name}</span>,
+      render: (p) => <span className="block">{clientMap[p.client_id] ?? "Unknown"}</span>,
     },
     {
-      key: "service_type",
+      key: "service_id",
       label: "Service Category",
       width: "13%",
       render: (p) => (
         <div className="relative block w-full whitespace-normal break-words">
           <select
-            value={p.service_type}
+            value={p.service_id}
             onChange={(e) => updateProjectService(p.id, e.target.value)}
             className="w-full text-[10px] font-bold pl-2 pr-6 py-1 bg-[#f0f2f3] text-[#4a5963] border border-gray-200/50 rounded-xl block shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 whitespace-normal break-words leading-tight"
           >
-            {AVAILABLE_SERVICES.map((srv) => (
+            {availableServices.map((srv) => (
               <option
-                key={srv}
-                value={srv}
+                key={srv.id}
+                value={srv.id}
                 className="bg-white text-slate-900 font-normal normal-case"
               >
-                {srv}
+                {srv.name}
               </option>
             ))}
           </select>
@@ -326,16 +363,16 @@ export default function ProjectsPage() {
         <div className="relative inline-block w-full min-w-[95px]">
           <select
             value={p.status}
-            onChange={(e) => updateProjectStatus(p.id, e.target.value)}
+            onChange={(e) => updateProjectStatus(p.id, e.target.value as ProjectStatus)}
             className={getStatusClass(p.status)}
           >
-            {FILTER_OPTIONS.filter((o) => o !== "All").map((opt) => (
+            {STATUS_OPTIONS.map((opt) => (
               <option
-                key={opt}
-                value={opt}
+                key={opt.value}
+                value={opt.value}
                 className="bg-white text-slate-900 font-normal normal-case"
               >
-                {opt}
+                {opt.label}
               </option>
             ))}
           </select>
@@ -343,7 +380,13 @@ export default function ProjectsPage() {
         </div>
       ),
     },
-    { key: "lead", label: "Lead", width: "10%", sortable: true },
+    {
+      key: "lead_user_id",
+      label: "Lead",
+      width: "10%",
+      sortable: true,
+      render: (p) => <span>{userMap[p.lead_user_id] ?? "Unassigned"}</span>,
+    },
     {
       key: "start_date",
       label: "Start Date",
@@ -460,6 +503,7 @@ export default function ProjectsPage() {
           </div>
           <button
             type="button"
+            disabled={optionsLoading}
             onClick={() => {
               setSelectedProject(null);
               setIsAdding(true);
@@ -484,25 +528,33 @@ export default function ProjectsPage() {
           {/* New Cream Filter Bar Capsule matching your design image */}
           <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
             {FILTER_OPTIONS.map((filter) => {
-              const isActive = activeFilter === filter;
+              const isActive = activeFilter === filter.value;
               return (
                 <button
-                  key={filter}
+                  key={filter.value}
                   type="button"
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => setActiveFilter(filter.value)}
                   className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
                     ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
                     : "text-slate-500 hover:text-slate-800 font-medium"
                     }`}
                 >
-                  {filter}
+                  {filter.label}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {filteredProjects.length === 0 ? (
+        {optionsError ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6">
+            <span className="text-sm font-medium text-red-500">{optionsError}</span>
+          </div>
+        ) : optionsLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm font-medium text-slate-400">
+            Loading projects…
+          </div>
+        ) : filteredProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
             <Inbox className="w-10 h-10 text-slate-300 mb-2" />
             <span className="text-sm font-medium text-slate-500">
@@ -530,23 +582,24 @@ export default function ProjectsPage() {
       <ProjectModal
         isOpen={isPanelOpen}
         isAdding={isAdding}
+        isSaving={isSaving}
         initialData={
           selectedProject
             ? {
               name: selectedProject.name,
-              client_name: selectedProject.client_name,
-              service_type: selectedProject.service_type,
+              client_id: selectedProject.client_id,
+              service_id: selectedProject.service_id,
               status: selectedProject.status,
-              lead: selectedProject.lead,
+              lead_user_id: selectedProject.lead_user_id,
               start_date: selectedProject.start_date,
-              target_delivery_date: selectedProject.target_delivery_date,
+              target_delivery_date: selectedProject.target_delivery_date || "",
               repository_link: selectedProject.repository_link || "",
             }
             : null
         }
-        availableClients={AVAILABLE_CLIENTS}
-        availableServices={AVAILABLE_SERVICES}
-        availableUsers={AVAILABLE_USERS}
+        availableClients={availableClients}
+        availableServices={availableServices}
+        availableUsers={availableUsers}
         onClose={() => {
           setIsAdding(false);
           setIsEditing(false);
