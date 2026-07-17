@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
+import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs"; // Ensure this import path matches your directory structure
 import {
-  ArrowLeft,
   Search,
   CheckSquare,
   Edit3,
@@ -79,6 +79,15 @@ const STATUS_OPTIONS = ["Pending", "In-Progress", "Completed", "On Hold"];
 const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
 const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 
+// Helper function to format dates to MM/DD/YYYY
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr; // Fallback to raw string if format is unexpected
+  const [year, month, day] = parts;
+  return `${month}/${day}/${year}`;
+};
+
 export default function TasksPage() {
   const [tasksList, setTasksList] = useState<Task[]>(INITIAL_TASKS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +105,10 @@ export default function TasksPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
+  // Refs and state for the sliding filter bar mechanism
+  const filterContainerRef = useRef<HTMLDivElement>(null);
+  const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
+
   const isSidebarOpen = isAdding || isEditing;
 
   const emptyForm: Omit<Task, "id"> = {
@@ -109,6 +122,12 @@ export default function TasksPage() {
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
 
+  // Breadcrumb Trail Config
+  const breadcrumbTrail = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Tasks" },
+  ];
+
   useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
       detail: { isOpen: isSidebarOpen },
@@ -119,6 +138,30 @@ export default function TasksPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter, itemsPerPage]);
+
+  // Recalculate slider dimensions and offset whenever activeFilter changes
+  useEffect(() => {
+    if (filterContainerRef.current) {
+      const container = filterContainerRef.current;
+      const activeButton = container.querySelector(
+        `[data-filter="${activeFilter}"]`,
+      ) as HTMLButtonElement;
+
+      if (activeButton) {
+        const containerRect = container.getBoundingClientRect();
+        const buttonRect = activeButton.getBoundingClientRect();
+
+        // Calculate position relative to container, accounting for container scroll position
+        const relativeLeft =
+          buttonRect.left - containerRect.left + container.scrollLeft;
+
+        setSlideStyle({
+          left: relativeLeft,
+          width: buttonRect.width,
+        });
+      }
+    }
+  }, [activeFilter]);
 
   const updateTaskStatus = (taskId: number, newStatus: string) => {
     setTasksList((prev) =>
@@ -166,11 +209,55 @@ export default function TasksPage() {
   const sortedTasks = useMemo(() => {
     const sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
+      const { key, direction } = sortConfig;
+      const isAsc = direction === "asc";
+
+      // Define weight weights for Priority mapping: High needs to be first on 'asc'
+      const priorityWeights: Record<string, number> = {
+        High: 1,
+        Medium: 2,
+        Low: 3,
+      };
+
+      // Define weights for Status mapping: customize order logically (e.g., progression sequence)
+      const statusWeights: Record<string, number> = {
+        Pending: 1,
+        "In-Progress": 2,
+        "On Hold": 3,
+        Completed: 4,
+      };
+
       sortableItems.sort((a, b) => {
-        const valA = a[sortConfig.key];
-        const valB = b[sortConfig.key];
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+        const valA = a[key];
+        const valB = b[key];
+
+        // 1. Column Rule: Priority Custom Weights
+        if (key === "priority") {
+          const weightA = priorityWeights[String(valA)] || 99;
+          const weightB = priorityWeights[String(valB)] || 99;
+          return isAsc ? weightA - weightB : weightB - weightA;
+        }
+
+        // 2. Column Rule: Status Custom Weights
+        if (key === "status") {
+          const weightA = statusWeights[String(valA)] || 99;
+          const weightB = statusWeights[String(valB)] || 99;
+          return isAsc ? weightA - weightB : weightB - weightA;
+        }
+
+        // 3. Column Rule: Due Date Chronological Sort
+        if (key === "due_date") {
+          const timeA = new Date(String(valA) || 0).getTime();
+          const timeB = new Date(String(valB) || 0).getTime();
+          return isAsc ? timeA - timeB : timeB - timeA;
+        }
+
+        // 4. Fallback Rule: Standard Alphabetical (Task Title, Assignee, etc.)
+        const stringA = String(valA).toLowerCase().trim();
+        const stringB = String(valB).toLowerCase().trim();
+
+        if (stringA < stringB) return isAsc ? -1 : 1;
+        if (stringA > stringB) return isAsc ? 1 : -1;
         return 0;
       });
     }
@@ -367,7 +454,8 @@ export default function TasksPage() {
       sortable: true,
       render: (t) => (
         <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
-          {t.due_date}
+          {/* Formats standard YYYY-MM-DD input to MM/DD/YYYY using the helper */}
+          {formatDate(t.due_date) || "-"}
         </span>
       ),
     },
@@ -417,29 +505,31 @@ export default function TasksPage() {
 
   return (
     <div
-      className={`space-y-6 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-        }`}
+      className={`space-y-8 mx-auto pb-16 px-4 font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+        isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      }`}
     >
-      <div className="pt-2">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#2a7797] bg-slate-50 hover:bg-[#e6f4f8] transition-all duration-200 px-4 py-2 rounded-xl border border-slate-200/60 shadow-xs group"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
-          <span>Back to Landing Page</span>
-        </Link>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+      {/* Top Header Controls Area formatted exactly like the landing page */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand">
-            Dashboard - List
-          </span>
-          <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
+          {/* Breadcrumbs Wrapper */}
+          <div className="opacity-95 text-xs tracking-wide transition-colors">
+            <DashboardBreadcrumbs items={breadcrumbTrail} />
+          </div>
+
+          {/* Main Title formatted with landing page style styling */}
+          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Tasks for the Week
           </h1>
+
+          {/* Subheader styled to match landing page secondary details */}
+          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
+            Operational activities schedule · Pipeline execution & manual tasks
+            queue
+          </p>
         </div>
 
+        {/* Action controls aligned to the right side of the header */}
         <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
           <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
             <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
@@ -487,18 +577,33 @@ export default function TasksPage() {
             <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full">
+          {/* Sliding Filter Bar Container */}
+          <div
+            ref={filterContainerRef}
+            className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] overflow-x-auto no-scrollbar max-w-full"
+          >
+            {/* Sliding Highlight Block */}
+            <div
+              className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100 transition-all duration-300 ease-out pointer-events-none"
+              style={{
+                left: `${slideStyle.left}px`,
+                width: `${slideStyle.width}px`,
+              }}
+            />
+
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter;
               return (
                 <button
                   key={filter}
+                  data-filter={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-all duration-200 whitespace-nowrap ${isActive
-                      ? "bg-white text-[#2a7797] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100"
+                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs transition-colors duration-300 whitespace-nowrap ${
+                    isActive
+                      ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
-                    }`}
+                  }`}
                 >
                   {filter}
                 </button>

@@ -103,7 +103,6 @@ export default function Sidebar({
     avatarUrl: null,
   });
 
-  // Combine parent controlled state with event system channel broadcasts
   const isCurrentlyHidden =
     controlledIsHidden !== undefined ? controlledIsHidden : localIsHidden;
 
@@ -153,19 +152,22 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`h-screen bg-[#fffdf8] flex flex-col justify-between border-r border-[rgba(23,33,38,0.08)] shadow-[2px_0px_24px_rgba(40,37,96,0.02)] flex-shrink-0 relative transition-all duration-300 ease-in-out overflow-hidden ${
+      className={`h-screen bg-[#fffdf8] flex flex-col justify-between border-r border-[rgba(23,33,38,0.08)] flex-shrink-0 relative transition-all duration-300 ease-in-out overflow-hidden ${
         isCurrentlyHidden
-          ? "w-0 p-0 opacity-0 -translate-x-full border-r-0"
-          : "w-[340px] p-6 opacity-100 translate-x-0"
+          ? "w-0 p-0 opacity-0 -translate-x-full border-r-0 shadow-none"
+          : "w-[340px] p-6 opacity-100 translate-x-0 shadow-[6px_0_24px_rgba(0,0,0,0.06)]"
       }`}
     >
-      {/* Wrapped Content Layer stops text compression during width transitions */}
+      {/* Wrapped Content Layer */}
       <div
         className={`w-[292px] flex flex-col justify-between h-full transition-opacity duration-200 ${isCurrentlyHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       >
         <div>
-          {/* Header */}
-          <div className="flex items-center gap-3 pb-5 border-b border-gray-100">
+          {/* Static Header Link (Hover interactions removed) */}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 pb-5 border-b border-gray-100 cursor-pointer select-none"
+          >
             <img
               src="/assets/pgcv_logo.png"
               alt="Logo"
@@ -176,7 +178,7 @@ export default function Sidebar({
                 Bioinformatics Workflow Dashboard
               </span>
             </div>
-          </div>
+          </Link>
 
           {/* Navigation */}
           <div className="mt-6">
