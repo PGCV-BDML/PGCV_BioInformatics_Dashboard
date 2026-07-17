@@ -152,16 +152,35 @@ export interface OnboardingDocument {
 
 export type AssessmentType = "pre_test" | "post_test" | "evaluation";
 
+export type McqQuestion = {
+  type: "mcq";
+  id: string;
+  question: string;
+  options: string[];
+  correct: number; // index into options
+};
+
+export type RatingQuestion = {
+  type: "rating";
+  id: string;
+  question: string;
+  scale: number; // e.g. 5 for 1-5 scale
+};
+
+export type TextQuestion = {
+  type: "text";
+  id: string;
+  question: string;
+  multiline?: boolean;
+};
+
+export type Question = McqQuestion | RatingQuestion | TextQuestion;
+
 export interface Assessment {
   id: string;
   program_id: string;
   type: AssessmentType;
-  questions: Array<{
-    id: string;
-    question: string;
-    options: string[];
-    correct: number;
-  }> | null;
+  questions: Question[] | null;
   created_at?: string;
   updated_at?: string;
 }

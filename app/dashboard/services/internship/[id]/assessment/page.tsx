@@ -9,15 +9,11 @@ import {
   ArrowLeft,
   Award,
   HelpCircle,
+  Star,
 } from "lucide-react";
+import type { Question } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
-interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correct: number;
-}
 
 export default function InternshipAssessmentPage({
   params,
@@ -31,7 +27,7 @@ export default function InternshipAssessmentPage({
   const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
   const [postTestQuestions, setPostTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, number>
+    Record<string, number | string>
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
   const [existingResponses, setExistingResponses] = useState<any[]>([]);
@@ -66,24 +62,156 @@ export default function InternshipAssessmentPage({
     setScoreResult(null);
   };
 
+  /** Render a single question based on its type */
+  const renderQuestion = (q: Question, idx: number) => {
+    if (q.type === "mcq") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 gap-2 pl-6">
+            {q.options.map((opt, oIdx) => (
+              <label
+                key={oIdx}
+                className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                  selectedAnswers[q.id] === oIdx
+                    ? "border-[#4ec2bb] bg-[#f2fdfc]"
+                    : "border-slate-100 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={q.id}
+                  checked={selectedAnswers[q.id] === oIdx}
+                  onChange={() =>
+                    setSelectedAnswers({
+                      ...selectedAnswers,
+                      [q.id]: oIdx,
+                    })
+                  }
+                  className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "rating") {
+      const scale = q.scale || 5;
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <Star className="w-4 h-4 text-[#f57f17] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="flex items-center gap-2 pl-6">
+            {Array.from({ length: scale }, (_, i) => i + 1).map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: val })
+                }
+                className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
+                  selectedAnswers[q.id] === val
+                    ? "bg-[#f57f17] text-white shadow-md"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+              >
+                {val}
+              </button>
+            ))}
+            {/* ponytail: numbered buttons 1–scale. Star icons or a slider would be nicer but more work. */}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "text") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="pl-6">
+            {q.multiline ? (
+              <textarea
+                rows={3}
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            ) : (
+              <input
+                type="text"
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const calculateScore = async () => {
     const questions = activeTest === "pre" ? preTestQuestions : postTestQuestions;
     const assessmentId = activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
     if (!assessmentId || questions.length === 0) return;
     const user = await getCurrentUser();
     if (!user) return;
-    let correctCount = 0;
-    questions.forEach((q) => {
-      if (selectedAnswers[q.id] === q.correct) {
-        correctCount++;
-      }
-    });
-    const finalScore = Math.round((correctCount / questions.length) * 100);
+
+    // Only MCQ questions contribute to the score
+    const mcqQuestions = questions.filter((q): q is Question & { type: "mcq" } => q.type === "mcq");
+    const correctCount = mcqQuestions.filter(
+      (q) => selectedAnswers[q.id] === q.correct,
+    ).length;
+    const finalScore = mcqQuestions.length > 0
+      ? Math.round((correctCount / mcqQuestions.length) * 100)
+      : 0;
+
     setScoreResult(finalScore);
+
+    // Ponytail: rating and text answers are stored but not scored
+    const typedAnswers: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(selectedAnswers)) {
+      typedAnswers[key] = val;
+    }
+
     await saveDataToDB("assessment_response", crypto.randomUUID(), {
       assessment_id: assessmentId,
       participant_id: user.id,
-      answers: selectedAnswers,
+      answers: typedAnswers,
       score: finalScore,
       submitted_at: new Date().toISOString(),
     });
@@ -170,45 +298,9 @@ export default function InternshipAssessmentPage({
 
           {scoreResult === null ? (
             <div className="space-y-6 max-w-3xl">
-              {(activeTest === "pre" ? preTestQuestions : postTestQuestions).map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
-                >
-                  <div className="flex gap-2 items-start">
-                    <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
-                    <h4 className="text-sm font-bold text-slate-800 leading-snug">
-                      {idx + 1}. {q.question}
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 pl-6">
-                    {q.options.map((opt, oIdx) => (
-                      <label
-                        key={oIdx}
-                        className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                          selectedAnswers[q.id] === oIdx
-                            ? "border-[#4ec2bb] bg-[#f2fdfc]"
-                            : "border-slate-100 hover:bg-slate-50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={selectedAnswers[q.id] === oIdx}
-                          onChange={() =>
-                            setSelectedAnswers({
-                              ...selectedAnswers,
-                              [q.id]: oIdx,
-                            })
-                          }
-                          className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
-                        />
-                        <span>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {(activeTest === "pre" ? preTestQuestions : postTestQuestions).map((q, idx) =>
+                renderQuestion(q, idx)
+              )}
 
               <button
                 onClick={calculateScore}

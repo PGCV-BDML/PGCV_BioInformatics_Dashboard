@@ -14,11 +14,29 @@ import {
 } from "lucide-react";
 import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
 
+/* ================= CERTIFICATE TEMPLATE ================= */
+const CERTIFICATE_TEMPLATE = {
+  body: "The Philippine Genome Center awards this certificate of completion to {name} for completing {hours} hours of {trainingType} from {startDate} to {endDate} at PGC Visayas, Miagao, Iloilo.",
+  signatories: [
+    { name: "Victor Marco Emmanuel N. Ferriols, Ph.D.", title: "Assistant to the Executive Director, Visayas, Philippine Genome Center" },
+    { name: "Albert Noblezada", title: "Science Research Specialist II, Bioinformatics" },
+  ],
+};
+
 interface CertificateRecord {
   id: string;
   name: string;
   programTitle: string;
   date: string;
+  participant_id: string;
+}
+
+/** Replace template placeholders with actual values. Falls back to "—" for missing data. */
+function fillTemplate(
+  body: string,
+  data: Record<string, string | undefined>,
+): string {
+  return body.replace(/\{(\w+)\}/g, (_, key) => data[key] ?? "—");
 }
 
 export default function CertificateRegistryPage({
@@ -30,6 +48,7 @@ export default function CertificateRegistryPage({
 
   // Certificate Registry
   const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
+  const [program, setProgram] = useState<any>(null);
 
   const [viewingCertificate, setViewingCertificate] =
     useState<CertificateRecord | null>(null);
@@ -38,10 +57,14 @@ export default function CertificateRegistryPage({
   useEffect(() => {
     const load = async () => {
       try {
-        const [certificates, users] = await Promise.all([
+        const [certs, users, programs] = await Promise.all([
           getRowsFromDB("certificate"),
           getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
+          getRowsFromDB("training_program"),
         ]);
+        const prog = (programs as any[]).find((p) => p.id === resolvedParams.id);
+        setProgram(prog);
+
         const userMap = new Map<string, any>();
         for (const u of users as any[]) userMap.set(u.id, u);
         const programCerts = (certificates as any[]).filter(
@@ -52,8 +75,9 @@ export default function CertificateRegistryPage({
           return {
             id: c.id,
             name: u?.name ?? "—",
-            programTitle: programTitle,
+            programTitle: prog?.title ?? programTitle,
             date: c.issued_at ? c.issued_at.split("T")[0] : "—",
+            participant_id: c.participant_id,
           };
         });
         setCertificates(rows);
@@ -71,6 +95,24 @@ export default function CertificateRegistryPage({
     } catch (err) {
       console.error("Error deleting certificate:", err);
     }
+  };
+
+  /** Resolve user name for a given participant_id */
+  const resolveName = (participantId: string): string => {
+    // fall back to the name in the certificate record if available, else placeholder
+    const cert = certificates.find((c) => c.participant_id === participantId);
+    return cert?.name ?? "—";
+  };
+
+  /** Compute filled certificate body for a given cert */
+  const getCertificateBody = (cert: CertificateRecord): string => {
+    return fillTemplate(CERTIFICATE_TEMPLATE.body, {
+      name: cert.name,
+      hours: "—", // ponytail: hours not yet available in training_program schema
+      trainingType: program?.type ?? "training",
+      startDate: program?.start_date ? program.start_date.split("T")[0] : "—",
+      endDate: program?.end_date ? program.end_date.split("T")[0] : "—",
+    });
   };
 
   return (
@@ -224,9 +266,7 @@ export default function CertificateRegistryPage({
                 </h2>
 
                 <p className="text-[11px] text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
-                  for successfully validating all advanced computation
-                  parameters, pipelines architectures, and quality controls
-                  under the specialized tracking course curriculum of
+                  {getCertificateBody(viewingCertificate)}
                 </p>
 
                 <h3 className="text-sm sm:text-base font-bold text-[#2a7797] max-w-xl mx-auto tracking-tight">
@@ -238,11 +278,11 @@ export default function CertificateRegistryPage({
                 <div className="text-left">
                   <div className="border-b border-slate-300 pb-0.5">
                     <p className="font-serif italic text-xs text-slate-800">
-                      Elena Rostova
+                      {CERTIFICATE_TEMPLATE.signatories[0].name}
                     </p>
                   </div>
                   <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400 block pt-1">
-                    Lead Academic Coordinator
+                    {CERTIFICATE_TEMPLATE.signatories[0].title}
                   </span>
                 </div>
 
