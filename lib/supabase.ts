@@ -85,28 +85,34 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
 
   if (existing) {
     // Modify an existing row
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from(table)
       .update(data)
-      .eq("id", uid);
+      .eq("id", uid)
+      .select()
+      .single();
 
     if (error) {
       console.error("Error saving existing collab data:", error);
       throw error;
     }
+
+    return updated;
   } else {
     // Add new row data
-    const { error } = await supabase
+    const { data: inserted, error } = await supabase
       .from(table)
-      .upsert({ ...data });
+      .upsert({ ...data })
+      .select()
+      .single();
 
     if (error) {
       console.error("Error saving new collab data:", error);
       throw error;
     }
-  }
 
-  return { uid, ...data };
+    return inserted;
+  }
 }
 
 export async function deleteDataFromDB(table: TableNames, id: string) {
