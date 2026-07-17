@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, use } from "react";
+import React, { useMemo, use, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,63 +16,19 @@ import {
   ArrowLeft,
   AlertCircle,
 } from "lucide-react";
+import { getRowsFromDB, getUsersFromDB } from "../../../../../lib/supabase";
 
 /* ================= TYPES & CONFIG ================= */
-interface Intern {
-  id: string;
-  name: string;
-  email: string;
-  institution: string;
-  midterm_score: number;
-  final_score: number;
-  has_certificate: boolean;
-}
-
 interface InternshipProgram {
   id: string;
   title: string;
   type: string;
   start_date: string;
   end_date: string;
-  duration: string;
+  duration?: string;
   description: string;
   mentor: { name: string };
-  interns: Intern[];
 }
-
-const MOCK_INTERNSHIP_PROGRAMS: InternshipProgram[] = [
-  {
-    id: "int-1",
-    title: "Clinical Bioinformatics & Transcriptomics Internship",
-    type: "internship",
-    start_date: "2026-06-01",
-    end_date: "2026-08-31",
-    duration: "12 weeks",
-    description:
-      "Hands-on professional cohort internship focusing on raw RNA-Seq pipeline builds, differential expression analysis, pathway enrichment systems, and production variant pipeline clinical configurations.",
-    mentor: { name: "Dr. Elena Rostova" },
-    interns: [
-      {
-        id: "i-1",
-        name: "Marcus Vance",
-        email: "m.vance@mit.edu",
-        institution: "MIT Broad Institute",
-        midterm_score: 85,
-        final_score: 95,
-        has_certificate: true,
-      },
-      {
-        id: "i-2",
-        name: "Claire Redfield",
-        email: "credfield@stanford.edu",
-        institution: "Stanford Medicine",
-        midterm_score: 90,
-        final_score: 98,
-        has_certificate: true,
-      },
-    ],
-  },
-];
 
 const SERVICES_CONFIG = [
   {
@@ -102,11 +58,27 @@ export default function InternshipProgramLayout({
   const resolvedParams = use(params);
   const pathname = usePathname();
   const activeServiceTab = "internship"; // Keeps 3.3 selected
+  const [selectedProgram, setSelectedProgram] = useState<InternshipProgram | null>(null);
 
-  const selectedProgram = useMemo(() => {
-    return (
-      MOCK_INTERNSHIP_PROGRAMS.find((p) => p.id === resolvedParams.id) || null
-    );
+  useEffect(() => {
+    const load = async () => {
+      const [programs, users] = await Promise.all([
+        getRowsFromDB("training_program"),
+        getUsersFromDB(["team_lead", "team_member"]),
+      ]);
+      const userMap = new Map<string, string>();
+      for (const u of users as any[]) userMap.set(u.id, u.name);
+      const found = (programs as any[]).find(
+        (p) => p.id === resolvedParams.id && p.type === "internship",
+      );
+      if (found) {
+        setSelectedProgram({
+          ...found,
+          mentor: { name: userMap.get(found.instructor_id) ?? "—" },
+        });
+      }
+    };
+    load();
   }, [resolvedParams.id]);
 
   // Tab definitions dynamically containing the custom internship workspace directory id

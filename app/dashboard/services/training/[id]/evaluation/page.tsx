@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { BarChart3, Star, Send, CheckCircle, Award } from "lucide-react";
+import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
 
 interface EvaluationQuestion {
   id: string;
@@ -10,26 +11,7 @@ interface EvaluationQuestion {
   type: "rating" | "text";
 }
 
-const EVALUATION_QUESTIONS: EvaluationQuestion[] = [
-  {
-    id: "eq1",
-    label:
-      "How would you rate the depth of content and bioinformatics pipeline coverage?",
-    type: "rating",
-  },
-  {
-    id: "eq2",
-    label:
-      "Rate the speed, responsiveness, and approachability of the course instructor.",
-    type: "rating",
-  },
-  {
-    id: "eq3",
-    label:
-      "What parts of the workflow curriculum or software tracking exercises could be optimized?",
-    type: "text",
-  },
-];
+
 
 export default function EvaluationPage({
   params,
@@ -43,17 +25,46 @@ export default function EvaluationPage({
   const [selectedProgram, setSelectedProgram] = useState(
     "Advanced Bioinformatics Sequencing & GATK Architecture",
   );
-  const [formValues, setFormValues] = useState<Record<string, any>>({
-    eq1: 5,
-    eq2: 5,
-    eq3: "",
-  });
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [questions, setQuestions] = useState<EvaluationQuestion[]>([]);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
-  const handleSubmitEvaluation = (e: React.FormEvent) => {
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const assessments = await getRowsFromDB("assessment");
+        const evalAssessment = (assessments as any[]).find(
+          (a) => a.program_id === resolvedParams.id && a.type === "evaluation",
+        );
+        if (evalAssessment?.questions) {
+          setAssessmentId(evalAssessment.id);
+          setQuestions(evalAssessment.questions as EvaluationQuestion[]);
+        }
+      } catch (err) {
+        console.error("Error loading evaluation questions:", err);
+      }
+    };
+    load();
+  }, [resolvedParams.id]);
+
+  const handleSubmitEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    // In a real application, you would POST the data here.
+    if (!assessmentId) return;
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+      await saveDataToDB("assessment_response", crypto.randomUUID(), {
+        assessment_id: assessmentId,
+        participant_id: user.id,
+        answers: formValues,
+        score: null,
+        submitted_at: new Date().toISOString(),
+      });
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting evaluation:", err);
+    }
   };
 
   return (
@@ -64,7 +75,7 @@ export default function EvaluationPage({
           1. Submit Evaluation
         </span>
         <Link
-          href={`/${resolvedParams.id}/certificate`}
+          href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
           className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
         >
           2. Certificate Registry{" "}
@@ -119,7 +130,8 @@ export default function EvaluationPage({
               </div>
 
               <div className="space-y-3 pt-2">
-                {EVALUATION_QUESTIONS.map((q) => (
+                {/* ponytail: questions loaded from assessment.questions jsonb */}
+                {questions.map((q) => (
                   <div
                     key={q.id}
                     className="bg-white border border-slate-200/80 p-4 rounded-[16px] space-y-2"
@@ -192,7 +204,7 @@ export default function EvaluationPage({
               </div>
               <div className="flex flex-col gap-2">
                 <Link
-                  href={`/${resolvedParams.id}/certificate`}
+                  href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
                   className="w-full py-2 bg-[#4ec2bb] text-white font-bold text-xs rounded-xl hover:bg-[#3db0a9] transition-colors shadow-sm text-center block"
                 >
                   Go View Certificates Table

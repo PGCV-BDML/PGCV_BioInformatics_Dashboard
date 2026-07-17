@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -12,6 +12,7 @@ import {
   CheckCircle,
   BarChart3,
 } from "lucide-react";
+import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
 
 interface CertificateRecord {
   id: string;
@@ -27,27 +28,49 @@ export default function CertificateRegistryPage({
 }) {
   const resolvedParams = use(params);
 
-  // Simulated Certificate Registry Database
-  const [certificates, setCertificates] = useState<CertificateRecord[]>([
-    {
-      id: "CERT-DF83KS9A",
-      name: "Dr. Elena Rostova",
-      programTitle: "16S Metagenomics Analysis Framework",
-      date: "2026-06-12",
-    },
-    {
-      id: "CERT-JK92LA7B",
-      name: "Alex Mercer, Ph.D.",
-      programTitle: "Advanced Bioinformatics Sequencing & GATK Architecture",
-      date: "2026-07-15",
-    },
-  ]);
+  // Certificate Registry
+  const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
 
   const [viewingCertificate, setViewingCertificate] =
     useState<CertificateRecord | null>(null);
+  const programTitle = resolvedParams.id; // fallback label
 
-  const handleDeleteCertificate = (id: string) => {
-    setCertificates((prev) => prev.filter((cert) => cert.id !== id));
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [certificates, users] = await Promise.all([
+          getRowsFromDB("certificate"),
+          getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
+        ]);
+        const userMap = new Map<string, any>();
+        for (const u of users as any[]) userMap.set(u.id, u);
+        const programCerts = (certificates as any[]).filter(
+          (c) => c.program_id === resolvedParams.id,
+        );
+        const rows: CertificateRecord[] = programCerts.map((c) => {
+          const u = userMap.get(c.participant_id);
+          return {
+            id: c.id,
+            name: u?.name ?? "—",
+            programTitle: programTitle,
+            date: c.issued_at ? c.issued_at.split("T")[0] : "—",
+          };
+        });
+        setCertificates(rows);
+      } catch (err) {
+        console.error("Error loading certificates:", err);
+      }
+    };
+    load();
+  }, [resolvedParams.id]);
+
+  const handleDeleteCertificate = async (id: string) => {
+    try {
+      await deleteDataFromDB("certificate", id);
+      setCertificates((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Error deleting certificate:", err);
+    }
   };
 
   return (
@@ -55,7 +78,7 @@ export default function CertificateRegistryPage({
       {/* Sub-tab Navigation */}
       <div className="print:hidden flex items-center gap-2 border-b border-slate-100 pb-3">
         <Link
-          href={`/${resolvedParams.id}/evaluation`}
+          href={`/dashboard/services/training/${resolvedParams.id}/evaluation`}
           className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
         >
           1. Submit Evaluation{" "}

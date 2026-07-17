@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { DashboardBreadcrumbs } from "../../../components/dashboardbreadcrumbs"; // Adjusted import path to match your project setup
 import { Search, Calendar, Clock, User, Users, ArrowRight } from "lucide-react";
+import { getRowsFromDB, getUsersFromDB } from "../../../../lib/supabase";
 
 /* ================= CONFIGURATION & INITIAL MOCK SETUP ================= */
 const SERVICES_CONFIG = [
@@ -40,61 +41,51 @@ interface InternshipProgram {
   type: string;
   start_date: string;
   end_date: string;
-  duration: string;
+  duration?: string;
   description: string;
   mentor: { name: string };
-  interns: Intern[];
+  // ponytail: interns count not available from internship_program table — shows 0
+  interns?: Intern[];
 }
-
-const MOCK_INTERNSHIP_PROGRAMS: InternshipProgram[] = [
-  {
-    id: "int-1",
-    title: "Clinical Bioinformatics & Transcriptomics Internship",
-    type: "internship",
-    start_date: "2026-06-01",
-    end_date: "2026-08-31",
-    duration: "12 weeks",
-    description:
-      "Hands-on professional cohort internship focusing on raw RNA-Seq pipeline builds, differential expression analysis, pathway enrichment systems, and production variant pipeline clinical configurations.",
-    mentor: { name: "Dr. Elena Rostova" },
-    interns: [
-      {
-        id: "i-1",
-        name: "Marcus Vance",
-        email: "m.vance@mit.edu",
-        institution: "MIT Broad Institute",
-        midterm_score: 85,
-        final_score: 95,
-        has_certificate: true,
-      },
-      {
-        id: "i-2",
-        name: "Claire Redfield",
-        email: "credfield@stanford.edu",
-        institution: "Stanford Medicine",
-        midterm_score: 90,
-        final_score: 98,
-        has_certificate: true,
-      },
-    ],
-  },
-];
 
 export default function InternshipProgramsPage() {
   const activeServiceTab = "internship";
   const [searchQuery, setSearchQuery] = useState("");
+  const [programsList, setProgramsList] = useState<InternshipProgram[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [programs, users] = await Promise.all([
+          getRowsFromDB("training_program"),
+          getUsersFromDB(["team_lead", "team_member"]),
+        ]);
+        const userMap = new Map<string, string>();
+        for (const u of users as any[]) userMap.set(u.id, u.name);
+        const filtered = (programs as any[]).filter((p) => p.type === "internship");
+        const rows: InternshipProgram[] = filtered.map((p) => ({
+          ...p,
+          mentor: { name: userMap.get(p.instructor_id) ?? "—" },
+        }));
+        setProgramsList(rows);
+      } catch (err) {
+        console.error("Error loading programs:", err);
+      }
+    };
+    loadData();
+  }, []);
 
   const filteredPrograms = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return MOCK_INTERNSHIP_PROGRAMS;
+    if (!query) return programsList;
 
-    return MOCK_INTERNSHIP_PROGRAMS.filter(
+    return programsList.filter(
       (prog) =>
         prog.title.toLowerCase().includes(query) ||
         prog.description.toLowerCase().includes(query) ||
         prog.mentor.name.toLowerCase().includes(query),
     );
-  }, [searchQuery]);
+  }, [searchQuery, programsList]);
 
   const breadcrumbTrail = [
     { label: "Dashboard", href: "/dashboard" },
@@ -183,7 +174,7 @@ export default function InternshipProgramsPage() {
                   </span>
                   <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
                     <Users className="w-3.5 h-3.5 text-slate-300" />
-                    <span>{prog.interns.length} Active Interns</span>
+                    <span>{prog.interns?.length ?? 0} Active Interns</span>
                   </div>
                 </div>
 

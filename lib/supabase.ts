@@ -38,7 +38,21 @@ export async function getUsersFromDB(chosenRoles: string[]) {
   return users;
 }
 
-type TableNames = "collaboration" | "project" | "client" | "service";
+type TableNames =
+  | "collaboration"
+  | "project"
+  | "client"
+  | "service"
+  | "analysis"
+  | "sample"
+  | "service_report"
+  | "training_program"
+  | "training_session"
+  | "module"
+  | "onboarding_document"
+  | "assessment"
+  | "assessment_response"
+  | "certificate";
 
 export async function getNameIdFromDB(table: TableNames) {
   const { data: users, error: fetchError } = await supabase
@@ -102,7 +116,7 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     // Add new row data
     const { data: inserted, error } = await supabase
       .from(table)
-      .upsert({ ...data })
+      .upsert({ id: uid, ...data })
       .select()
       .single();
 

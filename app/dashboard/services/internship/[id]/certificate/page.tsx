@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { use, useState, useEffect } from "react";
 import DataTable, { Column } from "../../../../../components/datatable";
+import { getRowsFromDB, getUsersFromDB } from "@/lib/supabase";
 import {
   Award,
   Trash2,
@@ -19,7 +20,12 @@ interface CertificateRecord {
   date: string;
 }
 
-export default function CertificateRegistryPage() {
+export default function CertificateRegistryPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
   // Simulated Certificate Registry Database
   const [certificates, setCertificates] = useState<CertificateRecord[]>([
     {
@@ -48,6 +54,38 @@ export default function CertificateRegistryPage() {
   const handleDeleteCertificate = (id: string) => {
     setCertificates((prev) => prev.filter((cert) => cert.id !== id));
   };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [certs, users] = await Promise.all([
+          getRowsFromDB("certificate"),
+          getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
+        ]);
+        const userMap = new Map<string, any>();
+        for (const u of users as any[]) userMap.set(u.id, u);
+        const programCerts = (certs as any[]).filter(
+          (c) => c.program_id === resolvedParams.id,
+        );
+        if (programCerts.length > 0) {
+          setCertificates(
+            programCerts.map((c) => {
+              const u = userMap.get(c.participant_id);
+              return {
+                id: c.id,
+                name: u?.name ?? "—",
+                programTitle: "—",
+                date: c.issued_at ? c.issued_at.split("T")[0] : "—",
+              };
+            }),
+          );
+        }
+      } catch (err) {
+        console.error("Error loading certificates:", err);
+      }
+    };
+    load();
+  }, [resolvedParams.id]);
 
   const handleSort = (key: keyof CertificateRecord) => {
     let direction: "asc" | "desc" = "asc";

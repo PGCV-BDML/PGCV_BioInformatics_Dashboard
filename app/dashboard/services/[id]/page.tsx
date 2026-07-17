@@ -6,20 +6,20 @@ import { use } from "react";
 import {
   ArrowLeft,
   Dna,
-  FileText,
-  ExternalLink,
-  User,
   Building,
   Activity,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
   Plus,
 } from "lucide-react";
 import AddSampleSidebar, {
   SampleFormState,
 } from "../../../components/samplemodal";
+import {
+  getRowsFromDB,
+  getNameIdFromDB,
+  saveDataToDB,
+  getCurrentUser,
+} from "@/lib/supabase";
+import { AnalysisStatus } from "../../../../types/database";
 
 interface SampleRow {
   sample_id: string;
@@ -35,7 +35,7 @@ interface ServiceProjectRow {
   client: string;
   service_type: string;
   analysis_pipeline: string;
-  status: "for_approval" | "ongoing" | "finished";
+  status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   assignee: string;
   started: string;
   completed: string;
@@ -44,35 +44,12 @@ interface ServiceProjectRow {
   samples?: SampleRow[];
 }
 
-const MOCK_SERVICES_DATA: ServiceProjectRow[] = [
-  {
-    id: "srv-1",
-    project_name: "Tumor Exome Alignment Alpha",
-    client: "Apex Oncology Lab",
-    service_type: "Sequence Analysis",
-    analysis_pipeline: "WES-GATK v4.2",
-    status: "ongoing",
-    assignee: "Dr. Alex Jones",
-    started: "2026-02-10",
-    completed: "—",
-    report_link: "https://drive.google.com/wes-alpha",
-    output_link: "https://github.com/bio-pipelines/wes-alpha-output",
-    samples: [
-      {
-        sample_id: "SMP-001",
-        sample_name: "Primary_Tumor_01",
-        organism: "Homo sapiens",
-        status: "Aligned",
-        metadata: { "Target Coverage": "120x", Sequencer: "Illumina NovaSeq" },
-      },
-    ],
-  },
-];
-
 const STATUS_OPTIONS = [
   { value: "for_approval", label: "For Approval" },
   { value: "ongoing", label: "On-going" },
-  { value: "finished", label: "Finished" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "submitted", label: "Submitted" },
+  { value: "completed", label: "Completed" },
 ];
 
 export default function AnalysisDetailPage({
@@ -84,6 +61,7 @@ export default function AnalysisDetailPage({
   const [record, setRecord] = useState<ServiceProjectRow | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // Synchronized state object structure matching Collaboration sidebar architecture
   const [formState, setFormState] = useState<SampleFormState>({
@@ -95,40 +73,114 @@ export default function AnalysisDetailPage({
   });
 
   useEffect(() => {
-    const targetRecord = MOCK_SERVICES_DATA.find(
-      (item) => item.id === resolvedParams.id,
-    );
-    if (targetRecord) setRecord(targetRecord);
+    const loadData = async () => {
+      try {
+        const [analyses, projects, clients, services, samples, serviceReports] =
+          await Promise.all([
+            getRowsFromDB("analysis"),
+            getRowsFromDB("project"),
+            getNameIdFromDB("client"),
+            getNameIdFromDB("service"),
+            getRowsFromDB("sample"),
+            getRowsFromDB("service_report"),
+          ]);
+
+        const analysis = (analyses as any[]).find(
+          (a) => a.id === resolvedParams.id,
+        );
+        if (!analysis) {
+          setRecord(null);
+          return;
+        }
+        const project = (projects as any[]).find(
+          (p) => p.id === analysis.project_id,
+        );
+        const client = project
+          ? (clients as any[]).find((c: any) => c.id === project.client_id)
+          : null;
+        const service = project
+          ? (services as any[]).find((s: any) => s.id === project.service_id)
+          : null;
+        const analysisSamples = (samples as any[]).filter(
+          (s) => s.project_id === analysis.project_id,
+        );
+        const report = (serviceReports as any[]).find(
+          (r) => r.analysis_id === analysis.id,
+        );
+
+        setProjectId(analysis.project_id);
+
+        const displayRecord: ServiceProjectRow = {
+          id: analysis.id,
+          project_name: project?.name ?? "(unknown project)",
+          client: client?.name ?? "—",
+          service_type: service?.name ?? "—",
+          analysis_pipeline:
+            `${analysis.pipeline ?? ""} ${analysis.pipeline_version ?? ""}`.trim() || "—",
+          status: analysis.status as ServiceProjectRow["status"],
+          assignee: "—",
+          started: analysis.started_at ? analysis.started_at.split("T")[0] : "—",
+          completed: analysis.completed_at
+            ? analysis.completed_at.split("T")[0]
+            : "—",
+          report_link: report?.report_link ?? "",
+          output_link: analysis.output_link ?? "",
+          samples: analysisSamples.map((s) => {
+            const m = (s.metadata ?? {}) as Record<string, unknown>;
+            return {
+              sample_id: s.identifier,
+              sample_name: (m.sample_name as string) ?? "",
+              organism: (m.organism as string) ?? "",
+              status: (m.status as string) ?? "Pending",
+              metadata: (m.metadata as Record<string, string>) ?? {},
+            };
+          }),
+        };
+        setRecord(displayRecord);
+      } catch (err) {
+        console.error("Error loading analysis detail:", err);
+      }
+    };
+    loadData();
   }, [resolvedParams.id]);
 
-  const handleStatusChange = (
-    newStatus: "for_approval" | "ongoing" | "finished",
+  const handleStatusChange = async (
+    newStatus: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed",
   ) => {
     if (!record) return;
     setIsUpdating(true);
-    setTimeout(() => {
-      setRecord((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          status: newStatus,
-          completed:
-            newStatus === "finished"
-              ? new Date().toISOString().split("T")[0]
-              : "—",
-        };
+    try {
+      const completedAt =
+        newStatus === "completed" ? new Date().toISOString() : null;
+      const updated = await saveDataToDB("analysis", record.id, {
+        status: newStatus,
+        completed_at: completedAt,
       });
+      setRecord((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: updated.status as ServiceProjectRow["status"],
+              completed: updated.completed_at
+                ? updated.completed_at.split("T")[0]
+                : "—",
+            }
+          : null,
+      );
+    } catch (err) {
+      console.error("Error updating analysis status:", err);
+    } finally {
       setIsUpdating(false);
-    }, 400);
+    }
   };
 
   const handleFormChange = (key: keyof SampleFormState, value: any) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!record) return;
+    if (!record || !projectId) return;
 
     // Compile form-state list entries into an explicit dynamic key-value dictionary schema
     const metadataMap: Record<string, string> = {};
@@ -136,38 +188,54 @@ export default function AnalysisDetailPage({
       if (item.key.trim()) metadataMap[item.key.trim()] = item.value;
     });
 
-    const newSample: SampleRow = {
-      sample_id: formState.sample_id,
-      sample_name: formState.sample_name,
-      organism: formState.organism,
-      status: formState.status,
-      metadata: metadataMap,
-    };
+    try {
+      await saveDataToDB("sample", crypto.randomUUID(), {
+        project_id: projectId,
+        identifier: formState.sample_id,
+        metadata: {
+          sample_name: formState.sample_name,
+          organism: formState.organism,
+          status: formState.status,
+          ...(Object.keys(metadataMap).length > 0 ? { metadata: metadataMap } : {}),
+        },
+      });
+      const newSample: SampleRow = {
+        sample_id: formState.sample_id,
+        sample_name: formState.sample_name,
+        organism: formState.organism,
+        status: formState.status,
+        metadata: metadataMap,
+      };
+      setRecord((prev) =>
+        prev ? { ...prev, samples: [...(prev.samples || []), newSample] } : null,
+      );
 
-    setRecord((prev) => {
-      if (!prev) return null;
-      return { ...prev, samples: [...(prev.samples || []), newSample] };
-    });
-
-    // Reset FormState properties
-    setFormState({
-      sample_id: "",
-      sample_name: "",
-      organism: "",
-      status: "Pending",
-      metadata: [],
-    });
-    setIsSidebarOpen(false);
+      // Reset FormState properties
+      setFormState({
+        sample_id: "",
+        sample_name: "",
+        organism: "",
+        status: "Pending",
+        metadata: [],
+      });
+      setIsSidebarOpen(false);
+    } catch (err) {
+      console.error("Error saving sample:", err);
+    }
   };
 
   if (!record)
     return <div className="text-center py-24">Loading Workspace Record...</div>;
 
   const getBadgeStyle = (status: string) => {
-    if (status === "finished")
+    if (status === "completed")
       return "bg-[#eaf7ee] text-[#2e7d32] border-[#2e7d32]/20";
     if (status === "ongoing")
       return "bg-[#fffde7] text-[#f57f17] border-[#f57f17]/20";
+    if (status === "on_hold")
+      return "bg-slate-100 text-slate-600 border-slate-300/40";
+    if (status === "submitted")
+      return "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
     return "bg-blue-50 text-blue-700 border-blue-200/50";
   };
 

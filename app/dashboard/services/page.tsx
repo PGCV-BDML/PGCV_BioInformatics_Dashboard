@@ -17,6 +17,14 @@ import {
   Inbox,
   ExternalLink,
 } from "lucide-react";
+import {
+  getCurrentUser,
+  getRowsFromDB,
+  getNameIdFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+} from "@/lib/supabase";
+import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS } from "../../../types/database";
 
 interface ServiceProjectRow {
   id: string;
@@ -24,7 +32,7 @@ interface ServiceProjectRow {
   client: string;
   service_type: string;
   analysis_pipeline: string;
-  status: "for_approval" | "ongoing" | "finished";
+  status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   assignee: string;
   started: string;
   completed: string;
@@ -54,107 +62,30 @@ const SERVICES_CONFIG = [
 
 const FILTER_OPTIONS = [
   { value: "All", label: "All Records" },
-  { value: "for_approval", label: "For Approval" },
-  { value: "ongoing", label: "On-going" },
-  { value: "finished", label: "Finished" },
+  ...ANALYSIS_STATUS_OPTIONS,
 ];
 
-const STATUS_OPTIONS = [
-  { value: "for_approval", label: "For Approval" },
-  { value: "ongoing", label: "On-going" },
-  { value: "finished", label: "Finished" },
-];
 
-const PROJECT_REGISTRY = [
-  {
-    id: "proj-1",
-    name: "Tumor Exome Alignment Alpha",
-    client: "Apex Oncology Lab",
-  },
-  {
-    id: "proj-2",
-    name: "Metagenomic Flora Profile",
-    client: "BioBiome Pharma",
-  },
-  {
-    id: "proj-3",
-    name: "Crispr Off-Target Scan",
-    client: "Vertex Therapeutics",
-  },
-  {
-    id: "proj-4",
-    name: "RNA-Seq Pathway Mapping",
-    client: "Genomics Research Inst.",
-  },
-];
-
-const ASSIGNEE_REGISTRY = [
-  "Dr. Alex Jones",
-  "Maria Santos",
-  "Dr. Sarah Jenkins",
-  "Elena Rostova",
-];
-
-const PIPELINE_OPTIONS = [
-  "WES-GATK",
-  "16S-QIIME2",
-  "CRISPR-Cas9-Seq",
-  "RNA-Seq-Kallisto",
-];
 
 const ITEMS_PER_PAGE = 10;
 
-const MOCK_SERVICES_DATA: ServiceProjectRow[] = [
-  {
-    id: "srv-1",
-    project_name: "Tumor Exome Alignment Alpha",
-    client: "Apex Oncology Lab",
-    service_type: "Sequence Analysis",
-    analysis_pipeline: "WES-GATK v4.2",
-    status: "ongoing",
-    assignee: "Dr. Alex Jones",
-    started: "2026-02-10",
-    completed: "—",
-    report_link: "",
-  },
-  {
-    id: "srv-2",
-    project_name: "Metagenomic Flora Profile",
-    client: "BioBiome Pharma",
-    service_type: "Sequence Analysis",
-    analysis_pipeline: "16S-QIIME2 v2023.9",
-    status: "finished",
-    assignee: "Maria Santos",
-    started: "2026-01-05",
-    completed: "2026-01-20",
-    report_link: "https://drive.google.com/qiime2-flora",
-  },
-  {
-    id: "srv-3",
-    project_name: "Crispr Off-Target Scan",
-    client: "Vertex Therapeutics",
-    service_type: "Sequence Analysis",
-    analysis_pipeline: "CRISPR-Cas9-Seq v1.0",
-    status: "for_approval",
-    assignee: "Dr. Alex Jones",
-    started: "2026-03-01",
-    completed: "—",
-    report_link: "",
-  },
-];
+
 
 export default function ServicesPage() {
-  const [servicesList, setServicesList] =
-    useState<ServiceProjectRow[]>(MOCK_SERVICES_DATA);
+  const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("sequence-analysis");
   const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof ServiceProjectRow;
     direction: "asc" | "desc";
   } | null>(null);
+  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string; client: string }[]>([]);
+  const [availablePipelines, setAvailablePipelines] = useState<string[]>([]);
+  const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Sidebar Open State and Form Management
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -191,23 +122,92 @@ export default function ServicesPage() {
     setCurrentPage(1);
   }, [searchQuery, activeFilter]);
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setServicesList((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const completedDate =
-            newStatus === "finished"
-              ? new Date().toISOString().split("T")[0]
-              : "—";
-          return {
-            ...item,
-            status: newStatus as ServiceProjectRow["status"],
-            completed: completedDate,
-          };
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [analyses, projects, clients, services, users, user] = await Promise.all([
+          getRowsFromDB("analysis"),
+          getRowsFromDB("project"),
+          getNameIdFromDB("client"),
+          getNameIdFromDB("service"),
+          getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
+          getCurrentUser(),
+        ]);
+        setCurrentUserId(user?.id ?? null);
+
+        const projectMap = new Map<string, { name: string; client: string }>();
+        for (const p of projects as any[]) {
+          const client = clients.find((c: any) => c.id === p.client_id);
+          projectMap.set(p.id, { name: p.name, client: client?.name ?? "—" });
         }
-        return item;
-      }),
-    );
+
+        const serviceMap = new Map<string, string>();
+        for (const s of services as any[]) {
+          serviceMap.set(s.id, s.name);
+        }
+
+        const userMap = new Map<string, string>();
+        for (const u of users as any[]) {
+          userMap.set(u.id, u.name);
+        }
+
+        const rows: ServiceProjectRow[] = (analyses as any[]).map((a) => {
+          const proj = projectMap.get(a.project_id);
+          const assigneeName = userMap.get(a.assignee_id) ?? "Unassigned";
+          const pipeline = `${a.pipeline ?? ""} ${a.pipeline_version ?? ""}`.trim();
+          return {
+            id: a.id,
+            project_name: proj?.name ?? "(unknown project)",
+            client: proj?.client ?? "—",
+            service_type: "Sequence Analysis",
+            analysis_pipeline: pipeline || "—",
+            status: a.status as ServiceProjectRow["status"],
+            assignee: assigneeName,
+            started: a.started_at ? a.started_at.split("T")[0] : "—",
+            completed: a.completed_at ? a.completed_at.split("T")[0] : "—",
+            report_link: "",
+          };
+        });
+
+        setServicesList(rows);
+        setAvailableProjects(
+          Array.from(projectMap.entries()).map(([id, v]) => ({ id, ...v })),
+        );
+        setAvailablePipelines(
+          Array.from(new Set((analyses as any[]).map((a) => a.pipeline).filter(Boolean))) as string[],
+        );
+        setAvailableAssignees(Array.from(userMap.values()));
+      } catch (err) {
+        console.error("Error loading services data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    const completedAt = newStatus === "completed" ? new Date().toISOString() : null;
+    try {
+      const updated = await saveDataToDB("analysis", id, {
+        status: newStatus,
+        completed_at: completedAt,
+      });
+      setServicesList((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: updated.status as ServiceProjectRow["status"],
+                completed: updated.completed_at ? updated.completed_at.split("T")[0] : "—",
+              }
+            : item,
+        ),
+      );
+    } catch (err) {
+      console.error("Error updating analysis status:", err);
+    }
   };
 
   const handleSort = (key: keyof ServiceProjectRow) => {
@@ -226,43 +226,61 @@ export default function ServicesPage() {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleCreateAnalysis = (e: React.FormEvent) => {
+  const handleCreateAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetProject = PROJECT_REGISTRY.find(
-      (p) => p.id === formState.project_id,
-    );
-    if (!targetProject) return;
-
-    const newAnalysis: ServiceProjectRow = {
-      id: `srv-${Date.now()}`,
-      project_name: targetProject.name,
-      client: targetProject.client,
-      service_type: "Sequence Analysis",
-      analysis_pipeline: `${formState.pipeline} ${formState.pipeline_version}`,
-      status: formState.status,
-      assignee: formState.assignee,
-      started: new Date().toISOString().split("T")[0],
-      completed:
-        formState.status === "finished"
-          ? new Date().toISOString().split("T")[0]
-          : "—",
-      report_link: "",
-    };
-
-    setServicesList((prev) => [newAnalysis, ...prev]);
-
-    setFormState({
-      project_id: "",
-      pipeline: "",
-      pipeline_version: "v1.0.0",
-      assignee: "",
-      status: "for_approval",
-    });
-    setIsSidebarOpen(false);
+    if (!currentUserId) {
+      console.error("No current user — cannot create analysis");
+      return;
+    }
+    try {
+      // Look up the assignee user id by name (assignees dropdown shows names)
+      const users = await getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]);
+      const matchedUser = (users as any[]).find((u) => u.name === formState.assignee);
+      if (!matchedUser) {
+        console.error("Assignee not found:", formState.assignee);
+        return;
+      }
+      const startedAt = new Date().toISOString();
+      const completedAt = formState.status === "completed" ? startedAt : null;
+      const created = await saveDataToDB("analysis", crypto.randomUUID(), {
+        project_id: formState.project_id,
+        pipeline: formState.pipeline,
+        pipeline_version: formState.pipeline_version,
+        assignee_id: matchedUser.id,
+        status: formState.status,
+        started_at: startedAt,
+        completed_at: completedAt,
+      });
+      // Find the project/client for display
+      const targetProject = availableProjects.find((p) => p.id === formState.project_id);
+      const newRow: ServiceProjectRow = {
+        id: created.id,
+        project_name: targetProject?.name ?? "(unknown project)",
+        client: targetProject?.client ?? "—",
+        service_type: "Sequence Analysis",
+        analysis_pipeline: `${formState.pipeline} ${formState.pipeline_version}`.trim() || "—",
+        status: created.status as ServiceProjectRow["status"],
+        assignee: formState.assignee,
+        started: startedAt.split("T")[0],
+        completed: completedAt ? completedAt.split("T")[0] : "—",
+        report_link: "",
+      };
+      setServicesList((prev) => [newRow, ...prev]);
+      setFormState({
+        project_id: "",
+        pipeline: "",
+        pipeline_version: "v1.0.0",
+        assignee: "",
+        status: "for_approval",
+      });
+      setIsSidebarOpen(false);
+    } catch (err) {
+      console.error("Error creating analysis:", err);
+    }
   };
 
   const generateExternalReportUrl = (row: ServiceProjectRow) => {
-    const matchedProj = PROJECT_REGISTRY.find(
+    const matchedProj = availableProjects.find(
       (p) => p.name === row.project_name,
     );
     const projectId = matchedProj ? matchedProj.id : "unknown-proj";
@@ -271,32 +289,31 @@ export default function ServicesPage() {
     return `/dashboard/services/report-generator?project_id=${encodeURIComponent(projectId)}&client_id=${encodeURIComponent(clientId)}&analysis_id=${encodeURIComponent(row.id)}`;
   };
 
-  const handleFallbackSubmit = (e: React.FormEvent) => {
+  const handleFallbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReportRow) return;
+    if (!selectedReportRow || !currentUserId) return;
 
-    setServicesList((prev) =>
-      prev.map((item) =>
-        item.id === selectedReportRow.id
-          ? {
-              ...item,
-              report_link: fallbackUrl,
-              delivered_by: "Current User",
-              delivered_at: new Date()
-                .toISOString()
-                .replace("T", " ")
-                .substring(0, 19),
-              client_acknowledged_at: clientAck
-                ? new Date().toISOString().split("T")[0]
-                : undefined,
-            }
-          : item,
-      ),
-    );
-
-    setSelectedReportRow(null);
-    setFallbackUrl("");
-    setClientAck(false);
+    try {
+      await saveDataToDB("service_report", crypto.randomUUID(), {
+        analysis_id: selectedReportRow.id,
+        report_link: fallbackUrl,
+        delivered_by: currentUserId,
+        delivered_at: new Date().toISOString(),
+        client_acknowledged_at: clientAck ? new Date().toISOString() : null,
+      });
+      setServicesList((prev) =>
+        prev.map((item) =>
+          item.id === selectedReportRow.id
+            ? { ...item, report_link: fallbackUrl }
+            : item,
+        ),
+      );
+      setSelectedReportRow(null);
+      setFallbackUrl("");
+      setClientAck(false);
+    } catch (err) {
+      console.error("Error saving service report:", err);
+    }
   };
 
   const filteredServices = useMemo(() => {
@@ -328,7 +345,9 @@ export default function ServicesPage() {
     const statusWeights: Record<string, number> = {
       for_approval: 1,
       ongoing: 2,
-      finished: 3,
+      on_hold: 3,
+      submitted: 4,
+      completed: 5,
     };
 
     return sortableItems.sort((a, b) => {
@@ -382,7 +401,7 @@ export default function ServicesPage() {
     let colorClasses = "bg-gray-100 text-gray-700";
     let chevronClass = "text-gray-500";
 
-    if (currentStatus === "finished") {
+    if (currentStatus === "completed") {
       colorClasses = "bg-[#eaf7ee] text-[#2e7d32]";
       chevronClass = "text-[#2e7d32]";
     } else if (currentStatus === "ongoing") {
@@ -391,6 +410,12 @@ export default function ServicesPage() {
     } else if (currentStatus === "for_approval") {
       colorClasses = "bg-blue-50 text-blue-700";
       chevronClass = "text-blue-700";
+    } else if (currentStatus === "on_hold") {
+      colorClasses = "bg-slate-100 text-slate-600";
+      chevronClass = "text-slate-500";
+    } else if (currentStatus === "submitted") {
+      colorClasses = "bg-[#f3e8ff] text-[#6b21a8]";
+      chevronClass = "text-[#6b21a8]";
     }
 
     return (
@@ -400,7 +425,7 @@ export default function ServicesPage() {
           onChange={(e) => handleStatusChange(id, e.target.value)}
           className={`pl-3 pr-7 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-0 outline-none focus:outline-none focus:ring-0 text-center appearance-none whitespace-nowrap w-full transition-all ${colorClasses}`}
         >
-          {STATUS_OPTIONS.map((opt) => (
+          {ANALYSIS_STATUS_OPTIONS.map((opt) => (
             <option
               key={opt.value}
               value={opt.value}
@@ -497,7 +522,7 @@ export default function ServicesPage() {
       label: "Report / Actions",
       width: "14%",
       render: (s) => {
-        const isCompleted = s.status === "finished";
+        const isCompleted = s.status === "completed";
 
         return (
           <div className="flex flex-col gap-1.5 items-start">
@@ -773,9 +798,9 @@ export default function ServicesPage() {
       <AnalysisSidebar
         isOpen={isSidebarOpen}
         formState={formState}
-        availableProjects={PROJECT_REGISTRY}
-        availablePipelines={PIPELINE_OPTIONS}
-        availableAssignees={ASSIGNEE_REGISTRY}
+        availableProjects={availableProjects}
+        availablePipelines={availablePipelines}
+        availableAssignees={availableAssignees}
         onClose={() => setIsSidebarOpen(false)}
         onChange={handleFormChange}
         onSubmit={handleCreateAnalysis}

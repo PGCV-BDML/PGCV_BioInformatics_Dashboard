@@ -57,3 +57,143 @@ export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" |
   repository_link: string;          // always a string in the form, "" means empty
   target_delivery_date: string;     // same reasoning applies here (see below)
 };
+
+// ============================================================
+// 3.1 Client Sequence Analysis types
+// ============================================================
+
+export type AnalysisStatus =
+  | "on_hold"
+  | "ongoing"
+  | "submitted"
+  | "for_approval"
+  | "completed";
+
+export const ANALYSIS_STATUS_OPTIONS: { value: AnalysisStatus; label: string }[] = [
+  { value: "for_approval", label: "For Approval" },
+  { value: "ongoing", label: "On-going" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "submitted", label: "Submitted" },
+  { value: "completed", label: "Completed" },
+];
+
+export interface Analysis {
+  id: string;
+  project_id: string;
+  pipeline: string | null;
+  pipeline_version: string | null;
+  status: AnalysisStatus;
+  assignee_id: string;
+  started_at: string | null;
+  completed_at: string | null;
+  output_link: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Sample {
+  id: string;
+  project_id: string;
+  identifier: string;
+  metadata: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ServiceReport {
+  id: string;
+  analysis_id: string;
+  report_link: string | null;
+  delivered_at: string | null;
+  delivered_by: string;
+  client_acknowledged_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ============================================================
+// 3.2 Training & 3.3 Internship types
+// ============================================================
+
+export type TrainingType = "training" | "internship";
+
+export interface TrainingProgram {
+  id: string;
+  title: string;
+  type: TrainingType | null;
+  start_date: string | null;
+  end_date: string | null;
+  instructor_id: string;
+  description: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Module {
+  id: string;
+  program_id: string;
+  title: string | null;
+  html_content_link: string | null;
+  order: number | null;
+  save_log_enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OnboardingDocument {
+  id: string;
+  program_id: string;
+  title: string | null;
+  link: string | null;
+  is_required: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type AssessmentType = "pre_test" | "post_test" | "evaluation";
+
+export interface Assessment {
+  id: string;
+  program_id: string;
+  type: AssessmentType;
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
+    correct: number;
+  }> | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AssessmentResponse {
+  id: string;
+  assessment_id: string;
+  participant_id: string;
+  answers: Record<string, unknown> | null;
+  score: number | null;
+  submitted_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Certificate {
+  id: string;
+  program_id: string;
+  participant_id: string;
+  issued_at: string | null;
+  pdf_link: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TrainingSession {
+  id: string;
+  program_id: string;
+  date: string | null;
+  title: string | null;
+  module_link: string | null;
+  attendance_required: boolean;
+  created_at?: string;
+  updated_at?: string;
+}

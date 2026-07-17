@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { BarChart3, Star, Send, CheckCircle } from "lucide-react";
+// ponytail: evaluation questions are hardcoded — no assessment.questions jsonb for internships yet
 
 /* ================= TYPES & CONFIG ================= */
 interface EvaluationQuestion {

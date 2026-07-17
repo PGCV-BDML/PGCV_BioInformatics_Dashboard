@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, use } from "react";
+import React, { useMemo, use, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,72 +16,19 @@ import {
   ArrowLeft,
   AlertCircle,
 } from "lucide-react";
+import { getRowsFromDB, getUsersFromDB } from "../../../../../lib/supabase";
 
 /* ================= TYPES & CONFIG ================= */
-interface Participant {
-  id: string;
-  name: string;
-  email: string;
-  institution: string;
-  pre_test_score: number;
-  post_test_score: number;
-  has_certificate: boolean;
-}
-
 interface TrainingProgram {
   id: string;
   title: string;
   type: string;
   start_date: string;
   end_date: string;
-  duration: string;
+  duration?: string;
   description: string;
   instructor: { name: string };
-  participants: Participant[];
 }
-
-const MOCK_TRAINING_PROGRAMS: TrainingProgram[] = [
-  {
-    id: "tp-1",
-    title: "Advanced Bioinformatics Sequencing & GATK Architecture",
-    type: "training",
-    start_date: "2026-08-01",
-    end_date: "2026-09-15",
-    duration: "6 weeks",
-    description:
-      "Deep dive validation on high-throughput next generation raw read alignment, variant calling protocols, and pipeline optimization utilizing cluster resources.",
-    instructor: { name: "Dr. Elena Rostova" },
-    participants: [
-      {
-        id: "p-1",
-        name: "Dr. Alex Mercer",
-        email: "a.mercer@mit.edu",
-        institution: "MIT Broad Institute",
-        pre_test_score: 72,
-        post_test_score: 94,
-        has_certificate: true,
-      },
-      {
-        id: "p-2",
-        name: "Sarah Chen",
-        email: "schen@stanford.edu",
-        institution: "Stanford Medicine",
-        pre_test_score: 68,
-        post_test_score: 98,
-        has_certificate: true,
-      },
-      {
-        id: "p-3",
-        name: "Michael Abad",
-        email: "msabad@up.edu.ph",
-        institution: "UP Manila",
-        pre_test_score: 55,
-        post_test_score: 82,
-        has_certificate: false,
-      },
-    ],
-  },
-];
 
 const SERVICES_CONFIG = [
   {
@@ -111,11 +58,27 @@ export default function DynamicProgramLayout({
   const resolvedParams = use(params);
   const pathname = usePathname();
   const activeServiceTab = "training";
+  const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
 
-  const selectedProgram = useMemo(() => {
-    return (
-      MOCK_TRAINING_PROGRAMS.find((p) => p.id === resolvedParams.id) || null
-    );
+  useEffect(() => {
+    const load = async () => {
+      const [programs, users] = await Promise.all([
+        getRowsFromDB("training_program"),
+        getUsersFromDB(["team_lead", "team_member"]),
+      ]);
+      const userMap = new Map<string, string>();
+      for (const u of users as any[]) userMap.set(u.id, u.name);
+      const found = (programs as any[]).find(
+        (p) => p.id === resolvedParams.id && p.type === "training",
+      );
+      if (found) {
+        setSelectedProgram({
+          ...found,
+          instructor: { name: userMap.get(found.instructor_id) ?? "—" },
+        });
+      }
+    };
+    load();
   }, [resolvedParams.id]);
 
   // Tab definitions dynamically containing the custom workspace cohort id
@@ -248,7 +211,7 @@ export default function DynamicProgramLayout({
             <span>
               Duration:{" "}
               <strong className="text-slate-700">
-                {selectedProgram.duration}
+                {selectedProgram.duration ?? "—"}
               </strong>
             </span>
           </div>

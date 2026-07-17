@@ -1,20 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, use } from "react";
 import { CheckCircle2, Check } from "lucide-react";
+import { getRowsFromDB } from "@/lib/supabase";
 
-const MODULES_DATA = [
-  { id: "m1", step: "M1", title: "Introduction to Bioinformatics" },
-  { id: "m2", step: "M2", title: "Sequence Quality Control" },
-  { id: "m3", step: "M3", title: "Alignment & Mapping" },
-  { id: "m4", step: "M4", title: "Variant Calling Fundamentals" },
-  { id: "m5", step: "M5", title: "Transcriptomics & RNA-Seq" },
-  { id: "m6", step: "M6", title: "Metagenomics & Amplicon Analysis" },
-];
+interface ModuleItem {
+  id: string;
+  step: string;
+  title: string;
+}
 
-export default function InternshipModulesPage() {
+export default function InternshipModulesPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   // Started with an empty array so no modules are pre-completed
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+  const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const modules = await getRowsFromDB("module");
+        const filtered = (modules as any[])
+          .filter((m: any) => m.program_id === resolvedParams.id)
+          .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+        setModulesList(filtered);
+      } catch (err) {
+        console.error("Error loading modules:", err);
+      }
+    };
+    load();
+  }, [resolvedParams.id]);
 
   // Toggle module read status
   const toggleMarkAsRead = (moduleId: string) => {
@@ -33,14 +48,14 @@ export default function InternshipModulesPage() {
             Internship Modules Progression
           </h3>
           <p className="text-xs font-semibold text-slate-500">
-            {readModuleIds.length} of {MODULES_DATA.length} modules completed •
+            {readModuleIds.length} of {modulesList.length} modules completed •
             Progress synced to cohort standard
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {MODULES_DATA.map((module) => {
+        {modulesList.map((module) => {
           const isRead = readModuleIds.includes(module.id);
 
           return (

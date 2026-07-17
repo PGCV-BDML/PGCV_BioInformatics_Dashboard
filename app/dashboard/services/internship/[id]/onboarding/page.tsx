@@ -1,27 +1,17 @@
 "use client";
 
-import React, { use, useMemo } from "react";
+import React, { useEffect, use, useState } from "react";
 import { FileText, AlertCircle, Download } from "lucide-react";
+import { getRowsFromDB } from "@/lib/supabase";
 
-/* ================= INTERNSHIP DOCUMENTS MOCK DATA ================= */
-const MOCK_INTERNSHIP_ONBOARDING_DOCUMENTS = [
-  {
-    id: "doc-1",
-    program_id: "int-1",
-    title: "Clinical Data Protection & Confidentiality NDA Agreement",
-    file_name: "Clinical_Data_Confidentiality_NDA.pdf",
-    file_size: "1.2 MB",
-    is_required: true,
-  },
-  {
-    id: "doc-2",
-    program_id: "int-1",
-    title: "RNA-Seq HPC Cluster Protocol & Environment Guidelines",
-    file_name: "RNA_Seq_Cluster_Guidelines_v1.0.pdf",
-    file_size: "2.5 MB",
-    is_required: false,
-  },
-];
+interface OnboardingDocument {
+  id: string;
+  program_id: string;
+  title: string;
+  file_name: string;
+  file_size: string;
+  is_required: boolean;
+}
 
 export default function InternshipOnboardingTab({
   params,
@@ -30,10 +20,21 @@ export default function InternshipOnboardingTab({
 }) {
   const resolvedParams = use(params);
 
-  const cohortDocuments = useMemo(() => {
-    return MOCK_INTERNSHIP_ONBOARDING_DOCUMENTS.filter(
-      (doc) => doc.program_id === resolvedParams.id,
-    );
+  const [documents, setDocuments] = useState<OnboardingDocument[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const docs = await getRowsFromDB("onboarding_document");
+        const filtered = (docs as any[]).filter(
+          (d) => d.program_id === resolvedParams.id,
+        );
+        setDocuments(filtered);
+      } catch (err) {
+        console.error("Error loading onboarding documents:", err);
+      }
+    };
+    load();
   }, [resolvedParams.id]);
 
   return (
@@ -51,17 +52,16 @@ export default function InternshipOnboardingTab({
         </div>
       </div>
 
-      {cohortDocuments.length === 0 ? (
+      {documents.length === 0 ? (
         <p className="text-xs text-slate-400 italic py-2">
           No active compliance parameters mapped to this internship cohort
           track.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {cohortDocuments.map((doc) => (
+          {documents.map((doc) => (
             <div
               key={doc.id}
-              // Card styled with custom cream background and no border change on hover
               className="flex items-start justify-between p-4 bg-[#fffdf8] border border-slate-200 rounded-[20px] transition-all shadow-sm cursor-default"
             >
               <div className="space-y-1 max-w-[80%]">
@@ -84,6 +84,10 @@ export default function InternshipOnboardingTab({
               </div>
               <a
                 href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log(`Downloading document: ${doc.title}`);
+                }}
                 className="p-2 text-slate-400 hover:text-white bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
               >
                 <Download className="w-4 h-4" />

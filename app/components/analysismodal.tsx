@@ -8,7 +8,7 @@ export type AnalysisFormState = {
   pipeline: string;
   pipeline_version: string;
   assignee: string;
-  status: "for_approval" | "ongoing" | "finished";
+  status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
 };
 
 interface ProjectOption {
@@ -221,18 +221,21 @@ export default function AnalysisSidebar({
                 onChange={(e) => onChange("status", e.target.value as any)}
                 className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
               >
-                <option
-                  value="for_approval"
-                  className="text-slate-800 font-bold"
-                >
-                  For Approval
-                </option>
-                <option value="ongoing" className="text-slate-800 font-bold">
-                  On-going
-                </option>
-                <option value="finished" className="text-slate-800 font-bold">
-                  Finished
-                </option>
+              <option value="for_approval" className="text-slate-800 font-bold">
+                For Approval
+              </option>
+              <option value="ongoing" className="text-slate-800 font-bold">
+                On-going
+              </option>
+              <option value="on_hold" className="text-slate-800 font-bold">
+                On Hold
+              </option>
+              <option value="submitted" className="text-slate-800 font-bold">
+                Submitted
+              </option>
+              <option value="completed" className="text-slate-800 font-bold">
+                Completed
+              </option>
               </select>
             </div>
           </div>

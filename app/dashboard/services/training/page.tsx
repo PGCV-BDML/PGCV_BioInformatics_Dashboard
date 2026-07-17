@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { DashboardBreadcrumbs } from "../../../components/dashboardbreadcrumbs"; // Adjusted import path to match project setup
 import { Search, Calendar, Clock, User, Users, ArrowRight } from "lucide-react";
+import { getRowsFromDB, getUsersFromDB } from "../../../../lib/supabase";
 
 /* ================= CONFIGURATION & INITIAL MOCK SETUP ================= */
 const SERVICES_CONFIG = [
@@ -24,108 +25,57 @@ const SERVICES_CONFIG = [
   },
 ];
 
-interface Participant {
-  id: string;
-  name: string;
-  email: string;
-  institution: string;
-  pre_test_score: number;
-  post_test_score: number;
-  has_certificate: boolean;
-}
-
 interface TrainingProgram {
   id: string;
   title: string;
   type: string;
   start_date: string;
   end_date: string;
-  duration: string;
+  duration?: string;
   description: string;
   instructor: { name: string };
-  participants: Participant[];
+  // ponytail: participants not available from training_program table — shows 0
+  participants?: { length: number };
 }
-
-const MOCK_TRAINING_PROGRAMS: TrainingProgram[] = [
-  {
-    id: "tp-1",
-    title: "Advanced Bioinformatics Sequencing & GATK Architecture",
-    type: "training",
-    start_date: "2026-08-01",
-    end_date: "2026-09-15",
-    duration: "6 weeks",
-    description:
-      "Deep dive validation on high-throughput next generation raw read alignment, variant calling protocols, and pipeline optimization utilizing cluster resources.",
-    instructor: { name: "Dr. Elena Rostova" },
-    participants: [
-      {
-        id: "p-1",
-        name: "Dr. Alex Mercer",
-        email: "a.mercer@mit.edu",
-        institution: "MIT Broad Institute",
-        pre_test_score: 72,
-        post_test_score: 94,
-        has_certificate: true,
-      },
-      {
-        id: "p-2",
-        name: "Sarah Chen",
-        email: "schen@stanford.edu",
-        institution: "Stanford Medicine",
-        pre_test_score: 68,
-        post_test_score: 98,
-        has_certificate: true,
-      },
-      {
-        id: "p-3",
-        name: "Michael Abad",
-        email: "msabad@up.edu.ph",
-        institution: "UP Manila",
-        pre_test_score: 55,
-        post_test_score: 82,
-        has_certificate: false,
-      },
-    ],
-  },
-  {
-    id: "tp-2",
-    title: "16S Metagenomics Analysis Framework",
-    type: "training",
-    start_date: "2026-10-10",
-    end_date: "2026-11-20",
-    duration: "5 weeks",
-    description:
-      "Curriculum centered on microbial community analysis using QIIME2 pipelines, taxonomic allocation, and alpha/beta diversity quantification metrics.",
-    instructor: { name: "Prof. Marcus Vance" },
-    participants: [
-      {
-        id: "p-4",
-        name: "Dr. Elena Rostova",
-        email: "e.rostova@lab.org",
-        institution: "BioBiome Labs",
-        pre_test_score: 88,
-        post_test_score: 100,
-        has_certificate: true,
-      },
-    ],
-  },
-];
 
 export default function TrainingProgramsPage() {
   const activeServiceTab = "training";
   const [searchQuery, setSearchQuery] = useState("");
+  const [programsList, setProgramsList] = useState<TrainingProgram[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [programs, users] = await Promise.all([
+          getRowsFromDB("training_program"),
+          getUsersFromDB(["team_lead", "team_member"]),
+        ]);
+        const userMap = new Map<string, string>();
+        for (const u of users as any[]) userMap.set(u.id, u.name);
+        const filtered = (programs as any[]).filter((p) => p.type === "training");
+        const rows: TrainingProgram[] = filtered.map((p) => ({
+          ...p,
+          instructor: { name: userMap.get(p.instructor_id) ?? "—" },
+        }));
+        setProgramsList(rows);
+      } catch (err) {
+        console.error("Error loading programs:", err);
+      }
+    };
+    loadData();
+  }, []);
 
   const filteredPrograms = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return MOCK_TRAINING_PROGRAMS;
+    if (!query) return programsList;
 
-    return MOCK_TRAINING_PROGRAMS.filter(
+    return programsList.filter(
       (prog) =>
         prog.title.toLowerCase().includes(query) ||
         prog.description.toLowerCase().includes(query) ||
         prog.instructor.name.toLowerCase().includes(query),
     );
-  }, [searchQuery]);
+  }, [searchQuery, programsList]);
 
   const breadcrumbTrail = [
     { label: "Dashboard", href: "/dashboard" },
@@ -214,7 +164,7 @@ export default function TrainingProgramsPage() {
                   </span>
                   <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
                     <Users className="w-3.5 h-3.5 text-slate-300" />
-                    <span>{prog.participants.length} Active Enrolled</span>
+                    <span>{prog.participants?.length ?? 0} Active Enrolled</span>
                   </div>
                 </div>
 
@@ -242,7 +192,7 @@ export default function TrainingProgramsPage() {
                     <span>
                       Duration:{" "}
                       <strong className="text-slate-700 font-bold">
-                        {prog.duration}
+                        {prog.duration ?? "—"}
                       </strong>
                     </span>
                   </div>
