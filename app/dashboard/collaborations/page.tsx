@@ -200,7 +200,7 @@ export default function CollaborationsPage() {
       await saveDataToDB("collaboration", id, newRecord);
       setCollaborationsList((prev) => [newRecord, ...prev]);
     } catch (error) {
-      console.error("Error checking collab data:", error);
+      console.error("Error saving collaboration:", error);
       return;
     }
     setIsAdding(false);
@@ -249,7 +249,7 @@ export default function CollaborationsPage() {
       );
       setShowDeleteConfirm(false);
     } catch (error) {
-      console.log("Error in deleting collab", error)
+      console.error("Error deleting collaboration:", error)
     }
   };
 

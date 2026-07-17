@@ -124,17 +124,6 @@ export default function ProjectsPage() {
   );
 
   useEffect(() => {
-    (async () => {
-      try {
-        const rows = await getRowsFromDB("project"); // adjust to actual signature
-        setProjectsList(rows as Project[]);
-      } catch (error) {
-        console.error("Failed to load projects:", error);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
     const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
       detail: { isOpen: isPanelOpen },
     });
