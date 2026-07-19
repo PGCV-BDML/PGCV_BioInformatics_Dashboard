@@ -22,52 +22,6 @@ import {
 
 import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB, getNameIdFromDB } from "@/lib/supabase";
 
-const AVAILABLE_PROJECTS = [
-  { id: "b1a1c1e0-0000-0000-0000-000000000001", name: "De Novo Transcriptome Assembly Pipeline" },
-  { id: "b1a1c1e0-0000-0000-0000-000000000002", name: "Metagenomic Sequencing Validation" },
-  { id: "b1a1c1e0-0000-0000-0000-000000000003", name: "Variant Calling on Rice Subspecies" },
-  { id: "b1a1c1e0-0000-0000-0000-000000000004", name: "RNA-Seq Differential Expression Analysis" },
-  { id: "b1a1c1e0-0000-0000-0000-000000000005", name: "ChIP-Seq Transcription Profiling" },
-];
-
-const AVAILABLE_USERS = [
-  { id: "c2b2d2f0-0000-0000-0000-000000000001", name: "Dr. Analyst Cruz" },
-  { id: "c2b2d2f0-0000-0000-0000-000000000002", name: "Prof. Lopez" },
-  { id: "c2b2d2f0-0000-0000-0000-000000000003", name: "Engr. Santos" },
-  { id: "c2b2d2f0-0000-0000-0000-000000000004", name: "Dr. Cruz" },
-  { id: "c2b2d2f0-0000-0000-0000-000000000005", name: "Prof. Torres" },
-];
-
-const INITIAL_TASKS: Task[] = [
-  {
-    id: "a1a1a1a1-0000-0000-0000-000000000001",
-    title: "Configure multi-node SLURM job matrix parameters",
-    assignee_id: AVAILABLE_USERS[0].id,
-    due_date: "2026-07-15",
-    status: "in_progress",
-    priority: "high",
-    linked_project_id: AVAILABLE_PROJECTS[0].id,
-  },
-  {
-    id: "a1a1a1a1-0000-0000-0000-000000000002",
-    title: "Verify fastq adapter filtering thresholds via MultiQC reports",
-    assignee_id: AVAILABLE_USERS[1].id,
-    due_date: "2026-07-22",
-    status: "pending",
-    priority: "medium",
-    linked_project_id: AVAILABLE_PROJECTS[1].id,
-  },
-  {
-    id: "a1a1a1a1-0000-0000-0000-000000000003",
-    title: "Deploy downstream R Shiny expression rendering visualization app",
-    assignee_id: AVAILABLE_USERS[2].id,
-    due_date: "2026-08-05",
-    status: "completed",
-    priority: "low",
-    linked_project_id: AVAILABLE_PROJECTS[3].id,
-  },
-];
-
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "in_progress", label: "In Progress" },
@@ -96,7 +50,11 @@ const formatDate = (dateStr: string | null | undefined): string => {
 };
 
 export default function TasksPage() {
-  const [tasksList, setTasksList] = useState<Task[]>(INITIAL_TASKS);
+  const [tasksList, setTasksList] = useState<Task[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; name: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortConfig, setSortConfig] = useState<{
@@ -119,18 +77,44 @@ export default function TasksPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+
   const isSidebarOpen = isAdding || isEditing;
 
   const emptyForm: Omit<Task, "id"> = {
     title: "",
-    assignee_id: AVAILABLE_USERS[0].id,
+    assignee_id: availableUsers[0]?.id ?? "",
     due_date: "",
     status: "pending",
     priority: "medium",
-    linked_project_id: AVAILABLE_PROJECTS[0].id,
+    linked_project_id: availableProjects[0]?.id ?? "",
   };
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const [tasks, projects, users] = await Promise.all([
+          getRowsFromDB("task"),
+          getNameIdFromDB("project"),
+          getUsersFromDB(["team_lead", "team_member"]),
+        ]);
+
+        setTasksList(tasks as Task[]);
+        setAvailableProjects(projects ?? []);
+        setAvailableUsers((users ?? []).map((u: any) => ({ id: u.id, name: u.name })));
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+        setLoadError("Couldn't load tasks. Please refresh the page.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   // Breadcrumb Trail Config
   const breadcrumbTrail = [
@@ -192,8 +176,8 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
       if (activeFilter !== "All" && task.status !== activeFilter) return false;
-      const assignee = AVAILABLE_USERS.find((u) => u.id === task.assignee_id);
-      const project = AVAILABLE_PROJECTS.find((p) => p.id === task.linked_project_id);
+      const assignee = availableUsers.find((u) => u.id === task.assignee_id);
+      const project = availableProjects.find((p) => p.id === task.linked_project_id);
       const searchPool = [
         task.title ?? "",
         assignee ? assignee.name : "",
@@ -206,7 +190,7 @@ export default function TasksPage() {
         .toLowerCase();
       return searchPool.includes(searchQuery.toLowerCase().trim());
     });
-  }, [searchQuery, tasksList, activeFilter]);
+  }, [searchQuery, tasksList, activeFilter, availableUsers, availableProjects]);
 
   const sortedTasks = useMemo(() => {
     const sortableItems = [...filteredTasks];
@@ -328,35 +312,34 @@ export default function TasksPage() {
     setShowDeleteConfirm(false);
   };
 
-  const getStatusClass = (status: string) => {
+  const getStatusClass = (status: TaskStatus) => {
     const baseClass =
       "text-[10px] font-bold uppercase tracking-wide pl-4 pr-6 py-1 rounded-full border shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 text-center truncate";
-    const normal = status.toLowerCase().replace(/[\s-]/g, "");
 
-    if (normal === "completed") {
-      return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
+    switch (status) {
+      case "completed":
+        return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
+      case "in_progress":
+        return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
+      case "on_hold":
+        return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+      default: //for pending
+        return `${baseClass} bg-[#f5f5f5] text-[#616161] border-[#e0e0e0]`;
     }
-    if (normal === "inprogress") {
-      return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
-    }
-    if (normal === "onhold") {
-      return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
-    }
-    return `${baseClass} bg-[#f5f5f5] text-[#616161] border-[#e0e0e0]`;
   };
 
-  const getPriorityClass = (priority: string) => {
+  const getPriorityClass = (priority: TaskPriority) => {
     const baseClass =
       "text-[10px] font-bold uppercase tracking-wide pl-4 pr-6 py-1 rounded-full border shadow-sm w-full block appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 text-center truncate";
-    const normal = priority.toLowerCase().replace(/[\s-]/g, "");
 
-    if (normal === "high") {
-      return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+    switch (priority) {
+      case "high":
+        return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+      case "medium":
+        return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
+      default: // for low
+        return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
     }
-    if (normal === "medium") {
-      return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
-    }
-    return `${baseClass} bg-[#eaf7ee] text-[#2e7d32] border-[#c8e6c9]`;
   };
 
   const columns: Column<Task>[] = [
@@ -376,7 +359,7 @@ export default function TasksPage() {
       label: "Linked Project",
       width: "20%",
       render: (t) => {
-        const project = AVAILABLE_PROJECTS.find(
+        const project = availableProjects.find(
           (p) => p.id === t.linked_project_id,
         );
         return (
@@ -394,7 +377,7 @@ export default function TasksPage() {
       label: "Assignee",
       width: "13%",
       render: (t) => {
-        const assignee = AVAILABLE_USERS.find((u) => u.id === t.assignee_id);
+        const assignee = availableUsers.find((u) => u.id === t.assignee_id);
         return (
           <span
             className="block truncate max-w-full text-xs text-slate-700 font-medium"
@@ -420,11 +403,11 @@ export default function TasksPage() {
             >
               {PRIORITY_OPTIONS.map((opt) => (
                 <option
-                  key={opt}
-                  value={opt}
+                  key={opt.value}
+                  value={opt.value}
                   className="bg-white text-slate-900 normal-case"
                 >
-                  {opt}
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -448,11 +431,11 @@ export default function TasksPage() {
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option
-                  key={opt}
-                  value={opt}
+                  key={opt.value}
+                  value={opt.value}
                   className="bg-white text-slate-900 normal-case"
                 >
-                  {opt}
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -605,26 +588,34 @@ export default function TasksPage() {
             />
 
             {FILTER_OPTIONS.map((filter) => {
-              const isActive = activeFilter === filter;
+              const isActive = activeFilter === filter.value;
               return (
                 <button
-                  key={filter}
-                  data-filter={filter}
+                  key={filter.value}
+                  data-filter={filter.value}
                   type="button"
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => setActiveFilter(filter.value)}
                   className={`relative z-10 px-4 py-1.5 rounded-full text-xs transition-colors duration-300 whitespace-nowrap ${isActive
-                      ? "text-[#2a7797] font-semibold"
-                      : "text-slate-500 hover:text-slate-800 font-medium"
+                    ? "text-[#2a7797] font-semibold"
+                    : "text-slate-500 hover:text-slate-800 font-medium"
                     }`}
                 >
-                  {filter}
+                  {filter.label}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {filteredTasks.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-slate-500">
+            Loading tasks…
+          </div>
+        ) : loadError ? (
+          <div className="flex items-center justify-center py-12 text-sm text-red-600">
+            {loadError}
+          </div>
+        ) : filteredTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
             <Inbox className="w-10 h-10 text-slate-300 mb-2" />
             <span className="text-sm font-medium text-slate-500">
@@ -653,8 +644,8 @@ export default function TasksPage() {
         isOpen={isSidebarOpen}
         isAdding={isAdding}
         formState={formState}
-        availableProjects={AVAILABLE_PROJECTS}
-        availableUsers={AVAILABLE_USERS}
+        availableProjects={availableProjects}
+        availableUsers={availableUsers}
         statusOptions={STATUS_OPTIONS}
         priorityOptions={PRIORITY_OPTIONS}
         onInputChange={handleInputChange}
