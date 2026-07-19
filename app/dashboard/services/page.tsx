@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Plus,
   Inbox,
-  ExternalLink,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -23,6 +22,7 @@ import {
   getNameIdFromDB,
   getUsersFromDB,
   saveDataToDB,
+  supabase,
 } from "@/lib/supabase";
 import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS } from "../../../types/database";
 
@@ -279,16 +279,6 @@ export default function ServicesPage() {
     }
   };
 
-  const generateExternalReportUrl = (row: ServiceProjectRow) => {
-    const matchedProj = availableProjects.find(
-      (p) => p.name === row.project_name,
-    );
-    const projectId = matchedProj ? matchedProj.id : "unknown-proj";
-    const clientId = row.client.toLowerCase().replace(/\s+/g, "-");
-
-    return `/dashboard/services/report-generator?project_id=${encodeURIComponent(projectId)}&client_id=${encodeURIComponent(clientId)}&analysis_id=${encodeURIComponent(row.id)}`;
-  };
-
   const handleFallbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReportRow || !currentUserId) return;
@@ -311,6 +301,15 @@ export default function ServicesPage() {
       setSelectedReportRow(null);
       setFallbackUrl("");
       setClientAck(false);
+
+      // Audit trail for report delivery
+      supabase.rpc("audit_data_modification", {
+        target_type: "service_report",
+        target_id: selectedReportRow.id,
+        event_details: { action: "delivered", report_link: fallbackUrl },
+      }).then(({ error }) => {
+        if (error) console.error("audit_data_modification (deliver) failed:", error);
+      });
     } catch (err) {
       console.error("Error saving service report:", err);
     }
@@ -707,24 +706,6 @@ export default function ServicesPage() {
                   {selectedReportRow.project_name}
                 </span>
               </p>
-            </div>
-
-            <div className="bg-[#f0f9ff] border border-blue-100 rounded-2xl p-4 mb-6">
-              <span className="text-[10px] uppercase font-bold text-[#2a7797] tracking-wider block mb-2">
-                Primary Integration Method
-              </span>
-              <p className="text-xs text-slate-600 mb-4">
-                Open the laboratory's existing Service Report Generator. It will
-                load pre-filled with this analysis data.
-              </p>
-              <a
-                href={generateExternalReportUrl(selectedReportRow)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-[#2a7797] hover:bg-[#205b74] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Open Report Generator
-              </a>
             </div>
 
             <div className="relative flex py-2 items-center">
