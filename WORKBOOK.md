@@ -77,7 +77,7 @@
 
 All entities live in `supabase/migrations/19_initial_schema.sql` (plus `20260721000000_add_institution_to_users.sql`). RLS is enabled on every table in `21_enable_rls.sql`; policies live in `22_rls_policies.sql`; audit triggers attach via `23_audit_triggers.sql`; `set_updated_at` via `24_updated_at_triggers.sql`.
 
-> **⚠️ Production drift (as of 2026-07-19):** The local `supabase/migrations/` folder contains **11 SQL files**. The Supabase project's migration history contains **22 applied migrations** (see §19 for the full list). Several production hot-fixes (RLS policy consolidations, `audit_log.action` enum fix, `users` table rename, `repository_link` columns, etc.) were applied directly to production and were never committed back to the repo. Next migration should reconcile: export the production schema into a fresh `supabase/migrations/25_reconcile_production.sql` that captures the current production state, so a fresh `supabase db reset` will reproduce it byte-for-byte.
+> **⚠️ Production drift (as of 2026-07-19):** The local `supabase/migrations/` folder contains **11 SQL files**. The Supabase project's migration history contains **22 applied migrations** (see §19 for the full list). 15 production hot-fixes (RLS policy consolidations, `audit_log.action` enum fix, `users` table rename, `repository_link` columns, etc.) are intentionally not in the local repo — they are retroactive fixes of the 19-24 base migrations, not part of the canonical migration path (removed in commit `362bb5d`). Next migration should reconcile: export the production schema into a fresh `supabase/migrations/25_reconcile_production.sql` that captures the current production state, so a fresh `supabase db reset` will reproduce it byte-for-byte.
 
 ### 3.1 Active entities (17)
 
@@ -526,7 +526,7 @@ The local repo and the live Supabase project have drifted. This section is the c
 
 ### 19.1 Migration drift — 11 local vs 22 applied
 
-The local `supabase/migrations/` folder ships 11 files. The Supabase project has **22 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Every migration with a `2026…` timestamp is present in both places.
+The local `supabase/migrations/` folder ships 11 files. The Supabase project has **22 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Of the 16 timestamped production migrations, 7 are mirrored in the local repo; the other 15 are production-only retroactive fixes, intentionally not in the local repo (removed in commit `362bb5d`).
 
 | # | Production migration | Purpose | In local repo? |
 |---|---|---|---|

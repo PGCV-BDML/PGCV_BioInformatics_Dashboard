@@ -323,7 +323,7 @@ The local repo and the live Supabase project have drifted. This section captures
 - **11 files** in the local `supabase/migrations/` folder.
 - **22 migrations** applied to production (different timestamps, different names).
 - The local `19_initial_schema.sql` through `24_updated_at_triggers.sql` base files are **not** in the production migration list — they were applied via raw SQL before the migration tracking system was configured.
-- 11 production hot-fixes (`rls_fixes`, `advisor_fixes`, `rename_user_table_to_users`, `consolidate_overlapping_policies`, etc.) were never committed back to the repo. These represent the real production schema.
+- 15 production hot-fixes (`rls_fixes`, `advisor_fixes`, `rename_user_table_to_users`, `consolidate_overlapping_policies`, etc.) are intentionally not in the local repo — they are retroactive fixes of the 19-24 base migrations, not part of the canonical migration path (removed in commit `362bb5d`). These represent the real production schema.
 
 > **Action item (P0):** Generate `supabase/migrations/25_reconcile_production.sql` from the current production state so a fresh `supabase db reset` reproduces production byte-for-byte.
 
@@ -336,8 +336,8 @@ The local repo and the live Supabase project have drifted. This section captures
 ### 12.3 Schema additions vs. local
 
 - `users.institution` (text, nullable) — added in production by `20260719144134_add_institution_to_users.sql`.
-- `assessment.questions` is `jsonb` in production (changed from a text/array type in `20260708014455`).
-- `users` table was renamed from `user` in `20260708014021` (relevant only if you write raw SQL against the DB).
+- `assessment.questions` is `jsonb` in production (changed from a text/array type in production migration `20260708014455`).
+- `users` table was renamed from `user` in production migration `20260708014021` (relevant only if you write raw SQL against the DB).
 - `audit_log.action` is now constrained by an enum (`audit_log_action`).
 
 ### 12.4 New enums in production
