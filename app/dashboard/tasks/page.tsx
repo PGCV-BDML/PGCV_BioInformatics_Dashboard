@@ -157,20 +157,36 @@ export default function TasksPage() {
     }
   }, [activeFilter]);
 
-  const updateTaskStatus = (taskId: string, newStatus: TaskStatus) => {
-    setTasksList((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task,
-      ),
-    );
+  const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+    try {
+      await saveDataToDB("task", taskId, {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      });
+      setTasksList((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, status: newStatus } : task,
+        ),
+      );
+    } catch (error) {
+      console.error("Error updating task status:", error);
+    }
   };
 
-  const updateTaskPriority = (taskId: string, newPriority: TaskPriority) => {
-    setTasksList((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, priority: newPriority } : task,
-      ),
-    );
+  const updateTaskPriority = async (taskId: string, newPriority: TaskPriority) => {
+    try {
+      await saveDataToDB("task", taskId, {
+        priority: newPriority,
+        updated_at: new Date().toISOString(),
+      });
+      setTasksList((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, priority: newPriority } : task,
+        ),
+      );
+    } catch (error) {
+      console.error("Error updating task priority:", error);
+    }
   };
 
   const filteredTasks = useMemo(() => {
@@ -291,18 +307,24 @@ export default function TasksPage() {
     setFormState(emptyForm);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
 
-    setTasksList((prev) =>
-      prev.map((item) =>
-        item.id === selectedTask.id ? { ...item, ...formState } : item,
-      ),
-    );
+    try {
+      await saveDataToDB("task", selectedTask.id, formState);
+      setTasksList((prev) =>
+        prev.map((item) =>
+          item.id === selectedTask.id ? { ...item, ...formState } : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Error updating task data:", error);
+      return;
+    }
+
     setIsEditing(false);
   };
-
   const handleDeleteRecord = async () => {
     if (!selectedTask) return;
     try {
