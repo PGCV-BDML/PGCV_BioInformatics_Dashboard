@@ -9,6 +9,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+type TableNames = "collaboration" | "project" | "client" | "service" | "task";
+
 export function getCurrentUser() {
   // supabase.auth.getUser() is async, but getSession() is synchronous from cache
   return supabase.auth.getSession().then(({ data }) => data.session?.user ?? null);

@@ -59,9 +59,8 @@ export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" |
 };
 
 //For Tasks ===========================================================================
-export type TaskStatus = "Pending" | "In-Progress" | "Completed" | "On Hold";
-export type TaskPriority = "Low" | "Medium" | "High";
-
+export type TaskStatus = "pending" | "in_progress" | "completed" | "on_hold";
+export type TaskPriority = "low" | "medium" | "high";
 export type Task = {
   id: string;
   title: string;

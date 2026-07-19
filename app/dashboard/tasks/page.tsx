@@ -20,6 +20,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB, getNameIdFromDB } from "@/lib/supabase";
+
 const AVAILABLE_PROJECTS = [
   { id: "b1a1c1e0-0000-0000-0000-000000000001", name: "De Novo Transcriptome Assembly Pipeline" },
   { id: "b1a1c1e0-0000-0000-0000-000000000002", name: "Metagenomic Sequencing Validation" },
@@ -42,8 +44,8 @@ const INITIAL_TASKS: Task[] = [
     title: "Configure multi-node SLURM job matrix parameters",
     assignee_id: AVAILABLE_USERS[0].id,
     due_date: "2026-07-15",
-    status: "In-Progress",
-    priority: "High",
+    status: "in_progress",
+    priority: "high",
     linked_project_id: AVAILABLE_PROJECTS[0].id,
   },
   {
@@ -51,8 +53,8 @@ const INITIAL_TASKS: Task[] = [
     title: "Verify fastq adapter filtering thresholds via MultiQC reports",
     assignee_id: AVAILABLE_USERS[1].id,
     due_date: "2026-07-22",
-    status: "Pending",
-    priority: "Medium",
+    status: "pending",
+    priority: "medium",
     linked_project_id: AVAILABLE_PROJECTS[1].id,
   },
   {
@@ -60,15 +62,15 @@ const INITIAL_TASKS: Task[] = [
     title: "Deploy downstream R Shiny expression rendering visualization app",
     assignee_id: AVAILABLE_USERS[2].id,
     due_date: "2026-08-05",
-    status: "Completed",
-    priority: "Low",
+    status: "completed",
+    priority: "low",
     linked_project_id: AVAILABLE_PROJECTS[3].id,
   },
 ];
 
-const STATUS_OPTIONS: TaskStatus[] = ["Pending", "In-Progress", "Completed", "On Hold"];
+const STATUS_OPTIONS: TaskStatus[] = ["pending", "in_progress", "completed", "on_hold"];
 const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
-const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
+const PRIORITY_OPTIONS: TaskPriority[] = ["low", "medium", "high"];
 
 // Helper function to format dates to MM/DD/YYYY
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -100,14 +102,17 @@ export default function TasksPage() {
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const isSidebarOpen = isAdding || isEditing;
 
   const emptyForm: Omit<Task, "id"> = {
     title: "",
     assignee_id: AVAILABLE_USERS[0].id,
     due_date: "",
-    status: "Pending",
-    priority: "Medium",
+    status: "pending",
+    priority: "medium",
     linked_project_id: AVAILABLE_PROJECTS[0].id,
   };
 
@@ -279,11 +284,24 @@ export default function TasksPage() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const generatedId = crypto.randomUUID();
-    setTasksList((prev) => [{ id: generatedId, ...formState }, ...prev]);
-    setIsAdding(false);
+    const newTask: Task = { id: generatedId, ...formState };
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await saveDataToDB("task", generatedId, formState);
+      setTasksList((prev) => [newTask, ...prev]);
+      setIsAdding(false);
+    } catch (err) {
+      console.error("Failed to add task:", err);
+      setSaveError("Couldn't save the task. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
