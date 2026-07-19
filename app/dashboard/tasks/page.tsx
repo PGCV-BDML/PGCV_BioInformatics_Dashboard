@@ -68,9 +68,23 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
-const STATUS_OPTIONS: TaskStatus[] = ["pending", "in_progress", "completed", "on_hold"];
-const FILTER_OPTIONS = ["All", ...STATUS_OPTIONS];
-const PRIORITY_OPTIONS: TaskPriority[] = ["low", "medium", "high"];
+const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+  { value: "on_hold", label: "On Hold" },
+];
+
+const FILTER_OPTIONS = [
+  { value: "All", label: "All" },
+  ...STATUS_OPTIONS,
+];
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
 
 // Helper function to format dates to MM/DD/YYYY
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -177,15 +191,7 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
-      if (activeFilter !== "All") {
-        const normalizedTaskStatus = (task.status || "")
-          .toLowerCase()
-          .replace(/[\s-]/g, "");
-        const normalizedFilter = activeFilter
-          .toLowerCase()
-          .replace(/[\s-]/g, "");
-        if (normalizedTaskStatus !== normalizedFilter) return false;
-      }
+      if (activeFilter !== "All" && task.status !== activeFilter) return false;
       const assignee = AVAILABLE_USERS.find((u) => u.id === task.assignee_id);
       const project = AVAILABLE_PROJECTS.find((p) => p.id === task.linked_project_id);
       const searchPool = [
