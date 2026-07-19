@@ -97,6 +97,9 @@ PGCV_BioInformatics_Dashboard/
 │       ├── 20260720000000_audit_data_modification_rpc.sql
 │       ├── 20260720000000_seed_demo_data.sql
 │       └── 20260721000000_add_institution_to_users.sql
+│
+│  # Note: the local repo has 11 migration files, but the Supabase project
+│  # has 22 applied migrations. See §11 / WORKBOOK §19 for the drift list.
 ├── types/
 │   └── database.ts               # TypeScript interfaces: UserOption, CollaborationRow,
 │                                  #   Project, ProjectStatus, STATUS_OPTIONS, ProjectFormData
@@ -308,4 +311,40 @@ Items explicitly descoped to **P4 (Won't)** in the MoSCoW prioritization (`proje
 | Team contacts, data model, sprint plan, training/internship content, gap tracker | [`WORKBOOK.md`](./WORKBOOK.md) |
 | RLS policies, audit-logging, RA 10173 compliance, encryption-at-rest status | [`SECURITY.md`](./SECURITY.md) |
 | Onboarding, local setup, deployment, known limitations | [`README.md`](./README.md) |
+
+---
+
+## 12. Supabase production state (as of 2026-07-19)
+
+The local repo and the live Supabase project have drifted. This section captures the live state; the full gap list lives in [`WORKBOOK.md` §19](./WORKBOOK.md#19-supabase-production-state-as-of-2026-07-19).
+
+### 12.1 Migration drift
+
+- **11 files** in the local `supabase/migrations/` folder.
+- **22 migrations** applied to production (different timestamps, different names).
+- The local `19_initial_schema.sql` through `24_updated_at_triggers.sql` base files are **not** in the production migration list — they were applied via raw SQL before the migration tracking system was configured.
+- 11 production hot-fixes (`rls_fixes`, `advisor_fixes`, `rename_user_table_to_users`, `consolidate_overlapping_policies`, etc.) were never committed back to the repo. These represent the real production schema.
+
+> **Action item (P0):** Generate `supabase/migrations/25_reconcile_production.sql` from the current production state so a fresh `supabase db reset` reproduces production byte-for-byte.
+
+### 12.2 Functions
+
+- **Local-defined and present in production:** `protect_user_role_column()`, `audit_table_change()`, `get_user_role()`, `audit_session_event(text, jsonb)`, `audit_data_modification(text, text, jsonb)`.
+- **Present in production but not in local:** `audit_sessions()`, `handle_new_user()` (likely an auth-hook that auto-creates a `users` row on OAuth signup).
+- **All SECURITY DEFINER functions are callable by `anon` and `authenticated`** (per Supabase linter). See `SECURITY.md` §13 for the mitigation list.
+
+### 12.3 Schema additions vs. local
+
+- `users.institution` (text, nullable) — added in production by `20260719144134_add_institution_to_users.sql`.
+- `assessment.questions` is `jsonb` in production (changed from a text/array type in `20260708014455`).
+- `users` table was renamed from `user` in `20260708014021` (relevant only if you write raw SQL against the DB).
+- `audit_log.action` is now constrained by an enum (`audit_log_action`).
+
+### 12.4 New enums in production
+
+`user_roles` (team_lead, team_member, trainee, intern, none) · `service_categories` · `template_categories` · `training_type` · `project_status` · `analysis_status` · `assessment_type` (pre_test, post_test, evaluation) · `audit_log_action`.
+
+### 12.5 Edge functions
+
+One active edge function: `backup-audit` (no JWT verification by design — it is triggered by Supabase cron, not user traffic). Matches the spec in WORKBOOK §3.4.
 

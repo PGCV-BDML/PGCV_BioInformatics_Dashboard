@@ -77,6 +77,8 @@
 
 All entities live in `supabase/migrations/19_initial_schema.sql` (plus `20260721000000_add_institution_to_users.sql`). RLS is enabled on every table in `21_enable_rls.sql`; policies live in `22_rls_policies.sql`; audit triggers attach via `23_audit_triggers.sql`; `set_updated_at` via `24_updated_at_triggers.sql`.
 
+> **⚠️ Production drift (as of 2026-07-19):** The local `supabase/migrations/` folder contains **11 SQL files**. The Supabase project's migration history contains **22 applied migrations** (see §19 for the full list). Several production hot-fixes (RLS policy consolidations, `audit_log.action` enum fix, `users` table rename, `repository_link` columns, etc.) were applied directly to production and were never committed back to the repo. Next migration should reconcile: export the production schema into a fresh `supabase/migrations/25_reconcile_production.sql` that captures the current production state, so a fresh `supabase db reset` will reproduce it byte-for-byte.
+
 ### 3.1 Active entities (17)
 
 | Entity | Fields |
@@ -138,7 +140,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | `components/` | Reusable React UI components using Tailwind |
 | `lib/supabase.ts` | Supabase client and CRUD helpers (`getRowsFromDB`, `saveDataToDB`, `deleteDataFromDB`) |
 | `types/database.ts` | TypeScript types for rows and enums |
-| `supabase/migrations/` | 11 SQL migration files (schema, RLS, audit, triggers, seed data) |
+| `supabase/migrations/` | 11 local SQL migration files (schema, RLS, audit, triggers, seed data). **22 applied to production** — see §19 for the drift list. |
 
 **Naming:** kebab-case for routes, PascalCase for components, all files `.tsx`. **No plain `.ts` business logic in the app** — the spec notes "there is no TypeScript dependency" (i.e., no TS-only code path) so all app code lives in `.tsx`. (`lib/supabase.ts` and `types/database.ts` are the legitimate exceptions.)
 
@@ -512,6 +514,85 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 
 - **Google Doc (canonical source):** "Bioinformatics Activity Sheets" — owner `mtmisola`, doc id `1NL6dGKCZvVvw8zCZn6_RMme9mPXcHDjrdn4rsMCtrWw`. Tabs: Computer Science Activity Sheet · Biology Activity Sheet · PM Plan · Features list · Implementation Plan · Data Access · Dashboard Requirements.
 - **Local docs (this repo):** `README.md`, `ARCHITECTURE.md`, `SECURITY.md`, `AGENTS.md` (Next.js 16 conventions), `CLAUDE.md` (assistant notes).
-- **Migrations:** `supabase/migrations/19_initial_schema.sql` through `20260721000000_add_institution_to_users.sql` (11 files total).
+- **Migrations:** Local repo has 11 files (`supabase/migrations/19_initial_schema.sql` → `20260721000000_add_institution_to_users.sql`). **22 are applied to production** (see §19).
 - **Live app:** https://pgcv-bioinformatics-dashboard.vercel.app/
 - **Repo:** https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard
+
+---
+
+## 19. Supabase production state (as of 2026-07-19)
+
+The local repo and the live Supabase project have drifted. This section is the canonical map of what is actually running in production.
+
+### 19.1 Migration drift — 11 local vs 22 applied
+
+The local `supabase/migrations/` folder ships 11 files. The Supabase project has **22 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Every migration with a `2026…` timestamp is present in both places.
+
+| # | Production migration | Purpose | In local repo? |
+|---|---|---|---|
+| 1 | 20260706081922 `fix_schema_issues` | Early schema hot-fixes | ❌ |
+| 2 | 20260707070837 `rls_fixes` | RLS policy repairs | ❌ |
+| 3 | 20260707072002 `advisor_fixes` | Linter-driven fixes | ❌ |
+| 4 | 20260708014021 `rename_user_table_to_users` | Renamed `user` → `users` | ❌ |
+| 5 | 20260708014133 `fix_audit_log_action_enum` | Constrained `audit_log.action` | ❌ |
+| 6 | 20260708014250 `add_repository_link_columns` | `repository_link` on project + collaboration | ❌ (covered in initial schema) |
+| 7 | 20260708014455 `change_assessment_questions_to_jsonb` | `questions` → JSONB | ❌ |
+| 8 | 20260708015219 `rls_policy_corrections` | RLS repair pass | ❌ |
+| 9 | 20260708015339 `updated_at_auto_update_trigger` | `set_updated_at` trigger | ✅ (local 24) |
+| 10 | 20260708015612 `consolidate_overlapping_policies` | RLS deduplication | ❌ |
+| 11 | 20260708015735 `check_constraints` | CHECK constraints | ❌ |
+| 12 | 20260708020052 `remove_remaining_policy_overlaps` | RLS deduplication pass 2 | ❌ |
+| 13 | 20260708022008 `add_is_active_to_users` | Soft-delete flag (added) | ❌ |
+| 14 | 20260708024929 `drop_is_active_column` | …then removed in next migration | ❌ |
+| 15 | 20260708024934 `protect_user_role_column` | Trigger + function | ✅ (local 20 + 23) |
+| 16 | 20260717000000 `seed_biology_assessments` | Bio assessment seed data | ✅ |
+| 17 | 20260718000000 `audit_session_rpc` | `audit_session_event()` | ✅ |
+| 18 | 20260719132846 `apply_updated_at_triggers` | Apply triggers to tables | ✅ (local 24) |
+| 19 | 20260720000000 `audit_data_modification_rpc` | `audit_data_modification()` | ✅ |
+| 20 | 20260720000000 `seed_demo_data` | Demo seed | ✅ |
+| 21 | 20260719144134 `add_institution_to_users` | `users.institution` column | ✅ |
+
+> **Action item (P0):** Generate a `supabase/migrations/25_reconcile_production.sql` that captures the current production state. A fresh `supabase db reset` should reproduce the live project byte-for-byte.
+
+### 19.2 Functions in production
+
+| Function | In local repo? | Notes |
+|---|---|---|
+| `protect_user_role_column()` | ✅ (local 20) | `SECURITY DEFINER` — linter warns it is callable by `anon` and `authenticated`. |
+| `audit_table_change()` | ✅ (local 20) | Generic trigger function for insert/update/delete audit. |
+| `get_user_role()` | ✅ (local 20) | Helper used by RLS policies. |
+| `audit_session_event(text, jsonb)` | ✅ (local 18) | Called from `app/components/sessionauditor.tsx` on SIGNED_IN / SIGNED_OUT. |
+| `audit_data_modification(text, text, jsonb)` | ✅ (local 20) | Called from `app/dashboard/services/page.tsx` on report delivery. |
+| `audit_sessions()` | ❌ | **NEW in production, not in local.** Likely a trigger function variant. |
+| `handle_new_user()` | ❌ | **NEW in production, not in local.** Likely an auth-hook function that auto-creates a `users` row on OAuth signup. |
+
+> **Action item (P0):** Export the definitions of `audit_sessions()` and `handle_new_user()` from production and commit them to a new `supabase/migrations/26_*.sql` file. Without this, a fresh `supabase db reset` will not match production.
+
+### 19.3 New enums in production
+
+These enums exist in production but are not yet documented in the data model:
+
+| Enum | Values |
+|---|---|
+| `user_roles` | `team_lead`, `team_member`, `trainee`, `intern`, `none` |
+| `service_categories` | `WGS`, `amplicon`, `metabarcoding`, `transcriptomics`, `shotgun`, `phylogenetics`, `custom` |
+| `template_categories` | (category set for `document_template`) |
+| `training_type` | `training`, `internship` |
+| `project_status` | (status set for `project`) |
+| `analysis_status` | (status set for `analysis` — **needs alignment with §10.3/§10.4** which describe 5-value Completion + 3-value Submission) |
+| `assessment_type` | `pre_test`, `post_test`, `evaluation` |
+| `audit_log_action` | (action set for `audit_log` — `user_login`, `user_logout`, `role_change`, `data_export`, …) |
+
+### 19.4 Schema additions in production
+
+- `users.institution` (text, nullable) — added by `20260719144134`. Update the data model in §3.1 to list this column as production-current (already noted in §3.1 as "added later").
+
+### 19.5 Edge functions
+
+| Function | Active? | `verify_jwt` | Notes |
+|---|---|---|---|
+| `backup-audit` | ✅ | `false` | Version 18. Created 2026-07-06, updated 2026-07-06. Cron-rotates `audit_log` rows older than 28 days to Google Sheets, then deletes. Matches the spec in §3.4. |
+
+### 19.6 Tables — all 18 have RLS enabled
+
+Verified via `select relname, relrowsecurity from pg_class where relnamespace = 'public' and relkind = 'r'`. The implementation matches the local `21_enable_rls.sql` intent.

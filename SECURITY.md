@@ -292,5 +292,44 @@ Source: [`06_privacy_security_checklist.md`](https://github.com/PGCV-BDML/PGCV_B
 
 ---
 
+## 13. Supabase linter findings (as of 2026-07-19)
+
+The Supabase project's static analysis linter reports 15 advisories. **All are warnings** (no errors); none are currently being exploited. They are listed here so the next maintainer can close them.
+
+### 13.1 Security advisories (8 warnings)
+
+| # | Lint | Affected object | Risk | Mitigation |
+|---|---|---|---|---|
+| S1 | `anon_security_definer_function_executable` | `public.protect_user_role_column()` | `SECURITY DEFINER` is callable by the `anon` role. An unauthenticated client could call it. | `REVOKE EXECUTE ON FUNCTION public.protect_user_role_column() FROM anon, authenticated;` — keep EXECUTE only for `team_lead` (or a dedicated `auth_admin` role). |
+| S2 | `authenticated_security_definer_function_executable` | `public.audit_data_modification(text, text, jsonb)` | Callable by any signed-in user. | Add a `WHERE auth.uid() IS NOT NULL` and a role check inside the function. Already partially mitigated by `RAISE EXCEPTION 'must be called by an authenticated user'`. |
+| S3 | `authenticated_security_definer_function_executable` | `public.audit_session_event(text, jsonb)` | Same as S2. | Same mitigation. |
+| S4 | `authenticated_security_definer_function_executable` | `public.audit_sessions()` | Same as S2; not in local repo. | Audit and tighten. |
+| S5 | `authenticated_security_definer_function_executable` | `public.audit_table_change()` | Same as S2. | Same mitigation. |
+| S6 | `authenticated_security_definer_function_executable` | `public.get_user_role()` | Same as S2. | Same mitigation. |
+| S7 | `authenticated_security_definer_function_executable` | `public.handle_new_user()` | Same as S2; not in local repo. | Audit and tighten. |
+| S8 | `auth_leaked_password_protection` | Project config | Have-I-Been-Pwned password list is **disabled** in the Supabase Auth config. | Not relevant for Google-OAuth-only authentication (we never accept passwords). Can be safely ignored, or enabled for defense-in-depth. |
+
+### 13.2 Performance advisories (7 warnings)
+
+| # | Lint | Affected object | Risk | Mitigation |
+|---|---|---|---|---|
+| P1 | `auth_rls_initplan` | `assessment_response` (insert) | Policy calls `auth.<fn>()` instead of `(select auth.<fn>())`. Per-row re-evaluation breaks the Postgres initplan optimization. | Rewrite the policy: `USING ((select auth.uid()) = participant_id)`. |
+| P2 | `auth_rls_initplan` | `assessment_response` (select) | Same. | Same. |
+| P3 | `auth_rls_initplan` | `certificate` (select) | Same. | Same. |
+| P4 | `auth_rls_initplan` | `users` (select) | Same. | Same. |
+| P5 | `auth_rls_initplan` | `users` (update) | Same. | Same. |
+| P6 | `unused_index` | `idx_project_service_id` | Index never used by query planner. | Drop it, or keep it if you anticipate heavy `WHERE service_id = ?` queries. |
+| P7 | `unused_index` | `idx_service_report_analysis_id` | Same. | Same. |
+
+### 13.3 Migration drift implications for security
+
+Several of the RLS policy refinements in production (S1-S7 mitigations) live in **production-only** migrations that were never committed to the repo. The next maintainer should:
+
+1. Export the current production schema: `supabase db dump --schema public`.
+2. Save it as `supabase/migrations/25_reconcile_production.sql`.
+3. Apply the S1-S7 mitigations inside that migration, so a fresh `supabase db reset` matches production AND closes the linter warnings.
+
+---
+
 *All Rights Reserved · Philippine Genome Center Visayas — Bioinformatics and Data Management Laboratory · June–July 2026 Internship Program*
 

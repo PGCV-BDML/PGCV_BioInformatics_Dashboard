@@ -134,7 +134,7 @@ PGCV_BioInformatics_Dashboard/
 ├── lib/
 │   └── supabase.ts               # Supabase client + DB helpers (typed TableNames)
 ├── supabase/
-│   └── migrations/               # 11 SQL migration files
+│   └── migrations/               # 11 SQL migration files (22 applied to production — see ARCHITECTURE §11 / WORKBOOK §19)
 │       ├── 19_initial_schema.sql          # 18 tables + 9 enums + indexes
 │       ├── 20_security_functions.sql      # get_user_role(), protect_user_role_column()
 │       ├── 21_enable_rls.sql              # RLS enabled on all 18 tables
