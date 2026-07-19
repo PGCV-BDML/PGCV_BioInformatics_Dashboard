@@ -17,8 +17,8 @@ interface TaskModalProps {
   formState: Omit<Task, "id">;
   availableProjects: { id: string; name: string }[];
   availableUsers: { id: string; name: string }[];
-  statusOptions: TaskStatus[];
-  priorityOptions: TaskPriority[];
+  statusOptions: { value: TaskStatus; label: string }[];
+  priorityOptions: { value: TaskPriority; label: string }[];
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
@@ -179,11 +179,11 @@ export default function TaskModal({
                 >
                   {priorityOptions.map((prio) => (
                     <option
-                      key={prio}
-                      value={prio}
+                      key={prio.value}
+                      value={prio.value}
                       className="text-slate-800 font-bold"
                     >
-                      {prio}
+                      {prio.label}
                     </option>
                   ))}
                 </select>
@@ -211,11 +211,11 @@ export default function TaskModal({
                 >
                   {statusOptions.map((status) => (
                     <option
-                      key={status}
-                      value={status}
+                      key={status.value}
+                      value={status.value}
                       className="text-slate-800 font-bold"
                     >
-                      {status}
+                      {status.label}
                     </option>
                   ))}
                 </select>
