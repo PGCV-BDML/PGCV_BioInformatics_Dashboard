@@ -147,7 +147,6 @@ export default function CollaborationsPage() {
     try {
       await saveDataToDB("collaboration", id, {
         status: newStatus,
-        updated_at: new Date().toISOString()
       });
 
       setCollaborationsList((prev) =>
@@ -194,6 +193,10 @@ export default function CollaborationsPage() {
       notes: formState.notes || null,
       repository_link: formState.repository_link || null,
       created_at: new Date().toISOString(),
+      // ponytail: updated_at is set by the column default on INSERT; the
+      // BEFORE UPDATE trigger handles it on subsequent edits. This local
+      // value is only used to satisfy the CollaborationRow type for the
+      // setCollaborationsList() call below.
       updated_at: new Date().toISOString(),
     };
     try {
@@ -220,7 +223,6 @@ export default function CollaborationsPage() {
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
       repository_link: formState.repository_link || "",
-      updated_at: new Date().toISOString(),
     };
 
     try {
