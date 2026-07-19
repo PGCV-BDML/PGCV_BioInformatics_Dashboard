@@ -61,9 +61,9 @@ These are the items the MVP currently lies about, or that block a safe productio
 
 ### 0.2 Audit coverage gaps (P0 because they are listed in the security checklist)
 
-- [ ] **Add `role_change` audit coverage.** Currently the `protect_user_role` trigger blocks role changes, but no `audit_log` row is written when one happens. Add an `audit_data_modification` call from the trigger (or a separate `audit_role_change` RPC) so a successful role change leaves a trail.
+- [ ] **Add `role_change` audit coverage (users already covered; extend to 5 spec'd tables).** The `audit_table_change()` function in `20_security_functions.sql` already writes a `role_change` row when `users.role` changes. The gap is the other 5 spec'd tables (`project`, `analysis`, `service_report`, `collaboration`, `training_program`) that have status columns but no triggers attached yet. Add triggers and verify `state_change` rows fire.
 - [ ] **Add `data_export` audit coverage.** Every export of project / collaboration / analysis data should write an `audit_log` row with `action='data_export'`, `target_type`, and the user. Centralize the export button in a helper so we can't forget.
-- [ ] **Extend `audit_log` triggers to all 18 tables** (currently 6: `projects`, `analyses`, `service_reports`, `users`, `collaborations`, `training_programs`). The remaining 12 (`client`, `service`, `sample`, `module`, `assessment`, `assessment_response`, `certificate`, `task`, `onboarding_document`, `document_template`, `accomplishment`, `calendar_event`) should each get insert/update/delete audit triggers. Per the compsci activity sheet §III, the original trigger design was already done — this is the rollout.
+- [ ] **Extend `audit_log` triggers to all 18 tables** (currently 1: `users`). The remaining 17 (`project`, `analysis`, `service_report`, `collaboration`, `training_program`, `client`, `service`, `sample`, `module`, `assessment`, `assessment_response`, `certificate`, `task`, `onboarding_document`, `document_template`, `accomplishment`, `calendar_event`) should each get insert/update/delete audit triggers. Per the compsci activity sheet §III, the original trigger design was already done — this is the rollout.
 
 ### 0.3 Test walkthroughs (P0 because the privacy checklist calls them out)
 
