@@ -279,19 +279,16 @@ export default function TasksPage() {
     const generatedId = crypto.randomUUID();
     const newTask: Task = { id: generatedId, ...formState };
 
-    setIsSaving(true);
-    setSaveError(null);
-
     try {
       await saveDataToDB("task", generatedId, formState);
       setTasksList((prev) => [newTask, ...prev]);
-      setIsAdding(false);
-    } catch (err) {
-      console.error("Failed to add task:", err);
-      setSaveError("Couldn't save the task. Please try again.");
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error("Error adding task data:", error);
+      return;
     }
+
+    setIsAdding(false);
+    setFormState(emptyForm);
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -306,10 +303,15 @@ export default function TasksPage() {
     setIsEditing(false);
   };
 
-  const handleDeleteRecord = () => {
+  const handleDeleteRecord = async () => {
     if (!selectedTask) return;
-    setTasksList((prev) => prev.filter((item) => item.id !== selectedTask.id));
-    setShowDeleteConfirm(false);
+    try {
+      await deleteDataFromDB("task", selectedTask.id);
+      setTasksList((prev) => prev.filter((item) => item.id !== selectedTask.id));
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.log("Error in deleting task", error);
+    }
   };
 
   const getStatusClass = (status: TaskStatus) => {
@@ -660,10 +662,7 @@ export default function TasksPage() {
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={selectedTask?.title || ""}
-        onClose={() => {
-          setShowDeleteConfirm(false);
-          setSelectedTask(null);
-        }}
+        onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
       />
     </div>
