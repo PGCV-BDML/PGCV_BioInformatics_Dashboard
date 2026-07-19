@@ -33,7 +33,7 @@ export async function getUsersFromDB(chosenRoles: string[]) {
     .in("role", chosenRoles)
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
   }
 
@@ -62,7 +62,7 @@ export async function getNameIdFromDB(table: TableNames) {
     .select("id,name")
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
   }
 
@@ -95,7 +95,7 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     .maybeSingle();
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
   }
 
@@ -109,7 +109,7 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
       .single();
 
     if (error) {
-      console.error("Error saving existing collab data:", error);
+      console.error("Error saving existing data:", error);
       throw error;
     }
 
@@ -123,7 +123,7 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
       .single();
 
     if (error) {
-      console.error("Error saving new collab data:", error);
+      console.error("Error saving new data:", error);
       throw error;
     }
 
