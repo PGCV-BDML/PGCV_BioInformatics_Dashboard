@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Quicksand } from "next/font/google";
 import "./globals.css";
+import SessionAuditor from "./components/sessionauditor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-aileron">{children}</body>
+      <body className="min-h-full flex flex-col font-aileron">
+        <SessionAuditor />
+        {children}
+      </body>
     </html>
   );
 }
