@@ -234,17 +234,60 @@ export default function SignInPage() {
             className="mt-5 pt-5 relative"
             style={{ borderTop: "0.8px solid rgba(23,33,38,0.12)" }}
           >
-            <p className="text-[12px] leading-5 font-quicksand">
-              <span className="font-bold text-[#172126]">
-                Data Privacy Notice.
-              </span>{" "}
-              <span className="text-[#65706f]">
-                This dashboard stores internal operations records and limited
-                participant data needed for training and internship
-                administration. Access is restricted by role and activity may be
-                logged for accountability.
-              </span>
+            <p className="text-[12px] leading-5 font-quicksand font-bold text-[#172126]">
+              Data Privacy Notice
             </p>
+            <div className="mt-2 space-y-1 text-[12px] leading-5 font-quicksand">
+              <p>
+                <span className="font-bold text-[#172126]">
+                  Data collected:{" "}
+                </span>
+                <span className="text-[#65706f]">
+                  Internal lab operations records; training and internship
+                  participant data (name, email, assessment answers); and
+                  activity logs for accountability.
+                </span>
+              </p>
+              <p>
+                <span className="font-bold text-[#172126]">Purpose: </span>
+                <span className="text-[#65706f]">
+                  Internal workflow management, training administration, and
+                  compliance with the Philippine Data Privacy Act (RA 10173).
+                </span>
+              </p>
+              <p>
+                <span className="font-bold text-[#172126]">Retention: </span>
+                <span className="text-[#65706f]">
+                  Operations records retained per lab-defined policy; participant
+                  data deleted upon request or automatically at end of
+                  internship. {/* ponytail: "lab-defined" kept intentionally vague — check with supervisor */}
+                </span>
+              </p>
+              <p>
+                <span className="font-bold text-[#172126]">Access: </span>
+                <span className="text-[#65706f]">
+                  PGCV-BDML team members only, with role-based access controls.
+                  All access is logged.
+                </span>
+              </p>
+              <p>
+                <span className="font-bold text-[#172126]">
+                  Deletion requests:{" "}
+                </span>
+                <span className="text-[#65706f]">
+                  Contact your supervisor or email{" "}
+                </span>
+                <a
+                  href="mailto:bdml@pgcvisayas.upv.edu.ph"
+                  className="text-[#65706f] underline underline-offset-2 decoration-dotted hover:text-[#2a7797] transition-colors"
+                >
+                  bdml@pgcvisayas.upv.edu.ph
+                </a>
+                <span className="text-[#65706f]">
+                  . Data will be anonymized or deleted within 30 days.
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </div>

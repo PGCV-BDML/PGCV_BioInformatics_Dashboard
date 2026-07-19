@@ -16,8 +16,10 @@ import AddSampleSidebar, {
 import {
   getRowsFromDB,
   getNameIdFromDB,
+  getUsersFromDB,
   saveDataToDB,
   getCurrentUser,
+  supabase,
 } from "@/lib/supabase";
 import { AnalysisStatus } from "../../../../types/database";
 
@@ -62,6 +64,8 @@ export default function AnalysisDetailPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [report, setReport] = useState<any>(null);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // Synchronized state object structure matching Collaboration sidebar architecture
   const [formState, setFormState] = useState<SampleFormState>({
@@ -75,7 +79,7 @@ export default function AnalysisDetailPage({
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [analyses, projects, clients, services, samples, serviceReports] =
+        const [analyses, projects, clients, services, samples, serviceReports, users] =
           await Promise.all([
             getRowsFromDB("analysis"),
             getRowsFromDB("project"),
@@ -83,7 +87,15 @@ export default function AnalysisDetailPage({
             getNameIdFromDB("service"),
             getRowsFromDB("sample"),
             getRowsFromDB("service_report"),
+            getUsersFromDB(["team_lead", "team_member"]),
           ]);
+
+        // Build a user id → name map for resolving delivered_by
+        const userMapData = new Map<string, string>();
+        (users as any[]).forEach((u: any) => {
+          userMapData.set(u.id, u.name ?? u.email ?? u.id);
+        });
+        setUserMap(userMapData);
 
         const analysis = (analyses as any[]).find(
           (a) => a.id === resolvedParams.id,
@@ -104,9 +116,10 @@ export default function AnalysisDetailPage({
         const analysisSamples = (samples as any[]).filter(
           (s) => s.project_id === analysis.project_id,
         );
-        const report = (serviceReports as any[]).find(
+        const foundReport = (serviceReports as any[]).find(
           (r) => r.analysis_id === analysis.id,
         );
+        setReport(foundReport ?? null);
 
         setProjectId(analysis.project_id);
 
@@ -123,7 +136,7 @@ export default function AnalysisDetailPage({
           completed: analysis.completed_at
             ? analysis.completed_at.split("T")[0]
             : "—",
-          report_link: report?.report_link ?? "",
+          report_link: foundReport?.report_link ?? "",
           output_link: analysis.output_link ?? "",
           samples: analysisSamples.map((s) => {
             const m = (s.metadata ?? {}) as Record<string, unknown>;
@@ -221,6 +234,28 @@ export default function AnalysisDetailPage({
       setIsSidebarOpen(false);
     } catch (err) {
       console.error("Error saving sample:", err);
+    }
+  };
+
+  const handleAcknowledge = async () => {
+    if (!report?.id) return;
+    try {
+      const now = new Date().toISOString();
+      await saveDataToDB("service_report", report.id, {
+        client_acknowledged_at: now,
+      });
+      setReport((prev: any) => (prev ? { ...prev, client_acknowledged_at: now } : prev));
+
+      // Audit trail for acknowledgment
+      supabase.rpc("audit_data_modification", {
+        target_type: "service_report",
+        target_id: report.id,
+        event_details: { action: "acknowledged" },
+      }).then(({ error }) => {
+        if (error) console.error("audit_data_modification (acknowledge) failed:", error);
+      });
+    } catch (err) {
+      console.error("Error acknowledging report:", err);
     }
   };
 
@@ -417,6 +452,78 @@ export default function AnalysisDetailPage({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Service Report Delivery Panel */}
+          <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
+            <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
+              Service Report Delivery
+            </h3>
+            {report ? (
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                    Delivered By
+                  </h4>
+                  <p className="text-sm font-bold text-slate-800">
+                    {userMap.get(report.delivered_by) ?? report.delivered_by ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                    Delivered At
+                  </h4>
+                  <p className="text-sm font-bold text-slate-800">
+                    {report.delivered_at
+                      ? new Date(report.delivered_at).toLocaleString()
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                    Client Acknowledged
+                  </h4>
+                  <p
+                    className={`text-sm font-bold ${report.client_acknowledged_at ? "text-[#2e7d32]" : "text-slate-500"}`}
+                  >
+                    {report.client_acknowledged_at
+                      ? new Date(report.client_acknowledged_at).toLocaleString()
+                      : "Pending"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                    Report Link
+                  </h4>
+                  {report.report_link ? (
+                    <a
+                      href={report.report_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted break-all"
+                    >
+                      {report.report_link}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-slate-500">—</p>
+                  )}
+                </div>
+                {!report.client_acknowledged_at && (
+                  <button
+                    type="button"
+                    onClick={handleAcknowledge}
+                    className="w-full mt-2 py-2 bg-[#2a7797] hover:bg-[#1f5c76] text-white text-xs font-bold rounded-lg transition-all shadow-sm"
+                  >
+                    Mark as Acknowledged
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 italic">
+                No report delivered yet. Use the &ldquo;Generate Report&rdquo; button on the services queue
+                once the analysis is marked as completed.
+              </p>
+            )}
           </div>
         </div>
       </div>
