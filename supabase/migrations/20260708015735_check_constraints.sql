@@ -1,0 +1,5 @@
+-- 20260708015735_check_constraints.sql
+-- Production hot-fix applied 2026-07-08 01:57:35 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Added CHECK constraints (e.g. status enums via PG enum + value bounds).

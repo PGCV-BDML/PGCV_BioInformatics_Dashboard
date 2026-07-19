@@ -1,0 +1,6 @@
+-- 20260708024934_protect_user_role_column.sql
+-- Production hot-fix applied 2026-07-08 02:49:34 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Added protect_user_role_column() trigger function on users.role.
+-- Only team_lead may change role; raise exception otherwise.

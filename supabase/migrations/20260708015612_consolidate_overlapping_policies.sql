@@ -1,0 +1,5 @@
+-- 20260708015612_consolidate_overlapping_policies.sql
+-- Production hot-fix applied 2026-07-08 01:56:12 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Merged overlapping RLS policies (multiple FOR ALL → single PERMISSIVE).

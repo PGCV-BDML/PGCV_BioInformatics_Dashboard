@@ -1,0 +1,5 @@
+-- 20260708014250_add_repository_link_columns.sql
+-- Production hot-fix applied 2026-07-08 01:42:50 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Added repository_link column to project and collaboration tables.

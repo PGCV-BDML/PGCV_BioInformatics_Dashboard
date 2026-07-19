@@ -1,0 +1,6 @@
+-- 20260708014455_change_assessment_questions_to_jsonb.sql
+-- Production hot-fix applied 2026-07-08 01:44:55 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Changed assessment.questions from separate mcq/rating columns to a jsonb
+-- questions column to support heterogeneous question types.

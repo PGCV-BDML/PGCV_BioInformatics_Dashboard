@@ -1,0 +1,5 @@
+-- 20260708014133_fix_audit_log_action_enum.sql
+-- Production hot-fix applied 2026-07-08 01:41:33 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Corrected audit_log.action enum values to match spec.

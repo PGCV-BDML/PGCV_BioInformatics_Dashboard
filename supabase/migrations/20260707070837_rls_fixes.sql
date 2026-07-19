@@ -1,0 +1,5 @@
+-- 20260707070837_rls_fixes.sql
+-- Production hot-fix applied 2026-07-07 07:08:37 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Patched RLS policies on collaboration, project, task tables.

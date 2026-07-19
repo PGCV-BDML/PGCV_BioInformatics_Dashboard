@@ -1,0 +1,5 @@
+-- 20260708015339_updated_at_auto_update_trigger.sql
+-- Production hot-fix applied 2026-07-08 01:53:39 by CSTwist
+-- Captured retroactively into local repo on 2026-07-19.
+-- DDL already applied to Supabase; this file is a tracking marker.
+-- Attached BEFORE UPDATE updated_at trigger to tables missing it.
