@@ -45,7 +45,7 @@ export default function TrainingPerformanceTab({
       const userMap = new Map<string, any>();
       for (const u of users as any[]) userMap.set(u.id, u);
       // ponytail: shows only users with responses/certificates for this program
-      // (institution is not in users table — will show null/—)
+      // (institution now comes from users.institution — added 2026-07-21)
       const seen = new Set<string>();
       const rows: Trainee[] = [];
       for (const r of responses as any[]) {
@@ -56,7 +56,7 @@ export default function TrainingPerformanceTab({
             id: u.id,
             name: u.name,
             email: u.email,
-            institution: null as any, // ponytail: institution not in users table
+            institution: u.institution ?? null, // ponytail: institution now comes from users.institution (added 2026-07-21)
             pre_test_score: null,
             post_test_score: r.score,
             has_certificate: false,
@@ -71,7 +71,7 @@ export default function TrainingPerformanceTab({
           if (u) {
             rows.push({
               id: u.id, name: u.name, email: u.email,
-              institution: null as any,
+              institution: u.institution ?? null,
               pre_test_score: null, post_test_score: null,
               has_certificate: true,
             });

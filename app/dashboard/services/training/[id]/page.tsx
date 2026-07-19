@@ -20,7 +20,28 @@ export default function TrainingModulesPage({
 
   // Manage module read state locally matching the portfolio pipeline layout rules
   // ponytail: module_progress table not in schema — local state only, resets on navigation
+  // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`training-modules-read-${resolvedParams.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+      }
+    } catch {
+      // ignore corrupted localStorage; fall back to empty state
+    }
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`training-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
+    } catch {
+      // localStorage may be full or disabled; ignore
+    }
+  }, [readModuleIds, resolvedParams.id]);
   const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
 
   useEffect(() => {

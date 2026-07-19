@@ -129,7 +129,7 @@ export default function CollaborationsPage() {
   useEffect(() => {
     if (availableUsers.length > 0 && !formState.lead_user_id) {
       setFormState(
-        (prev) => ({ ...prev, lead_user_id: availableUsers[0].id }) as any,
+        (prev) => ({ ...prev, lead_user_id: availableUsers[0].id }),
       );
     }
   }, [availableUsers, formState.lead_user_id]);
@@ -193,14 +193,15 @@ export default function CollaborationsPage() {
       notes: formState.notes || null,
       repository_link: formState.repository_link || null,
       created_at: new Date().toISOString(),
-      // ponytail: updated_at is set by the column default on INSERT; the
-      // BEFORE UPDATE trigger handles it on subsequent edits. This local
-      // value is only used to satisfy the CollaborationRow type for the
-      // setCollaborationsList() call below.
+      // ponytail: updated_at is set by the column default on INSERT and by the
+      // BEFORE-UPDATE trigger on subsequent edits — do not send from the client.
+      // This local value is only used to satisfy the CollaborationRow type for
+      // the setCollaborationsList() call below; it is stripped before sending to saveDataToDB.
       updated_at: new Date().toISOString(),
     };
     try {
-      await saveDataToDB("collaboration", id, newRecord);
+      const { updated_at: _updatedAt, ...dbPayload } = newRecord;
+      await saveDataToDB("collaboration", id, dbPayload);
       setCollaborationsList((prev) => [newRecord, ...prev]);
     } catch (error) {
       console.error("Error saving collaboration:", error);
@@ -439,11 +440,11 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "repository_link" as any,
+      key: "repository_link",
       label: "Repository Link",
       width: "14%",
       render: (c) => {
-        const repoUrl = (c as any).repository_link || "";
+        const repoUrl = c.repository_link || "";
         return repoUrl ? (
           <a
             href={repoUrl}
@@ -477,7 +478,7 @@ export default function CollaborationsPage() {
                 notes: c.notes || "",
                 start_date: c.start_date || "",
                 status: c.status || "ongoing",
-                repository_link: (c as any).repository_link || "",
+                repository_link: c.repository_link || "",
               });
               setIsEditing(true);
             }}

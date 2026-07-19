@@ -13,7 +13,28 @@ interface ModuleItem {
 export default function InternshipModulesPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   // Started with an empty array so no modules are pre-completed
+  // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`internship-modules-read-${resolvedParams.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+      }
+    } catch {
+      // ignore corrupted localStorage; fall back to empty state
+    }
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`internship-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
+    } catch {
+      // localStorage may be full or disabled; ignore
+    }
+  }, [readModuleIds, resolvedParams.id]);
   const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
 
   useEffect(() => {

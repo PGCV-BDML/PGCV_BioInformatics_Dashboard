@@ -9,9 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export function getCurrentUser() {
-  // supabase.auth.getUser() is async, but getSession() is synchronous from cache
-  return supabase.auth.getSession().then(({ data }) => data.session?.user ?? null);
+export async function getCurrentUser() {
+  // supabase.auth.getUser() is async; getSession() reads the local cache synchronously
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user ?? null;
 }
 
 //Get all user rows from database
@@ -96,6 +97,14 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
   if (fetchError) {
     console.error("Error retrieving data:", fetchError);
     throw fetchError;
+  }
+
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    const err = new Error(
+      `saveDataToDB: payload for table "${table}" must be a plain object, got ${Array.isArray(data) ? "array" : typeof data}`,
+    );
+    console.error(err.message);
+    throw err;
   }
 
   if (existing) {

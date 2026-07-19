@@ -1,3 +1,9 @@
+-- NOTE: This file was applied manually via the Supabase SQL editor on
+-- 2026-07-17 and is NOT tracked in `supabase_migrations` (`list_migrations`).
+-- It is idempotent (every INSERT uses `WHERE NOT EXISTS` guards) and can be
+-- re-applied safely if a fresh database is being rebuilt. After running the
+-- upstream migrations 1-15, run this file as a one-shot seed step.
+
 -- ============================================================
 -- 20260717000000_seed_biology_assessments.sql
 -- Seed biology activity sheet content: programs + assessments

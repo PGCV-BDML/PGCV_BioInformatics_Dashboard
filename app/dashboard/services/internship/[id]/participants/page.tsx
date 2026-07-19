@@ -46,7 +46,7 @@ export default function InternshipPerformanceTab({
         const userMap = new Map<string, any>();
         for (const u of users as any[]) userMap.set(u.id, u);
         // ponytail: shows only users with responses/certificates for this program
-        // (institution is not in users table — will show null/—)
+        // (institution now comes from users.institution — added 2026-07-21)
         const seen = new Set<string>();
         const rows: Intern[] = [];
         for (const r of responses as any[]) {
@@ -57,7 +57,7 @@ export default function InternshipPerformanceTab({
               id: u.id,
               name: u.name,
               email: u.email,
-              institution: null as any,
+              institution: u.institution ?? null,
               pre_test_score: null,
               post_test_score: r.score,
               has_certificate: false,
@@ -72,7 +72,7 @@ export default function InternshipPerformanceTab({
             if (u) {
               rows.push({
                 id: u.id, name: u.name, email: u.email,
-                institution: null as any,
+                institution: u.institution ?? null,
                 pre_test_score: null, post_test_score: null,
                 has_certificate: true,
               });
@@ -153,6 +153,10 @@ export default function InternshipPerformanceTab({
         </div>
       ),
     },
+    // ponytail: assessment_response.score is a single smallint shared across
+    // pre-test, post-test, midterm, and final stages. Cannot disambiguate
+    // without a schema change. Next cohort: add pre_test_score / midterm_score /
+    // final_score columns or a score_meta jsonb.
     {
       key: "pre_test_score",
       label: "Pre-Test Score",
