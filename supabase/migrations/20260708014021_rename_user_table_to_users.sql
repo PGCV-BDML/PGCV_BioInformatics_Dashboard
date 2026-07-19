@@ -1,6 +1,0 @@
--- 20260708014021_rename_user_table_to_users.sql
--- Production hot-fix applied 2026-07-08 01:40:21 by CSTwist
--- Captured retroactively into local repo on 2026-07-19.
--- DDL already applied to Supabase; this file is a tracking marker.
--- Renamed `user` table to `users` for Supabase Auth compatibility.
--- (Supabase reserves the `user` schema-qualified name internally.)

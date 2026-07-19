@@ -1,5 +1,0 @@
--- 20260708022008_add_is_active_to_users.sql
--- Production hot-fix applied 2026-07-08 02:20:08 by CSTwist
--- Captured retroactively into local repo on 2026-07-19.
--- DDL already applied to Supabase; this file is a tracking marker.
--- Added is_active boolean column to users (later dropped — see next migration).

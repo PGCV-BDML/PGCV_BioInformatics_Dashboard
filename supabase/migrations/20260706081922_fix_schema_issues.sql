@@ -1,5 +1,0 @@
--- 20260706081922_fix_schema_issues.sql
--- Production hot-fix applied 2026-07-06 08:19:22 by CSTwist
--- Captured retroactively into local repo on 2026-07-19.
--- DDL already applied to Supabase; this file is a tracking marker.
--- Earliest applied migration; pre-dates the local 19_initial_schema.sql.
