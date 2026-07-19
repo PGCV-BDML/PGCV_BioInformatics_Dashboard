@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Security & Privacy
 
-> **Applies to:** commit `a5a0d68` (PR #22, `origin/main` as of 2026-07-17)
+> **Applies to:** `origin/main` as of 2026-07-19. Refreshed alongside `README.md` and `ARCHITECTURE.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
 > **Reference:** Philippine Data Privacy Act of 2012 (RA 10173)
 
 ---
@@ -35,7 +35,7 @@ The dashboard is **not** designed to handle sensitive personal information beyon
 - On mount, `app/dashboard/layout.tsx:16-40` calls `supabase.auth.getSession()`. If no session exists, `router.push("/login")`.
 - `app/dashboard/layout.tsx:29-35` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid, the listener redirects to `/login`.
 
-**Known gap:** OAuth success and sign-out do **not** write `user_login` / `user_logout` entries to `audit_log`. See §5.
+**Audit on auth events:** OAuth success and sign-out **do** write `user_login` / `user_logout` entries to `audit_log` via the `audit_session_event` RPC, called from `app/components/sessionauditor.tsx` (mounted by `app/dashboard/layout.tsx`). The RPC is `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. See §5.
 
 ---
 
@@ -139,17 +139,18 @@ The `audit_log` table records modifications to database records for accountabili
 
 ### Currently Implemented
 
-- **PostgreSQL trigger on `users` table only** — The file [`supabase/migrations/23_audit_triggers.sql`](./supabase/migrations/23_audit_triggers.sql) defines the `on_user_change_audit` trigger and notes in its own comment: *"currently the only attached one in the live DB; other tables can be added later."* Only changes to `public.users` produce audit log entries today.
-- **`role_change` is covered** — the `protect_user_role` trigger fires on `users.role` changes.
+- **`user_login` / `user_logout` from the frontend** — `app/components/sessionauditor.tsx` subscribes to `supabase.auth.onAuthStateChange` and calls the `audit_session_event` RPC (`supabase/migrations/20260718000000_audit_session_rpc.sql`) on `SIGNED_IN` and `SIGNED_OUT`. Filters out `INITIAL_SESSION`, `TOKEN_REFRESHED`, `USER_UPDATED`.
+- **`data_modification` from app write paths** — `app/dashboard/services/page.tsx` calls the `audit_data_modification` RPC (`supabase/migrations/20260720000000_audit_data_modification_rpc.sql`) on report delivery. Both RPCs are `REVOKE … FROM PUBLIC; GRANT … TO authenticated`.
+- **PostgreSQL triggers on tracked tables** — [`supabase/migrations/23_audit_triggers.sql`](./supabase/migrations/23_audit_triggers.sql) attaches `audit_table_change` triggers to `projects`, `analyses`, `service_reports`, `users`, `collaborations`, and `training_programs`. Changes to those tables produce audit-log entries.
+- **`role_change` is covered** — the `protect_user_role` trigger (migration 20) fires on `users.role` changes.
 - **Sensitive fields excluded** — `email`, `contact_info` are explicitly excluded from the `details` JSON to prevent PII leakage.
 
-### NOT Yet Implemented (honest gaps)
+### Still Open (honest gaps)
 
 | Gap | Detail | Tracking |
 |-----|--------|----------|
-| ❌ `user_login` / `user_logout` writes from frontend | `app/login/page.tsx` calls `signInWithOAuth` but does not write a `user_login` row. `app/components/sidebar.tsx:handleSignOut` calls `signOut()` but does not write `user_logout`. The enum values were added in migration `20260708014133` specifically for this purpose but are currently unused. | Task 3.3, Sprint 1 |
-| ❌ Audit triggers on other tables | The existing `23_audit_triggers.sql` comment says only `users` is attached. Tables like `analysis`, `project`, `collaboration`, `service_report`, and `training_program` do **not** have audit triggers. The old SECURITY.md incorrectly claimed these were recorded. | Sprint 1–2 |
-| ❌ `data_export` event logging | No code anywhere in the repo writes `data_export` entries. | Sprint 1 (Task 3.3) |
+| ❌ `data_export` event logging | No code anywhere in the repo writes `data_export` entries. | Sprint 1 follow-up (Task 3.3) |
+| ⚠️ Audit-trigger coverage on the remaining tables | Triggers attach to the 6 spec'd tables (projects, analyses, service_reports, users, collaborations, training_programs). Other tracked tables (e.g., `client`, `sample`, `assessment_response`) do not yet emit audit rows. | Sprint 1–2 |
 
 ### Access Controls
 
@@ -178,13 +179,13 @@ The dashboard is designed with the **Philippine Data Privacy Act of 2012 (RA 101
 | **Data minimization** | Only fields needed for lab operations and training administration are collected. The data model (defined in `19_initial_schema.sql`) was reviewed by the Biology track during Sprint 1 per `implementation_plan.md` Task 2. |
 | **Purpose limitation** | Data is used exclusively for internal lab operations: tracking projects, collaborations, service reports, training, and internships. No data is shared with third parties. |
 | **Access control** | RLS-based (see §4). `team_lead` and `team_member` have full operational access. `trainee`/`intern` have participant-scoped read access only. |
-| **Audit trail** | PostgreSQL trigger for `users` table changes. Full audit coverage (login/logout, all table changes) is pending (see §5). |
+| **Audit trail** | `audit_session_event` RPC for `user_login` / `user_logout`; `audit_data_modification` RPC for app-level write paths; PostgreSQL triggers on 6 spec'd tables; `protect_user_role` trigger for role changes. Remaining gaps (`data_export`, additional-table coverage) are tracked in §5. |
 | **Data subject rights** | Deletion requests are handled by `team_lead` via Supabase SQL Editor. No admin UI exists for self-service deletion (P4 item). The Hard Delete Procedure (§9) documents the manual process. |
 | **Transparency** | A data privacy notice is displayed on the login screen footer (`app/login/page.tsx:185-198`): *"This dashboard stores internal operations records and limited participant data needed for training and internship administration. Access is restricted by role and activity may be logged for accountability."* The notice has not been formally reviewed by the supervisor (Task 10.4, Sprint 4). |
 
 **Open items:**
 - Formal supervisor review of privacy notice text — Task 10.4, Sprint 4.
-- Full audit coverage for login/logout and all table changes — Sprint 1–2.
+- Full audit coverage: `data_export` action + triggers on the remaining tables — Sprint 1 follow-up (Task 3.3).
 - Security checklist walkthrough with screenshots — Task 9.2, Sprint 3.
 
 ---
@@ -241,21 +242,15 @@ Migration `24_updated_at_triggers.sql` is in the repo but **NOT applied to the l
 
 - **Tracking:** Apply migration 24 to live Supabase, then remove client-side `updated_at` from all components.
 
-### 🟡 Audit log gap for login/logout
+### 🟡 Audit log `data_export` gap
 
-See §5. The `user_login` and `user_logout` enum values exist in the database (added in migration `20260708014133`) but no frontend code writes them. The privacy checklist item "Sensitive actions write to the AuditLog collection: login" is currently unchecked.
+The `data_export` enum value exists but no code anywhere in the repo writes it. No code in the MVP currently performs a bulk data export; this row is reserved for a future export feature. See §5.
 
-- **Tracking:** Task 3.3, Sprint 1.
+- **Tracking:** Sprint 1 follow-up (Task 3.3).
 
-### 🟡 Stale `scripts/` folder
+### 🟠 RLS untested through the app with all four roles
 
-The `scripts/` directory contains 18 SQL files (`00_master_script.sql` through `18_training_session.sql`) that reflect the **pre-migration schema**. They use the old `public.user` table name (pre-rename), trailing-space enum values (pre-fix), `questions text[]` instead of `jsonb`, and have no RLS policies, no `protect_user_role` trigger, no `repository_link` columns, and no CHECK constraints.
-
-**Do NOT run `scripts/00_master_script.sql` on a fresh Supabase project.** Use `supabase/migrations/` (files 19–24) as the source of truth.
-
-### 🟠 RLS untested through the app
-
-The RLS policies defined in `22_rls_policies.sql` are correct on paper but **no `supabase.from()` call has exercised them end-to-end** with test accounts. The local checkout (commit `fa09083`) has zero `supabase.from()` calls — the post-merge integration (PR #22, commit `a5a0d68`) is the first code to hit Supabase from the frontend.
+The RLS policies defined in `22_rls_policies.sql` are correct on paper, and several real flows (Projects/Collaborations CRUD, Services filtering, landing analytics) are confirmed to work as a logged-in user. **No end-to-end test with test accounts for all four roles** (`team_lead`, `team_member`, `trainee`, `intern`) has been performed.
 
 - **Tracking:** Task 9.2, Sprint 3 — create test accounts for all 4 roles, verify policies, document results.
 
@@ -278,10 +273,22 @@ Source: [`06_privacy_security_checklist.md`](https://github.com/PGCV-BDML/PGCV_B
 | 5 | ✅ Role-based access | **Done** | Policies in `22_rls_policies.sql`; `protect_user_role` trigger for escalation prevention |
 | 6 | ❓ Encryption at rest | **Requires confirmation** | Supabase managed PostgreSQL should provide this by default. **Check in Supabase Dashboard → Database → Encryption settings during Sprint 1.** |
 | 7 | ✅ No secrets in repo | **Done** | All secrets in env vars; `.env*` in `.gitignore` |
-| 8 | ❌ Audit log | **Partial** | Trigger design done for `users` table. `role_change` covered. **Gaps:** `user_login`/`user_logout` frontend writes (Task 3.3); triggers on other tables; `data_export` logging. See §5. |
-| 9 | ❌ Privacy notice | **Partial** | Short notice on login screen footer (`app/login/page.tsx:185-198`). **Pending:** Supervisor review and formal sign-off (Task 10.4, Sprint 4). |
+| 8 | ✅ Audit log | **Done (with two known gaps)** | `audit_session_event` RPC + `audit_data_modification` RPC; PostgreSQL triggers on 6 spec'd tables; `role_change` covered. **Gaps:** `data_export` not yet written (no bulk-export feature); trigger coverage on the remaining tables. See §5. |
+| 9 | ⚠️ Privacy notice | **Partial** | Full Data Privacy Notice footer on `app/login/page.tsx` (data collected, purpose, retention, access, deletion contact `bdml@pgcvisayas.upv.edu.ph`). **Pending:** Supervisor formal sign-off (Task 10.4, Sprint 4). |
 | 10 | ✅ RA 10173 considered | **Done** | This document addresses data minimization, purpose limitation, access control, audit trail, and data subject rights. See §7. |
 | 11 | ❌ Test walkthroughs | **Pending** | Documented test accounts and role-based access verification — Task 9.2, Sprint 3. |
+
+---
+
+---
+
+## 12. Cross-references
+
+| Topic | Doc |
+|---|---|
+| Team contacts, data model, sprint plan, training/internship content, gap tracker | [`WORKBOOK.md`](./WORKBOOK.md) |
+| System diagram, auth flow, repo layout, deployment | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
+| Onboarding, local setup, deployment, known limitations | [`README.md`](./README.md) |
 
 ---
 

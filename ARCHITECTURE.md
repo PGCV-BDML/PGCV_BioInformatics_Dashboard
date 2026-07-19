@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Architecture
 
-> **Applies to:** commit `a5a0d68` (PR #22, `origin/main` as of 2026-07-17)
+> **Applies to:** `origin/main` as of 2026-07-19. Refreshed alongside `README.md` and `SECURITY.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
 
 ---
 
@@ -50,38 +50,53 @@ PGCV_BioInformatics_Dashboard/
 │   ├── layout.tsx                # Root layout; redirects / → /dashboard
 │   ├── globals.css               # Tailwind v4 @theme tokens, font-face declarations
 │   ├── page.tsx                  # Redirects to /dashboard
-│   ├── components/               # Shared client components (modals, sidebar, table, pagination)
-│   │   ├── collaborationmodal.tsx   # Add/edit collaboration form modal
-│   │   ├── datatable.tsx            # Reusable sortable/filterable table
-│   │   ├── deletemodal.tsx          # Confirmation dialog for deletions
-│   │   ├── pagination.tsx           # Page-number paginator
-│   │   ├── projectmodal.tsx         # Add/edit project form modal
-│   │   ├── sidebar.tsx              # Nav links, user profile dropdown, sign-out button
-│   │   └── taskmodal.tsx            # Add/edit task form modal
+│   ├── components/               # Shared client components (modals, sidebar, table, pagination, session auditor)
+│   │   ├── analysismodal.tsx         # New/edit sequence analysis form
+│   │   ├── collaborationmodal.tsx    # Add/edit collaboration form modal
+│   │   ├── dashboardbreadcrumbs.tsx  # Breadcrumb nav for nested routes
+│   │   ├── datatable.tsx             # Reusable sortable/filterable table
+│   │   ├── deletemodal.tsx           # Confirmation dialog for deletions
+│   │   ├── pagination.tsx            # Page-number paginator
+│   │   ├── projectmodal.tsx          # Add/edit project form modal
+│   │   ├── samplemodal.tsx           # Sample sub-view (Task 6.5)
+│   │   ├── sessionauditor.tsx        # Mounts onAuthStateChange; calls audit_session_event RPC
+│   │   ├── sidebar.tsx               # Nav links, user profile dropdown, sign-out button
+│   │   └── taskmodal.tsx             # Add/edit task form modal
 │   ├── dashboard/                # All protected routes (auth-guarded by layout.tsx)
 │   │   ├── layout.tsx            # Auth guard — calls supabase.auth.getSession(); redirects to /login if absent
 │   │   ├── page.tsx              # Landing page: analytics cards, weekly tasks, upcoming events, Recharts charts
 │   │   ├── accomplishments/page.tsx  # Stub — "Coming Soon"
 │   │   ├── calendar/page.tsx         # Stub — "Coming Soon"
-│   │   ├── collaborations/page.tsx   # DB-integrated collab tracker (origin/main)
-│   │   ├── projects/page.tsx         # DB-integrated project tracker (origin/main)
+│   │   ├── collaborations/page.tsx   # DB-integrated collab tracker
+│   │   ├── projects/page.tsx         # DB-integrated project tracker
 │   │   ├── repositories/page.tsx     # Stub — "Coming Soon"
-│   │   ├── services/page.tsx         # Stub — "Coming Soon" (full impl on origin/service_report)
-│   │   ├── services-list/page.tsx    # Stub — service catalog reference
-│   │   └── tasks/page.tsx            # Mock-data task list (not yet DB-integrated)
+│   │   ├── services/
+│   │   │   ├── page.tsx              # 3.3.1 Sequence Analysis tracker (tabbed; 3.3.2/3.3.3 link out)
+│   │   │   ├── services-list/page.tsx# Hardcoded service catalog
+│   │   │   ├── training/
+│   │   │   │   ├── page.tsx          # Training program list (DB-driven)
+│   │   │   │   └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
+│   │   │   └── internship/
+│   │   │       ├── page.tsx          # Internship program list (DB-driven)
+│   │   │       └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
+│   │   └── tasks/page.tsx            # DB-integrated task CRUD
 │   ├── fonts/                    # Aileron, Optima, Quicksand typefaces (OTF/TTF)
 │   └── login/page.tsx            # Google OAuth sign-in page with DNA helix hero graphic
 ├── lib/
-│   └── supabase.ts               # Supabase client init + 6 data-access helpers (128 lines on origin/main)
-├── scripts/                      # ⚠️ STALE — 18 pre-migration SQL files; do not run
+│   └── supabase.ts               # Supabase client init + 6 data-access helpers
 ├── supabase/
-│   └── migrations/               # Consolidated reproduction migrations (files 19–24)
-│       ├── 19_initial_schema.sql     # 9 enums + 18 tables + indexes
-│       ├── 20_security_functions.sql # get_user_role(), audit_table_change(), protect_user_role()
-│       ├── 21_enable_rls.sql         # RLS enabled on all 18 tables
-│       ├── 22_rls_policies.sql       # All per-table RLS policies (274 lines)
-│       ├── 23_audit_triggers.sql     # on_user_change_audit + protect_user_role triggers
-│       └── 24_updated_at_triggers.sql# Auto-updated_at on UPDATE (NOT applied to live DB)
+│   └── migrations/               # 11 SQL files (base 19–24 + 5 timestamped add-ons)
+│       ├── 19_initial_schema.sql             # 9 enums + 18 tables + indexes
+│       ├── 20_security_functions.sql         # get_user_role(), protect_user_role_column()
+│       ├── 21_enable_rls.sql                 # RLS enabled on all 18 tables
+│       ├── 22_rls_policies.sql               # Per-table policies (30+)
+│       ├── 23_audit_triggers.sql             # Audit + protect_user_role triggers
+│       ├── 24_updated_at_triggers.sql        # Auto-updated_at on UPDATE
+│       ├── 20260717000000_seed_biology_assessments.sql
+│       ├── 20260718000000_audit_session_rpc.sql
+│       ├── 20260720000000_audit_data_modification_rpc.sql
+│       ├── 20260720000000_seed_demo_data.sql
+│       └── 20260721000000_add_institution_to_users.sql
 ├── types/
 │   └── database.ts               # TypeScript interfaces: UserOption, CollaborationRow,
 │                                  #   Project, ProjectStatus, STATUS_OPTIONS, ProjectFormData
@@ -118,7 +133,7 @@ The authentication flow is implemented across three files:
 
 9. **Sign-out** — `app/components/sidebar.tsx:149-152` calls `supabase.auth.signOut()`, which clears the HTTP-only cookie. The user is then redirected to `/login` via `router.push("/login")`.
 
-> **Note:** The OAuth success and sign-out handlers do **not** write `user_login` / `user_logout` rows to `audit_log`. This is a known gap (Task 3.3, Sprint 1). See [`SECURITY.md`](./SECURITY.md) §5.
+> **Note:** OAuth success and sign-out **do** write `user_login` / `user_logout` rows to `audit_log` via the `audit_session_event` RPC, called from `app/components/sessionauditor.tsx` (mounted by `app/dashboard/layout.tsx`). The RPC is `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. See [`SECURITY.md`](./SECURITY.md) §5.
 
 ---
 
@@ -138,8 +153,8 @@ PostgreSQL (18 tables)
 
 - **No REST API layer** — Next.js does not expose custom `/api/` routes for CRUD. The Supabase client talks directly to the database.
 - **RLS is the sole authorization layer** — there is no middleware-level access check beyond the initial session check in `app/dashboard/layout.tsx`.
-- **Client-side `updated_at` workaround** — Migration 24's auto-`updated_at` trigger is not applied to live Supabase. Components send `new Date().toISOString()` in their payloads (e.g., `app/dashboard/collaborations/page.tsx`). This is a fragile workaround — see Known Limitations.
-- **Hardcoded mock-data fallback** — Some pages (Tasks, Services) still use in-memory mock arrays instead of DB queries. The DB integration code on `origin/main` (commit `a5a0d68`) demonstrates the correct pattern for Projects and Collaborations.
+- **Client-side `updated_at` workaround** — Migration 24's auto-`updated_at` trigger may not be applied to live Supabase. Components send `new Date().toISOString()` in their payloads (e.g., `app/dashboard/collaborations/page.tsx`). This is a fragile workaround — verify migration 24 is applied to the live DB, then drop the client-side `updated_at` writes.
+- **Landing KPI tiles use a hardcoded `yearlyMockDB`** — headline counts (Active Projects, Pending Tasks, Total Services) are demo values. Charts use real Supabase queries. Real counts will replace the mock when the bio track confirms the exact metric definitions.
 
 ---
 
@@ -159,7 +174,7 @@ The file `lib/supabase.ts` (128 lines on `origin/main`) exports the Supabase cli
 
 **Caveats:**
 
-- `TableNames` is `"collaboration" | "project" | "client" | "service"` — **`task`, `users`, `analysis`, and `service_report` are not included**. Those tables cannot use the generic helpers and must write custom query code.
+- `TableNames` covers 14 of the 18 tables: `collaboration, project, client, service, analysis, sample, service_report, training_program, training_session, module, onboarding_document, assessment, assessment_response, certificate, task`. **`users`, `document_template`, and `audit_log` are not included** — `getUsersFromDB` uses `supabase.from("users")` directly; the other two are server-triggered.
 - `saveDataToDB` accepts `data: any` — no payload shape validation. A typo in the column name silently inserts garbage.
 - The upsert path does not enforce that `id` is included in the payload; if the client omits it, `upsert()` creates a new row with a new UUID rather than using the intended `uid`.
 
@@ -246,7 +261,7 @@ The role hierarchy is: `team_lead` ⊃ `team_member` ⊃ `trainee | intern`. "St
 - **`protect_user_role` trigger** (migration 20, referenced as "Migration 12" in live) prevents non-`team_lead` users from changing the `role` column on `users`. This is defense-in-depth — even if a policy were misconfigured, a `team_member` cannot promote themselves to `team_lead`.
 - **No DELETE policy on `users`** — API-level deletion is blocked by RLS. Hard deletes require direct database superuser access (Supabase SQL Editor as `postgres`). See [`SECURITY.md`](./SECURITY.md) §9 for the procedure.
 
-> **⚠️ Caveat:** RLS policies are correct on paper but have not been exercised end-to-end through the app. The `implementation_plan.md:261` TODO notes that the frontend has zero `supabase.from()` calls on the local checkout — the post-merge integration (PR #22) is the first code to hit Supabase from the frontend. RLS testing with all four roles is pending as Task 9.2.
+> **Caveat:** RLS policies are correct on paper but have not been exercised end-to-end with test accounts for all four roles (`team_lead`, `team_member`, `trainee`, `intern`). Some flows (Project/Collab CRUD, Services page filtering, landing analytics) are confirmed to work as a logged-in user; role-by-role verification is pending as Task 9.2 — see `SECURITY.md` §10.
 
 ---
 
@@ -281,5 +296,16 @@ Items explicitly descoped to **P4 (Won't)** in the MoSCoW prioritization (`proje
 - **Two-way Calendar** — The Calendar stub at `/dashboard/calendar` renders "Coming Soon." Full bi-directional calendar sync (Google Calendar or similar) is P4.
 - **Full Accomplishments module** — The Accomplishments stub tracks publications, engagements, and extension works at a surface level only.
 - **Services List as a live catalog** — The Services List stub currently renders a read-only page. Full CRUD for service categories is P4.
-- **Repositories module** — Replaced by `repository_link` text fields on `project` and `collaboration` (the kickoff package's `01_project_brief.md:149-153` called for branded redirect links; the field-level workaround is documented in `compsci_activity_sheet.md:46, 58`).
+- **Repositories module** — Replaced by `repository_link` text fields on `project` and `collaboration` (the kickoff package's `01_project_brief.md:149-153` called for branded redirect links; the field-level workaround is documented in `compsci_activity_sheet.md:46, 58` and `WORKBOOK.md` §3).
+- **Test walkthroughs** — No documented role-based-access test scripts exist yet. Task 9.2 (Sprint 3) is to create test accounts for all four roles, exercise the RLS policies, and capture the results.
+
+---
+
+## 11. Cross-references
+
+| Topic | Doc |
+|---|---|
+| Team contacts, data model, sprint plan, training/internship content, gap tracker | [`WORKBOOK.md`](./WORKBOOK.md) |
+| RLS policies, audit-logging, RA 10173 compliance, encryption-at-rest status | [`SECURITY.md`](./SECURITY.md) |
+| Onboarding, local setup, deployment, known limitations | [`README.md`](./README.md) |
 
