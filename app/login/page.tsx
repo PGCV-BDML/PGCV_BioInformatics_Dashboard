@@ -27,7 +27,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#fffdf8]">
+    <div className="min-h-screen w-full flex bg-surface">
       {/* ── Left hero panel ───────────────────────────────────────────── */}
       <div className="hidden md:flex flex-1 bg-[#2a7797] relative overflow-hidden flex-col justify-between p-12">
         {/* ── Engineered DNA Double Helix Strands Field (Static Blueprint Design) ── */}
@@ -105,6 +105,7 @@ export default function SignInPage() {
         {/* Content Layer */}
         <div className="relative z-10 w-full flex flex-col items-start pt-2">
           <div className="flex items-center gap-4 max-w-[560px] mb-6">
+            {/* ponytail: UP logo asset not available — needs official file from PGC External Drive. Brand guide requires UP branch logo alongside PGCV logo. */}
             <img
               src="/assets/PGC-VSF_Logo-W.png"
               alt="Philippine Genome Center Visayas logo"
@@ -132,14 +133,14 @@ export default function SignInPage() {
         </div>
 
         <div className="text-[rgba(255,255,255,0.4)] text-[12px] font-quicksand relative z-10">
-          © {currentYear} Philippine Genome Center Visayas. All rights reserved.
+          © {currentYear} University of the Philippines - Philippine Genome Center Visayas. All rights reserved.
         </div>
       </div>
 
       {/* ── Right sign-in panel ───────────────────────────────────────── */}
       <div className="w-full md:w-[480px] flex-shrink-0 flex items-center justify-center p-6 md:p-8">
         <div
-          className="bg-[#fffdf8] rounded-[28px] w-full max-w-[416px] p-6 sm:p-[32px] relative"
+          className="bg-surface rounded-[28px] w-full max-w-[416px] p-6 sm:p-[32px] relative"
           style={{
             boxShadow:
               "0px 40px 64px -12px rgba(40, 37, 96, 0.16), 0px 16px 32px -8px rgba(40, 37, 96, 0.10), 0px 4px 16px rgba(40, 37, 96, 0.04)",
@@ -223,7 +224,7 @@ export default function SignInPage() {
             {isLoading ? "Signing in..." : "Sign in with Google"}
           </button>
 
-          <div className="mt-5 bg-[#e6f5ff] rounded-2xl p-4">
+          <div className="mt-5 bg-brand-tint rounded-2xl p-4">
             <p className="text-[#172126] text-[14px] leading-6 font-quicksand">
               For authorized PGCV-BDML users only. Contact your supervisor if
               you need access.

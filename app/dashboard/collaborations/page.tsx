@@ -7,6 +7,7 @@ import DeleteModal from "../../components/deletemodal";
 import CollaborationSidebar from "../../components/collaborationmodal";
 import { CollaborationRow, UserOption } from "../../../types/database";
 import { PageHeader } from "../../components/pageheader";
+import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import {
   Search,
   Users2,
@@ -17,7 +18,6 @@ import {
   Inbox,
   GitBranch,
   ChevronDown,
-  AlertCircle,
 } from "lucide-react";
 
 //Database imports
@@ -518,9 +518,10 @@ export default function CollaborationsPage() {
               <input
                 type="text"
                 placeholder="Search collaborations..."
+                aria-label="Search collaborations"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
             <button
@@ -540,7 +541,7 @@ export default function CollaborationsPage() {
         }
       />
 
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Users2 className="w-5 h-5 text-[#333333]" />
@@ -575,23 +576,21 @@ export default function CollaborationsPage() {
         </div>
 
         {loadError ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6">
-            <AlertCircle className="w-10 h-10 text-red-600 mb-2" />
-            <span className="text-sm font-medium text-red-600">{loadError}</span>
-          </div>
+          <ErrorState message={loadError} />
         ) : isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-sm font-medium text-slate-400 animate-pulse">
-              Loading database records...
-            </span>
-          </div>
+          <LoadingState variant="skeleton" message="Loading collaborations…" />
         ) : collaborationsList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
-            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
-            <span className="text-sm font-medium text-slate-500">
-              No collaborations discovered
-            </span>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No collaborations yet"
+            description="Create your first collaboration to get started."
+          />
+        ) : filteredCollaborations.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No matching collaborations"
+            description="Try adjusting your search or filter criteria."
+          />
         ) : (
           <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[920px]">
             <DataTable

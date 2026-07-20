@@ -348,7 +348,7 @@ export default function AnalysisDetailPage({
 
       {/* Grid Content Panels View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
+        <div className="lg:col-span-2 bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
           <div className="flex items-center gap-2 border-b border-slate-200/60 pb-3">
             <Dna className="w-5 h-5 text-[#2a7797]" />
             <h2 className="text-xl font-bold text-[#333333]">
@@ -453,7 +453,7 @@ export default function AnalysisDetailPage({
 
         {/* Deliverables Right Block */}
         <div className="space-y-6">
-          <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
+          <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
             <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
               Client & Lead Ownership
             </h3>
@@ -473,7 +473,7 @@ export default function AnalysisDetailPage({
           </div>
 
           {/* Service Report Delivery Panel */}
-          <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
+          <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
             <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
               Service Report Delivery
             </h3>

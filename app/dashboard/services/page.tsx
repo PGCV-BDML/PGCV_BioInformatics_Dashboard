@@ -11,8 +11,8 @@ import AnalysisSidebar, {
 } from "../../components/analysismodal";
 import ServiceReportModal from "../../components/service-report-modal";
 import { PageHeader } from "../../components/pageheader";
+import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import {
-  AlertCircle,
   Search,
   Dna,
   FileText,
@@ -519,9 +519,10 @@ export default function ServicesPage() {
               <input
                 type="text"
                 placeholder="Search analysis..."
+                aria-label="Search services"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
             <button
@@ -547,7 +548,7 @@ export default function ServicesPage() {
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
                   ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
-                  : "bg-[#fffdf8] text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
+                  : "bg-surface text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -557,7 +558,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Main Table Design Layout */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Dna className="w-5 h-5 text-[#333333]" />
@@ -602,23 +603,21 @@ export default function ServicesPage() {
 
         {/* DataTable Wrapper */}
         {loadError ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6">
-            <AlertCircle className="w-10 h-10 text-red-400 mb-2" />
-            <span className="text-sm font-medium text-red-600">{loadError}</span>
-          </div>
+          <ErrorState message={loadError} />
         ) : isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-sm font-medium text-slate-400 animate-pulse">
-              Loading pipeline matrices...
-            </span>
-          </div>
+          <LoadingState variant="skeleton" message="Loading services…" />
+        ) : servicesList.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No services yet"
+            description="Create your first analysis to get started."
+          />
         ) : filteredServices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
-            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
-            <span className="text-sm font-medium text-slate-500">
-              No service records found tracking this query criteria.
-            </span>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No matching services"
+            description="Try adjusting your search or filter criteria."
+          />
         ) : (
           <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[1100px]">
             <DataTable

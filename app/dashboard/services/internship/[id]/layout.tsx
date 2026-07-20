@@ -163,7 +163,7 @@ export default function InternshipProgramLayout({
         {/* Back to Programs Button - Arrow icon matches text-slate-700 by default and transitions to white on hover */}
         <Link
           href="/dashboard/services/internship"
-          className="group flex items-center gap-2 h-10 px-5 bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-300 hover:border-[#4ec2bb] text-slate-700 hover:text-white text-xs font-extrabold rounded-full transition-all duration-200 self-start md:self-auto shadow-sm hover:shadow-md hover:-translate-y-0.5"
+          className="group flex items-center gap-2 h-10 px-5 bg-surface hover:bg-[#4ec2bb] border border-slate-300 hover:border-[#4ec2bb] text-slate-700 hover:text-white text-xs font-extrabold rounded-full transition-all duration-200 self-start md:self-auto shadow-sm hover:shadow-md hover:-translate-y-0.5"
         >
           <ArrowLeft className="w-4 h-4 text-slate-700 group-hover:text-white transition-colors duration-200" />
           <span>Back to Programs</span>
@@ -181,7 +181,7 @@ export default function InternshipProgramLayout({
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                 isActive
                   ? "bg-[#2a7797] text-white border-[#2a7797] shadow-sm"
-                  : "bg-[#fffdf8] text-slate-600 border-slate-200 hover:bg-gray-50 hover:text-slate-800"
+                  : "bg-surface text-slate-600 border-slate-200 hover:bg-gray-50 hover:text-slate-800"
               }`}
             >
               {service.title}
@@ -191,7 +191,7 @@ export default function InternshipProgramLayout({
       </div>
 
       {/* Cohort Profile Overview */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
         <div className="space-y-1">
           <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
             Philippine Genome Center Visayas - Bioinformatics Internship Program
@@ -235,7 +235,7 @@ export default function InternshipProgramLayout({
       </div>
 
       {/* Workspace Sub-Tabs (Pure CSS Grid Sliding Animation) */}
-      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
+      <div className="bg-surface border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
         {/* Responsive grid mapping matches exactly to our 6 configured tabs */}
         <div className="relative grid grid-cols-6 gap-1 min-w-[760px] md:min-w-full">
           {/* Active Highlight Slider Element (Solid Teal Background) */}

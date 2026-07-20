@@ -164,7 +164,7 @@ export default function InternshipEvaluationPage({
       </div>
 
       {/* Main Workspace Card Area */}
-      <div className="space-y-6 w-full bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+      <div className="space-y-6 w-full bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="border-b border-slate-200/60 pb-4">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-[#2a7797]" />

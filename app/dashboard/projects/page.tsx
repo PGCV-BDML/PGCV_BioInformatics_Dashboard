@@ -7,6 +7,7 @@ import DeleteModal from "../../components/deletemodal";
 import ProjectModal from "../../components/projectmodal";
 import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../../types/database";
 import { PageHeader } from "../../components/pageheader";
+import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import {
   Search,
   Network,
@@ -478,7 +479,7 @@ export default function ProjectsPage() {
         actions={
           <>
             <div className="relative w-full min-[480px]:w-44">
-              <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
+              <div className="relative flex items-center bg-surface rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
                 <select
                   value={itemsPerPage}
@@ -498,9 +499,10 @@ export default function ProjectsPage() {
               <input
                 type="text"
                 placeholder="Search projects..."
+                aria-label="Search projects"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
             <button
@@ -518,7 +520,7 @@ export default function ProjectsPage() {
         }
       />
 
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Network className="w-5 h-5 text-[#333333]" />
@@ -553,20 +555,21 @@ export default function ProjectsPage() {
         </div>
 
         {optionsError ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6">
-            <span className="text-sm font-medium text-red-500">{optionsError}</span>
-          </div>
+          <ErrorState message={optionsError} />
         ) : optionsLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm font-medium text-slate-400">
-            Loading projects…
-          </div>
+          <LoadingState variant="skeleton" message="Loading projects…" />
+        ) : projectsList.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No projects yet"
+            description="Create your first project to get started."
+          />
         ) : filteredProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
-            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
-            <span className="text-sm font-medium text-slate-500">
-              No matching projects discovered
-            </span>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No matching projects"
+            description="Try adjusting your search or filter criteria."
+          />
         ) : (
           <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[960px]">
             <DataTable

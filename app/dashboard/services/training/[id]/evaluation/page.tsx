@@ -152,7 +152,7 @@ export default function EvaluationPage({
       </div>
 
       {/* Main Workspace Card Area */}
-      <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+      <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="space-y-6 max-w-2xl">
           <div className="border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">

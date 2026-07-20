@@ -133,7 +133,7 @@ export default function CertificateRegistryPage({
       </div>
 
       {/* Main Workspace Card Area */}
-      <div className="print:hidden bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+      <div className="print:hidden bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">

@@ -67,7 +67,7 @@ export default function InternshipProgramsPage() {
                 className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
                   isActive
                     ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
-                    : "bg-[#fffdf8] text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
+                    : "bg-surface text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
                 }`}
               >
                 {service.title}
@@ -77,7 +77,7 @@ export default function InternshipProgramsPage() {
         </div>
 
         {/* Primary Card Wrapper containing Header & Cohort Directory details */}
-        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 space-y-6">
+        <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 space-y-6">
           {loadError ? (
             <div className="flex items-center gap-2 p-4">
               <AlertCircle className="h-5 w-5 text-red-600" />

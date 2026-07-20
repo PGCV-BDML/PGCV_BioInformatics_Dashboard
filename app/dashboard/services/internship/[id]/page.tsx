@@ -67,7 +67,7 @@ export default function InternshipModulesPage({ params }: { params: Promise<{ id
   };
 
   return (
-    <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
+    <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
         <div>
           <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">

@@ -8,7 +8,8 @@ import { WeeklyTaskList } from "../components/weekly-task-list";
 import { ServiceReportsChart } from "../components/service-reports-chart";
 import { ProjectDistributionChart } from "../components/project-distribution-chart";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
-import { yearlyMockDB, type DashboardStats } from "@/lib/mock-data";
+import { getDashboardStats, getServiceReportsByYear, type DashboardStats } from "@/lib/dashboard-stats";
+import { ErrorState } from "../components/state-views";
 interface TaskRow {
   id: string;
   title: string | null;
@@ -52,6 +53,8 @@ export default function DashboardLandingPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [serviceReportsData, setServiceReportsData] = useState<{ year: string; Delivered: number }[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [tasksError, setTasksError] = useState<string | null>(null);
 
@@ -92,10 +95,36 @@ export default function DashboardLandingPage() {
   };
 
   useEffect(() => {
-    setIsLoading(true);
+    let cancelled = false;
 
-    setStats(yearlyMockDB[selectedYear] ?? yearlyMockDB["2026"] ?? null);
-    setIsLoading(false);
+    async function loadStats() {
+      setIsLoading(true);
+      setStatsError(null);
+
+      try {
+        const [statsData, reportsData] = await Promise.all([
+          getDashboardStats(selectedYear),
+          getServiceReportsByYear(),
+        ]);
+
+        if (!cancelled) {
+          setStats(statsData);
+          setServiceReportsData(reportsData);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load dashboard stats:", err);
+          setStatsError("Couldn't load dashboard statistics right now.");
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    loadStats();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedYear]);
 
   useEffect(() => {
@@ -170,13 +199,7 @@ export default function DashboardLandingPage() {
     ? stats.activeProjects + stats.completedProjects + stats.backlogProjects + stats.newProjectsThisMonth + stats.ongoingTrainings
     : 0;
 
-  const serviceReportsDeliveredByYear = [
-    { year: "2022", Delivered: 42 },
-    { year: "2023", Delivered: 55 },
-    { year: "2024", Delivered: yearlyMockDB["2024"]?.reportsDelivered ?? 70 },
-    { year: "2025", Delivered: yearlyMockDB["2025"]?.reportsDelivered ?? 64 },
-    { year: "2026", Delivered: yearlyMockDB["2026"]?.reportsDelivered ?? 18 },
-  ];
+  const serviceReportsDeliveredByYear = serviceReportsData;
 
   const projectStatusDistribution = stats
     ? [
@@ -211,7 +234,7 @@ export default function DashboardLandingPage() {
 
         {/* Global Pipeline Year Filter Button Control */}
         <div className="relative self-start sm:self-auto group mb-1">
-          <div className="flex items-center gap-2 bg-[#fffdf8] group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] text-left pointer-events-none">
+          <div className="flex items-center gap-2 bg-surface group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] text-left pointer-events-none">
             <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-quicksand select-none">
               Filtered Year:
@@ -271,11 +294,15 @@ export default function DashboardLandingPage() {
         <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      <DashboardStatsCards
-        stats={stats}
-        isLoading={isLoading}
-        selectedYear={selectedYear}
-      />
+      {statsError ? (
+        <ErrorState message={statsError} />
+      ) : (
+        <DashboardStatsCards
+          stats={stats}
+          isLoading={isLoading}
+          selectedYear={selectedYear}
+        />
+      )}
 
       <WeeklyTaskList
         tasks={tasks}
@@ -292,7 +319,7 @@ export default function DashboardLandingPage() {
         />
 
         {/* Upcoming Events Column */}
-        <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
+        <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
           <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
             <Calendar className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">

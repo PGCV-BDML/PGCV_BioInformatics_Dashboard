@@ -223,7 +223,7 @@ export default function InternshipPerformanceTab({
   ];
 
   return (
-    <div className="font-aileron bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 space-y-6">
+    <div className="font-aileron bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 space-y-6">
       {/* Table Action Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2">
@@ -243,6 +243,7 @@ export default function InternshipPerformanceTab({
           <input
             type="text"
             placeholder="Search interns..."
+            aria-label="Search participants"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-9 pl-9 pr-4 bg-white border border-gray-200 rounded-full text-xs outline-none focus:ring-2 focus:ring-[#2a7797]/30 transition-all shadow-sm"
