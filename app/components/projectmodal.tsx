@@ -83,6 +83,7 @@ export default function ProjectModal({
       onSubmit={handleSubmit}
       submitLabel="Save"
       isSaving={isSaving}
+      submitDisabled={isSaving}
     >
       {/* SECTION 1: core identity */}
       <div className="space-y-2.5">

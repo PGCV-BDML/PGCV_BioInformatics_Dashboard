@@ -54,6 +54,17 @@ export default function EvaluationPage({
         score: null, // ponytail: evaluation is unscored
         submitted_at: new Date().toISOString(),
       });
+      // Create a certificate record for this completed evaluation
+      try {
+        await saveDataToDB("certificate", crypto.randomUUID(), {
+          participant_id: user.id,
+          program_id: resolvedParams.id,
+          issued_at: new Date().toISOString(),
+          pdf_link: null,
+        });
+      } catch (certErr) {
+        console.error("Certificate creation failed (evaluation still saved):", certErr);
+      }
       setIsSubmitted(true);
     } catch (err) {
       console.error("Error submitting evaluation:", err);

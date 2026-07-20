@@ -84,9 +84,9 @@ function DataTableInner<T extends { id: string | number }>({
                   ) : (
                     <span
                       className="block truncate"
-                      title={String(item[col.key as keyof T] || "")}
+                      title={String(item[col.key as keyof T] ?? "")}
                     >
-                      {String(item[col.key as keyof T] || "—")}
+                      {String(item[col.key as keyof T] ?? "—")}
                     </span>
                   )}
                 </td>

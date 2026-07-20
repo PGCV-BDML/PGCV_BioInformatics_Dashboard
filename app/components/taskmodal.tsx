@@ -13,6 +13,7 @@ import {
 interface TaskModalProps {
   isOpen: boolean;
   isAdding: boolean;
+  isSaving?: boolean;
   formState: Omit<Task, "id">;
   availableProjects: { id: string; name: string }[];
   availableUsers: { id: string; name: string }[];
@@ -28,6 +29,7 @@ interface TaskModalProps {
 export default function TaskModal({
   isOpen,
   isAdding,
+  isSaving = false,
   formState,
   availableProjects,
   availableUsers,
@@ -45,6 +47,8 @@ export default function TaskModal({
       subtitle="Fill in the information required by the registry."
       onSubmit={onSubmit}
       submitLabel="Save"
+      isSaving={isSaving}
+      submitDisabled={isSaving}
     >
       {/* Section: Identity */}
       <div className="space-y-2.5">

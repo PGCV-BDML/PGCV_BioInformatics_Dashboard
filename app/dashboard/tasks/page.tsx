@@ -63,6 +63,7 @@ export default function TasksPage() {
   // ponytail: naming inconsistency — consider standardizing to isPanelOpen pattern
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Refs and state for the sliding filter bar mechanism
   const filterContainerRef = useRef<HTMLDivElement>(null);
@@ -141,34 +142,52 @@ export default function TasksPage() {
   }, [activeFilter]);
 
   const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+    const previous = tasksList.find((t) => t.id === taskId)?.status;
+    // Optimistic update — set state before the network round-trip
+    setTasksList((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t,
+      ),
+    );
     try {
       await saveDataToDB("task", taskId, {
         status: newStatus,
         updated_at: new Date().toISOString(),
       });
-      setTasksList((prev) =>
-        prev.map((task) =>
-          task.id === taskId ? { ...task, status: newStatus } : task,
-        ),
-      );
     } catch (error) {
       console.error("Error updating task status:", error);
+      // Rollback on failure
+      setTasksList((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: previous ?? t.status } : t,
+        ),
+      );
+      showToast("Failed to update status. Reverting.", "error");
     }
   };
 
   const updateTaskPriority = async (taskId: string, newPriority: TaskPriority) => {
+    const previous = tasksList.find((t) => t.id === taskId)?.priority;
+    // Optimistic update
+    setTasksList((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, priority: newPriority, updated_at: new Date().toISOString() } : t,
+      ),
+    );
     try {
       await saveDataToDB("task", taskId, {
         priority: newPriority,
         updated_at: new Date().toISOString(),
       });
-      setTasksList((prev) =>
-        prev.map((task) =>
-          task.id === taskId ? { ...task, priority: newPriority } : task,
-        ),
-      );
     } catch (error) {
       console.error("Error updating task priority:", error);
+      // Rollback on failure
+      setTasksList((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, priority: previous ?? t.priority } : t,
+        ),
+      );
+      showToast("Failed to update priority. Reverting.", "error");
     }
   };
 
@@ -205,19 +224,19 @@ export default function TasksPage() {
     customSorters: {
       priority: (a, b) => {
         const priorityWeights: Record<string, number> = {
-          High: 1, Medium: 2, Low: 3,
+          high: 1, medium: 2, low: 3,
         };
         return (priorityWeights[String(a.priority)] || 99) - (priorityWeights[String(b.priority)] || 99);
       },
       status: (a, b) => {
         const statusWeights: Record<string, number> = {
-          Pending: 1, "In-Progress": 2, "On Hold": 3, Completed: 4,
+          pending: 1, in_progress: 2, on_hold: 3, completed: 4,
         };
         return (statusWeights[String(a.status)] || 99) - (statusWeights[String(b.status)] || 99);
       },
       due_date: (a, b) => {
-        const timeA = new Date(String(a.due_date) || 0).getTime();
-        const timeB = new Date(String(b.due_date) || 0).getTime();
+        const timeA = a.due_date ? new Date(a.due_date).getTime() : 0;
+        const timeB = b.due_date ? new Date(b.due_date).getTime() : 0;
         return timeA - timeB;
       },
     },
@@ -233,6 +252,9 @@ export default function TasksPage() {
 
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // prevent double-submit
+    setIsSubmitting(true);
+
     const generatedId = crypto.randomUUID();
     const newTask: Task = { id: generatedId, ...formState };
 
@@ -243,15 +265,19 @@ export default function TasksPage() {
     } catch (error) {
       showToast("Failed to save task. Please try again.", "error");
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     setIsAdding(false);
     setFormState(emptyForm);
-  }, [formState, emptyForm, showToast]);
+  }, [formState, emptyForm, showToast, isSubmitting]);
 
   const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
+    if (isSubmitting) return; // prevent double-submit
+    setIsSubmitting(true);
 
     try {
       await saveDataToDB("task", selectedTask.id, formState);
@@ -264,10 +290,12 @@ export default function TasksPage() {
     } catch (error) {
       showToast("Failed to update task.", "error");
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     setIsEditing(false);
-  }, [formState, selectedTask, showToast]);
+  }, [formState, selectedTask, showToast, isSubmitting]);
   const handleDeleteRecord = useCallback(() => {
     if (!selectedTask) return;
     deleteRecord(selectedTask, () => {
@@ -597,6 +625,7 @@ export default function TasksPage() {
       <TaskModal
         isOpen={isSidebarOpen}
         isAdding={isAdding}
+        isSaving={isSubmitting}
         formState={formState}
         availableProjects={availableProjects}
         availableUsers={availableUsers}

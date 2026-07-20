@@ -4,12 +4,12 @@ import React, { useEffect, use, useState } from "react";
 import { FileText, AlertCircle, Download } from "lucide-react";
 import { getRowsFromDB } from "@/lib/supabase";
 
+// ponytail: matches DB schema exactly; if additional display fields are needed later, extend via `OnboardingDocument & { extra: string }`
 interface OnboardingDocument {
   id: string;
   program_id: string;
-  title: string;
-  file_name: string;
-  file_size: string;
+  title: string | null;
+  link: string | null;
   is_required: boolean;
 }
 
@@ -67,7 +67,7 @@ export default function InternshipOnboardingTab({
               <div className="space-y-1 max-w-[80%]">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold text-slate-800">
-                    {doc.title}
+                    {doc.title ?? "Untitled"}
                   </span>
                   {doc.is_required && (
                     <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-rose-50 border border-rose-100 text-rose-600 text-[9px] font-bold rounded-md">
@@ -76,22 +76,23 @@ export default function InternshipOnboardingTab({
                   )}
                 </div>
                 <p className="text-[11px] font-mono text-slate-400">
-                  {doc.file_name}{" "}
-                  <span className="text-slate-300 font-sans">
-                    ({doc.file_size})
-                  </span>
+                  {doc.title ?? "Unnamed document"}
                 </p>
               </div>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  console.log(`Downloading document: ${doc.title}`);
-                }}
-                className="p-2 text-slate-400 hover:text-white bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-              >
-                <Download className="w-4 h-4" />
-              </a>
+              {doc.link ? (
+                <a
+                  href={doc.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-slate-400 hover:text-white bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              ) : (
+                <span className="p-2 text-slate-300 bg-slate-50 border border-slate-100 rounded-xl shrink-0 cursor-not-allowed" title="No file uploaded">
+                  <Download className="w-4 h-4" />
+                </span>
+              )}
             </div>
           ))}
         </div>

@@ -11,7 +11,12 @@ import {
 } from "lucide-react";
 import DataTable, { Column } from "../../../../../components/datatable";
 import { getRowsFromDB, getUsersFromDB } from "../../../../../../lib/supabase";
-import type { AssessmentResponse, Certificate, User } from "@/types/database";
+import type {
+  Assessment,
+  AssessmentResponse,
+  Certificate,
+  User,
+} from "@/types/database";
 
 interface Trainee {
   id: string;
@@ -38,18 +43,28 @@ export default function TrainingPerformanceTab({
 
   useEffect(() => {
     const load = async () => {
-      const [responses, certificates, users] = await Promise.all([
+      const [assessments, responses, certificates, users] = await Promise.all([
+        getRowsFromDB<Assessment>("assessment"),
         getRowsFromDB<AssessmentResponse>("assessment_response"),
         getRowsFromDB<Certificate>("certificate"),
         getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
       ]);
+      const programAssessmentIds = assessments
+        .filter((a) => a.program_id === resolvedParams.id)
+        .map((a) => a.id);
+      const programResponses = responses.filter((r) =>
+        programAssessmentIds.includes(r.assessment_id),
+      );
+      const programCertificates = certificates.filter(
+        (c) => c.program_id === resolvedParams.id,
+      );
       const userMap = new Map<string, User>();
       for (const u of users) userMap.set(u.id, u);
       // ponytail: shows only users with responses/certificates for this program
       // (institution now comes from users.institution — added 2026-07-21)
       const seen = new Set<string>();
       const rows: Trainee[] = [];
-      for (const r of responses) {
+      for (const r of programResponses) {
         const u = userMap.get(r.participant_id);
         if (u && !seen.has(u.id)) {
           seen.add(u.id);
@@ -64,7 +79,7 @@ export default function TrainingPerformanceTab({
           });
         }
       }
-      for (const c of certificates) {
+      for (const c of programCertificates) {
         const existing = rows.find((r) => r.id === c.participant_id);
         if (existing) existing.has_certificate = true;
         else {
