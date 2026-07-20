@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function SignInPage() {
   const [currentYear, setCurrentYear] = useState<string>("2026");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [privacyOpen, setPrivacyOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear().toString());
@@ -27,7 +29,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-surface">
+    <div className="h-screen overflow-hidden w-full flex bg-surface">
       {/* ── Left hero panel ───────────────────────────────────────────── */}
       <div className="hidden md:flex flex-1 bg-[#2a7797] relative overflow-hidden flex-col justify-between p-12">
         {/* ── Engineered DNA Double Helix Strands Field (Static Blueprint Design) ── */}
@@ -138,7 +140,7 @@ export default function SignInPage() {
       </div>
 
       {/* ── Right sign-in panel ───────────────────────────────────────── */}
-      <div className="w-full md:w-[480px] flex-shrink-0 flex items-center justify-center p-6 md:p-8">
+      <div className="w-full md:w-[480px] flex-shrink-0 h-screen overflow-y-auto flex items-center justify-center p-6 md:p-8">
         <div
           className="bg-surface rounded-[28px] w-full max-w-[416px] p-6 sm:p-[32px] relative"
           style={{
@@ -235,10 +237,27 @@ export default function SignInPage() {
             className="mt-5 pt-5 relative"
             style={{ borderTop: "0.8px solid rgba(23,33,38,0.12)" }}
           >
-            <p className="text-[12px] leading-5 font-quicksand font-bold text-[#172126]">
+            <button
+              type="button"
+              onClick={() => setPrivacyOpen((v) => !v)}
+              aria-expanded={privacyOpen}
+              aria-controls="privacy-notice-content"
+              className="flex items-center justify-between w-full cursor-pointer text-[12px] leading-5 font-quicksand font-bold text-[#172126]"
+            >
               Data Privacy Notice
-            </p>
-            <div className="mt-2 space-y-1 text-[12px] leading-5 font-quicksand">
+              <ChevronDown
+                className="w-4 h-4 text-[#172126] transition-transform duration-300"
+                style={{ transform: privacyOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                aria-hidden="true"
+              />
+            </button>
+            <div
+              id="privacy-notice-content"
+              className="grid transition-[grid-template-rows] duration-300 ease-out overflow-hidden"
+              style={{ gridTemplateRows: privacyOpen ? "1fr" : "0fr" }}
+            >
+              <div className="overflow-hidden">
+            <div className="mt-2 space-y-1 text-[12px] leading-5 font-quicksand max-h-[30vh] overflow-y-auto">
               <p>
                 <span className="font-bold text-[#172126]">
                   Data collected:{" "}
@@ -279,15 +298,17 @@ export default function SignInPage() {
                   Contact your supervisor or email{" "}
                 </span>
                 <a
-                  href="mailto:bdml@pgcvisayas.upv.edu.ph"
+                  href="mailto:bioinfo.pgc.upvisayas@gmail.com"
                   className="text-[#65706f] underline underline-offset-2 decoration-dotted hover:text-[#2a7797] transition-colors"
                 >
-                  bdml@pgcvisayas.upv.edu.ph
+                  bioinfo.pgc.upvisayas@gmail.com
                 </a>
                 <span className="text-[#65706f]">
                   . Data will be anonymized or deleted within 30 days.
                 </span>
               </p>
+            </div>
+              </div>
             </div>
           </div>
         </div>
