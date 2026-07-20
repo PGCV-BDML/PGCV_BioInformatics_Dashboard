@@ -78,7 +78,7 @@
 
 All entities live in `supabase/migrations/19_initial_schema.sql` (plus `20260721000000_add_institution_to_users.sql`). RLS is enabled on every table in `21_enable_rls.sql`; policies live in `22_rls_policies.sql`; audit triggers attach via `23_audit_triggers.sql`; `set_updated_at` via `24_updated_at_triggers.sql`.
 
-> **⚠️ Production drift (as of 2026-07-19):** The local `supabase/migrations/` folder contains **11 SQL files**. The Supabase project's migration history contains **22 applied migrations** (see §19 for the full list). 15 production hot-fixes (RLS policy consolidations, `audit_log.action` enum fix, `users` table rename, `repository_link` columns, etc.) are intentionally not in the local repo — they are retroactive fixes of the 19-24 base migrations, not part of the canonical migration path (removed in commit `362bb5d`). Next migration should reconcile: export the production schema into a fresh `supabase/migrations/25_reconcile_production.sql` that captures the current production state, so a fresh `supabase db reset` will reproduce it byte-for-byte.
+> **⚠️ Production drift (as of 2026-07-20):** The local `supabase/migrations/` folder contains **12 SQL files** (11 original + `25_reconcile_schema_drift.sql`). The Supabase project's migration history contains **23 applied migrations** (see §19 for the full list). 15 production hot-fixes (RLS policy consolidations, `audit_log.action` enum fix, `users` table rename, `repository_link` columns, etc.) are intentionally not in the local repo — they are retroactive fixes of the 19-24 base migrations, not part of the canonical migration path (removed in commit `362bb5d`). The reconciliation migration (`25_reconcile_schema_drift.sql`) has been created and applied as migration `20260720052542 reconcile_schema_drift`, resolving the drift between local and production schemas.
 
 ### 3.1 Active entities (17)
 
@@ -141,7 +141,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | `components/` | Reusable React UI components using Tailwind |
 | `lib/supabase.ts` | Supabase client and CRUD helpers (`getRowsFromDB`, `saveDataToDB`, `deleteDataFromDB`) |
 | `types/database.ts` | TypeScript types for rows and enums |
-| `supabase/migrations/` | 11 local SQL migration files (schema, RLS, audit, triggers, seed data). **22 applied to production** — see §19 for the drift list. |
+| `supabase/migrations/` | 12 local SQL migration files (schema, RLS, audit, triggers, seed data, reconciliation). **23 applied to production** — see §19 for the drift list. |
 | `app/dashboard/error.tsx`, `loading.tsx`, `not-found.tsx` | Route-level error boundaries (Phase 1) |
 | `app/components/slidemodal.tsx` | Shared slide-over modal base — eliminates ~500 lines duplication across 5 modals (Phase 3) |
 | `app/components/pageheader.tsx` | Reusable page header for 6 dashboard pages (Phase 3) |
@@ -187,7 +187,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | 3.1 | Landing Page | `/dashboard` | ✅ Functional. Decomposed in Phase 5: 806→351 lines. Sub-components: dashboard-stat-cards, weekly-task-list, service-reports-chart, project-distribution-chart. Real Supabase aggregations via lib/dashboard-stats.ts (getDashboardStats, getServiceReportsByYear). |
 | 3.2 | Projects | `/dashboard/projects` | ✅ Functional. Full CRUD, filters, sort, pagination, `repository_link`, status dropdown. |
 | 3.3 | Bioinformatics Services | `/dashboard/services` | ✅ Functional. Decomposed in Phase 5: 711→633 lines. Report modal extracted to service-report-modal.tsx. Error states added. |
-| 3.3.1 | Client Sequence Analysis | `/dashboard/services` (tab 1) | ✅ Functional. |
+| 3.3.1 | Service Report Tracker (Client Sequence Analysis) | `/dashboard/services` (tab 1) | ✅ Functional. Redesigned as responsive card grid (was 9-column DataTable); color-coded badges per real service category; "Sequence Analysis" hardcoded bug fixed; "Add Analysis" workaround documented in transition_plan.html §VIII. |
 | 3.3.2 | Training | `/dashboard/services/training` + `/[id]/{page,assessment,participants,evaluation,onboarding,certificate}` | ✅ Functional. Converted to server component in Phase 7. Uses ProgramSearchGrid client island for search. |
 | 3.3.3 | Internship | `/dashboard/services/internship` + `/[id]/{page,participants,evaluation,onboarding,certificate,assessment}` | ✅ Functional. Converted to server component in Phase 7. Uses ProgramSearchGrid client island for search. |
 | 3.4 | Collaborations | `/dashboard/collaborations` | ✅ Functional. Full CRUD, `repository_link`, documents[] as chips. |
@@ -233,6 +233,18 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 
 **Validation:** tsc 0 errors, build 27 routes, 73 tests pass, lint 0 errors.
 
+### Post-Sprint 4+: UI/UX Overhaul (2026-07-20)
+
+7-phase UI/UX overhaul completed with verified quality gates (tsc 0 errors, lint 0 errors, build pass, 73/73 tests pass):
+
+- **Phase 1 (Visual brand compliance):** New `--color-surface` (#fffdf8) and `--color-brand-tint` (#e6f5ff) tokens in `app/globals.css`; Quicksand @font-face fix; Aileron BLACK weight fix; `--color-white` contrast fix (#e6e7e8→#ffffff for WCAG AA); UP attribution added to sidebar + login.
+- **Phase 2 (Shared states):** `app/components/state-views.tsx` (`LoadingState`/`ErrorState`/`EmptyState`); 4 route-level `loading.tsx` skeletons.
+- **Phase 3 (Real data):** `lib/dashboard-stats.ts` (`getDashboardStats()`, `getServiceReportsByYear()`); deleted `lib/mock-data.ts`.
+- **Phase 4 (Accessibility):** Skip-to-content link; dialog semantics + focus trap on `slidemodal.tsx`; `aria-label` on nav/search; 22 `<label>`+`<input>` associations via `htmlFor`/`id` across 5 modals.
+- **Phase 5 (Form validation):** Client-side validation on 5 modals with `aria-invalid` + inline `role="alert"` errors; 48 `showToast` calls integrated.
+- **Phase 6 (Stub page polish):** Brand-aligned icon colors, contextual Note callouts, `aria-hidden` on decorative icons.
+- **Phase 7 (Mobile responsiveness):** Sidebar overlay + toggle button + backdrop + auto-close on nav; `p-4 md:p-8` padding; SSR-safe lazy initializer.
+
 ### 6.2 Ongoing tasks (named in the CompSci sheet)
 
 **(a) Biology Activity Sheet Population** — owner: Bio + CS coordination, ongoing across all sprints. The biology track must keep `biology_activity_sheet.html` up to date with sprint notes, content drafts, module URLs, assessment questions, and validation feedback. Required by Deliverable 3.
@@ -268,7 +280,7 @@ From CompSci §VII. Each item is annotated with where the requirement is met.
 | 6 | Encryption at rest | ⚠️ **Verify in Supabase dashboard** (Sprint 1 follow-up; default is on for free tier) |
 | 7 | No secrets in repo | `.env.example` ships placeholders only; `.env.local` not committed |
 | 8 | Audit log | `23_audit_triggers.sql` covers insert/update/delete on `projects`, `analyses`, `service_reports`, `users`, `collaborations`, `training_programs`. `sessionauditor.tsx` covers `user_login`/`user_logout`. **`role_change` and `data_export` not yet covered** (Sprint 1–2 follow-up). |
-| 9 | Privacy notice | Full Data Privacy Notice in `app/login/page.tsx` footer (data collected, purpose, retention, access, deletion contact `bdml@pgcvisayas.upv.edu.ph`) |
+| 9 | Privacy notice | Full Data Privacy Notice in `app/login/page.tsx` footer (data collected, purpose, retention, access, deletion contact `bioinfo.pgc.upvisayas@gmail.com`) |
 | 10 | RA 10173 considered | `SECURITY.md` §7 covers compliance |
 | 11 | Test walkthroughs | 73 unit tests in place (Vitest, 7 files: lib/utils, lib/supabase, hooks/useTableState, hooks/useDeleteRecord, slidemodal, datatable, pagination). RLS role-based walkthroughs (Task 9.2) still pending — tracked in ROADMAP #27 Phase 0 §0.3. |
 
@@ -560,7 +572,7 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 
 - **Google Doc (canonical source):** "Bioinformatics Activity Sheets" — owner `mtmisola`, doc id `1NL6dGKCZvVvw8zCZn6_RMme9mPXcHDjrdn4rsMCtrWw`. Tabs: Computer Science Activity Sheet · Biology Activity Sheet · PM Plan · Features list · Implementation Plan · Data Access · Dashboard Requirements.
 - **Local docs (this repo):** `README.md`, `ARCHITECTURE.md`, `SECURITY.md`, `AGENTS.md` (Next.js 16 conventions), `CLAUDE.md` (assistant notes).
-- **Migrations:** Local repo has 11 files (`supabase/migrations/19_initial_schema.sql` → `20260721000000_add_institution_to_users.sql`). **22 are applied to production** (see §19).
+- **Migrations:** Local repo has 12 files (`supabase/migrations/19_initial_schema.sql` → `25_reconcile_schema_drift.sql`). **23 are applied to production** (see §19).
 - **Live app:** https://pgcv-bioinformatics-dashboard.vercel.app/
 - **Repo:** https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard
 
@@ -570,9 +582,9 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 
 The local repo and the live Supabase project have drifted. This section is the canonical map of what is actually running in production.
 
-### 19.1 Migration drift — 11 local vs 21 applied
+### 19.1 Migration drift — 12 local vs 23 applied
 
-The local `supabase/migrations/` folder ships 11 files. The Supabase project has **21 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Of the 16 timestamped production migrations, 7 are mirrored in the local repo; the other 15 are production-only retroactive fixes, intentionally not in the local repo (removed in commit `362bb5d`).
+The local `supabase/migrations/` folder ships 12 files. The Supabase project has **23 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Of the 16 timestamped production migrations, 7 are mirrored in the local repo; the other 15 are production-only retroactive fixes, intentionally not in the local repo (removed in commit `362bb5d`). The reconciliation migration (`20260720052542 reconcile_schema_drift`) has been applied as the 23rd migration, resolving the drift between local and production schemas.
 
 | # | Production migration | Purpose | In local repo? |
 |---|---|---|---|
@@ -597,8 +609,9 @@ The local `supabase/migrations/` folder ships 11 files. The Supabase project has
 | 19 | 20260720000000 `audit_data_modification_rpc` | `audit_data_modification()` | ✅ |
 | 20 | 20260720000000 `seed_demo_data` | Demo seed | ✅ |
 | 21 | 20260719144134 `add_institution_to_users` | `users.institution` column | ✅ |
+| 22 | 20260720052542 `reconcile_schema_drift` | Schema reconciliation — aligns `19_initial_schema.sql` with live DB (374→422 lines) | ✅ (local 25) |
 
-> **Action item (P0):** Generate a `supabase/migrations/25_reconcile_production.sql` that captures the current production state. A fresh `supabase db reset` should reproduce the live project byte-for-byte.
+> **Action item (P0):** Generate a `supabase/migrations/25_reconcile_production.sql` that captures the current production state. ✅ DONE — Created as `25_reconcile_schema_drift.sql`, applied as migration `20260720052542 reconcile_schema_drift`. A fresh `supabase db reset` should now reproduce the live project.
 
 ### 19.2 Functions in production
 

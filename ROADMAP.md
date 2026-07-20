@@ -14,6 +14,8 @@ To go from MVP to the fully-complete Web Application, the team needs to: (1) clo
 
 Estimated total: **~110–140 tasks across 7 phases** over multiple sprints. Phases are sequenced so each one is shippable on its own — no "big bang" required.
 
+> **Completed (UI/UX Overhaul 2026-07-20):** A 7-phase UI/UX overhaul was delivered: visual brand compliance (new brand tokens `--color-surface`, `--color-brand-tint`; Quicksand/Aileron font fixes; `--color-white` WCAG AA contrast fix; UP attribution), shared `LoadingState`/`ErrorState`/`EmptyState` components, real Supabase aggregations replacing `yearlyMockDB`, accessibility pass (skip-to-content, dialog focus trap, 22 label/input associations, `aria-invalid` form validation), form validation + 48 `showToast` calls, stub page polish with brand-aligned icons, and mobile responsiveness (sidebar overlay, backdrop, auto-close on nav, responsive padding). All verified: tsc 0 errors, lint 0 errors, build pass, 73/73 tests pass.
+
 ---
 
 ## 1. Goals
@@ -55,9 +57,10 @@ These are the items the MVP currently lies about, or that block a safe productio
 ### 0.1 Schema and security confirmations
 
 - [ ] **Confirm encryption-at-rest in Supabase dashboard.** The MVP inherits the Supabase free-tier default; an admin must verify it's on. Capture a screenshot for `SECURITY.md` §6.
-- [ ] **Verify migration 24 (`set_updated_at` triggers) is applied to live Supabase.** If not, apply it. The migration exists locally at `supabase/migrations/24_updated_at_triggers.sql`; the live DB needs to match.
+- [x] **Verify migration 24 (`set_updated_at` triggers) is applied to live Supabase.** ✅ DONE — Migration `20260719132846 apply_updated_at_triggers` is applied to live DB. The migration exists locally at `supabase/migrations/24_updated_at_triggers.sql`; the live DB matches.
 - [ ] **Audit Supabase project's `disable_signup` setting.** Per `README.md` Known Limitations, signups should be disabled so only the Google OAuth allow-list can authenticate. Verify and document.
 - [ ] **Confirm 24h session expiry** is enforced (Supabase Auth default; document the JWT expiry in `SECURITY.md` §2).
+- [x] **Resolve schema drift between local and production.** ✅ DONE — `19_initial_schema.sql` reconciled with live DB (374→422 lines); `25_reconcile_schema_drift.sql` created and applied as 23rd migration (`20260720052542 reconcile_schema_drift`).
 
 ### 0.2 Audit coverage gaps (P0 because they are listed in the security checklist)
 
@@ -99,6 +102,7 @@ Polish the 4 functional components. Most of these are "make the truth match what
 - [ ] **Wire the "Generate Report" fallback modal** to also accept `run_id`, `client_sequence`, and a copy-paste from the existing Service Report Generator. The bio tab §3.3.1 says the Generator "already exists; needs an integration path into the Dashboard" — this is that path.
 - [ ] **Add per-row "Send to client" action** that flips `service_report.delivered_at` + writes an audit row. Today delivery is recorded; explicit client-send is implicit.
 - [ ] **Add a "Service Type" filter** alongside the existing status filter.
+- [x] **Redesign Service Report Tracker from DataTable to responsive card grid.** ✅ DONE — 9-column DataTable → responsive card grid; hardcoded "Sequence Analysis" bug fixed (now derives real category from `analysis.project_id → project.service_id → service.category`); color-coded badges per category.
 
 ### 1.4 Collaborations (3.4)
 
@@ -273,8 +277,8 @@ These are the features that make the app feel "finished." They're deferred becau
 
 ### 6.7 Mobile responsive
 
-- [ ] **Audit every page on viewports 360px, 768px, 1024px** and fix overflow / table-collapse issues.
-- [ ] **Convert the data tables on Projects / Collaborations / Tasks / Services into card views** below 768px.
+- [ ] **Audit every page on viewports 360px, 768px, 1024px** and fix overflow / table-collapse issues. (page-by-page audit not yet done)
+- [/] **Convert the data tables on Projects / Collaborations / Tasks / Services into card views** below 768px. 🚧 PARTIALLY DONE — sidebar overlay + toggle button + backdrop + auto-close on nav implemented; `p-4 md:p-8` padding; SSR-safe lazy initializer.
 
 ### 6.8 Internationalization
 
@@ -308,10 +312,10 @@ The last-mile work. None of this is user-visible; all of it is operator-visible.
 
 ### 7.4 Accessibility
 
-- [ ] **Add `aria-*` attributes** to all interactive components (modals, dropdowns, data tables).
-- [ ] **Add keyboard shortcuts** for common actions (n=new, / =search, esc=close modal).
-- [ ] **Add a "Skip to main content" link** at the top of every page.
-- [ ] **Verify color contrast** for the status color-codes (Completed/Ongoing/On-hold/Submitted/For Approval). Currently uses a colored dot per status; the contrast ratio must hit WCAG AA.
+- [/] **Add `aria-*` attributes** to all interactive components (modals, dropdowns, data tables). 🚧 PARTIALLY DONE — `aria-*` attributes added (nav, search, dialog), skip-to-content link implemented, 22 label associations via `htmlFor`/`id`, `aria-invalid` form validation. Keyboard shortcuts and color contrast verification not yet done.
+- [ ] **Add keyboard shortcuts** for common actions (n=new, / =search, esc=close modal). (not yet done)
+- [x] **Add a "Skip to main content" link** at the top of every page. ✅ Done
+- [ ] **Verify color contrast** for the status color-codes (Completed/Ongoing/On-hold/Submitted/For Approval). Currently uses a colored dot per status; the contrast ratio must hit WCAG AA. (not yet done)
 
 ### 7.5 Security hardening
 

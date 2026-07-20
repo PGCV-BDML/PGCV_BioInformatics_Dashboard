@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Architecture
 
-> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `SECURITY.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
+> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `SECURITY.md` after the Sprint 3 Bioinformatics Services + audit-logging merges and the 7-phase UI/UX overhaul.
 
 ---
 
@@ -112,7 +112,7 @@ PGCV_BioInformatics_Dashboard/
 │   ├── supabase-server.ts        # Phase 7: createServerSupabaseClient + getServerUser
 │   └── utils.ts                  # Phase 3: formatDate utility
 ├── supabase/
-│   └── migrations/               # 11 SQL files (base 19–24 + 5 timestamped add-ons)
+│   └── migrations/               # 12 SQL files (base 19–24 + 5 timestamped add-ons + 25_reconcile_schema_drift)
 │       ├── 19_initial_schema.sql             # 9 enums + 18 tables + indexes
 │       ├── 20_security_functions.sql         # get_user_role(), protect_user_role_column()
 │       ├── 21_enable_rls.sql                 # RLS enabled on all 18 tables
@@ -125,8 +125,8 @@ PGCV_BioInformatics_Dashboard/
 │       ├── 20260720000000_seed_demo_data.sql
 │       └── 20260721000000_add_institution_to_users.sql
 │
-│  # Note: the local repo has 11 migration files, but the Supabase project
-│  # has 22 applied migrations. See §18 / WORKBOOK §19 for the drift list.
+│  # Note: the local repo has 12 migration files, but the Supabase project
+│  # has 23 applied migrations. See §18 / WORKBOOK §19 for the drift list.
 ├── types/
 │   └── database.ts               # TypeScript interfaces: UserOption, CollaborationRow,
 │                                  #   Project, ProjectStatus, STATUS_OPTIONS, ProjectFormData
@@ -283,27 +283,39 @@ The eight-phase refactoring introduced the following cross-cutting architectural
 - **ESLint**: `no-explicit-any: error` rule enabled.
 - **Next.js hardening**: `reactStrictMode: true`, `poweredByHeader: false` in `next.config.ts`.
 
+### 7.7 UI/UX Overhaul (7 phases, verified tsc 0 errors, lint 0 errors, build pass, 73/73 tests pass)
+
+A comprehensive 7-phase UI/UX overhaul completed on 2026-07-20:
+
+- **Phase 1 — Visual consistency + brand compliance:** New brand tokens `--color-surface` (#fffdf8) and `--color-brand-tint` (#e6f5ff) in `globals.css`; Quicksand @font-face fix; Aileron BLACK weight fix (700→900); `--color-white` contrast fix (#e6e7e8→#ffffff for WCAG AA); UP attribution added to sidebar + login copyright.
+- **Phase 2 — Loading/Error/Empty states:** New `LoadingState`/`ErrorState`/`EmptyState` components in `app/components/state-views.tsx`; 4 route-level `loading.tsx` skeletons (projects, collaborations, tasks, services).
+- **Phase 3 — Replace yearlyMockDB:** New `lib/dashboard-stats.ts` (`getDashboardStats()` + `getServiceReportsByYear()` + `DashboardStats` type); deleted `lib/mock-data.ts`.
+- **Phase 4 — Accessibility pass:** Skip-to-content link in `app/dashboard/layout.tsx`; dialog semantics + focus trap on `slidemodal.tsx`; `aria-label` on nav/search; 22 `<label>`+`<input>` associations via `htmlFor`/`id` across 5 modals.
+- **Phase 5 — Form validation + toasts:** Client-side validation on 5 modals with `aria-invalid` + inline `role="alert"` errors; 48 `showToast` calls across 6 files.
+- **Phase 6 — Stub page polish:** Brand-aligned icon colors (amber/teal/purple accents), contextual Note callouts, `aria-hidden` on decorative icons.
+- **Phase 7 — Mobile responsiveness:** Sidebar overlay + toggle button + backdrop + auto-close on nav; `p-4 md:p-8` padding; SSR-safe lazy initializer in `app/components/dashboard-ui-context.tsx`.
+
 ---
 
 ## 13. Data Model
 
-The authoritative source is [`supabase/migrations/19_initial_schema.sql`](./supabase/migrations/19_initial_schema.sql) (374 lines). It defines **18 tables** and **9 custom enum types**.
+The authoritative source is [`supabase/migrations/19_initial_schema.sql`](./supabase/migrations/19_initial_schema.sql) (422 lines). It defines **18 tables** and **9 custom enum types**.
 
 ### Custom Enum Types
 
 | Enum | Values |
 |------|--------|
-| `user_roles` | `team_lead`, `team_member`, `trainee`, `intern` |
+| `user_roles` | `team_lead`, `team_member`, `trainee`, `intern`, `none` |
 | `service_categories` | Lab-defined service categories |
 | `analysis_status` | Analysis lifecycle stages |
 | `collab_status` | `for_approval`, `ongoing`, `finished` |
 | `training_type` | `training`, `internship` |
 | `assessment_type` | `pre_test`, `post_test`, `evaluation` |
-| `project_status` | `ongoing`, `for_approval`, `submitted` |
+| `project_status` | `ongoing`, `for_approval`, `submitted`, `on_hold`, `completed` |
 | `template_categories` | Document template types |
 | `audit_log_action` | `state_change`, `data_deletion`, `role_change`, `data_export`, `data_modification`, `user_login`, `user_logout` |
 | `task_status` | Task lifecycle states |
-| `task_priority` | `low`, `medium`, `high`, `critical` |
+| `task_priority` | `low`, `medium`, `high` (column `task.priority` is now `text`, not the enum) |
 
 ### Table Summary
 
@@ -422,12 +434,12 @@ The local repo and the live Supabase project have drifted. This section captures
 
 ### 18.1 Migration drift
 
-- **11 files** in the local `supabase/migrations/` folder.
-- **22 migrations** applied to production (different timestamps, different names).
+- **12 files** in the local `supabase/migrations/` folder.
+- **23 migrations** applied to production (different timestamps, different names).
 - The local `19_initial_schema.sql` through `24_updated_at_triggers.sql` base files are **not** in the production migration list — they were applied via raw SQL before the migration tracking system was configured.
 - 15 production hot-fixes (`rls_fixes`, `advisor_fixes`, `rename_user_table_to_users`, `consolidate_overlapping_policies`, etc.) are intentionally not in the local repo — they are retroactive fixes of the 19-24 base migrations, not part of the canonical migration path (removed in commit `362bb5d`). These represent the real production schema.
 
-> **Action item (P0):** Generate `supabase/migrations/25_reconcile_production.sql` from the current production state so a fresh `supabase db reset` reproduces production byte-for-byte.
+> **Action item (P0):** ~~Generate `supabase/migrations/25_reconcile_production.sql`~~ **DONE** — created as `supabase/migrations/25_reconcile_schema_drift.sql` (75 lines, idempotent) and applied as migration `20260720052542 reconcile_schema_drift` (23rd migration). Fixes 3 enum values, adds 2 functions, corrects 4 column types.
 
 ### 18.2 Functions
 
