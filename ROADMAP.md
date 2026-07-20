@@ -213,6 +213,8 @@ The README says the dashboard "lives alongside the existing client-facing Omics 
 
 ### 5.1 Service Report Generator integration
 
+*Note: The "Add Analysis" manual-entry form in the Service Report Tracker is a workaround pending this integration — see transition_plan.html §VIII.*
+
 - [ ] **Build a webhook endpoint** at `app/api/webhooks/service-report/route.ts` that the existing Service Report Generator can POST to when a report is finalized. Creates or updates a `service_report` row.
 - [ ] **Add a "Generate via Dashboard" deep link** that pre-fills the Generator with the current analysis context.
 - [ ] **Build a "Report Queue" view** at `app/dashboard/reports/page.tsx` showing pending, in-review, delivered, and acknowledged reports across all projects.

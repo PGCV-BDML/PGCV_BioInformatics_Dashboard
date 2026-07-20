@@ -111,7 +111,7 @@ const SlideOverModal = memo(function SlideOverModal({
   }, [isOpen, onClose]);
 
   const renderDefaultFooter = () => (
-    <div className="flex gap-2.5 justify-end pt-5 pb-1 border-t border-slate-100 bg-[#ffffff]">
+    <div className="flex gap-2.5 justify-end">
       <button
         type="button"
         onClick={onClose}
@@ -131,9 +131,13 @@ const SlideOverModal = memo(function SlideOverModal({
   );
 
   const body = (
-    <div className="bg-[#ffffff] flex-1 overflow-y-auto px-5 py-5 space-y-5 custom-scrollbar">
-      {children}
-      {footer !== undefined ? footer : renderDefaultFooter()}
+    <div className="bg-[#ffffff] flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 custom-scrollbar">
+        {children}
+      </div>
+      <div className="px-5 pt-5 pb-1 border-t border-slate-100 bg-[#ffffff]">
+        {footer !== undefined ? footer : renderDefaultFooter()}
+      </div>
     </div>
   );
 
@@ -187,7 +191,16 @@ const SlideOverModal = memo(function SlideOverModal({
         </div>
 
         {/* Form body (wrapped in <form> when onSubmit is provided) */}
-        {onSubmit ? <form onSubmit={onSubmit}>{body}</form> : body}
+        {onSubmit ? (
+          <form
+            onSubmit={onSubmit}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          >
+            {body}
+          </form>
+        ) : (
+          body
+        )}
       </div>
     </>
   );

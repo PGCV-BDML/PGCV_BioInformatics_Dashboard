@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import Link from "next/link";
-import DataTable, { Column } from "../../components/datatable";
+
 import Pagination from "../../components/pagination";
 import AnalysisSidebar, {
   AnalysisFormState,
@@ -27,7 +27,7 @@ import {
   getUsersFromDB,
   saveDataToDB,
 } from "@/lib/supabase";
-import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS, Project, User } from "../../../types/database";
+import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS, Project, User, Service, ServiceCategory } from "../../../types/database";
 import { SERVICES_CONFIG } from "@/lib/services-config";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../components/toast";
@@ -36,7 +36,8 @@ interface ServiceProjectRow {
   id: string;
   project_name: string;
   client: string;
-  service_type: string;
+  service_name: string | null;
+  service_category: ServiceCategory | null;
   analysis_pipeline: string;
   status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   assignee: string;
@@ -66,7 +67,7 @@ export default function ServicesPage() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string; client: string }[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]>([]);
   const [availablePipelines, setAvailablePipelines] = useState<string[]>([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -106,18 +107,30 @@ export default function ServicesPage() {
           getRowsFromDB<Analysis>("analysis"),
           getRowsFromDB<Project>("project"),
           getNameIdFromDB("client"),
-          getNameIdFromDB("service"),
+          getRowsFromDB<Service>("service"),
           getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
           getCurrentUser(),
         ]);
         setCurrentUserId(user?.id ?? null);
 
+        // Build service map: service_id → {name, category}
+        const serviceMap = new Map<string, { name: string; category: ServiceCategory }>();
+        for (const s of services as Service[]) {
+          serviceMap.set(s.id, { name: s.name, category: s.category });
+        }
+
         // Build a temporary project map for immediate row construction
         // (the hook will rerun on next render with the same data)
-        const tmpProjectMap = new Map<string, { name: string; client: string }>();
+        const tmpProjectMap = new Map<string, { name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }>();
         for (const p of projects) {
           const client = (clients as { id: string; name: string }[]).find((c) => c.id === p.client_id);
-          tmpProjectMap.set(p.id, { name: p.name, client: client?.name ?? "—" });
+          const service = p.service_id ? serviceMap.get(p.service_id) : undefined;
+          tmpProjectMap.set(p.id, {
+            name: p.name,
+            client: client?.name ?? "—",
+            service_name: service?.name ?? null,
+            service_category: service?.category ?? null,
+          });
         }
 
         const tmpUserMap = new Map<string, string>();
@@ -133,7 +146,8 @@ export default function ServicesPage() {
             id: a.id,
             project_name: proj?.name ?? "(unknown project)",
             client: proj?.client ?? "—",
-            service_type: "Sequence Analysis",
+            service_name: proj?.service_name ?? null,
+            service_category: proj?.service_category ?? null,
             analysis_pipeline: pipeline || "—",
             status: a.status as ServiceProjectRow["status"],
             assignee: assigneeName,
@@ -250,7 +264,8 @@ export default function ServicesPage() {
           id: created.id,
           project_name: targetProject?.name ?? "(unknown project)",
           client: targetProject?.client ?? "—",
-          service_type: "Sequence Analysis",
+          service_name: targetProject?.service_name ?? null,
+          service_category: targetProject?.service_category ?? null,
           analysis_pipeline: `${formState.pipeline} ${formState.pipeline_version}`.trim() || "—",
           status: created.status as ServiceProjectRow["status"],
           assignee: formState.assignee,
@@ -309,41 +324,14 @@ export default function ServicesPage() {
     );
   }, [searchQuery, servicesList, activeFilter]);
 
-  const { 
-    sortConfig, 
-    handleSort, 
-    sorted: sortedServices,
+  const {
     displayed: displayedServices,
-    currentPage, 
+    currentPage,
     setCurrentPage,
   } = useTableState<ServiceProjectRow>({
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
     resetKey: `${searchQuery}-${activeFilter}`,
-    customSorters: {
-      status: (a, b) => {
-        const statusWeights: Record<string, number> = {
-          for_approval: 1, ongoing: 2, on_hold: 3, submitted: 4, completed: 5,
-        };
-        return (statusWeights[String(a.status)] || 99) - (statusWeights[String(b.status)] || 99);
-      },
-      started: (a, b) => {
-        const strA = String(a.started || "").trim();
-        const strB = String(b.started || "").trim();
-        const timeA = strA === "—" || !strA ? Infinity : new Date(strA).getTime();
-        const timeB = strB === "—" || !strB ? Infinity : new Date(strB).getTime();
-        if (timeA === timeB) return 0;
-        return timeA - timeB;
-      },
-      completed: (a, b) => {
-        const strA = String(a.completed || "").trim();
-        const strB = String(b.completed || "").trim();
-        const timeA = strA === "—" || !strA ? Infinity : new Date(strA).getTime();
-        const timeB = strB === "—" || !strB ? Infinity : new Date(strB).getTime();
-        if (timeA === timeB) return 0;
-        return timeA - timeB;
-      },
-    },
   });
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
@@ -391,116 +379,47 @@ export default function ServicesPage() {
     );
   };
 
-  const columns: Column<ServiceProjectRow>[] = [
-    {
-      key: "project_name",
-      label: "Project Name",
-      width: "16%",
-      sortable: true,
-      render: (s) => (
-        <Link
-          href={`/dashboard/services/${s.id}`}
-          className="font-bold text-[#2a7797] hover:text-[#4ec2bb] block truncate max-w-[160px] underline decoration-transparent hover:decoration-current transition-all"
-          title={s.project_name}
-        >
-          {s.project_name}
-        </Link>
-      ),
-    },
-    {
-      key: "client",
-      label: "Client",
-      width: "12%",
-      sortable: true,
-      render: (s) => (
-        <span
-          className="block truncate font-medium text-slate-700"
-          title={s.client}
-        >
-          {s.client}
-        </span>
-      ),
-    },
-    {
-      key: "service_type",
-      label: "Service Type",
-      width: "12%",
-      sortable: true,
-    },
-    {
-      key: "analysis_pipeline",
-      label: "Analysis Pipeline",
-      width: "13%",
-      sortable: true,
-      render: (s) => (
-        <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono">
-          {s.analysis_pipeline}
-        </code>
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      width: "13%",
-      render: (s) => (
-        <div className="flex items-center justify-center w-full">
-          {renderStatusDropdown(s.id, s.status)}
-        </div>
-      ),
-    },
-    {
-      key: "assignee",
-      label: "Assignee",
-      width: "11%",
-      sortable: true,
-    },
-    {
-      key: "started",
-      label: "Started",
-      width: "9%",
-      sortable: true,
-    },
-    {
-      key: "completed",
-      label: "Completed",
-      width: "9%",
-      sortable: true,
-    },
-    {
-      key: "report_link",
-      label: "Report / Actions",
-      width: "14%",
-      render: (s) => {
-        const isCompleted = s.status === "completed";
+  const renderReportAction = (s: ServiceProjectRow) => {
+    const isCompleted = s.status === "completed";
+    return s.report_link ? (
+      <a
+        href={s.report_link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-[#2e7d32] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
+      >
+        <FileText className="w-3.5 h-3.5" /> View Report
+      </a>
+    ) : isCompleted ? (
+      <button
+        type="button"
+        onClick={() => setSelectedReportRow(s)}
+        className="inline-flex items-center gap-1 text-[11px] bg-[#2a7797] hover:bg-[#1f5c76] text-white px-2.5 py-1 rounded-md font-semibold transition-all shadow-sm"
+      >
+        Generate Report
+      </button>
+    ) : (
+      <span className="text-xs text-slate-400 italic">Pending</span>
+    );
+  };
 
-        return (
-          <div className="flex flex-col gap-1.5 items-start">
-            {s.report_link ? (
-              <a
-                href={s.report_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-[#2e7d32] hover:text-[#4ec2bb] font-bold underline decoration-dotted truncate max-w-[110px]"
-                title={s.report_link}
-              >
-                <FileText className="w-3.5 h-3.5" /> View Report
-              </a>
-            ) : isCompleted ? (
-              <button
-                type="button"
-                onClick={() => setSelectedReportRow(s)}
-                className="inline-flex items-center gap-1 text-[11px] bg-[#2a7797] hover:bg-[#1f5c76] text-white px-2.5 py-1 rounded-md font-semibold transition-all shadow-sm"
-              >
-                Generate Report
-              </button>
-            ) : (
-              <span className="text-xs text-slate-400 italic">Pending</span>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+  const getServiceCategoryBadge = (category: ServiceCategory | null) => {
+    if (!category) return null;
+    const colorMap: Record<ServiceCategory, string> = {
+      WGS: "bg-[#2a7797]/10 text-[#2a7797]",
+      amplicon: "bg-[#4ec2bb]/10 text-[#4ec2bb]",
+      metabarcoding: "bg-[#6bb155]/10 text-[#6bb155]",
+      transcriptomics: "bg-[#fcb016]/10 text-[#fcb016]",
+      shotgun_metag: "bg-[#92298d]/10 text-[#92298d]",
+      phylogenetics: "bg-[#282560]/10 text-[#282560]",
+      custom: "bg-slate-100 text-slate-600",
+    };
+    return (
+      <span className={`inline-flex items-center text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${colorMap[category]}`}>
+        {category}
+      </span>
+    );
+  };
 
   return (
     <div
@@ -601,7 +520,7 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* DataTable Wrapper */}
+        {/* Card Grid */}
         {loadError ? (
           <ErrorState message={loadError} />
         ) : isLoading ? (
@@ -619,13 +538,75 @@ export default function ServicesPage() {
             description="Try adjusting your search or filter criteria."
           />
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[1100px]">
-            <DataTable
-              columns={columns}
-              data={displayedServices}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-            />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {displayedServices.map((s) => (
+                <div
+                  key={s.id}
+                  className="bg-surface border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-[#4ec2bb]/40 transition-all flex flex-col gap-4"
+                >
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/dashboard/services/${s.id}`}
+                        className="font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-all leading-tight"
+                      >
+                        {s.project_name}
+                      </Link>
+                      <p className="text-sm text-slate-500 font-medium mt-0.5">
+                        {s.client}
+                      </p>
+                      {getServiceCategoryBadge(s.service_category)}
+                    </div>
+                    <div className="shrink-0">
+                      {renderStatusDropdown(s.id, s.status)}
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                        Pipeline
+                      </span>
+                      <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono">
+                        {s.analysis_pipeline}
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                        Assignee
+                      </span>
+                      <span className="text-sm text-slate-700 font-medium">
+                        {s.assignee}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                        Started
+                      </span>
+                      <span className="text-sm text-slate-700 font-medium">
+                        {s.started}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                        Completed
+                      </span>
+                      <span className="text-sm text-slate-700 font-medium">
+                        {s.completed}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="pt-3 border-t border-slate-100">
+                    {renderReportAction(s)}
+                  </div>
+                </div>
+              ))}
+            </div>
             <Pagination
               totalItems={filteredServices.length}
               itemsPerPage={ITEMS_PER_PAGE}
