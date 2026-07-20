@@ -124,9 +124,9 @@ export function WeeklyTaskList({
                     }
                   >
                     {isCompleted ? (
-                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
+                      <CheckCircle2 className="w-[18px] h-[18px] text-emerald-500" />
                     ) : (
-                      <Circle className="w-4.5 h-4.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                      <Circle className="w-[18px] h-[18px] text-slate-400 group-hover:text-slate-600 transition-colors" />
                     )}
                   </button>
 

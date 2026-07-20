@@ -142,6 +142,7 @@ export default function DashboardLandingPage() {
           .filter((t) => t.status === "pending")
           .filter((t) => !t.dueDate || t.dueDate <= weekOut)
           .sort((a, b) => {
+            if (!a.dueDate && !b.dueDate) return 0;
             if (!a.dueDate) return 1;
             if (!b.dueDate) return -1;
             return a.dueDate.getTime() - b.dueDate.getTime();
@@ -166,7 +167,7 @@ export default function DashboardLandingPage() {
   }, []);
 
   const totalProjects = stats
-    ? stats.activeProjects + stats.completedProjects + stats.backlogProjects
+    ? stats.activeProjects + stats.completedProjects + stats.backlogProjects + stats.newProjectsThisMonth + stats.ongoingTrainings
     : 0;
 
   const serviceReportsDeliveredByYear = [
@@ -183,7 +184,7 @@ export default function DashboardLandingPage() {
       { name: "Completed", value: stats.completedProjects },
       { name: "On-hold / Overdue", value: stats.backlogProjects },
       { name: "Submitted", value: stats.newProjectsThisMonth },
-      { name: "For approval", value: stats.ongoingTrainings },
+      { name: "Ongoing Trainings", value: stats.ongoingTrainings },
     ]
     : [];
 

@@ -23,31 +23,31 @@ export default function TrainingModulesPage({
   // ponytail: module_progress table not in schema — local state only, resets on navigation
   // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
-  const lastSavedProgramId = useRef(resolvedParams.id);
 
   useEffect(() => {
-    // Load new program's read state
+    // Load new program's read state — no save in this effect
     try {
       const raw = localStorage.getItem(`training-modules-read-${resolvedParams.id}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+        else setReadModuleIds([]);
+      } else {
+        setReadModuleIds([]);
       }
     } catch {
-      // ignore corrupted localStorage; fall back to empty state
+      setReadModuleIds([]);
     }
-    lastSavedProgramId.current = resolvedParams.id;
   }, [resolvedParams.id]);
 
+  // Save only when readModuleIds changes from a user toggle, not on program switch
   useEffect(() => {
-    // Only save if we're still on the same program (not during a program switch)
-    if (lastSavedProgramId.current !== resolvedParams.id) return;
     try {
       localStorage.setItem(`training-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
     } catch {
       // localStorage may be full or disabled; ignore
     }
-  }, [readModuleIds, resolvedParams.id]);
+  }, [readModuleIds]);
   const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
 
   useEffect(() => {

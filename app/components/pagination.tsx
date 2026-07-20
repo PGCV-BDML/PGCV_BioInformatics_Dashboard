@@ -16,7 +16,7 @@ const Pagination = memo(function Pagination({
   currentPage,
   onPageChange,
 }: PaginationProps) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const totalPages = itemsPerPage > 0 ? Math.ceil(totalItems / itemsPerPage) || 1 : 1;
 
   const paginationRange = useMemo(() => {
     const totalPageNumbers = 5;

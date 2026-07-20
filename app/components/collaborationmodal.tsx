@@ -28,6 +28,8 @@ type FormState = {
 interface CollaborationSidebarProps {
   isOpen: boolean;
   isAdding: boolean;
+  isSaving?: boolean;
+  submitDisabled?: boolean;
   formState: FormState;
   availableUsers: UserOption[];
   onClose: () => void;
@@ -38,6 +40,8 @@ interface CollaborationSidebarProps {
 export default function CollaborationSidebar({
   isOpen,
   isAdding,
+  isSaving,
+  submitDisabled,
   formState,
   availableUsers,
   onClose,
@@ -69,6 +73,8 @@ export default function CollaborationSidebar({
       subtitle="Fill in the information required by the registry."
       onSubmit={onSubmit}
       submitLabel="Save"
+      isSaving={isSaving}
+      submitDisabled={submitDisabled}
     >
       {/* 1. Partner Organization */}
       <div className="space-y-2.5">

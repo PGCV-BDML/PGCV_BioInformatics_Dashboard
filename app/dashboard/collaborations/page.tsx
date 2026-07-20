@@ -83,6 +83,8 @@ export default function CollaborationsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedCollaboration, setSelectedCollaboration] =
     useState<CollaborationRow | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isPanelOpen = isAdding || isEditing;
 
@@ -142,24 +144,36 @@ export default function CollaborationsPage() {
 
   //Save changes to DB and change the value of collaborations list to update what is displayed
   const handleStatusChange = async (id: string, newStatus: string) => {
-    try {
-      await saveDataToDB("collaboration", id, {
-        status: newStatus,
-      });
+    const previous = collaborationsList.find((c) => c.id === id)?.status;
 
-      setCollaborationsList((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
+    // Optimistically update the frontend immediately
+    setCollaborationsList((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
               ...item,
               status: newStatus as CollaborationRow["status"],
               updated_at: new Date().toISOString(),
             }
+          : item,
+      ),
+    );
+
+    try {
+      await saveDataToDB("collaboration", id, {
+        status: newStatus,
+      });
+    } catch (error) {
+      console.error("Failed to update collaboration status:", error);
+      // Rollback the frontend update if error occurs when saving to the database
+      setCollaborationsList((prev) =>
+        prev.map((item) =>
+          item.id === id && previous !== undefined
+            ? { ...item, status: previous as CollaborationRow["status"] }
             : item,
         ),
       );
-    } catch (error) {
-      console.error("Failed to update collaboration status:", error);
+      showToast("Failed to update status. Reverting.", "error");
     }
   };
 
@@ -185,17 +199,19 @@ export default function CollaborationsPage() {
       // the setCollaborationsList() call below; it is stripped before sending to saveDataToDB.
       updated_at: new Date().toISOString(),
     };
+    setIsSaving(true);
     try {
       const { updated_at: _updatedAt, ...dbPayload } = newRecord;
       await saveDataToDB("collaboration", id, dbPayload);
       setCollaborationsList((prev) => [newRecord, ...prev]);
+      setIsAdding(false);
+      setFormState(EMPTY_FORM);
       showToast("Collaboration created successfully.", "success");
     } catch (error) {
       showToast("Failed to save collaboration. Please try again.", "error");
-      return;
+    } finally {
+      setIsSaving(false);
     }
-    setIsAdding(false);
-    setFormState(EMPTY_FORM);
   }, [formState, showToast]);
 
   const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
@@ -213,6 +229,7 @@ export default function CollaborationsPage() {
       repository_link: formState.repository_link || "",
     };
 
+    setIsSaving(true);
     try {
       await saveDataToDB("collaboration", selectedCollaboration.id, updatedData);
       setCollaborationsList((prev) =>
@@ -228,6 +245,8 @@ export default function CollaborationsPage() {
       showToast("Collaboration updated successfully.", "success");
     } catch (error) {
       showToast("Failed to update collaboration.", "error");
+    } finally {
+      setIsSaving(false);
     }
   }, [formState, selectedCollaboration, showToast]);
 
@@ -236,12 +255,17 @@ export default function CollaborationsPage() {
     setCollaborationsList,
     (err) => showToast("Failed to delete collaboration.", "error"),
   );
-  const handleDeleteRecord = useCallback(() => {
+  const handleDeleteRecord = useCallback(async () => {
     if (!selectedCollaboration) return;
-    deleteRecord(selectedCollaboration, () => {
-      setShowDeleteConfirm(false);
-      showToast("Collaboration deleted.", "success");
-    });
+    setIsDeleting(true);
+    try {
+      await deleteRecord(selectedCollaboration, () => {
+        setShowDeleteConfirm(false);
+        showToast("Collaboration deleted.", "success");
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   }, [selectedCollaboration, deleteRecord, showToast]);
 
   const filteredCollaborations = useMemo(() => {
@@ -589,6 +613,8 @@ export default function CollaborationsPage() {
       <CollaborationSidebar
         isOpen={isPanelOpen}
         isAdding={isAdding}
+        isSaving={isSaving}
+        submitDisabled={isSaving}
         formState={formState}
         availableUsers={availableUsers}
         onClose={handleCloseSidebar}
@@ -601,6 +627,7 @@ export default function CollaborationsPage() {
         itemName={selectedCollaboration?.partner_org || ""}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
+        isDeleting={isDeleting}
       />
     </div>
   );

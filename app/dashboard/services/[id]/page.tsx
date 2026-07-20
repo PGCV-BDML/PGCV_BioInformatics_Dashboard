@@ -68,6 +68,7 @@ export default function AnalysisDetailPage({
   const [report, setReport] = useState<ServiceReport | null>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Synchronized state object structure matching Collaboration sidebar architecture
   const [formState, setFormState] = useState<SampleFormState>({
@@ -197,7 +198,10 @@ export default function AnalysisDetailPage({
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!record || !projectId) return;
+
+    setIsSubmitting(true);
 
     // Compile form-state list entries into an explicit dynamic key-value dictionary schema
     const metadataMap: Record<string, string> = {};
@@ -238,6 +242,8 @@ export default function AnalysisDetailPage({
       setIsSidebarOpen(false);
     } catch (err) {
       console.error("Error saving sample:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -543,6 +549,7 @@ export default function AnalysisDetailPage({
       {/* Redesigned Sliding Sidebar Drawer Component Wrapper */}
       <AddSampleSidebar
         isOpen={isSidebarOpen}
+        isSaving={isSubmitting}
         formState={formState}
         pipeline={record.analysis_pipeline}
         onClose={() => setIsSidebarOpen(false)}

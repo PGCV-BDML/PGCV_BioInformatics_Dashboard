@@ -36,11 +36,14 @@ export default function ServiceReportModal({
 }: ServiceReportModalProps) {
   const [fallbackUrl, setFallbackUrl] = useState("");
   const [clientAck, setClientAck] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!analysis || !currentUserId) return;
+    setIsSubmitting(true);
 
     try {
       const saved = await saveDataToDB("service_report", crypto.randomUUID(), {
@@ -70,6 +73,8 @@ export default function ServiceReportModal({
         });
     } catch (err) {
       showToast("Failed to save report. Please try again.", "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -147,9 +152,10 @@ export default function ServiceReportModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-lg transition-all"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Fallback Report
+              {isSubmitting ? "Submitting..." : "Save Fallback Report"}
             </button>
           </div>
         </form>

@@ -14,10 +14,6 @@ export default function EvaluationPage({
   const resolvedParams = use(params);
 
   // Form Inputs State
-  const [participantName, setParticipantName] = useState("Alex Mercer, Ph.D.");
-  const [selectedProgram, setSelectedProgram] = useState(
-    "Advanced Bioinformatics Sequencing & GATK Architecture",
-  );
   const [formValues, setFormValues] = useState<Record<string, number | string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -169,38 +165,6 @@ export default function EvaluationPage({
 
           {!isSubmitted ? (
             <form onSubmit={handleSubmitEvaluation} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Participant Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Training Track
-                  </label>
-                  <select
-                    value={selectedProgram}
-                    onChange={(e) => setSelectedProgram(e.target.value)}
-                    className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
-                  >
-                    <option value="Advanced Bioinformatics Sequencing & GATK Architecture">
-                      Advanced Bioinformatics Sequencing & GATK Architecture
-                    </option>
-                    <option value="16S Metagenomics Analysis Framework">
-                      16S Metagenomics Analysis Framework
-                    </option>
-                  </select>
-                </div>
-              </div>
-
               {questions.length > 0 && (
                 <div className="space-y-3 pt-2">
                   {questions.map((q) => renderQuestion(q))}

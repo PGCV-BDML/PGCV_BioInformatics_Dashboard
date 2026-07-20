@@ -58,6 +58,13 @@ export default function TrainingPerformanceTab({
       const programCertificates = certificates.filter(
         (c) => c.program_id === resolvedParams.id,
       );
+      // Build assessment type map for score disambiguation
+      const assessmentTypeMap = new Map<string, string>();
+      for (const a of assessments) {
+        if (a.program_id === resolvedParams.id) {
+          assessmentTypeMap.set(a.id, a.type);
+        }
+      }
       const userMap = new Map<string, User>();
       for (const u of users) userMap.set(u.id, u);
       // ponytail: shows only users with responses/certificates for this program
@@ -68,13 +75,14 @@ export default function TrainingPerformanceTab({
         const u = userMap.get(r.participant_id);
         if (u && !seen.has(u.id)) {
           seen.add(u.id);
+          const assessmentType = assessmentTypeMap.get(r.assessment_id);
           rows.push({
             id: u.id,
             name: u.name,
             email: u.email,
             institution: u.institution ?? null, // ponytail: institution now comes from users.institution (added 2026-07-21)
-            pre_test_score: null,
-            post_test_score: r.score,
+            pre_test_score: assessmentType === "pre_test" ? r.score : null,
+            post_test_score: assessmentType === "post_test" ? r.score : null,
             has_certificate: false,
           });
         }
@@ -97,7 +105,7 @@ export default function TrainingPerformanceTab({
       setParticipantsList(rows);
     };
     load();
-  }, []);
+  }, [resolvedParams.id]);
 
   const handleSort = (key: keyof Trainee) => {
     let direction: "asc" | "desc" = "asc";

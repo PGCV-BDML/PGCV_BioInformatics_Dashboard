@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useTableState } from "@/hooks/useTableState";
-import { useServiceLookups } from "@/hooks/useServiceLookups";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import Link from "next/link";
 import DataTable, { Column } from "../../components/datatable";
@@ -72,18 +71,6 @@ export default function ServicesPage() {
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Raw data stored for lookup-map hook (used at top level — cannot call hooks inside useEffect)
-  const [rawProjects, setRawProjects] = useState<Project[]>([]);
-  const [rawClients, setRawClients] = useState<{ id: string; name: string }[]>([]);
-  const [rawUsers, setRawUsers] = useState<User[]>([]);
-
-  const { projectMap, userMap } = useServiceLookups({
-    projects: rawProjects,
-    clients: rawClients,
-    services: [],
-    users: rawUsers,
-  });
-
   // Sidebar Open State and Form Management
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formState, setFormState] = useState<AnalysisFormState>({
@@ -97,6 +84,11 @@ export default function ServicesPage() {
   // Report Generator Modal State
   const [selectedReportRow, setSelectedReportRow] =
     useState<ServiceProjectRow | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Refs and state for the sliding filter bar mechanism
+  const filterContainerRef = useRef<HTMLDivElement>(null);
+  const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
 
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
@@ -119,11 +111,6 @@ export default function ServicesPage() {
           getCurrentUser(),
         ]);
         setCurrentUserId(user?.id ?? null);
-
-        // Store raw arrays for the top-level useServiceLookups hook
-        setRawProjects(projects);
-        setRawClients(clients as { id: string; name: string }[]);
-        setRawUsers(users as User[]);
 
         // Build a temporary project map for immediate row construction
         // (the hook will rerun on next render with the same data)
@@ -174,6 +161,30 @@ export default function ServicesPage() {
     loadData();
   }, []);
 
+  // Recalculate slider dimensions and offset whenever activeFilter changes
+  useEffect(() => {
+    if (filterContainerRef.current) {
+      const container = filterContainerRef.current;
+      const activeButton = container.querySelector(
+        `[data-filter="${activeFilter}"]`,
+      ) as HTMLButtonElement;
+
+      if (activeButton) {
+        const containerRect = container.getBoundingClientRect();
+        const buttonRect = activeButton.getBoundingClientRect();
+
+        // Calculate position relative to container, accounting for container scroll position
+        const relativeLeft =
+          buttonRect.left - containerRect.left + container.scrollLeft;
+
+        setSlideStyle({
+          left: relativeLeft,
+          width: buttonRect.width,
+        });
+      }
+    }
+  }, [activeFilter]);
+
   const handleStatusChange = async (id: string, newStatus: string) => {
     const completedAt = newStatus === "completed" ? new Date().toISOString() : null;
     try {
@@ -208,10 +219,12 @@ export default function ServicesPage() {
   const handleCreateAnalysis = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (isSubmitting) return;
       if (!currentUserId) {
         console.error("No current user — cannot create analysis");
         return;
       }
+      setIsSubmitting(true);
       try {
         // Look up the assignee user id by name (assignees dropdown shows names)
         const users = await getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]);
@@ -257,9 +270,11 @@ export default function ServicesPage() {
         showToast("Analysis created successfully.", "success");
       } catch (err) {
         showToast("Failed to create analysis.", "error");
+      } finally {
+        setIsSubmitting(false);
       }
     },
-    [currentUserId, formState, availableProjects, showToast],
+    [currentUserId, formState, availableProjects, showToast, isSubmitting],
   );
 
   const handleReportGenerated = useCallback(
@@ -330,10 +345,6 @@ export default function ServicesPage() {
       },
     },
   });
-
-  const activeFilterIndex = useMemo(() => {
-    return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
-  }, [activeFilter]);
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
     let colorClasses = "bg-gray-100 text-gray-700";
@@ -556,12 +567,16 @@ export default function ServicesPage() {
           </div>
 
           {/* Animated Filter Bar Capsule */}
-          <div className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full w-fit overflow-hidden shadow-inner">
+          <div
+            ref={filterContainerRef}
+            className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full w-fit overflow-hidden shadow-inner"
+          >
+            {/* Sliding Highlight Block */}
             <div
-              className="absolute top-1 bottom-1 left-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100/80 transition-transform duration-300 ease-in-out"
+              className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100/80 transition-all duration-300 ease-out pointer-events-none"
               style={{
-                width: "112px",
-                transform: `translateX(${activeFilterIndex * 112}px)`,
+                left: `${slideStyle.left}px`,
+                width: `${slideStyle.width}px`,
               }}
             />
             {FILTER_OPTIONS.map((opt) => {
@@ -569,9 +584,10 @@ export default function ServicesPage() {
               return (
                 <button
                   key={opt.value}
+                  data-filter={opt.value}
                   type="button"
                   onClick={() => setActiveFilter(opt.value)}
-                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 select-none whitespace-nowrap ${
+                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs text-center transition-colors duration-300 select-none whitespace-nowrap ${
                     isActive
                       ? "text-[#2a7797] font-semibold"
                       : "text-slate-500 hover:text-slate-800 font-medium"
@@ -633,6 +649,7 @@ export default function ServicesPage() {
       {/* Slide-over analysis matrix panel */}
       <AnalysisSidebar
         isOpen={isSidebarOpen}
+        isSaving={isSubmitting}
         formState={formState}
         availableProjects={availableProjects}
         availablePipelines={availablePipelines}

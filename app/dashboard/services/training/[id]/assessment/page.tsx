@@ -11,6 +11,7 @@ import {
   Star,
 } from "lucide-react";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import { useToast } from "../../../../../components/toast";
 import type { Question, Assessment, AssessmentResponse } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
@@ -22,6 +23,7 @@ export default function AssessmentTab({
 }) {
   // Resolved parameter placeholder to ensure dynamic context alignment if API tracking is added later
   const resolvedParams = use(params);
+  const { showToast } = useToast();
 
   const [activeTest, setActiveTest] = useState<"pre" | "post" | null>(null);
   const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
@@ -211,15 +213,44 @@ export default function AssessmentTab({
         typedAnswers[key] = val;
       }
 
-      await saveDataToDB("assessment_response", crypto.randomUUID(), {
+      // Bug M7: Check for existing response to avoid duplicate submissions
+      const existingResponse = existingResponses.find(
+        (r) => r.assessment_id === assessmentId && r.participant_id === user.id,
+      );
+      const responseId = existingResponse?.id ?? crypto.randomUUID();
+
+      await saveDataToDB("assessment_response", responseId, {
         assessment_id: assessmentId,
         participant_id: user.id,
         answers: typedAnswers,
         score: finalScore,
         submitted_at: new Date().toISOString(),
       });
-    } catch {
-      // Submission failed — isSubmitting will be reset in finally
+
+      // Bug M8: Update state so button label switches to "Review Pre-Test" / "Review Post-Test"
+      if (!existingResponse) {
+        const newResponse: AssessmentResponse = {
+          id: responseId,
+          assessment_id: assessmentId,
+          participant_id: user.id,
+          answers: typedAnswers,
+          score: finalScore,
+          submitted_at: new Date().toISOString(),
+        };
+        setExistingResponses((prev) => [...prev, newResponse]);
+      } else {
+        setExistingResponses((prev) =>
+          prev.map((r) =>
+            r.id === responseId
+              ? { ...r, score: finalScore, answers: typedAnswers, submitted_at: new Date().toISOString() }
+              : r,
+          ),
+        );
+      }
+    } catch (error) {
+      // Bug M9: Log failure and notify user
+      console.error("Assessment submission failed:", error);
+      showToast("Failed to submit assessment. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }

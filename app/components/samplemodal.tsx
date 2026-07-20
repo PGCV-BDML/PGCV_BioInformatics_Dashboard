@@ -14,6 +14,7 @@ export type SampleFormState = {
 
 interface AddSampleSidebarProps {
   isOpen: boolean;
+  isSaving?: boolean;
   formState: SampleFormState;
   pipeline: string;
   onClose: () => void;
@@ -23,6 +24,7 @@ interface AddSampleSidebarProps {
 
 export default function AddSampleSidebar({
   isOpen,
+  isSaving = false,
   formState,
   pipeline,
   onClose,
@@ -89,6 +91,8 @@ export default function AddSampleSidebar({
       subtitle="Register sample parameters mapped to tracking expectations."
       onSubmit={onSubmit}
       submitLabel="Link Sample"
+      isSaving={isSaving}
+      submitDisabled={isSaving}
     >
       {/* 1. Core Identity Registry */}
       <div className="space-y-2.5">

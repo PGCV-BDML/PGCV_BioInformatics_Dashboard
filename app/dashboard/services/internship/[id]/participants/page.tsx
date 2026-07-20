@@ -66,14 +66,18 @@ export default function InternshipPerformanceTab({
         for (const u of users) userMap.set(u.id, u);
         // ponytail: shows only users with responses/certificates for this program
         // (institution now comes from users.institution — added 2026-07-21)
-        const seen = new Set<string>();
-        const rows: Intern[] = [];
+        const rowsMap = new Map<string, Intern>();
         for (const r of programResponses) {
           const u = userMap.get(r.participant_id);
-          if (u && !seen.has(u.id)) {
-            seen.add(u.id);
-            const assessmentType = assessmentTypeMap.get(r.assessment_id);
-            rows.push({
+          if (!u) continue;
+          const assessmentType = assessmentTypeMap.get(r.assessment_id);
+          const existing = rowsMap.get(u.id);
+          if (existing) {
+            // Merge the other assessment score into the existing row
+            if (assessmentType === "pre_test") existing.pre_test_score = r.score;
+            else if (assessmentType === "post_test") existing.post_test_score = r.score;
+          } else {
+            rowsMap.set(u.id, {
               id: u.id,
               name: u.name,
               email: u.email,
@@ -84,6 +88,7 @@ export default function InternshipPerformanceTab({
             });
           }
         }
+        const rows = Array.from(rowsMap.values());
         for (const c of programCertificates) {
           const existing = rows.find((r) => r.id === c.participant_id);
           if (existing) existing.has_certificate = true;

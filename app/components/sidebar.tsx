@@ -136,8 +136,13 @@ export default function Sidebar({
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (err) {
+      console.error("Sign out failed:", err);
+      router.push("/login"); // redirect anyway — user wants to sign out
+    }
   };
 
   return (

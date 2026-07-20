@@ -21,6 +21,7 @@ interface ProjectOption {
 
 interface AnalysisSidebarProps {
   isOpen: boolean;
+  isSaving?: boolean;
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availablePipelines: string[];
@@ -32,6 +33,7 @@ interface AnalysisSidebarProps {
 
 export default function AnalysisSidebar({
   isOpen,
+  isSaving = false,
   formState,
   availableProjects,
   availablePipelines,
@@ -48,6 +50,8 @@ export default function AnalysisSidebar({
       subtitle="Fill in the parameters to initiate a pipeline analysis."
       onSubmit={onSubmit}
       submitLabel="Initialize Run"
+      isSaving={isSaving}
+      submitDisabled={isSaving}
     >
       {/* 1. Target Project Link */}
       <div className="space-y-2.5">

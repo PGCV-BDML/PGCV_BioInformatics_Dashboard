@@ -4,7 +4,7 @@ import React, { useState, use, useEffect } from "react";
 import { BarChart3, Star, Send, CheckCircle, Award } from "lucide-react";
 import Link from "next/link";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import type { Question, Assessment } from "@/types/database";
+import type { Certificate, Question, Assessment } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
 
@@ -54,14 +54,20 @@ export default function InternshipEvaluationPage({
         score: null, // ponytail: evaluation is unscored
         submitted_at: new Date().toISOString(),
       });
-      // Create a certificate record for this completed evaluation
+      // Create a certificate record for this completed evaluation (if one doesn't already exist)
       try {
-        await saveDataToDB("certificate", crypto.randomUUID(), {
-          participant_id: user.id,
-          program_id: resolvedParams.id,
-          issued_at: new Date().toISOString(),
-          pdf_link: null,
-        });
+        const existingCerts = await getRowsFromDB<Certificate>("certificate");
+        const alreadyHasCert = existingCerts.some(
+          (c) => c.participant_id === user.id && c.program_id === resolvedParams.id,
+        );
+        if (!alreadyHasCert) {
+          await saveDataToDB("certificate", crypto.randomUUID(), {
+            participant_id: user.id,
+            program_id: resolvedParams.id,
+            issued_at: new Date().toISOString(),
+            pdf_link: null,
+          });
+        }
       } catch (certErr) {
         console.error("Certificate creation failed (evaluation still saved):", certErr);
       }
