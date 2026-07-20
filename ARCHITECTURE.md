@@ -90,13 +90,13 @@ PGCV_BioInformatics_Dashboard/
 │   │   ├── repositories/page.tsx     # Server component stub — "Coming Soon"
 │   │   ├── services/
 │   │   │   ├── page.tsx              # Sequence Analysis tracker (client component)
-│   │   │   ├── services-list/page.tsx# Server component stub — service catalog
 │   │   │   ├── training/
 │   │   │   │   ├── page.tsx          # Training program list (server component + ProgramSearchGrid)
 │   │   │   │   └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
 │   │   │   └── internship/
 │   │   │       ├── page.tsx          # Internship program list (server component + ProgramSearchGrid)
 │   │   │       └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
+│   │   ├── services-list/page.tsx    # Server component stub — service catalog
 │   │   └── tasks/page.tsx            # DB-integrated task CRUD (client component)
 │   ├── fonts/                    # Aileron, Optima, Quicksand typefaces (OTF/TTF)
 │   └── login/page.tsx            # Google OAuth sign-in page with DNA helix hero graphic
@@ -147,7 +147,7 @@ The authentication flow is implemented across three files:
 
 ### Step-by-step
 
-1. **Route guard** — `app/dashboard/layout.tsx:16-40` calls `supabase.auth.getSession()` on mount. If no `session` object is returned, `router.push("/login")` redirects the user to the sign-in page. A loading spinner renders while the session check is in flight.
+1. **Route guard** — `app/dashboard/layout.tsx:18-44` calls `supabase.auth.getSession()` on mount. If no `session` object is returned, `router.push("/login")` redirects the user to the sign-in page. A loading spinner renders while the session check is in flight.
 
 2. **Sign-in initiation** — `app/login/page.tsx:14-27` ("Sign in with Google" button click handler) calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/' } })`.
 
@@ -161,9 +161,9 @@ The authentication flow is implemented across three files:
 
 7. **Row-Level Security** — Every SQL query runs through RLS policies that evaluate `auth.uid()` (the authenticated user's ID) and the custom `get_user_role()` function (which reads the `role` column from `public.users`).
 
-8. **Session lifecycle** — `app/dashboard/layout.tsx:29-35` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid at any point, the listener redirects to `/login`.
+8. **Session lifecycle** — `app/dashboard/layout.tsx:33-39` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid at any point, the listener redirects to `/login`.
 
-9. **Sign-out** — `app/components/sidebar.tsx:149-152` calls `supabase.auth.signOut()`, which clears the HTTP-only cookie. The user is then redirected to `/login` via `router.push("/login")`.
+9. **Sign-out** — `app/components/sidebar.tsx:138-141` calls `supabase.auth.signOut()`, which clears the HTTP-only cookie. The user is then redirected to `/login` via `router.push("/login")`.
 
 > **Note:** OAuth success and sign-out **do** write `user_login` / `user_logout` rows to `audit_log` via the `audit_session_event` RPC, called from `app/components/sessionauditor.tsx` (mounted by `app/dashboard/layout.tsx`). The RPC is `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. See [`SECURITY.md`](./SECURITY.md) §5.
 
@@ -217,7 +217,7 @@ Exported functions:
 
 ## 6. Integration Layer (`lib/supabase.ts`)
 
-The file `lib/supabase.ts` (128 lines on `origin/main`) exports the Supabase client and a set of generic data-access helpers:
+The file `lib/supabase.ts` (161 lines after Phase 2 added generics and Phase 8 added eslint-disable comments) exports the Supabase client and a set of generic data-access helpers:
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -231,7 +231,7 @@ The file `lib/supabase.ts` (128 lines on `origin/main`) exports the Supabase cli
 
 **Caveats:**
 
-- `TableNames` now covers 15 of the 18 tables (added `"users"` in Phase 1): `collaboration, project, client, service, analysis, sample, service_report, training_program, training_session, module, onboarding_document, assessment, assessment_response, certificate, task, users`. `document_template` and `audit_log` remain server-triggered and are not in `TableNames`.
+- `TableNames` now covers 16 of the 18 tables (added `"users"` in Phase 1): `collaboration, project, client, service, analysis, sample, service_report, training_program, training_session, module, onboarding_document, assessment, assessment_response, certificate, task, users`. `document_template` and `audit_log` remain server-triggered and are not in `TableNames`.
 - The upsert path does not enforce that `id` is included in the payload; if the client omits it, `upsert()` creates a new row with a new UUID rather than using the intended `uid`.
 
 ---

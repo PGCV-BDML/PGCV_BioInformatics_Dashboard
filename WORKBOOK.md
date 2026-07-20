@@ -153,9 +153,9 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | `app/components/project-distribution-chart.tsx` | Recharts pie chart sub-component extracted from landing (Phase 5) |
 | `app/components/service-report-modal.tsx` | Report-delivery modal extracted from services page (Phase 5) |
 | `app/components/program-search-grid.tsx` | Client-island search grid for training/internship (Phase 7) |
-| `lib/utils.ts` | `cn()` classname utility, `formatDate`, debounce (Phase 3) |
+| `lib/utils.ts` | `formatDate()` — YYYY-MM-DD → MM/DD/YYYY date formatter (extracted from 3 CRUD pages) |
 | `lib/services-config.ts` | Service category → label/color config map (Phase 3) |
-| `lib/breadcrumbs.ts` | Breadcrumb trail generation logic (Phase 3) |
+| `lib/breadcrumbs.ts` | 6 typed breadcrumb exports (projectsBreadcrumbs, collaborationsBreadcrumbs, tasksBreadcrumbs, servicesBreadcrumbs, trainingBreadcrumbs, internshipBreadcrumbs) |
 | `lib/mock-data.ts` | Mock data for landing page (Phase 5 extraction) |
 | `lib/supabase-server.ts` | `createServerSupabaseClient()` for server component cookie-based auth (Phase 7) |
 | `hooks/useTableState.ts` | Generic table state (sort, filter, pagination) hook (Phase 4) |
@@ -203,7 +203,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | — | Memoization | (app-wide) | ✅ Added in Phase 6: React.memo on DataTable/Pagination/SlideOverModal + useCallback on handlers. |
 | — | Type Safety | (types/database.ts) | ✅ Added in Phase 2: all 18 DB tables typed, generics on all Supabase helpers, 0 `as any` casts. |
 
-> **README drift:** The repo's `README.md` still describes Bioinformatics Services as a "Coming Soon" stub and says audit logging is "not yet implemented." Both are false on `main` as of the recent merges — see §17.
+> **README drift:** ✅ RESOLVED — README.md was updated to reflect Bioinformatics Services as functional (8-phase refactoring complete)
 
 ---
 
@@ -270,7 +270,7 @@ From CompSci §VII. Each item is annotated with where the requirement is met.
 | 8 | Audit log | `23_audit_triggers.sql` covers insert/update/delete on `projects`, `analyses`, `service_reports`, `users`, `collaborations`, `training_programs`. `sessionauditor.tsx` covers `user_login`/`user_logout`. **`role_change` and `data_export` not yet covered** (Sprint 1–2 follow-up). |
 | 9 | Privacy notice | Full Data Privacy Notice in `app/login/page.tsx` footer (data collected, purpose, retention, access, deletion contact `bdml@pgcvisayas.upv.edu.ph`) |
 | 10 | RA 10173 considered | `SECURITY.md` §7 covers compliance |
-| 11 | Test walkthroughs | Sprint 3 — to be documented in a separate test-script file (not yet created) |
+| 11 | Test walkthroughs | 73 unit tests in place (Vitest, 7 files: lib/utils, lib/supabase, hooks/useTableState, hooks/useDeleteRecord, slidemodal, datatable, pagination). RLS role-based walkthroughs (Task 9.2) still pending — tracked in ROADMAP #27 Phase 0 §0.3. |
 
 ---
 
@@ -540,7 +540,7 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 | # | Gap | Source | Action |
 |---|---|---|---|
 | 1 | `WORKBOOK.md` (this file) is the new deliverable | 11_deliverables_checklist §2 | ✅ Created from the activity sheets. |
-| 2 | `README.md` claims Bioinformatics Services is a "Coming Soon" stub and audit logging is "not yet implemented" | README.md lines 24, 28 | Refresh the feature table to reflect current state. |
+| 2 | `README.md` claims Bioinformatics Services is a "Coming Soon" stub and audit logging is "not yet implemented" | README.md lines 24, 28 | ✅ Resolved in 8-phase refactoring (commit 5a7c42c). |
 | 3 | `audit_log` does not yet cover `role_change` and `data_export` actions | CompSci §VII | Add RPCs in Sprint 1–2 follow-up. |
 | 4 | Encryption-at-rest needs explicit confirmation in the Supabase dashboard | CompSci §VII | Verify in Supabase project settings. |
 | 5 | Sprint retrospectives + final reflection are placeholders | CompSci §IX–X; Bio tab retrospectives | Fill in before handover. |
@@ -570,9 +570,9 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 
 The local repo and the live Supabase project have drifted. This section is the canonical map of what is actually running in production.
 
-### 19.1 Migration drift — 11 local vs 22 applied
+### 19.1 Migration drift — 11 local vs 21 applied
 
-The local `supabase/migrations/` folder ships 11 files. The Supabase project has **22 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Of the 16 timestamped production migrations, 7 are mirrored in the local repo; the other 15 are production-only retroactive fixes, intentionally not in the local repo (removed in commit `362bb5d`).
+The local `supabase/migrations/` folder ships 11 files. The Supabase project has **21 applied migrations** in its history. The local 19-24 base files (`19_initial_schema.sql`, `20_security_functions.sql`, `21_enable_rls.sql`, `22_rls_policies.sql`, `23_audit_triggers.sql`, `24_updated_at_triggers.sql`) are **not** in the production migration list — they were applied via raw SQL before the migration-tracking system was configured. Of the 16 timestamped production migrations, 7 are mirrored in the local repo; the other 15 are production-only retroactive fixes, intentionally not in the local repo (removed in commit `362bb5d`).
 
 | # | Production migration | Purpose | In local repo? |
 |---|---|---|---|
@@ -608,7 +608,7 @@ The local `supabase/migrations/` folder ships 11 files. The Supabase project has
 | `audit_table_change()` | ✅ (local 20) | Generic trigger function for insert/update/delete audit. |
 | `get_user_role()` | ✅ (local 20) | Helper used by RLS policies. |
 | `audit_session_event(text, jsonb)` | ✅ (local 18) | Called from `app/components/sessionauditor.tsx` on SIGNED_IN / SIGNED_OUT. |
-| `audit_data_modification(text, text, jsonb)` | ✅ (local 20) | Called from `app/dashboard/services/page.tsx` on report delivery. |
+| `audit_data_modification(text, text, jsonb)` | ✅ (local 20) | Called from `app/components/service-report-modal.tsx` (extracted in Phase 5) on report delivery. |
 | `audit_sessions()` | ❌ | **NEW in production, not in local.** Likely a trigger function variant. |
 | `handle_new_user()` | ❌ | **NEW in production, not in local.** Likely an auth-hook function that auto-creates a `users` row on OAuth signup. |
 

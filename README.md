@@ -4,7 +4,7 @@
 
 **Repository:** `PGCV-BDML/PGCV_BioInformatics_Dashboard`
 
-*Last updated: 2026-07-20 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-3 state (Services module + audit logging shipped). New [WORKBOOK.md](./WORKBOOK.md) added.*
+*Last updated: 2026-07-20 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-4 state + 8-phase code organization refactoring complete. New [WORKBOOK.md](./WORKBOOK.md) added.*
 
 ---
 
@@ -19,7 +19,7 @@ This is a **proof-of-concept MVP** built during the June–July 2026 Internship 
 | Status | Component | Description |
 |--------|-----------|-------------|
 | ✅ | **Landing Page** | Analytics dashboard (project counts, tasks for the week, upcoming events) at `/dashboard`. Recharts-based bar/donut charts with year filtering. |
-| ✅ | **Projects Tracker** | DB-integrated table with add/edit/delete modals at `/dashboard/projects`. Backed by Supabase via `lib/supabase.ts` helpers (commit `a5a0d68`). |
+| ✅ | **Projects Tracker** | DB-integrated table with add/edit/delete modals at `/dashboard/projects`. Backed by Supabase via typed helpers in `lib/supabase.ts` (typed generics on `getRowsFromDB<T>`, `saveDataToDB<T>`, etc.). |
 | ✅ | **Collaborations Tracker** | DB-integrated table with add/edit/delete at `/dashboard/collaborations`. Same helper pattern as Projects. |
 | ✅ | **Bioinformatics Services Tracker** | Service-report master table at `/dashboard/services` with three tabs: **3.3.1 Client Sequence Analysis**, **3.3.2 Training**, **3.3.3 Internship**. The Sequence Analysis tab has a status filter, color-coded status dropdown, and a "Generate Report" fallback that writes a `service_report` row and audits the delivery via the `audit_data_modification` RPC. Tabs 3.3.2 and 3.3.3 link to the dedicated training/internship sub-routes. |
 | ✅ | **Training & Internship Modules** | Program lists at `/dashboard/services/training` and `/dashboard/services/internship` render DB `training_program` rows filtered by `type`. Per-program sub-routes cover page, assessment, participants, evaluation, onboarding, and certificate views (`/dashboard/services/{training,internship}/[id]/...`). |
@@ -77,7 +77,10 @@ cp .env.example .env.local
 
 # 4. Fill in your Supabase credentials
 #    NEXT_PUBLIC_SUPABASE_URL   = https://<project-ref>.supabase.co
-#    NEXT_PUBLIC_SUPABASE_ANON_KEY = <your-anon-key>
+#    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = <your-publishable-key>
+#
+#    Note: NEXT_PUBLIC_SUPABASE_ANON_KEY is a legacy fallback (optional).
+#    The code in lib/supabase.ts:4 and lib/supabase-server.ts:19-20 uses the publishable key as primary.
 
 # 5. Start the dev server
 npm run dev
@@ -85,7 +88,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The app redirects to `/login` when unauthenticated — sign in with a Google account that has a corresponding row in the `users` table.
 
-> **Note:** Your local checkout may be behind `origin/main`. The Supabase integration code (`lib/supabase.ts` helpers, `types/database.ts` Project types, DB-wired Projects and Collaborations pages) was merged in PR #22 (commit `a5a0d68`). Run `git pull origin main` to bring in the latest code.
+> **Note:** Your local checkout may be behind `origin/main`. The current codebase uses typed Supabase helpers in `lib/supabase.ts` (generics `getRowsFromDB<T>`, `saveDataToDB<T>`, etc.) — run `git pull origin main` to bring in the latest code.
 
 ---
 
@@ -96,7 +99,8 @@ The app deploys automatically on Vercel when changes are pushed to the `main` br
 1. Import the GitHub repo into Vercel.
 2. Set the following environment variables in the Vercel dashboard:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (primary — used by `lib/supabase.ts` and `lib/supabase-server.ts`)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (optional legacy fallback)
 3. Push to `main` — Vercel builds and deploys automatically.
 
 HTTPS is enforced by Vercel for the production domain.
@@ -235,9 +239,9 @@ These items are tracked as honest gaps in the planning documents and the WORKBOO
 2. **`audit_log` does not yet cover `role_change` and `data_export`** — the enum values exist but no trigger / RPC writes them. See `WORKBOOK.md` §17.2 row 3 and `SECURITY.md` §5.
 3. **Encryption-at-rest needs explicit confirmation in the Supabase dashboard** — the free-tier project should have this on by default, but it has not been verified. See `WORKBOOK.md` §17.2 row 4 and `SECURITY.md` §6.
 4. **Sprint retrospectives + final reflection are placeholders** — to be filled in before handover. See `WORKBOOK.md` §12.
-5. **Supabase `disable_signup` is currently `false`** — anyone with the URL can attempt to sign up. The app only renders the Google button, but a non-Google user can hit the auth API directly. Fix: set `disable_signup: true` or restrict to the lab's Google Workspace domain.
+5. ~~**Supabase `disable_signup` is currently `false`** — anyone with the URL can attempt to sign up. The app only renders the Google button, but a non-Google user can hit the auth API directly. Fix: set `disable_signup: true` or restrict to the lab's Google Workspace domain.~~ **RESOLVED** — toggled OFF in Supabase Dashboard on 2026-07-20.
 6. **Auto-`updated_at` trigger may not be applied to live Supabase** — `24_updated_at_triggers.sql` is in the repo; verify it has been applied to the live DB. Until then, the client sends `updated_at` in payloads as a workaround.
-7. **5-vs-3 `project_status` enum mismatch** — `types/database.ts` declares 5 values (`ongoing`, `for_approval`, `submitted`, `on_hold`, `completed`), but the live DB `project_status` enum has only 3 (`ongoing`, `for_approval`, `submitted`). Submitting a project with `completed` will hit a Postgres check-constraint violation. **Resolution:** run the migration to align the enum with the bio track's Status of Completion spec (5 values).
+7. ~~**5-vs-3 `project_status` enum mismatch** — `types/database.ts` declares 5 values (`ongoing`, `for_approval`, `submitted`, `on_hold`, `completed`), but the live DB `project_status` enum has only 3 (`ongoing`, `for_approval`, `submitted`). Submitting a project with `completed` will hit a Postgres check-constraint violation. **Resolution:** run the migration to align the enum with the bio track's Status of Completion spec (5 values).~~ **FALSE ALARM** — Production DB already has all 5 values (`ongoing`, `for_approval`, `submitted`, `on_hold`, `completed`); verified via `SELECT enumlabel FROM pg_enum WHERE enumtypid = 'project_status'::regtype`.
 8. **Omics Portal data import (P3 follow-up)** — the BDML in-house team shared two Firestore exports from the external **Omics Solutions Portal** for reference: `admins.json` (28 staff) and `clients.json` (80+ clients), both at the repo root. These are **one-time exports, not a live feed**. They could seed the Dashboard's `users` and `client` tables (currently 9 and 2 rows respectively) but require a schema-mapping migration because the Omics Portal uses different role vocabulary (`admin | viewer | superadmin` vs. the Dashboard's `team_lead | team_member | intern | trainee | none`) and carries extra fields (`photoURL`, `lastLogin`, `sex`, `year`, `designation`, `haveSubmitted`, `cid`, `pid[]`) that don't exist in the Dashboard schema. Out of scope for this internship; file as a GitHub Issue for the in-house team.
 9. **Intern pre/mid/final scores share a single column.** `assessment_response.score` is one smallint used by all stages. Cannot tell which stage produced a given value without joining to `assessment.type`. Schema change (separate columns or `score_meta jsonb`) is deferred to the next cohort.
 10. **RLS untested through the app with all four roles** — policies are correct on paper; no end-to-end test with team_lead / team_member / trainee / intern accounts has been performed. Tracking: Task 9.2 (see `SECURITY.md` §10).

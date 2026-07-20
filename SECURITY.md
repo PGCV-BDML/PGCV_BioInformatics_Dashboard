@@ -29,11 +29,11 @@ The dashboard is **not** designed to handle sensitive personal information beyon
 | **Implementation** | `app/login/page.tsx:14-27` — calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/' } })` |
 | **Session expiry** | 24 hours (Supabase Auth default) |
 | **Session storage** | HTTP-only cookies (Supabase JS client default) |
-| **Sign-out** | `app/components/sidebar.tsx:149-152` — calls `supabase.auth.signOut()` and redirects to `/login` |
+| **Sign-out** | `app/components/sidebar.tsx:138-141` — calls `supabase.auth.signOut()` and redirects to `/login` |
 
 **Session lifecycle:**
-- On mount, `app/dashboard/layout.tsx:16-40` calls `supabase.auth.getSession()`. If no session exists, `router.push("/login")`.
-- `app/dashboard/layout.tsx:29-35` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid, the listener redirects to `/login`.
+- On mount, `app/dashboard/layout.tsx:18-44` calls `supabase.auth.getSession()`. If no session exists, `router.push("/login")`.
+- `app/dashboard/layout.tsx:33-39` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid, the listener redirects to `/login`.
 
 **Audit on auth events:** OAuth success and sign-out **do** write `user_login` / `user_logout` entries to `audit_log` via the `audit_session_event` RPC, called from `app/components/sessionauditor.tsx` (mounted by `app/dashboard/layout.tsx`). The RPC is `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. See §5.
 
@@ -138,8 +138,8 @@ The `audit_log` table records modifications to database records for accountabili
 | `role_change` | `users.role` column updated |
 | `data_export` | Bulk read-all operation (not yet implemented) |
 | `data_modification` | Generic UPDATE event |
-| `user_login` | User signs in (not yet implemented from frontend) |
-| `user_logout` | User signs out (not yet implemented from frontend) |
+| `user_login` | User signs in (✅ Implemented via `app/components/sessionauditor.tsx` — mounted in layout. On SIGNED_IN → `audit_session_event('user_login')`) |
+| `user_logout` | User signs out (✅ Implemented via `app/components/sessionauditor.tsx` — mounted in layout. On SIGNED_OUT → `audit_session_event('user_logout')`) |
 
 ### Currently Implemented
 
@@ -199,10 +199,10 @@ The dashboard is designed with the **Philippine Data Privacy Act of 2012 (RA 101
 | Practice | Implementation |
 |----------|---------------|
 | **Environment variables** | All secrets are in environment variables — no hardcoded keys in source code. |
-| **`.env.example`** | Documents required variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. |
+| **`.env.example`** | Documents required variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (primary). `NEXT_PUBLIC_SUPABASE_ANON_KEY` is present as a commented-out legacy fallback. |
 | **`.gitignore`** | Excludes `.env*` (all `.env` files). |
 | **Vercel production** | Environment variables set in Vercel dashboard — not in the repo. |
-| **Missing variable** | `lib/supabase.ts:2` also reads `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as a fallback. This variable is **not documented** in `.env.example`. |
+| **Key transition** | `lib/supabase.ts:2` reads `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` first, falling back to `NEXT_PUBLIC_SUPABASE_ANON_KEY`. `.env.example` was updated in commit `e16c90f` to reflect the publishable key as primary. |
 
 **CI/CD security:** `.github/workflows/ci.yml` (Phase 8) runs `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm test` on every push and PR, preventing type and security regressions from merging.
 
@@ -237,12 +237,11 @@ All foreign key constraints use `ON DELETE NO ACTION` (RESTRICT). Deleting a use
 
 These are honest assessments of current risks and incomplete security controls, drawn from the Sprint 3 deep-dive analysis and the planning documents:
 
-### 🔴 Open signup on Supabase Auth
+### ✅ Open signup on Supabase Auth — Resolved 2026-07-20
 
-**`disable_signup` is currently `false`** (confirmed via GoTrue `/auth/v1/settings`). The app only renders the Google button, but a non-Google user can hit the Supabase Auth API directly to sign up. This creates a real attack surface.
+~~**`disable_signup` was previously `false`** (confirmed via GoTrue `/auth/v1/settings`). The app only renders the Google button, but a non-Google user could hit the Supabase Auth API directly to sign up.~~
 
-- **Planned fix:** Either set `disable_signup: true` or restrict to the lab's Google Workspace domain.
-- **Tracking:** Task 3.1, Sprint 1.
+**Status:** Resolved — `disable_signup` was toggled to `true` in the Supabase Dashboard on 2026-07-20. The `/auth/v1/signup` backdoor is now closed.
 
 ### 🟡 Auto-`updated_at` trigger not applied
 
@@ -262,9 +261,11 @@ The RLS policies defined in `22_rls_policies.sql` are correct on paper, and seve
 
 - **Tracking:** Task 9.2, Sprint 3 — create test accounts for all 4 roles, verify policies, document results.
 
-### 🔴 5-vs-3 `project_status` enum mismatch
+### ✅ ~~5-vs-3 `project_status` enum mismatch~~ False alarm — Resolved
 
-`types/database.ts` declares `ProjectStatus` as `"ongoing" | "for_approval" | "submitted" | "on_hold" | "completed"` (5 values). The live DB `project_status` enum (defined in `19_initial_schema.sql`) has only 3: `"ongoing"`, `"for_approval"`, `"submitted"`. Submitting a project with `"completed"` will hit a Postgres check-constraint violation.
+~~`types/database.ts` declares `ProjectStatus` as `"ongoing" | "for_approval" | "submitted" | "on_hold" | "completed"` (5 values). The live DB `project_status` enum (defined in `19_initial_schema.sql`) has only 3: `"ongoing"`, `"for_approval"`, `"submitted"`. Submitting a project with `"completed"` will hit a Postgres check-constraint violation.~~
+
+**Status:** False alarm. Production DB already has all 5 enum values (`ongoing`, `for_approval`, `submitted`, `on_hold`, `completed`). The earlier report was based on a stale schema snapshot. No mismatch exists.
 
 ---
 
