@@ -16,7 +16,8 @@ export async function getCurrentUser() {
 }
 
 //Get all user rows from database
-export async function getUsersFromDB(chosenRoles: string[]) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getUsersFromDB<T = any>(chosenRoles: string[]): Promise<T[]> {
   const roleValues = ["team_lead", "team_member", "intern", "trainee"]
 
   const isValid = chosenRoles.every(role => roleValues.includes(role));
@@ -36,10 +37,10 @@ export async function getUsersFromDB(chosenRoles: string[]) {
     throw fetchError;
   }
 
-  return users;
+  return (users ?? []) as T[];
 }
 
-type TableNames =
+export type TableNames =
   | "collaboration"
   | "project"
   | "client"
@@ -54,9 +55,10 @@ type TableNames =
   | "assessment"
   | "assessment_response"
   | "certificate"
-  | "task";
+  | "task"
+  | "users";
 
-export async function getNameIdFromDB(table: TableNames) {
+export async function getNameIdFromDB<T = { id: string; name: string }>(table: TableNames): Promise<T[]> {
   const { data: users, error: fetchError } = await supabase
     .from(table)
     .select("id,name")
@@ -66,13 +68,14 @@ export async function getNameIdFromDB(table: TableNames) {
     throw fetchError;
   }
 
-  return users;
+  return (users ?? []) as T[];
 }
 
 // Projects and Collab function =========================================================
 //Get all collab rows from database
 
-export async function getRowsFromDB(table: TableNames) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   const { data: rows, error: fetchError } = await supabase
     .from(table)
     .select("*")
@@ -82,11 +85,15 @@ export async function getRowsFromDB(table: TableNames) {
     throw fetchError;
   }
 
-  return rows ?? [];
+  return (rows ?? []) as T[];
 }
 
 //For Updating Public.Collab table
-export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
+export async function saveDataToDB<T extends Record<string, unknown> = Record<string, unknown>>(
+  table: TableNames,
+  uid: string,
+  data: Partial<T>,
+) {
   // Check if the row already exists
   const { data: existing, error: fetchError } = await supabase
     .from(table)
@@ -111,7 +118,8 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     // Modify an existing row
     const { data: updated, error } = await supabase
       .from(table)
-      .update(data)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(data as any)
       .eq("id", uid)
       .select()
       .single();
@@ -126,7 +134,8 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     // Add new row data
     const { data: inserted, error } = await supabase
       .from(table)
-      .upsert({ id: uid, ...data })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert({ id: uid, ...(data as any) })
       .select()
       .single();
 

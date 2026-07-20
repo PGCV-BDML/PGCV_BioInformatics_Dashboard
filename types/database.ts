@@ -230,3 +230,74 @@ export interface TrainingSession {
   created_at?: string;
   updated_at?: string;
 }
+
+// ============================================================
+// 3.5 Core table types (Client, Service, User, AuditLog)
+// ============================================================
+
+export type UserRole =
+  | "team_lead"
+  | "team_member"
+  | "trainee"
+  | "intern"
+  | "none";
+
+export interface Client {
+  id: string;
+  name: string;
+  affiliation: string;
+  contact_info: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export type ServiceCategory =
+  | "WGS"
+  | "amplicon"
+  | "metabarcoding"
+  | "transcriptomics"
+  | "shotgun_metag"
+  | "phylogenetics"
+  | "custom";
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string | null;
+  category: ServiceCategory;
+  pipeline_default: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface User {
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  track_assignment: string | null;
+  updated_at: string | null;
+  institution: string | null;
+}
+
+export type AuditLogAction =
+  | "state_change"
+  | "data_deletion"
+  | "role_change"
+  | "data_export"
+  | "data_modification"
+  | "user_login"
+  | "user_logout";
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  user_id: string | null;
+  action: AuditLogAction | null;
+  target_type: string;
+  target_id: string;
+  details: Record<string, unknown> | null;
+}
