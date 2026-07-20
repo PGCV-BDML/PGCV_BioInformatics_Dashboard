@@ -7,7 +7,7 @@
 
 @theme {
   /* Default black and white */
-  --color-white: #e6e7e8;
+  --color-white: #ffffff;
   --color-black: #333333;
   --color-gray: #7b7979;
 
@@ -23,10 +23,14 @@
   --color-brand-accent-5: #92298d;
   --color-brand-accent-6: #282560;
 
+  /* Surface / Tint Tokens */
+  --color-surface: #fffdf8;
+  --color-brand-tint: #e6f5ff;
+
   /* Text Tokens */
   --font-aileron: "Aileron", sans-serif;
   --font-optima: "Optima", sans-serif;
-  --font-quicksand: var(--font-quicksand-mono);
+  --font-quicksand: "Quicksand", sans-serif;
 }
 
 @font-face {
@@ -46,7 +50,7 @@
 @font-face {
   font-family: "Aileron";
   src: url("/fonts/AILERON-BLACK.otf") format("opentype");
-  font-weight: 700;
+  font-weight: 900;
   font-style: normal;
 }
 
@@ -63,6 +67,35 @@
   font-weight: 700;
   font-style: italic;
 }
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/QUICKSAND-REGULAR.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/QUICKSAND-MEDIUM.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/QUICKSAND-SEMIBOLD.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/QUICKSAND-BOLD.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+/* ponytail: Quicksand font file found in app/fonts/ — paths use /fonts/ convention matching existing Aileron/Optima. Font files may need to be copied to public/fonts/ if not already served. */
 
 @media (prefers-color-scheme: light) {
   :root {

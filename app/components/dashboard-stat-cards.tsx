@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ArrowUpRight,
 } from "lucide-react";
-import type { DashboardStats } from "@/lib/mock-data";
+import type { DashboardStats } from "@/lib/dashboard-stats";
 
 export interface DashboardStatsCardsProps {
   stats: DashboardStats | null;
