@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Security & Privacy
 
-> **Applies to:** `origin/main` as of 2026-07-19. Refreshed alongside `README.md` and `ARCHITECTURE.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
+> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `ARCHITECTURE.md` after the Sprint 3 Bioinformatics Services + audit-logging merges and the 8-phase code organization refactoring.
 > **Reference:** Philippine Data Privacy Act of 2012 (RA 10173)
 
 ---
@@ -36,6 +36,8 @@ The dashboard is **not** designed to handle sensitive personal information beyon
 - `app/dashboard/layout.tsx:29-35` subscribes to `supabase.auth.onAuthStateChange()` to handle token expiry and cross-tab sign-out events. If the session becomes invalid, the listener redirects to `/login`.
 
 **Audit on auth events:** OAuth success and sign-out **do** write `user_login` / `user_logout` entries to `audit_log` via the `audit_session_event` RPC, called from `app/components/sessionauditor.tsx` (mounted by `app/dashboard/layout.tsx`). The RPC is `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. See §5.
+
+**Server component auth:** Server components (6 pages: 4 stubs + training + internship) use `createServerSupabaseClient()` from `lib/supabase-server.ts` for cookie-based auth — a separate pattern from the browser-side JS client.
 
 ---
 
@@ -107,6 +109,8 @@ Only `team_lead` (or direct DB superuser access) can change roles. This is a def
 
 **No DELETE policy** exists on the `users` table — API-level user deletion is blocked by RLS. Hard deletes require direct database superuser access (Supabase SQL Editor as `postgres`). See §9.
 
+**Type safety as defense-in-depth:** TypeScript `noUncheckedIndexedAccess: true` (Phase 8) prevents undefined-property access at compile time. The `no-explicit-any` ESLint rule (Phase 8) ensures all DB operations have typed payloads. All 18 DB tables have TypeScript interfaces in `types/database.ts`.
+
 ---
 
 ## 5. Audit Logging
@@ -140,7 +144,7 @@ The `audit_log` table records modifications to database records for accountabili
 ### Currently Implemented
 
 - **`user_login` / `user_logout` from the frontend** — `app/components/sessionauditor.tsx` subscribes to `supabase.auth.onAuthStateChange` and calls the `audit_session_event` RPC (`supabase/migrations/20260718000000_audit_session_rpc.sql`) on `SIGNED_IN` and `SIGNED_OUT`. Filters out `INITIAL_SESSION`, `TOKEN_REFRESHED`, `USER_UPDATED`.
-- **`data_modification` from app write paths** — `app/dashboard/services/page.tsx` calls the `audit_data_modification` RPC (`supabase/migrations/20260720000000_audit_data_modification_rpc.sql`) on report delivery. Both RPCs are `REVOKE … FROM PUBLIC; GRANT … TO authenticated`.
+- **`data_modification` from app write paths** — `app/components/service-report-modal.tsx` (extracted in Phase 5) calls the `audit_data_modification` RPC (`supabase/migrations/20260720000000_audit_data_modification_rpc.sql`) on report delivery. Both RPCs are `REVOKE … FROM PUBLIC; GRANT … TO authenticated`.
 - **PostgreSQL triggers on tracked tables** — [`supabase/migrations/23_audit_triggers.sql`](./supabase/migrations/23_audit_triggers.sql) attaches `audit_table_change` triggers to `projects`, `analyses`, `service_reports`, `users`, `collaborations`, and `training_programs`. Changes to those tables produce audit-log entries.
 - **`role_change` is covered** — the `protect_user_role` trigger (migration 20) fires on `users.role` changes.
 - **Sensitive fields excluded** — `email`, `contact_info` are explicitly excluded from the `details` JSON to prevent PII leakage.
@@ -199,6 +203,10 @@ The dashboard is designed with the **Philippine Data Privacy Act of 2012 (RA 101
 | **`.gitignore`** | Excludes `.env*` (all `.env` files). |
 | **Vercel production** | Environment variables set in Vercel dashboard — not in the repo. |
 | **Missing variable** | `lib/supabase.ts:2` also reads `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as a fallback. This variable is **not documented** in `.env.example`. |
+
+**CI/CD security:** `.github/workflows/ci.yml` (Phase 8) runs `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm test` on every push and PR, preventing type and security regressions from merging.
+
+**Development-time checks:** `reactStrictMode: true` in `next.config.ts` (Phase 8) double-renders components in dev to catch security bugs and side-effect issues earlier.
 
 ---
 

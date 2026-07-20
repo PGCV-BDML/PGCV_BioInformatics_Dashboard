@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Intern Workbook
 
-> **Status:** Working draft (last refresh 2026-07-19). This workbook is the team-handoff companion to `README.md`, `ARCHITECTURE.md`, and `SECURITY.md`. It is built directly from the CompSci and Biology activity sheets in the **"Bioinformatics Activity Sheets"** Google Doc (owner: `mtmisola`, doc id `1NL6dGKCZvVvw8zCZn6_RMme9mPXcHDjrdn4rsMCtrWw`) and from the implementation in this repository.
+> **Status:** Working draft (last refresh 2026-07-20). This workbook is the team-handoff companion to `README.md`, `ARCHITECTURE.md`, and `SECURITY.md`. It is built directly from the CompSci and Biology activity sheets in the **"Bioinformatics Activity Sheets"** Google Doc (owner: `mtmisola`, doc id `1NL6dGKCZvVvw8zCZn6_RMme9mPXcHDjrdn4rsMCtrWw`) and from the implementation in this repository.
 >
 > **Purpose:** Everything a new intern or the next cohort needs to know on day 1 — team, stack, data model, sprint plan, training/internship content, service catalog, and the items still flagged as pending.
 
@@ -60,7 +60,8 @@
 | Database | Supabase (PostgreSQL) |
 | Storage | Google Drive (linked via URL fields) |
 | VCS | GitHub |
-| Libraries | Supabase JS Client, React, recharts, lucide-react |
+| Libraries | Supabase JS Client, `@supabase/ssr`, React, recharts, lucide-react |
+| Testing | vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom, @vitejs/plugin-react |
 
 **Why this stack (verbatim rationale from the CompSci activity sheet):**
 > The lab's data model is highly relational, making Supabase's PostgreSQL ideal. The strict "No Credit Card" rule eliminated Firebase because secure backend logic requires paid Cloud Functions. By pairing Next.js Server Actions (free on Vercel) with Supabase Row Level Security (RLS, free), we can securely handle Audit Logs and Role-Based Access Control without ever triggering a billing requirement.
@@ -141,6 +142,27 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | `lib/supabase.ts` | Supabase client and CRUD helpers (`getRowsFromDB`, `saveDataToDB`, `deleteDataFromDB`) |
 | `types/database.ts` | TypeScript types for rows and enums |
 | `supabase/migrations/` | 11 local SQL migration files (schema, RLS, audit, triggers, seed data). **22 applied to production** — see §19 for the drift list. |
+| `app/dashboard/error.tsx`, `loading.tsx`, `not-found.tsx` | Route-level error boundaries (Phase 1) |
+| `app/components/slidemodal.tsx` | Shared slide-over modal base — eliminates ~500 lines duplication across 5 modals (Phase 3) |
+| `app/components/pageheader.tsx` | Reusable page header for 6 dashboard pages (Phase 3) |
+| `app/components/dashboard-ui-context.tsx` | React context for landing-page UI state (Phase 4) |
+| `app/components/toast.tsx` | `ToastProvider` + `useToast` — wired into 4 CRUD pages (Phase 5) |
+| `app/components/dashboard-stat-cards.tsx` | KPI card sub-component extracted from landing (Phase 5) |
+| `app/components/weekly-task-list.tsx` | Weekly task list sub-component extracted from landing (Phase 5) |
+| `app/components/service-reports-chart.tsx` | Recharts bar chart sub-component extracted from landing (Phase 5) |
+| `app/components/project-distribution-chart.tsx` | Recharts pie chart sub-component extracted from landing (Phase 5) |
+| `app/components/service-report-modal.tsx` | Report-delivery modal extracted from services page (Phase 5) |
+| `app/components/program-search-grid.tsx` | Client-island search grid for training/internship (Phase 7) |
+| `lib/utils.ts` | `cn()` classname utility, `formatDate`, debounce (Phase 3) |
+| `lib/services-config.ts` | Service category → label/color config map (Phase 3) |
+| `lib/breadcrumbs.ts` | Breadcrumb trail generation logic (Phase 3) |
+| `lib/mock-data.ts` | Mock data for landing page (Phase 5 extraction) |
+| `lib/supabase-server.ts` | `createServerSupabaseClient()` for server component cookie-based auth (Phase 7) |
+| `hooks/useTableState.ts` | Generic table state (sort, filter, pagination) hook (Phase 4) |
+| `hooks/useDeleteRecord.ts` | Generic delete-with-confirmation hook (Phase 4) |
+| `hooks/useServiceLookups.ts` | Service/enum lookup cache hook (Phase 4) |
+| `.github/workflows/ci.yml` | CI pipeline — lint, type-check, build, test on every push/PR (Phase 8) |
+| `vitest.config.mts` + `vitest-setup.ts` | Vitest configuration & setup for 73 unit/integration tests (Phase 8) |
 
 **Naming:** kebab-case for routes, PascalCase for components, all files `.tsx`. **No plain `.ts` business logic in the app** — the spec notes "there is no TypeScript dependency" (i.e., no TS-only code path) so all app code lives in `.tsx`. (`lib/supabase.ts` and `types/database.ts` are the legitimate exceptions.)
 
@@ -158,22 +180,28 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 
 ---
 
-## 5. Component status (as of 2026-07-19)
+## 5. Component status (as of 2026-07-20)
 
 | # | Component | Route | Status |
 |---|---|---|---|
-| 3.1 | Landing Page | `/dashboard` | ✅ Functional. KPI cards, real `task` fetch, recharts bar+pie, year filter. "Upcoming Events" is a "Coming Soon" stub. |
+| 3.1 | Landing Page | `/dashboard` | ✅ Functional. Decomposed in Phase 5: 806→351 lines. Sub-components: dashboard-stat-cards, weekly-task-list, service-reports-chart, project-distribution-chart. Mock data extracted to lib/mock-data.ts. |
 | 3.2 | Projects | `/dashboard/projects` | ✅ Functional. Full CRUD, filters, sort, pagination, `repository_link`, status dropdown. |
-| 3.3 | Bioinformatics Services | `/dashboard/services` | ✅ Functional. Tabs for Sequence Analysis, Training, Internship. Status tracker, fallback report generator, audit logging on report delivery. |
+| 3.3 | Bioinformatics Services | `/dashboard/services` | ✅ Functional. Decomposed in Phase 5: 711→633 lines. Report modal extracted to service-report-modal.tsx. Error states added. |
 | 3.3.1 | Client Sequence Analysis | `/dashboard/services` (tab 1) | ✅ Functional. |
-| 3.3.2 | Training | `/dashboard/services/training` + `/[id]/{page,assessment,participants,evaluation,onboarding,certificate}` | ✅ Functional. |
-| 3.3.3 | Internship | `/dashboard/services/internship` + `/[id]/{page,participants,evaluation,onboarding,certificate,assessment}` | ✅ Functional. |
+| 3.3.2 | Training | `/dashboard/services/training` + `/[id]/{page,assessment,participants,evaluation,onboarding,certificate}` | ✅ Functional. Converted to server component in Phase 7. Uses ProgramSearchGrid client island for search. |
+| 3.3.3 | Internship | `/dashboard/services/internship` + `/[id]/{page,participants,evaluation,onboarding,certificate,assessment}` | ✅ Functional. Converted to server component in Phase 7. Uses ProgramSearchGrid client island for search. |
 | 3.4 | Collaborations | `/dashboard/collaborations` | ✅ Functional. Full CRUD, `repository_link`, documents[] as chips. |
-| 3.5 | Calendar | `/dashboard/calendar` | 🚧 "Coming Soon" stub. |
-| 3.6 | Accomplishments | `/dashboard/accomplishments` | 🚧 "Coming Soon" stub. |
-| 3.7 | Services List | `/dashboard/services-list` | 🚧 Stub with the 7 hardcoded service categories from the spec. |
-| 3.8 | Repositories | `/dashboard/repositories` | 🚧 "Coming Soon" stub. (URLs live in `project.repository_link` and `collaboration.repository_link`.) |
+| 3.5 | Calendar | `/dashboard/calendar` | 🚧 "Coming Soon" stub. Converted to server component in Phase 7. |
+| 3.6 | Accomplishments | `/dashboard/accomplishments` | 🚧 "Coming Soon" stub. Converted to server component in Phase 7. |
+| 3.7 | Services List | `/dashboard/services-list` | 🚧 Stub with the 7 hardcoded service categories from the spec. Converted to server component in Phase 7. |
+| 3.8 | Repositories | `/dashboard/repositories` | 🚧 "Coming Soon" stub. Converted to server component in Phase 7. (URLs live in `project.repository_link` and `collaboration.repository_link`.) |
 | — | Tasks | `/dashboard/tasks` | ✅ Functional (extra route; not in the 8-component count). Full CRUD, status/priority, linked project, assignee. |
+| — | Error Boundaries | `/dashboard/{error,loading,not-found}.tsx` | ✅ Added in Phase 1: route-level error.tsx, loading.tsx, not-found.tsx. |
+| — | Toast Notifications | (app-wide) | ✅ Added in Phase 5: ToastProvider + useToast wired into 4 CRUD pages. |
+| — | SlideOverModal | (shared component) | ✅ Added in Phase 3: shared modal base for 5 modals, ~500 lines duplication eliminated. |
+| — | PageHeader | (shared component) | ✅ Added in Phase 3: reusable header for 6 pages. |
+| — | Memoization | (app-wide) | ✅ Added in Phase 6: React.memo on DataTable/Pagination/SlideOverModal + useCallback on handlers. |
+| — | Type Safety | (types/database.ts) | ✅ Added in Phase 2: all 18 DB tables typed, generics on all Supabase helpers, 0 `as any` casts. |
 
 > **README drift:** The repo's `README.md` still describes Bioinformatics Services as a "Coming Soon" stub and says audit logging is "not yet implemented." Both are false on `main` as of the recent merges — see §17.
 
@@ -189,6 +217,21 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | 2 | Jul 6 – Jul 12 | Projects & Collaborations trackers, Landing page analytics, stub pages, task CRUD |
 | 3 | Jul 13 – Jul 17 | Bioinformatics Services tracker (core engine), cross-track QA & testing |
 | 4 | Jul 18 – Jul 20 | Code polish & bug fixes, final documentation, handover & demo prep |
+
+### Post-Sprint 4: Code Organization Refactoring (2026-07-20)
+
+8-phase refactoring completed with zero UI or behavior changes:
+
+- **Phase 1:** Quick wins (error boundaries, dead dep removal, TableNames fix)
+- **Phase 2:** Type safety (all 18 tables typed, 45 `as any` → 0, generics on helpers)
+- **Phase 3:** Component extraction (SlideOverModal, PageHeader, utils, config, breadcrumbs)
+- **Phase 4:** Hook extraction (useTableState, useDeleteRecord, DashboardUIContext)
+- **Phase 5:** God decomposition (dashboard 806→351L, services 711→633L, toast system)
+- **Phase 6:** Performance memoization (React.memo, useCallback)
+- **Phase 7:** Server components (6 pages converted, @supabase/ssr, ProgramSearchGrid)
+- **Phase 8:** Quality gates (73 tests, CI workflow, stricter linting, noUncheckedIndexedAccess)
+
+**Validation:** tsc 0 errors, build 27 routes, 73 tests pass, lint 0 errors.
 
 ### 6.2 Ongoing tasks (named in the CompSci sheet)
 
@@ -502,11 +545,14 @@ Categories: Activities · Publications · Projects · Public engagements · Exte
 | 4 | Encryption-at-rest needs explicit confirmation in the Supabase dashboard | CompSci §VII | Verify in Supabase project settings. |
 | 5 | Sprint retrospectives + final reflection are placeholders | CompSci §IX–X; Bio tab retrospectives | Fill in before handover. |
 | 6 | Bio tab asks for the **exact workflow states and metadata fields** for the Service Report tracker | CompSci §III open question | Bio track to confirm. |
-| 7 | Test walkthroughs (Sprint 3) not yet documented | CompSci §VII item 11 | Write a separate test-script file. |
+| 7 | Test walkthroughs (Sprint 3) not yet documented | CompSci §VII item 11 | ⚠️ **Partially resolved:** 73 automated tests added in Phase 8 (vitest + RTL). Manual walkthrough script still pending. |
 | 8 | `analysis.status` enum needs alignment with the 5-value Completion status and 3-value Submission status | §10.3, §10.4 | Add a migration to formalize. |
 | 9 | `protect_user_role` trigger already in place, but role_change still has no audit row | CompSci §VII item 8 | Add the audit action once the trigger fires. |
 | 10 | Bio tab asks for the actual workflow figures (16S Metagenomics, Transcriptomics) | §9.3 | Drop PNG/Draw.io files into `app/components/figures/`. |
 | 11 | Certificate text template is not yet wired into the certificate generator | §14.6 | Add a `template_text` column or generate at runtime. |
+| 12 | No CI pipeline for type/security regression gate | Phase 8 | ✅ **Resolved:** `.github/workflows/ci.yml` runs lint, tsc, build, test on every push/PR. |
+| 13 | No route-level error boundaries | Phase 1 | ✅ **Resolved:** `error.tsx`, `loading.tsx`, `not-found.tsx` at `/dashboard/`. |
+| 14 | Type safety gaps (45 `as any` casts, untyped tables) | Phase 2 + 8 | ✅ **Resolved:** All 18 tables typed, `noUncheckedIndexedAccess: true`, `no-explicit-any` ESLint rule. |
 
 ---
 

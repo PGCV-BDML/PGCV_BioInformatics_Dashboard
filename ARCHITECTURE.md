@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Architecture
 
-> **Applies to:** `origin/main` as of 2026-07-19. Refreshed alongside `README.md` and `SECURITY.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
+> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `SECURITY.md` after the Sprint 3 Bioinformatics Services + audit-logging merges.
 
 ---
 
@@ -36,8 +36,10 @@ flowchart LR
 | **Styling** | Tailwind CSS v4 | `^4` (`package.json:27`) |
 | **Database** | Supabase (PostgreSQL) | Managed |
 | **Auth** | Supabase Auth (Google OAuth) | `@supabase/supabase-js ^2.110.0` |
+| **Server Supabase** | Supabase SSR | `@supabase/ssr` ^0.12.3 |
 | **Hosting** | Vercel | Auto-deploy from `main` |
 | **Charts** | Recharts | `^3.9.2` (`package.json:18`) |
+| **Testing** | Vitest + Testing Library + jsdom | `vitest` + `@testing-library/react` + `jsdom` (dev) |
 | **Icons** | Lucide React | `^1.23.0` (`package.json:14`) |
 
 ---
@@ -46,44 +48,69 @@ flowchart LR
 
 ```
 PGCV_BioInformatics_Dashboard/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # Phase 8: Lint + typecheck + build + test
 ├── app/
 │   ├── layout.tsx                # Root layout; redirects / → /dashboard
 │   ├── globals.css               # Tailwind v4 @theme tokens, font-face declarations
 │   ├── page.tsx                  # Redirects to /dashboard
-│   ├── components/               # Shared client components (modals, sidebar, table, pagination, session auditor)
+│   ├── components/               # Shared client components
 │   │   ├── analysismodal.tsx         # New/edit sequence analysis form
 │   │   ├── collaborationmodal.tsx    # Add/edit collaboration form modal
 │   │   ├── dashboardbreadcrumbs.tsx  # Breadcrumb nav for nested routes
+│   │   ├── dashboard-stat-cards.tsx  # Phase 5: Landing KPI cards
+│   │   ├── dashboard-ui-context.tsx  # Phase 4: DashboardUIProvider + useDashboardUI
 │   │   ├── datatable.tsx             # Reusable sortable/filterable table
 │   │   ├── deletemodal.tsx           # Confirmation dialog for deletions
+│   │   ├── pageheader.tsx            # Phase 3: Reusable PageHeader with breadcrumbs
 │   │   ├── pagination.tsx            # Page-number paginator
+│   │   ├── program-search-grid.tsx   # Phase 7: Client island for training/internship search
+│   │   ├── project-distribution-chart.tsx # Phase 5: Landing donut chart
 │   │   ├── projectmodal.tsx          # Add/edit project form modal
 │   │   ├── samplemodal.tsx           # Sample sub-view (Task 6.5)
+│   │   ├── service-report-modal.tsx  # Phase 5: Report generation modal
+│   │   ├── service-reports-chart.tsx # Phase 5: Landing bar chart
 │   │   ├── sessionauditor.tsx        # Mounts onAuthStateChange; calls audit_session_event RPC
 │   │   ├── sidebar.tsx               # Nav links, user profile dropdown, sign-out button
-│   │   └── taskmodal.tsx             # Add/edit task form modal
+│   │   ├── slidemodal.tsx            # Phase 3: Shared SlideOverModal + renderSectionLabel
+│   │   ├── taskmodal.tsx             # Add/edit task form modal
+│   │   ├── toast.tsx                 # Phase 5: ToastProvider + useToast
+│   │   └── weekly-task-list.tsx      # Phase 5: Landing task list
 │   ├── dashboard/                # All protected routes (auth-guarded by layout.tsx)
-│   │   ├── layout.tsx            # Auth guard — calls supabase.auth.getSession(); redirects to /login if absent
-│   │   ├── page.tsx              # Landing page: analytics cards, weekly tasks, upcoming events, Recharts charts
-│   │   ├── accomplishments/page.tsx  # Stub — "Coming Soon"
-│   │   ├── calendar/page.tsx         # Stub — "Coming Soon"
-│   │   ├── collaborations/page.tsx   # DB-integrated collab tracker
-│   │   ├── projects/page.tsx         # DB-integrated project tracker
-│   │   ├── repositories/page.tsx     # Stub — "Coming Soon"
+│   │   ├── layout.tsx            # Auth guard — supabase.auth.getSession(); redirects to /login
+│   │   ├── page.tsx              # Landing: KPI cards, weekly tasks, Recharts charts
+│   │   ├── error.tsx             # Phase 1: Route-level error boundary
+│   │   ├── loading.tsx           # Phase 1: Route-level loading state
+│   │   ├── not-found.tsx         # Phase 1: Route-level 404
+│   │   ├── accomplishments/page.tsx  # Server component stub — "Coming Soon"
+│   │   ├── calendar/page.tsx         # Server component stub — "Coming Soon"
+│   │   ├── collaborations/page.tsx   # DB-integrated collab tracker (client component)
+│   │   ├── projects/page.tsx         # DB-integrated project tracker (client component)
+│   │   ├── repositories/page.tsx     # Server component stub — "Coming Soon"
 │   │   ├── services/
-│   │   │   ├── page.tsx              # 3.3.1 Sequence Analysis tracker (tabbed; 3.3.2/3.3.3 link out)
-│   │   │   ├── services-list/page.tsx# Hardcoded service catalog
+│   │   │   ├── page.tsx              # Sequence Analysis tracker (client component)
+│   │   │   ├── services-list/page.tsx# Server component stub — service catalog
 │   │   │   ├── training/
-│   │   │   │   ├── page.tsx          # Training program list (DB-driven)
+│   │   │   │   ├── page.tsx          # Training program list (server component + ProgramSearchGrid)
 │   │   │   │   └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
 │   │   │   └── internship/
-│   │   │       ├── page.tsx          # Internship program list (DB-driven)
+│   │   │       ├── page.tsx          # Internship program list (server component + ProgramSearchGrid)
 │   │   │       └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
-│   │   └── tasks/page.tsx            # DB-integrated task CRUD
+│   │   └── tasks/page.tsx            # DB-integrated task CRUD (client component)
 │   ├── fonts/                    # Aileron, Optima, Quicksand typefaces (OTF/TTF)
 │   └── login/page.tsx            # Google OAuth sign-in page with DNA helix hero graphic
+├── hooks/                        # Custom React hooks (Phase 4-6)
+│   ├── useTableState.ts          # Sort + paginate hook with customSorters
+│   ├── useDeleteRecord.ts        # Delete hook with onError callback
+│   └── useServiceLookups.ts      # Typed lookup maps via useMemo
 ├── lib/
-│   └── supabase.ts               # Supabase client init + 6 data-access helpers
+│   ├── breadcrumbs.ts            # Phase 3: Typed breadcrumb exports
+│   ├── mock-data.ts              # Phase 5: yearlyMockDB + DashboardStats
+│   ├── services-config.ts        # Phase 3: SERVICES_CONFIG
+│   ├── supabase.ts               # Supabase client init + 6 data-access helpers (client-side)
+│   ├── supabase-server.ts        # Phase 7: createServerSupabaseClient + getServerUser
+│   └── utils.ts                  # Phase 3: formatDate utility
 ├── supabase/
 │   └── migrations/               # 11 SQL files (base 19–24 + 5 timestamped add-ons)
 │       ├── 19_initial_schema.sql             # 9 enums + 18 tables + indexes
@@ -99,10 +126,12 @@ PGCV_BioInformatics_Dashboard/
 │       └── 20260721000000_add_institution_to_users.sql
 │
 │  # Note: the local repo has 11 migration files, but the Supabase project
-│  # has 22 applied migrations. See §11 / WORKBOOK §19 for the drift list.
+│  # has 22 applied migrations. See §18 / WORKBOOK §19 for the drift list.
 ├── types/
 │   └── database.ts               # TypeScript interfaces: UserOption, CollaborationRow,
 │                                  #   Project, ProjectStatus, STATUS_OPTIONS, ProjectFormData
+├── vitest.config.mts             # Phase 8: Vitest configuration
+├── vitest-setup.ts               # Phase 8: Test setup (jsdom, @testing-library/jest-dom)
 ├── .env.example                  # Documents required env vars
 ├── .gitignore                    # Excludes node_modules, .next, .env*
 ├── eslint.config.mjs
@@ -142,7 +171,11 @@ The authentication flow is implemented across three files:
 
 ## 5. Database Access Pattern
 
-The app uses a **direct-from-frontend** access pattern — no custom API layer, no backend endpoints. All data access happens through the Supabase JS client running in browser-side or server-component code:
+The app uses a **dual access pattern** — no custom API layer, no backend endpoints. All data access happens through Supabase JS clients in either a client-side or server-side context.
+
+### Client-side (browser)
+
+Client components use `lib/supabase.ts` (browser Supabase client via `createClient()`):
 
 ```
 Browser Component
@@ -152,7 +185,28 @@ Supabase Gateway (JWT validation)
 PostgreSQL (18 tables)
 ```
 
-**Key characteristics:**
+Helpers available: `getRowsFromDB<T>`, `getNameIdFromDB<T>`, `saveDataToDB<T>`, `getUsersFromDB<T>`, `getCurrentUser`, `deleteDataFromDB` — all with generic type parameters (Phase 2).
+
+### Server-side (React Server Components)
+
+Server components use `lib/supabase-server.ts` (Phase 7):
+
+```
+Server Component
+    ↕ createServerSupabaseClient()  ← reads cookie via next/headers
+    ↕ getServerUser()               ← returns User | null
+Supabase Gateway (JWT validation)
+    ↕ RLS policy evaluation
+PostgreSQL
+```
+
+Exported functions:
+- `createServerSupabaseClient()` — reads the Supabase session cookie via `next/headers()` for RLS-gated server-side fetching.
+- `getServerUser()` — returns the authenticated `User` object or `null`.
+
+6 server components use this pattern: 4 stub pages (accomplishments, calendar, repositories, services-list) + the training and internship list pages.
+
+### Key characteristics (shared)
 
 - **No REST API layer** — Next.js does not expose custom `/api/` routes for CRUD. The Supabase client talks directly to the database.
 - **RLS is the sole authorization layer** — there is no middleware-level access check beyond the initial session check in `app/dashboard/layout.tsx`.
@@ -168,22 +222,70 @@ The file `lib/supabase.ts` (128 lines on `origin/main`) exports the Supabase cli
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `supabase` | `createClient(url, key)` | Initialized Supabase client, exported as a named constant |
-| `getCurrentUser()` | `() => Promise<User \| null>` | Returns the cached auth session's user object (uses `.then()` style — inconsistent with other async helpers) |
-| `getUsersFromDB(roles)` | `(roles: string[]) => Promise<User[]>` | Fetches users filtered by `role` values (`team_lead`, `team_member`, `intern`, `trainee`) |
-| `getNameIdFromDB(table)` | `(table: TableNames) => Promise<{id, name}[]>` | Returns `id` + `name` pairs for dropdown populators |
-| `getRowsFromDB(table)` | `(table: TableNames) => Promise<Row[]>` | Fetches all rows from the given table |
-| `saveDataToDB(table, uid, data)` | `(table: TableNames, uid: string, data: any) => Promise<Row>` | Upsert pattern — checks for existing row via `maybeSingle()`, updates or inserts |
+| `getCurrentUser()` | `() => Promise<User \| null>` | Returns the cached auth session's user object |
+| `getUsersFromDB<T>(roles)` | `<T = any>(roles: string[]) => Promise<T[]>` | Fetches users filtered by `role` values (`team_lead`, `team_member`, `intern`, `trainee`); generic return type |
+| `getNameIdFromDB<T>(table)` | `<T = { id: string; name: string }>(table: TableNames) => Promise<T[]>` | Returns `id` + `name` pairs for dropdown populators; generic return type |
+| `getRowsFromDB<T>(table)` | `<T = any>(table: TableNames) => Promise<T[]>` | Fetches all rows from the given table; generic return type |
+| `saveDataToDB<T>(table, uid, data)` | `<T extends Record<string, unknown>>(table: TableNames, uid: string, data: Partial<T>) => Promise<T>` | Upsert pattern — checks for existing row via `maybeSingle()`, updates or inserts; generic payload type |
 | `deleteDataFromDB(table, id)` | `(table: TableNames, id: string) => Promise<void>` | Deletes a row by ID |
 
 **Caveats:**
 
-- `TableNames` covers 14 of the 18 tables: `collaboration, project, client, service, analysis, sample, service_report, training_program, training_session, module, onboarding_document, assessment, assessment_response, certificate, task`. **`users`, `document_template`, and `audit_log` are not included** — `getUsersFromDB` uses `supabase.from("users")` directly; the other two are server-triggered.
-- `saveDataToDB` accepts `data: any` — no payload shape validation. A typo in the column name silently inserts garbage.
+- `TableNames` now covers 15 of the 18 tables (added `"users"` in Phase 1): `collaboration, project, client, service, analysis, sample, service_report, training_program, training_session, module, onboarding_document, assessment, assessment_response, certificate, task, users`. `document_template` and `audit_log` remain server-triggered and are not in `TableNames`.
 - The upsert path does not enforce that `id` is included in the payload; if the client omits it, `upsert()` creates a new row with a new UUID rather than using the intended `uid`.
 
 ---
 
-## 7. Data Model
+## 7. Architectural Advances (Phases 1–8)
+
+The eight-phase refactoring introduced the following cross-cutting architectural concepts.
+
+### 7.1 Server Components (Phase 7)
+
+- **6 pages** are now server components: 4 stubs (accomplishments, calendar, repositories, services-list) + training + internship.
+- Server components use `createServerSupabaseClient()` from `lib/supabase-server.ts` to read cookies via `next/headers` for RLS-gated server-side fetching.
+- Training/internship list pages embed `<ProgramSearchGrid />` as a client island for search interactivity.
+- 4 CRUD pages (collaborations, projects, services, tasks) remain client components (evaluated but not converted — ~21–29h estimated effort).
+
+### 7.2 Hooks Layer (Phase 4–6)
+
+| Hook | Signature | Description |
+|------|-----------|-------------|
+| `useTableState<T>` | `(data: T[], options?: { customSorters?: Record<string, (a: T, b: T) => number>, defaultSort?: { key: string; direction: 'asc' \| 'desc' } }) => { sortedData, sortKey, sortDirection, handleSort, page, pageSize, totalPages, paginatedData, setPage }` | Combined sort + paginate with customSorters support |
+| `useDeleteRecord<T>` | `(deleteFn: (id: string) => Promise<void>, options?: { onError?: (err: Error) => void }) => { deleteRecord, deleting }` | Delete wrapper with loading state and error callback |
+| `useServiceLookups` | `() => { userMap, serviceMap, clientMap }` | Typed lookup maps (`Record<string, string>`) built via `useMemo` from DB queries |
+| `useDashboardUI()` | `() => { isSidebarHidden, toggleSidebar }` | Sidebar state via React Context (`DashboardUIProvider`) |
+| `useToast()` | `() => { showToast, toasts }` | Toast notifications for write-operation feedback |
+
+### 7.3 Component Extraction (Phase 3–5)
+
+- **`SlideOverModal`** — shared base for 5 modals, eliminating ~500 lines of duplicated slide-over logic.
+- **`PageHeader`** — reusable header component for 6 pages with breadcrumb integration.
+- **Dashboard page decomposed**: 806 → 351 lines (5 sub-components extracted: `DashboardStatCards`, `WeeklyTaskList`, `ServiceReportsChart`, `ProjectDistributionChart`, `ToastProvider`).
+- **Services page decomposed**: 711 → 633 lines (report generation extracted to `ServiceReportModal`).
+
+### 7.4 Performance (Phase 6)
+
+- `React.memo` applied to `DataTable`, `Pagination`, `SlideOverModal` to prevent unnecessary re-renders.
+- `useCallback` wrapped around all event handlers in CRUD pages (collaborations, projects, services, tasks).
+
+### 7.5 Error Handling (Phase 1, 5)
+
+- **Route-level**: `error.tsx`, `loading.tsx`, `not-found.tsx` in `app/dashboard/` catch unhandled errors, loading state, and 404s.
+- **Page-level**: `loadError` state on 5 pages (collaborations, services, services/[id], training, internship).
+- **Toast notifications**: `ToastProvider` + `useToast()` for write-operation success/failure feedback.
+
+### 7.6 Quality Gates (Phase 8)
+
+- **73 tests** (Vitest + React Testing Library) — co-located with source files.
+- **CI pipeline**: `.github/workflows/ci.yml` — lint + typecheck + build + test on push/PR.
+- **TypeScript strictness**: `noUncheckedIndexedAccess: true` in `tsconfig.json`.
+- **ESLint**: `no-explicit-any: error` rule enabled.
+- **Next.js hardening**: `reactStrictMode: true`, `poweredByHeader: false` in `next.config.ts`.
+
+---
+
+## 13. Data Model
 
 The authoritative source is [`supabase/migrations/19_initial_schema.sql`](./supabase/migrations/19_initial_schema.sql) (374 lines). It defines **18 tables** and **9 custom enum types**.
 
@@ -230,7 +332,7 @@ All foreign key constraints use `ON DELETE NO ACTION` (RESTRICT).
 
 ---
 
-## 8. RLS Policy Summary
+## 14. RLS Policy Summary
 
 Source: [`supabase/migrations/22_rls_policies.sql`](./supabase/migrations/22_rls_policies.sql) (274 lines).
 
@@ -268,7 +370,7 @@ The role hierarchy is: `team_lead` ⊃ `team_member` ⊃ `trainee | intern`. "St
 
 ---
 
-## 9. Deployment Architecture
+## 15. Deployment Architecture
 
 ```mermaid
 flowchart LR
@@ -291,7 +393,7 @@ flowchart LR
 
 ---
 
-## 10. Future Work
+## 16. Future Work
 
 Items explicitly descoped to **P4 (Won't)** in the MoSCoW prioritization (`project_management_plan.md:41-43`):
 
@@ -304,7 +406,7 @@ Items explicitly descoped to **P4 (Won't)** in the MoSCoW prioritization (`proje
 
 ---
 
-## 11. Cross-references
+## 17. Cross-references
 
 | Topic | Doc |
 |---|---|
@@ -314,11 +416,11 @@ Items explicitly descoped to **P4 (Won't)** in the MoSCoW prioritization (`proje
 
 ---
 
-## 12. Supabase production state (as of 2026-07-19)
+## 18. Supabase production state (as of 2026-07-20)
 
-The local repo and the live Supabase project have drifted. This section captures the live state; the full gap list lives in [`WORKBOOK.md` §19](./WORKBOOK.md#19-supabase-production-state-as-of-2026-07-19).
+The local repo and the live Supabase project have drifted. This section captures the live state; the full gap list lives in [`WORKBOOK.md` §19](./WORKBOOK.md#19-supabase-production-state-as-of-2026-07-20).
 
-### 12.1 Migration drift
+### 18.1 Migration drift
 
 - **11 files** in the local `supabase/migrations/` folder.
 - **22 migrations** applied to production (different timestamps, different names).
@@ -327,24 +429,24 @@ The local repo and the live Supabase project have drifted. This section captures
 
 > **Action item (P0):** Generate `supabase/migrations/25_reconcile_production.sql` from the current production state so a fresh `supabase db reset` reproduces production byte-for-byte.
 
-### 12.2 Functions
+### 18.2 Functions
 
 - **Local-defined and present in production:** `protect_user_role_column()`, `audit_table_change()`, `get_user_role()`, `audit_session_event(text, jsonb)`, `audit_data_modification(text, text, jsonb)`.
 - **Present in production but not in local:** `audit_sessions()`, `handle_new_user()` (likely an auth-hook that auto-creates a `users` row on OAuth signup).
 - **All SECURITY DEFINER functions are callable by `anon` and `authenticated`** (per Supabase linter). See `SECURITY.md` §13 for the mitigation list.
 
-### 12.3 Schema additions vs. local
+### 18.3 Schema additions vs. local
 
 - `users.institution` (text, nullable) — added in production by `20260719144134_add_institution_to_users.sql`.
 - `assessment.questions` is `jsonb` in production (changed from a text/array type in production migration `20260708014455`).
 - `users` table was renamed from `user` in production migration `20260708014021` (relevant only if you write raw SQL against the DB).
 - `audit_log.action` is now constrained by an enum (`audit_log_action`).
 
-### 12.4 New enums in production
+### 18.4 New enums in production
 
 `user_roles` (team_lead, team_member, trainee, intern, none) · `service_categories` · `template_categories` · `training_type` · `project_status` · `analysis_status` · `assessment_type` (pre_test, post_test, evaluation) · `audit_log_action`.
 
-### 12.5 Edge functions
+### 18.5 Edge functions
 
 One active edge function: `backup-audit` (no JWT verification by design — it is triggered by Supabase cron, not user traffic). Matches the spec in WORKBOOK §3.4.
 

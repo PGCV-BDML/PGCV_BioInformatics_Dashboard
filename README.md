@@ -4,7 +4,7 @@
 
 **Repository:** `PGCV-BDML/PGCV_BioInformatics_Dashboard`
 
-*Last updated: 2026-07-19 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-3 state (Services module + audit logging shipped). New [WORKBOOK.md](./WORKBOOK.md) added.*
+*Last updated: 2026-07-20 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-3 state (Services module + audit logging shipped). New [WORKBOOK.md](./WORKBOOK.md) added.*
 
 ---
 
@@ -25,7 +25,7 @@ This is a **proof-of-concept MVP** built during the June–July 2026 Internship 
 | ✅ | **Training & Internship Modules** | Program lists at `/dashboard/services/training` and `/dashboard/services/internship` render DB `training_program` rows filtered by `type`. Per-program sub-routes cover page, assessment, participants, evaluation, onboarding, and certificate views (`/dashboard/services/{training,internship}/[id]/...`). |
 | ✅ | **Stub Pages** | Calendar, Accomplishments, Services List, and Repositories render functional stub pages with "Coming Soon" messages per [`11_deliverables_checklist.md`](https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard/blob/main/11_deliverables_checklist.md) §1 (all 8 components present). |
 | ✅ | **Google OAuth Login** | Authentication via Supabase Auth with Google OAuth. Session managed in `app/dashboard/layout.tsx:16-40`; redirects to `/login` when unauthenticated. |
-| ✅ | **Real-time Audit Logging** | Two secured RPCs in `supabase/migrations/`: `audit_session_event` (called from `app/components/sessionauditor.tsx` on `SIGNED_IN` / `SIGNED_OUT`) and `audit_data_modification` (called from `app/dashboard/services/page.tsx` on report delivery). Both `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. PostgreSQL triggers via `23_audit_triggers.sql` plus the `protect_user_role` defense-in-depth trigger. See [`SECURITY.md`](./SECURITY.md) §5. |
+| ✅ | **Real-time Audit Logging** | Two secured RPCs in `supabase/migrations/`: `audit_session_event` (called from `app/components/sessionauditor.tsx` on `SIGNED_IN` / `SIGNED_OUT`) and `audit_data_modification` (called from `app/components/service-report-modal.tsx` on report delivery). Both `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. PostgreSQL triggers via `23_audit_triggers.sql` plus the `protect_user_role` defense-in-depth trigger. See [`SECURITY.md`](./SECURITY.md) §5. |
 
 ---
 
@@ -42,6 +42,13 @@ This is a **proof-of-concept MVP** built during the June–July 2026 Internship 
 | **Auth** | Supabase Auth (Google OAuth) | `@supabase/supabase-js ^2.110.0` |
 | **Charts** | Recharts | `^3.9.2` |
 | **Icons** | Lucide React | `^1.23.0` |
+| **Server Supabase Client** | `@supabase/ssr` | `^0.12.3` |
+| **Testing (framework)** | Vitest | (dev) |
+| **Testing (components)** | `@testing-library/react` | (dev) |
+| **Testing (DOM matchers)** | `@testing-library/jest-dom` | (dev) |
+| **Testing (user events)** | `@testing-library/user-event` | (dev) |
+| **Testing (DOM env)** | `jsdom` | (dev) |
+| **Testing (Vite plugin)** | `@vitejs/plugin-react` | (dev) |
 
 ---
 
@@ -100,24 +107,40 @@ HTTPS is enforced by Vercel for the production domain.
 
 ```
 PGCV_BioInformatics_Dashboard/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # GitHub Actions (lint + typecheck + build + test)
 ├── app/
-│   ├── layout.tsx                # Root layout (redirects / → /dashboard)
-│   ├── globals.css               # Tailwind v4 @theme tokens + custom fonts
-│   ├── components/               # Reusable UI components
+│   ├── layout.tsx                    # Root layout (redirects / → /dashboard)
+│   ├── globals.css                   # Tailwind v4 @theme tokens + custom fonts
+│   ├── components/                   # Reusable UI components
 │   │   ├── collaborationmodal.tsx
+│   │   ├── dashboard-stat-cards.tsx  # Landing KPI stat cards
+│   │   ├── dashboard-ui-context.tsx  # DashboardUIProvider + useDashboardUI
 │   │   ├── datatable.tsx
 │   │   ├── deletemodal.tsx
+│   │   ├── pageheader.tsx            # Reusable page header with breadcrumbs
 │   │   ├── pagination.tsx
+│   │   ├── program-search-grid.tsx   # Client island for training/internship search
+│   │   ├── project-distribution-chart.tsx
 │   │   ├── projectmodal.tsx
-│   │   ├── sidebar.tsx           # Navigation + sign-out + user profile
-│   │   └── taskmodal.tsx
+│   │   ├── service-report-modal.tsx
+│   │   ├── service-reports-chart.tsx
+│   │   ├── sidebar.tsx               # Navigation + sign-out + user profile
+│   │   ├── slidemodal.tsx            # Shared SlideOverModal base component
+│   │   ├── taskmodal.tsx
+│   │   ├── toast.tsx                 # ToastProvider + useToast notification system
+│   │   └── weekly-task-list.tsx
 │   ├── dashboard/
-│   │   ├── layout.tsx            # Auth guard (redirects to /login if no session)
-│   │   ├── page.tsx              # Landing / analytics
+│   │   ├── layout.tsx                # Auth guard (redirects to /login if no session)
+│   │   ├── page.tsx                  # Landing / analytics
+│   │   ├── error.tsx                 # Route-level error boundary
+│   │   ├── loading.tsx               # Route-level loading state
+│   │   ├── not-found.tsx             # Route-level 404
 │   │   ├── accomplishments/page.tsx
 │   │   ├── calendar/page.tsx
-│   │   ├── collaborations/page.tsx  # DB-integrated
-│   │   ├── projects/page.tsx        # DB-integrated
+│   │   ├── collaborations/page.tsx   # DB-integrated
+│   │   ├── projects/page.tsx         # DB-integrated
 │   │   ├── repositories/page.tsx
 │   │   ├── services/
 │   │   │   ├── page.tsx              # Sequence Analysis tracker (tabbed)
@@ -129,28 +152,47 @@ PGCV_BioInformatics_Dashboard/
 │   │   │       ├── page.tsx          # Internship program list (DB-driven)
 │   │   │       └── [id]/{page,assessment,participants,evaluation,onboarding,certificate}
 │   │   └── tasks/page.tsx            # DB-integrated CRUD
-│   ├── fonts/                    # Aileron, Optima, Quicksand
-│   └── login/page.tsx            # Google OAuth sign-in
+│   ├── fonts/                        # Aileron, Optima, Quicksand
+│   └── login/page.tsx                # Google OAuth sign-in
+├── hooks/
+│   ├── useDeleteRecord.ts            # Delete hook with onError callback
+│   ├── useServiceLookups.ts          # Typed lookup map hook
+│   └── useTableState.ts              # Combined sort + paginate hook
 ├── lib/
-│   └── supabase.ts               # Supabase client + DB helpers (typed TableNames)
+│   ├── breadcrumbs.ts                # Typed breadcrumb exports
+│   ├── mock-data.ts                  # yearlyMockDB + DashboardStats type
+│   ├── services-config.ts            # SERVICES_CONFIG shared config
+│   ├── supabase.ts                   # Supabase client + DB helpers (typed TableNames)
+│   ├── supabase-server.ts            # createServerSupabaseClient + getServerUser
+│   └── utils.ts                      # formatDate utility
 ├── supabase/
-│   └── migrations/               # 11 SQL migration files (22 applied to production — see ARCHITECTURE §11 / WORKBOOK §19)
-│       ├── 19_initial_schema.sql          # 18 tables + 9 enums + indexes
-│       ├── 20_security_functions.sql      # get_user_role(), protect_user_role_column()
-│       ├── 21_enable_rls.sql              # RLS enabled on all 18 tables
-│       ├── 22_rls_policies.sql            # Per-table policies (30+)
-│       ├── 23_audit_triggers.sql          # Audit + protect_user_role triggers
-│       ├── 24_updated_at_triggers.sql     # Auto-updated_at on UPDATE
+│   └── migrations/                   # 11 SQL migration files (22 applied to production — see ARCHITECTURE §11 / WORKBOOK §19)
+│       ├── 19_initial_schema.sql              # 18 tables + 9 enums + indexes
+│       ├── 20_security_functions.sql          # get_user_role(), protect_user_role_column()
+│       ├── 21_enable_rls.sql                  # RLS enabled on all 18 tables
+│       ├── 22_rls_policies.sql                # Per-table policies (30+)
+│       ├── 23_audit_triggers.sql              # Audit + protect_user_role triggers
+│       ├── 24_updated_at_triggers.sql         # Auto-updated_at on UPDATE
 │       ├── 20260717000000_seed_biology_assessments.sql
 │       ├── 20260718000000_audit_session_rpc.sql
 │       ├── 20260720000000_audit_data_modification_rpc.sql
 │       ├── 20260720000000_seed_demo_data.sql
 │       └── 20260721000000_add_institution_to_users.sql
 ├── types/
-│   └── database.ts               # Shared TypeScript types
-├── .env.example                  # Required env vars documented
+│   └── database.ts                   # Shared TypeScript types
+├── .env.example                      # Required env vars documented
 ├── package.json
-└── next.config.ts
+├── next.config.ts
+├── vitest.config.mts                 # Vitest configuration
+├── vitest-setup.ts                   # Test setup (jsdom + @testing-library matchers)
+└── Tests (7 files, 73 tests):
+    ├── lib/utils.test.ts
+    ├── lib/supabase.test.ts
+    ├── hooks/useTableState.test.ts
+    ├── hooks/useDeleteRecord.test.ts
+    ├── app/components/slidemodal.test.tsx
+    ├── app/components/datatable.test.tsx
+    └── app/components/pagination.test.tsx
 ```
 
 ---
@@ -160,6 +202,28 @@ PGCV_BioInformatics_Dashboard/
 - **Architecture overview:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system diagram, auth flow, data model, RLS summary, deployment architecture.
 - **Security + privacy:** [`SECURITY.md`](./SECURITY.md) — RLS policies, audit logging, RA 10173 compliance, known issues.
 - **Intern / team handoff workbook:** [`WORKBOOK.md`](./WORKBOOK.md) — team contacts, full data model, sprint plan, training/internship question banks, service catalog, gap tracker. Built from the "Bioinformatics Activity Sheets" Google Doc.
+
+---
+
+## Testing
+
+73 tests across 7 test files. Run with `npm test`.
+
+| File | Tests |
+|------|-------|
+| `lib/utils.test.ts` | formatDate unit tests |
+| `lib/supabase.test.ts` | Supabase client helpers |
+| `hooks/useTableState.test.ts` | sort + paginate hook |
+| `hooks/useDeleteRecord.test.ts` | delete hook with onError |
+| `app/components/slidemodal.test.tsx` | SlideOverModal rendering |
+| `app/components/datatable.test.tsx` | DataTable rendering |
+| `app/components/pagination.test.tsx` | Pagination controls |
+
+**Test tooling:** Vitest, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`, `@vitejs/plugin-react`.
+
+## CI
+
+GitHub Actions runs `lint` + `typecheck` + `build` + `test` on every push and pull request. Workflow definition: `.github/workflows/ci.yml`.
 
 ---
 
