@@ -186,7 +186,7 @@ export default function DynamicProgramLayout({
       </div>
 
       {/* Cohort Profile Overview */}
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
         <div className="space-y-1">
           <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
             Philippine Genome Center Visayas - Bioinformatics Training Program
@@ -230,7 +230,7 @@ export default function DynamicProgramLayout({
       </div>
 
       {/* Workspace Sub-Tabs (Pure CSS Grid Sliding Animation) */}
-      <div className="bg-[#fffdf8] border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
+      <div className="bg-surface border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
         {/* We use grid-cols-6 to distribute equal layout widths to all 6 sub-tabs */}
         <div className="relative grid grid-cols-6 gap-1 min-w-[760px] md:min-w-full">
           {/* Hardware Accelerated Pure CSS Slider */}

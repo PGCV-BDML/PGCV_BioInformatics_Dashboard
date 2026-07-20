@@ -1,6 +1,6 @@
 # PGCV Bioinformatics Dashboard — Security & Privacy
 
-> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `ARCHITECTURE.md` after the Sprint 3 Bioinformatics Services + audit-logging merges and the 8-phase code organization refactoring.
+> **Applies to:** `origin/main` as of 2026-07-20. Refreshed alongside `README.md` and `ARCHITECTURE.md` after the Sprint 3 Bioinformatics Services + audit-logging merges, the 8-phase code organization refactoring, and the 7-phase UI/UX overhaul.
 > **Reference:** Philippine Data Privacy Act of 2012 (RA 10173)
 
 ---
@@ -243,11 +243,9 @@ These are honest assessments of current risks and incomplete security controls, 
 
 **Status:** Resolved — `disable_signup` was toggled to `true` in the Supabase Dashboard on 2026-07-20. The `/auth/v1/signup` backdoor is now closed.
 
-### 🟡 Auto-`updated_at` trigger not applied
+### ✅ Auto-`updated_at` trigger applied
 
-Migration `24_updated_at_triggers.sql` is in the repo but **NOT applied to the live Supabase database** (the file's own header admits this). The client currently compensates by sending `updated_at` (`new Date().toISOString()`) in payloads (e.g., `app/dashboard/collaborations/page.tsx`). This is a fragile workaround — client clocks may drift, and inconsistent `updated_at` values break ordering assumptions.
-
-- **Tracking:** Apply migration 24 to live Supabase, then remove client-side `updated_at` from all components.
+Migration `20260719132846 apply_updated_at_triggers` (migration 24) **IS applied to the live Supabase database**. The client-side `updated_at` workaround (sending `new Date().toISOString()` in payloads) can now be removed from all components.
 
 ### 🟡 Audit log `data_export` gap
 
@@ -283,7 +281,7 @@ Source: [`06_privacy_security_checklist.md`](https://github.com/PGCV-BDML/PGCV_B
 | 6 | ❓ Encryption at rest | **Requires confirmation** | Supabase managed PostgreSQL should provide this by default. **Check in Supabase Dashboard → Database → Encryption settings during Sprint 1.** |
 | 7 | ✅ No secrets in repo | **Done** | All secrets in env vars; `.env*` in `.gitignore` |
 | 8 | ✅ Audit log | **Done (with two known gaps)** | `audit_session_event` RPC + `audit_data_modification` RPC; PostgreSQL triggers on 6 spec'd tables; `role_change` covered. **Gaps:** `data_export` not yet written (no bulk-export feature); trigger coverage on the remaining tables. See §5. |
-| 9 | ⚠️ Privacy notice | **Partial** | Full Data Privacy Notice footer on `app/login/page.tsx` (data collected, purpose, retention, access, deletion contact `bdml@pgcvisayas.upv.edu.ph`). **Pending:** Supervisor formal sign-off (Task 10.4, Sprint 4). |
+| 9 | ⚠️ Privacy notice | **Partial** | Full Data Privacy Notice footer on `app/login/page.tsx` (data collected, purpose, retention, access, deletion contact `bioinfo.pgc.upvisayas@gmail.com`). **Pending:** Supervisor formal sign-off (Task 10.4, Sprint 4). |
 | 10 | ✅ RA 10173 considered | **Done** | This document addresses data minimization, purpose limitation, access control, audit trail, and data subject rights. See §7. |
 | 11 | ❌ Test walkthroughs | **Pending** | Documented test accounts and role-based access verification — Task 9.2, Sprint 3. |
 
@@ -330,13 +328,28 @@ The Supabase project's static analysis linter reports 15 advisories. **All are w
 | P6 | `unused_index` | `idx_project_service_id` | Index never used by query planner. | Drop it, or keep it if you anticipate heavy `WHERE service_id = ?` queries. |
 | P7 | `unused_index` | `idx_service_report_analysis_id` | Same. | Same. |
 
-### 13.3 Migration drift implications for security
+### ✅ 13.3 Migration drift reconciled
 
-Several of the RLS policy refinements in production (S1-S7 mitigations) live in **production-only** migrations that were never committed to the repo. The next maintainer should:
+The reconciliation migration has been created and applied:
 
-1. Export the current production schema: `supabase db dump --schema public`.
-2. Save it as `supabase/migrations/25_reconcile_production.sql`.
-3. Apply the S1-S7 mitigations inside that migration, so a fresh `supabase db reset` matches production AND closes the linter warnings.
+1. ~~Export the current production schema: `supabase db dump --schema public`.~~
+2. ~~Save it as `supabase/migrations/25_reconcile_production.sql`.~~
+3. ~~Apply the S1-S7 mitigations inside that migration...~~
+
+**Status:** `supabase/migrations/25_reconcile_schema_drift.sql` (75 lines, idempotent) was created and applied as migration `20260720052542 reconcile_schema_drift` (23rd migration). It fixes 3 enum values, adds 2 functions, and corrects 4 column types. The S1-S7 linter mitigations remain open; they were not included in the reconciliation migration.
+
+---
+
+## 14. Accessibility Improvements
+
+The 7-phase UI/UX overhaul implemented the following accessibility improvements to ensure the dashboard is keyboard-navigable and screen-reader friendly:
+
+1. **Skip-to-content link** (`app/dashboard/layout.tsx`) — allows keyboard users to bypass the sidebar and jump directly to main content.
+2. **Dialog semantics + focus trap** (`app/components/slidemodal.tsx`) — `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, Tab/Shift+Tab cycling, Escape key handler, focus restoration on close.
+3. **`aria-invalid` form validation** on 5 modals (project, collaboration, task, analysis, sample) — inline `role="alert"` error messages, error clearing on field change.
+4. **`aria-label` on navigation and search inputs** — `aria-label="Main navigation"` on `<nav>`, `aria-label="Toggle profile menu"` on profile button, `aria-label="Search projects/collaborations/tasks/services/participants"` on search inputs.
+5. **22 `<label>`+`<input>` associations** via `htmlFor`/`id` across 5 modals — proper form labeling for screen readers.
+6. **`aria-hidden="true"` on decorative icons** — prevents screen readers from announcing non-content icons.
 
 ---
 

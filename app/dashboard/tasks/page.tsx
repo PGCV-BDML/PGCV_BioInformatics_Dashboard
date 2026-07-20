@@ -11,6 +11,7 @@ import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
 import { PageHeader } from "../../components/pageheader";
+import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import { Task, TaskStatus, TaskPriority, User } from "../../../types/database";
 import {
   Search,
@@ -508,7 +509,7 @@ export default function TasksPage() {
         subtitle="Operational activities schedule · Pipeline execution & manual tasks queue"
         actions={
           <>
-            <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm">
+            <div className="relative flex items-center bg-surface rounded-full border border-gray-200 px-3 h-10 shadow-sm">
               <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
               <select
                 value={itemsPerPage}
@@ -527,9 +528,10 @@ export default function TasksPage() {
               <input
                 type="text"
                 placeholder="Search tasks..."
+                aria-label="Search tasks"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
             <button
@@ -548,7 +550,7 @@ export default function TasksPage() {
         }
       />
 
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 w-full max-w-full overflow-hidden">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20 w-full max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-[#333333]" />
@@ -590,20 +592,21 @@ export default function TasksPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-slate-500">
-            Loading tasks…
-          </div>
+          <LoadingState variant="skeleton" message="Loading tasks…" />
         ) : loadError ? (
-          <div className="flex items-center justify-center py-12 text-sm text-red-600">
-            {loadError}
-          </div>
+          <ErrorState message={loadError} />
+        ) : tasksList.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No tasks yet"
+            description="Create your first task to get started."
+          />
         ) : filteredTasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-6">
-            <Inbox className="w-10 h-10 text-slate-300 mb-2" />
-            <span className="text-sm font-medium text-slate-500">
-              No matching tasks discovered
-            </span>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No matching tasks"
+            description="Try adjusting your search or filter criteria."
+          />
         ) : (
           <div className="w-full max-w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[720px]">
             <DataTable

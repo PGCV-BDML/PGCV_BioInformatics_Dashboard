@@ -4,7 +4,7 @@ import React, { useState, use, useEffect } from "react";
 import { BarChart3, Star, Send, CheckCircle, Award } from "lucide-react";
 import Link from "next/link";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import type { Question, Assessment } from "@/types/database";
+import type { Certificate, Question, Assessment } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
 
@@ -54,14 +54,20 @@ export default function InternshipEvaluationPage({
         score: null, // ponytail: evaluation is unscored
         submitted_at: new Date().toISOString(),
       });
-      // Create a certificate record for this completed evaluation
+      // Create a certificate record for this completed evaluation (if one doesn't already exist)
       try {
-        await saveDataToDB("certificate", crypto.randomUUID(), {
-          participant_id: user.id,
-          program_id: resolvedParams.id,
-          issued_at: new Date().toISOString(),
-          pdf_link: null,
-        });
+        const existingCerts = await getRowsFromDB<Certificate>("certificate");
+        const alreadyHasCert = existingCerts.some(
+          (c) => c.participant_id === user.id && c.program_id === resolvedParams.id,
+        );
+        if (!alreadyHasCert) {
+          await saveDataToDB("certificate", crypto.randomUUID(), {
+            participant_id: user.id,
+            program_id: resolvedParams.id,
+            issued_at: new Date().toISOString(),
+            pdf_link: null,
+          });
+        }
       } catch (certErr) {
         console.error("Certificate creation failed (evaluation still saved):", certErr);
       }
@@ -158,7 +164,7 @@ export default function InternshipEvaluationPage({
       </div>
 
       {/* Main Workspace Card Area */}
-      <div className="space-y-6 w-full bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+      <div className="space-y-6 w-full bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="border-b border-slate-200/60 pb-4">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-[#2a7797]" />

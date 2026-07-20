@@ -1,6 +1,6 @@
 "use client";
 //taskmodal.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Task, TaskStatus, TaskPriority } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import {
@@ -39,13 +39,40 @@ export default function TaskModal({
   onClose,
   onSubmit,
 }: TaskModalProps) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formState.title.trim()) errs.title = "Task description is required";
+    if (!formState.linked_project_id) errs.linked_project_id = "Please select a linked project";
+    if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
+    if (!formState.due_date) errs.due_date = "Due date is required";
+    return errs;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    onSubmit(e);
+  };
+
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    onInputChange(e);
+  };
+
   return (
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
       title={isAdding ? "Add New Task" : "Modify Task"}
       subtitle="Fill in the information required by the registry."
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
       submitLabel="Save"
       isSaving={isSaving}
       submitDisabled={isSaving}
@@ -57,18 +84,23 @@ export default function TaskModal({
           "Identity",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="task-description" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Task Description
           </label>
           <input
+            id="task-description"
             type="text"
             name="title"
             required
+            aria-invalid={!!errors.title}
             value={formState.title}
-            onChange={onInputChange}
+            onChange={handleFieldChange}
             placeholder="e.g., Run downstream validation scripts against assemblies"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.title && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.title}</p>
+          )}
         </div>
       </div>
 
@@ -79,14 +111,16 @@ export default function TaskModal({
           "Project",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="task-linked-project" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Linked Project
           </label>
           <select
+            id="task-linked-project"
             name="linked_project_id"
             required
+            aria-invalid={!!errors.linked_project_id}
             value={formState.linked_project_id ?? ""}
-            onChange={onInputChange}
+            onChange={handleFieldChange}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
             {availableProjects.map((project) => (
@@ -99,6 +133,9 @@ export default function TaskModal({
               </option>
             ))}
           </select>
+          {errors.linked_project_id && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.linked_project_id}</p>
+          )}
         </div>
       </div>
 
@@ -107,14 +144,16 @@ export default function TaskModal({
         {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Assignment")}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="task-assignee" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Assignee
             </label>
             <select
+              id="task-assignee"
               name="assignee_id"
               required
+              aria-invalid={!!errors.assignee_id}
               value={formState.assignee_id}
-              onChange={onInputChange}
+              onChange={handleFieldChange}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             >
               {availableUsers.map((user) => (
@@ -127,13 +166,17 @@ export default function TaskModal({
                 </option>
               ))}
             </select>
+            {errors.assignee_id && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.assignee_id}</p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="task-priority" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Priority
             </label>
             <select
+              id="task-priority"
               name="priority"
               required
               value={formState.priority}
@@ -162,10 +205,11 @@ export default function TaskModal({
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="task-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Status
             </label>
             <select
+              id="task-status"
               name="status"
               required
               value={formState.status}
@@ -185,17 +229,22 @@ export default function TaskModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="task-due-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Due Date
             </label>
             <input
+              id="task-due-date"
               type="date"
               name="due_date"
               required
+              aria-invalid={!!errors.due_date}
               value={formState.due_date ?? ""}
-              onChange={onInputChange}
+              onChange={handleFieldChange}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             />
+            {errors.due_date && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.due_date}</p>
+            )}
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@
 
 **Repository:** `PGCV-BDML/PGCV_BioInformatics_Dashboard`
 
-*Last updated: 2026-07-20 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-4 state + 8-phase code organization refactoring complete. New [WORKBOOK.md](./WORKBOOK.md) added.*
+*Last updated: 2026-07-20 · Refreshed README, [ARCHITECTURE.md](./ARCHITECTURE.md), and [SECURITY.md](./SECURITY.md) to reflect post-Sprint-4 state + 8-phase code organization refactoring + 7-phase UI/UX overhaul complete. New [WORKBOOK.md](./WORKBOOK.md) added.*
 
 ---
 
@@ -26,6 +26,20 @@ This is a **proof-of-concept MVP** built during the June–July 2026 Internship 
 | ✅ | **Stub Pages** | Calendar, Accomplishments, Services List, and Repositories render functional stub pages with "Coming Soon" messages per [`11_deliverables_checklist.md`](https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard/blob/main/11_deliverables_checklist.md) §1 (all 8 components present). |
 | ✅ | **Google OAuth Login** | Authentication via Supabase Auth with Google OAuth. Session managed in `app/dashboard/layout.tsx:16-40`; redirects to `/login` when unauthenticated. |
 | ✅ | **Real-time Audit Logging** | Two secured RPCs in `supabase/migrations/`: `audit_session_event` (called from `app/components/sessionauditor.tsx` on `SIGNED_IN` / `SIGNED_OUT`) and `audit_data_modification` (called from `app/components/service-report-modal.tsx` on report delivery). Both `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. PostgreSQL triggers via `23_audit_triggers.sql` plus the `protect_user_role` defense-in-depth trigger. See [`SECURITY.md`](./SECURITY.md) §5. |
+
+### UI/UX Overhaul (7 phases, completed 2026-07-20)
+
+A comprehensive 7-phase UI/UX overhaul was completed, verified with tsc 0 errors, lint 0 errors, build pass, and 73/73 tests passing:
+
+- **Phase 1 — Visual consistency + brand compliance:** New brand tokens `--color-surface` (#fffdf8) and `--color-brand-tint` (#e6f5ff) in `globals.css`; Quicksand @font-face fix; Aileron BLACK weight fix (700→900); `--color-white` contrast fix (#e6e7e8→#ffffff for WCAG AA); UP attribution added to sidebar + login copyright.
+- **Phase 2 — Loading/Error/Empty states:** New shared `LoadingState`/`ErrorState`/`EmptyState` components in `app/components/state-views.tsx`; 4 route-level `loading.tsx` skeletons (projects, collaborations, tasks, services).
+- **Phase 3 — Replace yearlyMockDB:** New `lib/dashboard-stats.ts` (`getDashboardStats()` + `getServiceReportsByYear()` + `DashboardStats` type); deleted `lib/mock-data.ts`.
+- **Phase 4 — Accessibility pass:** Skip-to-content link in `app/dashboard/layout.tsx`; dialog semantics + focus trap on `slidemodal.tsx`; `aria-label` on nav/search; 22 `<label>`+`<input>` associations via `htmlFor`/`id` across 5 modals.
+- **Phase 5 — Form validation + toasts:** Client-side validation on 5 modals with `aria-invalid` + inline `role="alert"` errors; 48 `showToast` calls across 6 files.
+- **Phase 6 — Stub page polish:** Brand-aligned icon colors (amber/teal/purple accents), contextual Note callouts, `aria-hidden` on decorative icons.
+- **Phase 7 — Mobile responsiveness:** Sidebar overlay + toggle button + backdrop + auto-close on nav; `p-4 md:p-8` padding; SSR-safe lazy initializer in `app/components/dashboard-ui-context.tsx`.
+
+Additional post-Phase-7 work: Schema drift resolved (new `25_reconcile_schema_drift.sql`, 23rd migration applied); Service Report Tracker redesigned (responsive card grid, real category derivation); slidemodal scroll fix (footer always visible).
 
 ---
 
@@ -116,7 +130,7 @@ PGCV_BioInformatics_Dashboard/
 │       └── ci.yml                    # GitHub Actions (lint + typecheck + build + test)
 ├── app/
 │   ├── layout.tsx                    # Root layout (redirects / → /dashboard)
-│   ├── globals.css                   # Tailwind v4 @theme tokens + custom fonts
+│   ├── globals.css                   # Tailwind v4 @theme tokens + custom fonts; brand tokens --color-surface (#fffdf8) and --color-brand-tint (#e6f5ff)
 │   ├── components/                   # Reusable UI components
 │   │   ├── collaborationmodal.tsx
 │   │   ├── dashboard-stat-cards.tsx  # Landing KPI stat cards
@@ -131,7 +145,8 @@ PGCV_BioInformatics_Dashboard/
 │   │   ├── service-report-modal.tsx
 │   │   ├── service-reports-chart.tsx
 │   │   ├── sidebar.tsx               # Navigation + sign-out + user profile
-│   │   ├── slidemodal.tsx            # Shared SlideOverModal base component
+│   │   ├── slidemodal.tsx            # Shared SlideOverModal with role="dialog", aria-modal, focus trap, dialog semantics
+│   │   ├── state-views.tsx           # Shared LoadingState/ErrorState/EmptyState components
 │   │   ├── taskmodal.tsx
 │   │   ├── toast.tsx                 # ToastProvider + useToast notification system
 │   │   └── weekly-task-list.tsx
@@ -164,13 +179,13 @@ PGCV_BioInformatics_Dashboard/
 │   └── useTableState.ts              # Combined sort + paginate hook
 ├── lib/
 │   ├── breadcrumbs.ts                # Typed breadcrumb exports
-│   ├── mock-data.ts                  # yearlyMockDB + DashboardStats type
+│   ├── dashboard-stats.ts               # getDashboardStats + getServiceReportsByYear + DashboardStats type
 │   ├── services-config.ts            # SERVICES_CONFIG shared config
 │   ├── supabase.ts                   # Supabase client + DB helpers (typed TableNames)
 │   ├── supabase-server.ts            # createServerSupabaseClient + getServerUser
 │   └── utils.ts                      # formatDate utility
 ├── supabase/
-│   └── migrations/                   # 11 SQL migration files (22 applied to production — see ARCHITECTURE §11 / WORKBOOK §19)
+│   └── migrations/                   # 12 SQL migration files (23 applied to production — see ARCHITECTURE §11 / WORKBOOK §19)
 │       ├── 19_initial_schema.sql              # 18 tables + 9 enums + indexes
 │       ├── 20_security_functions.sql          # get_user_role(), protect_user_role_column()
 │       ├── 21_enable_rls.sql                  # RLS enabled on all 18 tables
@@ -181,7 +196,8 @@ PGCV_BioInformatics_Dashboard/
 │       ├── 20260718000000_audit_session_rpc.sql
 │       ├── 20260720000000_audit_data_modification_rpc.sql
 │       ├── 20260720000000_seed_demo_data.sql
-│       └── 20260721000000_add_institution_to_users.sql
+│       ├── 20260721000000_add_institution_to_users.sql
+│       └── 25_reconcile_schema_drift.sql          # Idempotent reconciliation of enum/column/function drift
 ├── types/
 │   └── database.ts                   # Shared TypeScript types
 ├── .env.example                      # Required env vars documented
@@ -235,7 +251,7 @@ GitHub Actions runs `lint` + `typecheck` + `build` + `test` on every push and pu
 
 These items are tracked as honest gaps in the planning documents and the WORKBOOK gap tracker:
 
-1. **Landing-page KPI tiles use a `yearlyMockDB`** — the headline counts (Active Projects, Pending Tasks, Total Services) are hardcoded for demo. Charts use real Supabase queries. Real counts will replace the mock when the bio track confirms the exact metric definitions.
+1. ~~**Landing-page KPI tiles used a `yearlyMockDB`** — the headline counts are now served by `getDashboardStats()` in `lib/dashboard-stats.ts`, which runs real Supabase aggregations.~~ **RESOLVED in Phase 3**
 2. **`audit_log` does not yet cover `role_change` and `data_export`** — the enum values exist but no trigger / RPC writes them. See `WORKBOOK.md` §17.2 row 3 and `SECURITY.md` §5.
 3. **Encryption-at-rest needs explicit confirmation in the Supabase dashboard** — the free-tier project should have this on by default, but it has not been verified. See `WORKBOOK.md` §17.2 row 4 and `SECURITY.md` §6.
 4. **Sprint retrospectives + final reflection are placeholders** — to be filled in before handover. See `WORKBOOK.md` §12.

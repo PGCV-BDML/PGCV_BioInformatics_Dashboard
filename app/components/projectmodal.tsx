@@ -45,6 +45,23 @@ export default function ProjectModal({
   onSubmit,
 }: ProjectModalProps) {
   const [formState, setFormState] = useState<ProjectFormData>(EMPTY_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formState.name.trim()) errs.name = "Project name is required";
+    if (!formState.client_id) errs.client_id = "Please select a client";
+    if (!formState.service_id) errs.service_id = "Please select a service category";
+    if (!formState.lead_user_id) errs.lead_user_id = "Please select a lead";
+    if (!formState.start_date) errs.start_date = "Start date is required";
+    if (formState.repository_link && !/^https?:\/\//.test(formState.repository_link)) {
+      errs.repository_link = "Must be a valid URL starting with http:// or https://";
+    }
+    if (formState.start_date && formState.target_delivery_date && formState.target_delivery_date < formState.start_date) {
+      errs.target_delivery_date = "Delivery date must be on or after start date";
+    }
+    return errs;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -67,10 +84,17 @@ export default function ProjectModal({
 
   const handleInputChange = (key: keyof ProjectFormData, value: string) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
     onSubmit(formState);
   };
 
@@ -94,26 +118,34 @@ export default function ProjectModal({
 
         {/* Project Name */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="project-name" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Project Name
           </label>
           <input
+            id="project-name"
             type="text"
             required
+            aria-invalid={!!errors.name}
             value={formState.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
             placeholder="e.g., De Novo Transcriptome Assembly Pipeline"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.name && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.name}</p>
+          )}
         </div>
 
         <div className="flex flex-col gap-3.5">
           {/* Client Affiliation */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-client" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Client
             </label>
             <select
+              id="project-client"
+              required
+              aria-invalid={!!errors.client_id}
               value={formState.client_id}
               onChange={(e) =>
                 handleInputChange("client_id", e.target.value)
@@ -126,14 +158,20 @@ export default function ProjectModal({
                 </option>
               ))}
             </select>
+            {errors.client_id && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.client_id}</p>
+            )}
           </div>
 
           {/* Service Classification */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-service-category" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Service Category
             </label>
             <select
+              id="project-service-category"
+              required
+              aria-invalid={!!errors.service_id}
               value={formState.service_id}
               onChange={(e) =>
                 handleInputChange("service_id", e.target.value)
@@ -146,6 +184,9 @@ export default function ProjectModal({
                 </option>
               ))}
             </select>
+            {errors.service_id && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.service_id}</p>
+            )}
           </div>
         </div>
       </div>
@@ -159,10 +200,13 @@ export default function ProjectModal({
         <div className="flex flex-col gap-3.5">
           {/* Assigned Lead */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-lead" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Lead
             </label>
             <select
+              id="project-lead"
+              required
+              aria-invalid={!!errors.lead_user_id}
               value={formState.lead_user_id}
               onChange={(e) => handleInputChange("lead_user_id", e.target.value)}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
@@ -173,14 +217,18 @@ export default function ProjectModal({
                 </option>
               ))}
             </select>
+            {errors.lead_user_id && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.lead_user_id}</p>
+            )}
           </div>
 
           {/* Lifecycle Status */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Status
             </label>
             <select
+              id="project-status"
               value={formState.status}
               onChange={(e) => handleInputChange("status", e.target.value)}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
@@ -204,33 +252,43 @@ export default function ProjectModal({
         <div className="flex flex-col gap-3.5">
           {/* Commencement Date */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-start-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Start Date
             </label>
             <input
+              id="project-start-date"
               type="date"
               required
+              aria-invalid={!!errors.start_date}
               value={formState.start_date}
               onChange={(e) =>
                 handleInputChange("start_date", e.target.value)
               }
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             />
+            {errors.start_date && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.start_date}</p>
+            )}
           </div>
 
           {/* Target Delivery Date */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="project-delivery-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Delivery Date
             </label>
             <input
+              id="project-delivery-date"
               type="date"
+              aria-invalid={!!errors.target_delivery_date}
               value={formState.target_delivery_date}
               onChange={(e) =>
                 handleInputChange("target_delivery_date", e.target.value)
               }
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             />
+            {errors.target_delivery_date && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.target_delivery_date}</p>
+            )}
           </div>
         </div>
       </div>
@@ -243,11 +301,13 @@ export default function ProjectModal({
         )}
         {/* Repository Link */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="project-repository-link" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Repository Link
           </label>
           <input
+            id="project-repository-link"
             type="url"
+            aria-invalid={!!errors.repository_link}
             value={formState.repository_link}
             onChange={(e) =>
               handleInputChange("repository_link", e.target.value)
@@ -255,6 +315,9 @@ export default function ProjectModal({
             placeholder="https://github.com/..."
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.repository_link && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.repository_link}</p>
+          )}
         </div>
       </div>
     </SlideOverModal>

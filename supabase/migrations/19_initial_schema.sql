@@ -52,7 +52,9 @@ CREATE TYPE public.assessment_type AS ENUM (
 CREATE TYPE public.project_status AS ENUM (
     'ongoing',
     'for_approval',
-    'submitted'
+    'submitted',
+    'on_hold',
+    'completed'
 );
 
 CREATE TYPE public.template_categories AS ENUM (
@@ -73,17 +75,61 @@ CREATE TYPE public.audit_log_action AS ENUM (
 );
 
 CREATE TYPE public.task_status AS ENUM (
-    'to_do',
-    'ongoing',
-    'finished'
+    'pending',
+    'in_progress',
+    'completed',
+    'on_hold'
 );
 
 CREATE TYPE public.task_priority AS ENUM (
-    'critical',
-    'high',
+    'low',
     'medium',
-    'low'
+    'high'
 );
+
+-- ===== ID Generator Functions =====
+
+CREATE OR REPLACE FUNCTION public.generate_client_id()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+declare
+  yr       int := extract(year from now());
+  next_val int;
+begin
+  perform pg_advisory_xact_lock(yr);
+  select coalesce(max(
+           substring(client_id from 'CL-\d{4}-(\d+)')::int
+         ), 0) + 1
+  into next_val
+  from public.client
+  where client_id like 'CL-' || yr || '-%';
+  return 'CL-' || yr || '-' || lpad(next_val::text, 3, '0');
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public.generate_project_id()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+declare
+  yr       int := extract(year from now());
+  next_val int;
+begin
+  perform pg_advisory_xact_lock(yr);
+  select coalesce(max(
+           substring(project_id from 'P-\d{4}-(\d+)')::int
+         ), 0) + 1
+  into next_val
+  from public.project
+  where project_id like 'P-' || yr || '-%';
+  return 'P-' || yr || '-' || lpad(next_val::text, 3, '0');
+end;
+$$;
 
 -- ===== Tables =====
 
@@ -93,7 +139,7 @@ CREATE TABLE public.users (
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     name text NOT NULL,
     email text NOT NULL DEFAULT (auth.jwt() ->> 'email'::text),
-    role public.user_roles NOT NULL,
+    role public.user_roles NOT NULL DEFAULT 'none'::user_roles,
     track_assignment text NULL,
     updated_at timestamp with time zone NULL DEFAULT now(),
     CONSTRAINT user_pkey PRIMARY KEY (id)
@@ -102,6 +148,7 @@ CREATE TABLE public.users (
 -- Table: client
 CREATE TABLE public.client (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
+    client_id text NOT NULL DEFAULT generate_client_id(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     name text NOT NULL,
     affiliation text NOT NULL,
@@ -158,6 +205,7 @@ CREATE INDEX IF NOT EXISTS idx_training_program_instructor_id ON public.training
 -- Table: project
 CREATE TABLE public.project (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
+    project_id text NOT NULL DEFAULT generate_project_id(),
     name text NOT NULL,
     client_id uuid NOT NULL,
     service_id uuid NOT NULL,
@@ -347,7 +395,7 @@ CREATE TABLE public.task (
     assignee_id uuid NOT NULL,
     due_date date NULL,
     status public.task_status NOT NULL,
-    priority public.task_priority NOT NULL,
+    priority text NOT NULL,
     linked_project_id uuid NULL,
     created_at timestamp with time zone NULL DEFAULT now(),
     updated_at timestamp with time zone NULL DEFAULT now(),

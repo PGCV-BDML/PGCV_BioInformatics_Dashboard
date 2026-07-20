@@ -222,7 +222,7 @@ export default function InternshipAssessmentPage({
   };
 
   return (
-    <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
+    <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
       {!activeTest ? (
         <div className="space-y-6">
           {/* Internal Title Header inside Workspace Panel */}

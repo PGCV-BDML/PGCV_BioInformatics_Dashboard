@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import { X, Save } from "lucide-react";
 
 /**
@@ -60,8 +60,58 @@ const SlideOverModal = memo(function SlideOverModal({
   submitDisabled = false,
   footer,
 }: SlideOverModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Store current focus to restore later
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    // Focus the panel
+    const panel = panelRef.current;
+    if (panel) {
+      // Focus first focusable element or the panel itself
+      const focusable = panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length > 0) {
+        focusable[0]?.focus();
+      } else {
+        panel.focus();
+      }
+    }
+
+    // Trap Tab key and handle Escape
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && panel) {
+        const focusable = panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      // Restore focus
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
   const renderDefaultFooter = () => (
-    <div className="flex gap-2.5 justify-end pt-5 pb-1 border-t border-slate-100 bg-[#ffffff]">
+    <div className="flex gap-2.5 justify-end">
       <button
         type="button"
         onClick={onClose}
@@ -81,9 +131,13 @@ const SlideOverModal = memo(function SlideOverModal({
   );
 
   const body = (
-    <div className="bg-[#ffffff] flex-1 overflow-y-auto px-5 py-5 space-y-5 custom-scrollbar">
-      {children}
-      {footer !== undefined ? footer : renderDefaultFooter()}
+    <div className="bg-[#ffffff] flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 custom-scrollbar">
+        {children}
+      </div>
+      <div className="px-5 pt-5 pb-1 border-t border-slate-100 bg-[#ffffff]">
+        {footer !== undefined ? footer : renderDefaultFooter()}
+      </div>
     </div>
   );
 
@@ -91,6 +145,7 @@ const SlideOverModal = memo(function SlideOverModal({
     <>
       {/* Backdrop overlay */}
       <div
+        aria-hidden="true"
         onClick={onClose}
         className={`fixed inset-0 w-screen h-screen z-[90] bg-transparent transition-all duration-300 ease-in-out ${
           isOpen
@@ -101,6 +156,11 @@ const SlideOverModal = memo(function SlideOverModal({
 
       {/* Sidebar panel */}
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="slideover-title"
+        tabIndex={-1}
         className={`fixed right-0 top-0 h-screen w-full max-w-md bg-white border-l border-slate-200 shadow-[0_0_40px_0_rgba(15,23,42,0.12)] z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-in-out transform ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -111,7 +171,7 @@ const SlideOverModal = memo(function SlideOverModal({
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-start justify-between border-b border-slate-100 bg-[#ffffff]">
           <div>
-            <h3 className="text-lg font-bold text-[#2a7797] tracking-tight font-aileron">
+            <h3 id="slideover-title" className="text-lg font-bold text-[#2a7797] tracking-tight font-aileron">
               {title}
             </h3>
             {subtitle && (
@@ -123,6 +183,7 @@ const SlideOverModal = memo(function SlideOverModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
           >
             <X className="w-4 h-4" />
@@ -130,7 +191,16 @@ const SlideOverModal = memo(function SlideOverModal({
         </div>
 
         {/* Form body (wrapped in <form> when onSubmit is provided) */}
-        {onSubmit ? <form onSubmit={onSubmit}>{body}</form> : body}
+        {onSubmit ? (
+          <form
+            onSubmit={onSubmit}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          >
+            {body}
+          </form>
+        ) : (
+          body
+        )}
       </div>
     </>
   );

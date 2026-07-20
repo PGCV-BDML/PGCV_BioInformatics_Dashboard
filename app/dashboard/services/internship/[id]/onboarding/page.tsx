@@ -38,7 +38,7 @@ export default function InternshipOnboardingTab({
   }, [resolvedParams.id]);
 
   return (
-    <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-xl space-y-4">
+    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
         <FileText className="w-5 h-5 text-[#4ec2bb]" />
         <div>
@@ -62,7 +62,7 @@ export default function InternshipOnboardingTab({
           {documents.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-start justify-between p-4 bg-[#fffdf8] border border-slate-200 rounded-[20px] transition-all shadow-sm cursor-default"
+              className="flex items-start justify-between p-4 bg-surface border border-slate-200 rounded-[20px] transition-all shadow-sm cursor-default"
             >
               <div className="space-y-1 max-w-[80%]">
                 <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@ export default function InternshipOnboardingTab({
                   href={doc.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 text-slate-400 hover:text-white bg-[#fffdf8] hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                  className="p-2 text-slate-400 hover:text-white bg-surface hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl shrink-0 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   <Download className="w-4 h-4" />
                 </a>

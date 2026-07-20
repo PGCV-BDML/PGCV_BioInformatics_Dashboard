@@ -25,7 +25,7 @@ export default function DeleteModal({
       onClick={onClose}
     >
       <div
-        className="bg-[#fffdf8] rounded-[24px] max-w-[440px] w-full p-6 shadow-xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150"
+        className="bg-surface rounded-[24px] max-w-[440px] w-full p-6 shadow-xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 text-red-600">

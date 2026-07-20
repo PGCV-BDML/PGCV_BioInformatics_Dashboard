@@ -4,7 +4,7 @@ import { FileQuestion } from "lucide-react";
 export default function DashboardNotFound() {
   return (
     <div className="flex w-full min-h-screen items-center justify-center bg-[#F6F4EE]">
-      <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-8 shadow-xl shadow-slate-400/20 max-w-md w-full text-center space-y-4">
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-8 shadow-xl shadow-slate-400/20 max-w-md w-full text-center space-y-4">
         <div className="flex justify-center">
           <FileQuestion className="w-12 h-12 text-[#2a7797]" />
         </div>
