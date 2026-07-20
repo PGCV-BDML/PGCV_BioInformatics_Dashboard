@@ -91,6 +91,11 @@ export default function CollaborationsPage() {
     return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
   }, [activeFilter]);
 
+  const userMap = useMemo(
+    () => Object.fromEntries(availableUsers.map((u) => [u.id, u.name])),
+    [availableUsers],
+  );
+
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
   useEffect(() => {
@@ -254,12 +259,12 @@ export default function CollaborationsPage() {
     return records.filter((collab) => {
       return (
         collab.partner_org.toLowerCase().includes(query) ||
-        (collab.user?.name || "").toLowerCase().includes(query) ||
+        (userMap[collab.lead_user_id] ?? "").toLowerCase().includes(query) ||
         (collab.status || "").toLowerCase().includes(query) ||
         (collab.notes || "").toLowerCase().includes(query)
       );
     });
-  }, [searchQuery, collaborationsList, activeFilter]);
+  }, [searchQuery, collaborationsList, activeFilter, userMap]);
 
   const {
     sortConfig,
@@ -274,7 +279,7 @@ export default function CollaborationsPage() {
     resetKey: `${searchQuery}-${activeFilter}`,
     customSorters: {
       lead_user_id: (a, b) =>
-        (a.user?.name ?? "").localeCompare(b.user?.name ?? ""),
+        (userMap[a.lead_user_id] ?? "").localeCompare(userMap[b.lead_user_id] ?? ""),
     },
   });
 
@@ -342,9 +347,9 @@ export default function CollaborationsPage() {
       render: (c) => (
         <span
           className="block truncate max-w-[100px] xl:max-w-[130px]"
-          title={c.user?.name || "Unassigned"}
+          title={userMap[c.lead_user_id] ?? "Unassigned"}
         >
-          {c.user?.name || "Unassigned"}
+          {userMap[c.lead_user_id] ?? "Unassigned"}
         </span>
       ),
     },
