@@ -164,7 +164,7 @@ PGCV_BioInformatics_Dashboard/
 │   └── useTableState.ts              # Combined sort + paginate hook
 ├── lib/
 │   ├── breadcrumbs.ts                # Typed breadcrumb exports
-│   ├── mock-data.ts                  # yearlyMockDB + DashboardStats type
+│   ├── dashboard-stats.ts               # getDashboardStats + getServiceReportsByYear + DashboardStats type
 │   ├── services-config.ts            # SERVICES_CONFIG shared config
 │   ├── supabase.ts                   # Supabase client + DB helpers (typed TableNames)
 │   ├── supabase-server.ts            # createServerSupabaseClient + getServerUser
@@ -235,7 +235,7 @@ GitHub Actions runs `lint` + `typecheck` + `build` + `test` on every push and pu
 
 These items are tracked as honest gaps in the planning documents and the WORKBOOK gap tracker:
 
-1. **Landing-page KPI tiles use a `yearlyMockDB`** — the headline counts (Active Projects, Pending Tasks, Total Services) are hardcoded for demo. Charts use real Supabase queries. Real counts will replace the mock when the bio track confirms the exact metric definitions.
+1. ~~**Landing-page KPI tiles used a `yearlyMockDB`** — the headline counts are now served by `getDashboardStats()` in `lib/dashboard-stats.ts`, which runs real Supabase aggregations.~~ **RESOLVED in Phase 3**
 2. **`audit_log` does not yet cover `role_change` and `data_export`** — the enum values exist but no trigger / RPC writes them. See `WORKBOOK.md` §17.2 row 3 and `SECURITY.md` §5.
 3. **Encryption-at-rest needs explicit confirmation in the Supabase dashboard** — the free-tier project should have this on by default, but it has not been verified. See `WORKBOOK.md` §17.2 row 4 and `SECURITY.md` §6.
 4. **Sprint retrospectives + final reflection are placeholders** — to be filled in before handover. See `WORKBOOK.md` §12.

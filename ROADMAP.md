@@ -38,7 +38,7 @@ Estimated total: **~110–140 tasks across 7 phases** over multiple sprints. Pha
 
 - All 8 dashboard components (3.1–3.8) are functional, not stubbed.
 - The 3 descoped entities exist as first-class tables with RLS, audit triggers, and UI.
-- The landing page KPIs come from real Supabase aggregations, not `yearlyMockDB`.
+- The landing page KPIs come from real Supabase aggregations via `getDashboardStats()` in `lib/dashboard-stats.ts`, not `yearlyMockDB`.
 - The audit log covers `user_login`, `user_logout`, `role_change`, `data_export`, and insert/update/delete on the 6 spec'd tables.
 - Encryption-at-rest is explicitly verified and documented.
 - A test-script file documents role-by-role RLS walkthroughs for `team_lead`, `team_member`, `trainee`, `intern`.
@@ -81,7 +81,7 @@ Polish the 4 functional components. Most of these are "make the truth match what
 
 ### 1.1 Landing page (3.1)
 
-- [ ] **Replace `yearlyMockDB` with real Supabase aggregations** in `app/dashboard/page.tsx`. KPI tiles should read from `project`, `service_report`, `task`, and (post-Phase 2) `accomplishment`. The current mock data is documented in `README.md` Known Limitations.
+- [x] **Replace `yearlyMockDB` with real Supabase aggregations** in `app/dashboard/page.tsx`. ✅ Done — replaced with `getDashboardStats()` in `lib/dashboard-stats.ts`. KPI tiles now read from `project`, `service_report`, `task`, and (post-Phase 2) `accomplishment`.
 - [ ] **Implement "Upcoming Events for the month" section.** Stub today; should query `calendar_event` (post-restoration in Phase 2) and fall back to a "no events scheduled" empty state. The "Calendar preview" is a hard requirement per the biology activity sheet §11.
 - [ ] **Add year filter granularity** — currently 2024/2025/2026 are hardcoded; expose "Last 12 months" and "YTD" as additional filter options.
 - [ ] **Add download-CSV button for service reports chart.** Goes through the `data_export` audit hook (§0.2).
@@ -374,7 +374,7 @@ Once this tracking issue is filed, file the following blockers / siblings:
 - `feat(audit): cover role_change and data_export` (Phase 0.2)
 - `feat(audit): extend audit triggers to remaining 12 tables` (Phase 0.2)
 - `test: RLS test walkthroughs for 4 roles × 18 tables` (Phase 0.3)
-- `feat(landing): replace yearlyMockDB with real aggregations` (Phase 1.1)
+- ✅ `feat(landing): replace yearlyMockDB with real aggregations` (Phase 1.1) — DONE
 - `feat(calendar): restore calendar_event entity + month view` (Phase 2.1)
 - `feat(accomplishments): restore accomplishment entity + public read-only view` (Phase 2.2)
 - `feat(repositories): restore repository entity + migrate URL fields` (Phase 2.3)

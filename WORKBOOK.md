@@ -156,7 +156,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 | `lib/utils.ts` | `formatDate()` — YYYY-MM-DD → MM/DD/YYYY date formatter (extracted from 3 CRUD pages) |
 | `lib/services-config.ts` | Service category → label/color config map (Phase 3) |
 | `lib/breadcrumbs.ts` | 6 typed breadcrumb exports (projectsBreadcrumbs, collaborationsBreadcrumbs, tasksBreadcrumbs, servicesBreadcrumbs, trainingBreadcrumbs, internshipBreadcrumbs) |
-| `lib/mock-data.ts` | Mock data for landing page (Phase 5 extraction) |
+| `lib/dashboard-stats.ts` | Real Supabase aggregations for landing page KPIs (`getDashboardStats`, `getServiceReportsByYear`) |
 | `lib/supabase-server.ts` | `createServerSupabaseClient()` for server component cookie-based auth (Phase 7) |
 | `hooks/useTableState.ts` | Generic table state (sort, filter, pagination) hook (Phase 4) |
 | `hooks/useDeleteRecord.ts` | Generic delete-with-confirmation hook (Phase 4) |
@@ -184,7 +184,7 @@ Implemented: `audit_session_event` and `audit_data_modification` RPCs (`supabase
 
 | # | Component | Route | Status |
 |---|---|---|---|
-| 3.1 | Landing Page | `/dashboard` | ✅ Functional. Decomposed in Phase 5: 806→351 lines. Sub-components: dashboard-stat-cards, weekly-task-list, service-reports-chart, project-distribution-chart. Mock data extracted to lib/mock-data.ts. |
+| 3.1 | Landing Page | `/dashboard` | ✅ Functional. Decomposed in Phase 5: 806→351 lines. Sub-components: dashboard-stat-cards, weekly-task-list, service-reports-chart, project-distribution-chart. Real Supabase aggregations via lib/dashboard-stats.ts (getDashboardStats, getServiceReportsByYear). |
 | 3.2 | Projects | `/dashboard/projects` | ✅ Functional. Full CRUD, filters, sort, pagination, `repository_link`, status dropdown. |
 | 3.3 | Bioinformatics Services | `/dashboard/services` | ✅ Functional. Decomposed in Phase 5: 711→633 lines. Report modal extracted to service-report-modal.tsx. Error states added. |
 | 3.3.1 | Client Sequence Analysis | `/dashboard/services` (tab 1) | ✅ Functional. |
@@ -372,7 +372,7 @@ WGS Analyses · Amplicon · 16S Metabarcoding · eDNA Analysis · Transcriptomic
 - **Current Events** — current projects, trainings, and internships with general details — sorted by month.
 - **Infrastructure Utilization** — shows compute capabilities and available storage.
 
-> **Status:** The landing page in the MVP uses hardcoded `yearlyMockDB` for KPI tiles and a real `task` fetch for "tasks for the week." The "Upcoming Events" section is a "Coming Soon" stub. Charts use real Supabase queries (recharts bar for service reports by year; pie for project status distribution).
+> **Status:** The landing page now uses real Supabase aggregations via `getDashboardStats()` in `lib/dashboard-stats.ts` for KPI tiles, and a real `task` fetch for "tasks for the week." The "Upcoming Events" section is a "Coming Soon" stub. Charts use real Supabase queries (recharts bar for service reports by year via `getServiceReportsByYear()`; pie for project status distribution).
 
 ---
 

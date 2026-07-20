@@ -106,7 +106,7 @@ PGCV_BioInformatics_Dashboard/
 │   └── useServiceLookups.ts      # Typed lookup maps via useMemo
 ├── lib/
 │   ├── breadcrumbs.ts            # Phase 3: Typed breadcrumb exports
-│   ├── mock-data.ts              # Phase 5: yearlyMockDB + DashboardStats
+│   ├── dashboard-stats.ts              # Phase 3: getDashboardStats + getServiceReportsByYear + DashboardStats type
 │   ├── services-config.ts        # Phase 3: SERVICES_CONFIG
 │   ├── supabase.ts               # Supabase client init + 6 data-access helpers (client-side)
 │   ├── supabase-server.ts        # Phase 7: createServerSupabaseClient + getServerUser
@@ -211,7 +211,7 @@ Exported functions:
 - **No REST API layer** — Next.js does not expose custom `/api/` routes for CRUD. The Supabase client talks directly to the database.
 - **RLS is the sole authorization layer** — there is no middleware-level access check beyond the initial session check in `app/dashboard/layout.tsx`.
 - **Client-side `updated_at` workaround** — Migration 24's auto-`updated_at` trigger may not be applied to live Supabase. Components send `new Date().toISOString()` in their payloads (e.g., `app/dashboard/collaborations/page.tsx`). This is a fragile workaround — verify migration 24 is applied to the live DB, then drop the client-side `updated_at` writes.
-- **Landing KPI tiles use a hardcoded `yearlyMockDB`** — headline counts (Active Projects, Pending Tasks, Total Services) are demo values. Charts use real Supabase queries. Real counts will replace the mock when the bio track confirms the exact metric definitions.
+- ~~**Landing KPI tiles used a hardcoded `yearlyMockDB`** — headline counts now come from `getDashboardStats()` in `lib/dashboard-stats.ts`, which runs real Supabase aggregations.~~ **RESOLVED in Phase 3**
 
 ---
 
