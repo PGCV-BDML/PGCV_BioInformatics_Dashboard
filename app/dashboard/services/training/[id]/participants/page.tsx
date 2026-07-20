@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useMemo, useState } from "react";
+import React, { use, useMemo, useState, useEffect } from "react";
 import {
   Users,
   Search,
@@ -9,61 +9,19 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import DataTable, { Column } from "../../../../../components/datatable"; // Adjust based on your imports pathing
+import DataTable, { Column } from "../../../../../components/datatable";
+import { getRowsFromDB, getUsersFromDB } from "../../../../../../lib/supabase";
+import type { AssessmentResponse, Certificate, User } from "@/types/database";
 
 interface Trainee {
   id: string;
   name: string;
   email: string;
-  institution: string;
-  pre_test_score: number;
-  post_test_score: number;
+  institution: string | null;
+  pre_test_score: number | null;
+  post_test_score: number | null;
   has_certificate: boolean;
 }
-
-/* ================= TRAINING COHORTS MOCK DATA ================= */
-const MOCK_TRAINING_PARTICIPANTS: Record<string, Trainee[]> = {
-  "trn-1": [
-    {
-      id: "p-1",
-      name: "Marcus Vance",
-      email: "m.vance@berkeley.edu",
-      institution: "UC Berkeley Genomics Lab",
-      pre_test_score: 74,
-      post_test_score: 96,
-      has_certificate: true,
-    },
-    {
-      id: "p-2",
-      name: "Claire Redfield",
-      email: "credfield@northwestern.edu",
-      institution: "Northwestern Medicine",
-      pre_test_score: 70,
-      post_test_score: 95,
-      has_certificate: true,
-    },
-    {
-      id: "p-3",
-      name: "Leon S. Kennedy",
-      email: "lkennedy@upm.edu.ph",
-      institution: "UP National Institutes of Health",
-      pre_test_score: 60,
-      post_test_score: 85,
-      has_certificate: false,
-    },
-  ],
-  "trn-2": [
-    {
-      id: "p-4",
-      name: "Ada Wong",
-      email: "awong@singapore-genome.org",
-      institution: "Genome Institute of Singapore",
-      pre_test_score: 89,
-      post_test_score: 99,
-      has_certificate: true,
-    },
-  ],
-};
 
 export default function TrainingPerformanceTab({
   params,
@@ -72,14 +30,59 @@ export default function TrainingPerformanceTab({
 }) {
   const resolvedParams = use(params);
   const [searchQuery, setSearchQuery] = useState("");
+  const [participantsList, setParticipantsList] = useState<Trainee[]>([]);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Trainee;
     direction: "asc" | "desc";
   } | null>(null);
 
-  const cohortParticipants = useMemo(() => {
-    return MOCK_TRAINING_PARTICIPANTS[resolvedParams.id] || [];
-  }, [resolvedParams.id]);
+  useEffect(() => {
+    const load = async () => {
+      const [responses, certificates, users] = await Promise.all([
+        getRowsFromDB<AssessmentResponse>("assessment_response"),
+        getRowsFromDB<Certificate>("certificate"),
+        getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
+      ]);
+      const userMap = new Map<string, User>();
+      for (const u of users) userMap.set(u.id, u);
+      // ponytail: shows only users with responses/certificates for this program
+      // (institution now comes from users.institution — added 2026-07-21)
+      const seen = new Set<string>();
+      const rows: Trainee[] = [];
+      for (const r of responses) {
+        const u = userMap.get(r.participant_id);
+        if (u && !seen.has(u.id)) {
+          seen.add(u.id);
+          rows.push({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            institution: u.institution ?? null, // ponytail: institution now comes from users.institution (added 2026-07-21)
+            pre_test_score: null,
+            post_test_score: r.score,
+            has_certificate: false,
+          });
+        }
+      }
+      for (const c of certificates) {
+        const existing = rows.find((r) => r.id === c.participant_id);
+        if (existing) existing.has_certificate = true;
+        else {
+          const u = userMap.get(c.participant_id);
+          if (u) {
+            rows.push({
+              id: u.id, name: u.name, email: u.email,
+              institution: u.institution ?? null,
+              pre_test_score: null, post_test_score: null,
+              has_certificate: true,
+            });
+          }
+        }
+      }
+      setParticipantsList(rows);
+    };
+    load();
+  }, []);
 
   const handleSort = (key: keyof Trainee) => {
     let direction: "asc" | "desc" = "asc";
@@ -94,7 +97,7 @@ export default function TrainingPerformanceTab({
   };
 
   const filteredAndSorted = useMemo(() => {
-    let result = [...cohortParticipants];
+    let result = [...participantsList];
     const q = searchQuery.toLowerCase().trim();
 
     // 1. Filter matches
@@ -102,7 +105,7 @@ export default function TrainingPerformanceTab({
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.institution.toLowerCase().includes(q) ||
+          (p.institution ?? "").toLowerCase().includes(q) ||
           p.email.toLowerCase().includes(q),
       );
     }
@@ -118,7 +121,7 @@ export default function TrainingPerformanceTab({
           const stringB = valB.toLowerCase();
           if (stringA < stringB) return sortConfig.direction === "asc" ? -1 : 1;
           if (stringA > stringB) return sortConfig.direction === "asc" ? 1 : -1;
-        } else {
+        } else if (valA != null && valB != null) {
           if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
           if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
         }
@@ -127,7 +130,7 @@ export default function TrainingPerformanceTab({
     }
 
     return result;
-  }, [cohortParticipants, searchQuery, sortConfig]);
+  }, [participantsList, searchQuery, sortConfig]);
 
   const columns: Column<Trainee>[] = [
     {
@@ -144,7 +147,7 @@ export default function TrainingPerformanceTab({
             <Mail className="w-3 h-3" /> {p.email}
           </span>
           <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mt-0.5">
-            <School className="w-3.5 h-3.5 text-slate-400" /> {p.institution}
+            <School className="w-3.5 h-3.5 text-slate-400" /> {p.institution ?? "—"}
           </span>
         </div>
       ),
@@ -156,7 +159,7 @@ export default function TrainingPerformanceTab({
       sortable: true,
       render: (p) => (
         <span className="font-mono font-bold text-slate-600 block pl-1">
-          {p.pre_test_score}
+          {p.pre_test_score ?? "—"}
         </span>
       ),
     },
@@ -167,7 +170,7 @@ export default function TrainingPerformanceTab({
       sortable: true,
       render: (p) => (
         <span className="font-mono font-bold text-[#2a7797] block pl-1">
-          {p.post_test_score}
+          {p.post_test_score ?? "—"}
         </span>
       ),
     },

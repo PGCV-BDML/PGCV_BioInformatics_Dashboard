@@ -1,5 +1,3 @@
-"use client";
-
 import { ClipboardCheck, ArrowUpRight } from "lucide-react";
 
 export default function ServicesListPage() {

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import ProjectModal from "../../components/projectmodal";
 import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../../types/database";
-import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs";
+import { PageHeader } from "../../components/pageheader";
 import {
   Search,
   Network,
@@ -22,16 +22,13 @@ import {
 } from "lucide-react";
 
 //Database imports
-import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB, getNameIdFromDB } from "@/lib/supabase";
-
-// Helper function to safely format "YYYY-MM-DD" to "MM/DD/YYYY"
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return dateStr;
-  const [year, month, day] = parts;
-  return `${month}/${day}/${year}`;
-};
+import { getRowsFromDB, getUsersFromDB, saveDataToDB, getNameIdFromDB } from "@/lib/supabase";
+import { formatDate } from "@/lib/utils";
+import { projectsBreadcrumbs } from "@/lib/breadcrumbs";
+import { useTableState } from "@/hooks/useTableState";
+import { useDeleteRecord } from "@/hooks/useDeleteRecord";
+import { useDashboardUI } from "../../components/dashboard-ui-context";
+import { useToast } from "../../components/toast";
 
 const FILTER_OPTIONS: { value: ProjectStatus | "All"; label: string }[] = [
   { value: "All", label: "All" },
@@ -48,26 +45,16 @@ export default function ProjectsPage() {
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ProjectStatus | "All">("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Project;
-    direction: "asc" | "desc";
-  } | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // ponytail: naming inconsistency — consider standardizing to isPanelOpen pattern
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const isPanelOpen = isAdding || isEditing;
-
-  // Breadcrumb configuration matching dashboard subpage design rules
-  const breadcrumbTrail = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Projects" },
-  ];
 
   const activeFilterIndex = useMemo(() => {
     return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
@@ -123,16 +110,11 @@ export default function ProjectsPage() {
     [availableUsers],
   );
 
+  const { toggleSidebar } = useDashboardUI();
+  const { showToast } = useToast();
   useEffect(() => {
-    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
-      detail: { isOpen: isPanelOpen },
-    });
-    window.dispatchEvent(toggleEvent);
-  }, [isPanelOpen]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, activeFilter, itemsPerPage]);
+    toggleSidebar(isPanelOpen);
+  }, [isPanelOpen, toggleSidebar]);
 
   const updateProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
     const previous = projectsList.find((p) => p.id === projectId)?.status;
@@ -170,19 +152,7 @@ export default function ProjectsPage() {
     );
   };
 
-  const handleSort = (key: keyof Project) => {
-    let direction: "asc" | "desc" = "asc";
-    if (
-      sortConfig &&
-      sortConfig.key === key &&
-      sortConfig.direction === "asc"
-    ) {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const handleAddSubmit = async (formData: ProjectFormData) => {
+  const handleAddSubmit = useCallback(async (formData: ProjectFormData) => {
     const newId = crypto.randomUUID();
     const payload = {
       id: newId,
@@ -202,14 +172,15 @@ export default function ProjectsPage() {
       const saved = await saveDataToDB("project", newId, payload);
       setProjectsList((prev) => [saved, ...prev]);
       setIsAdding(false);
+      showToast("Project created successfully.", "success");
     } catch (error) {
-      console.error("Failed to save new project:", error);
+      showToast("Failed to save project. Please try again.", "error");
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [showToast]);
 
-  const handleEditSubmit = async (formData: ProjectFormData) => {
+  const handleEditSubmit = useCallback(async (formData: ProjectFormData) => {
     if (!selectedProject) return;
 
     const payload = {
@@ -230,25 +201,29 @@ export default function ProjectsPage() {
         prev.map((item) => (item.id === selectedProject.id ? { ...item, ...(saved as Project) } : item)),
       );
       setIsEditing(false);
+      showToast("Project updated successfully.", "success");
     } catch (error) {
-      console.error("Failed to update project:", error);
+      showToast("Failed to update project.", "error");
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [selectedProject, showToast]);
 
-  const handleDeleteRecord = async () => {
+  const handleCloseModal = useCallback(() => {
+    setIsAdding(false);
+    setIsEditing(false);
+  }, []);
+
+  const deleteRecord = useDeleteRecord<Project>("project", setProjectsList, (err) =>
+    showToast("Failed to delete project.", "error"),
+  );
+  const handleDeleteRecord = useCallback(() => {
     if (!selectedProject) return;
-    try {
-      await deleteDataFromDB("project", selectedProject.id);
-      setProjectsList((prev) =>
-        prev.filter((item) => item.id !== selectedProject.id),
-      );
+    deleteRecord(selectedProject, () => {
       setShowDeleteConfirm(false);
-    } catch (error) {
-      console.error("Failed to delete project:", error);
-    }
-  };
+      showToast("Project deleted.", "success");
+    });
+  }, [selectedProject, deleteRecord, showToast]);
 
   const filteredProjects = useMemo(() => {
     let records = projectsList;
@@ -273,24 +248,18 @@ export default function ProjectsPage() {
     });
   }, [searchQuery, projectsList, activeFilter, clientMap, serviceMap, userMap]);
 
-  const sortedProjects = useMemo(() => {
-    const itemsToProcess = [...filteredProjects];
-    if (!sortConfig) return itemsToProcess;
-
-    return itemsToProcess.sort((a, b) => {
-      const valA = String(a[sortConfig.key] ?? "").toLowerCase();
-      const valB = String(b[sortConfig.key] ?? "").toLowerCase();
-
-      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [filteredProjects, sortConfig]);
-
-  const displayedProjects = useMemo(() => {
-    const startOffset = (currentPage - 1) * itemsPerPage;
-    return sortedProjects.slice(startOffset, startOffset + itemsPerPage);
-  }, [sortedProjects, currentPage, itemsPerPage]);
+  const {
+    sortConfig,
+    handleSort,
+    sorted: sortedProjects,
+    displayed: displayedProjects,
+    currentPage,
+    setCurrentPage,
+  } = useTableState<Project>({
+    items: filteredProjects,
+    itemsPerPage,
+    resetKey: `${searchQuery}-${activeFilter}`,
+  });
 
   const getStatusClass = (status: ProjectStatus) => {
     const baseClass =
@@ -470,68 +439,52 @@ export default function ProjectsPage() {
       className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
         }`}
     >
-      {/* Top Header Controls Area completely standardized to match styling specs */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
-        <div className="flex flex-col gap-1">
-          {/* Breadcrumbs Component placement */}
-          <div className="opacity-95 text-xs tracking-wide transition-colors">
-            <DashboardBreadcrumbs items={breadcrumbTrail} />
-          </div>
-
-          {/* Main Title standard size layout */}
-          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
-            Projects
-          </h1>
-
-          {/* Subheader tracking text layout */}
-          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Operational workflows · Manage genomic execution matrices and
-            project pipelines
-          </p>
-        </div>
-
-        {/* Action Controls uniform structure alignment */}
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full min-[480px]:w-44">
-            <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="bg-transparent text-xs text-slate-700 outline-none pr-5 cursor-pointer font-medium appearance-none w-full"
-              >
-                <option value={5}>Show 5 rows</option>
-                <option value={7}>Show 7 rows</option>
-                <option value={10}>Show 10 rows</option>
-                <option value={20}>Show 20 rows</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-slate-500" />
+      <PageHeader
+        breadcrumbTrail={projectsBreadcrumbs}
+        title="Projects"
+        subtitle="Operational workflows · Manage genomic execution matrices and project pipelines"
+        actions={
+          <>
+            <div className="relative w-full min-[480px]:w-44">
+              <div className="relative flex items-center bg-[#fffdf8] rounded-full border border-gray-200 px-3 h-10 shadow-sm w-full">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 mr-2 flex-shrink-0" />
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="bg-transparent text-xs text-slate-700 outline-none pr-5 cursor-pointer font-medium appearance-none w-full"
+                >
+                  <option value={5}>Show 5 rows</option>
+                  <option value={7}>Show 7 rows</option>
+                  <option value={10}>Show 10 rows</option>
+                  <option value={20}>Show 20 rows</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-slate-500" />
+              </div>
             </div>
-          </div>
-
-          <div className="relative w-full min-[480px]:w-64">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={optionsLoading}
-            onClick={() => {
-              setSelectedProject(null);
-              setIsAdding(true);
-            }}
-            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Project
-          </button>
-        </div>
-      </div>
+            <div className="relative w-full min-[480px]:w-64">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={optionsLoading}
+              onClick={() => {
+                setSelectedProject(null);
+                setIsAdding(true);
+              }}
+              className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Project
+            </button>
+          </>
+        }
+      />
 
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
@@ -621,10 +574,7 @@ export default function ProjectsPage() {
         availableClients={availableClients}
         availableServices={availableServices}
         availableUsers={availableUsers}
-        onClose={() => {
-          setIsAdding(false);
-          setIsEditing(false);
-        }}
+        onClose={handleCloseModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />
 

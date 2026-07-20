@@ -9,13 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export function getCurrentUser() {
-  // supabase.auth.getUser() is async, but getSession() is synchronous from cache
-  return supabase.auth.getSession().then(({ data }) => data.session?.user ?? null);
+export async function getCurrentUser() {
+  // supabase.auth.getUser() is async; getSession() reads the local cache synchronously
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user ?? null;
 }
 
 //Get all user rows from database
-export async function getUsersFromDB(chosenRoles: string[]) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getUsersFromDB<T = any>(chosenRoles: string[]): Promise<T[]> {
   const roleValues = ["team_lead", "team_member", "intern", "trainee"]
 
   const isValid = chosenRoles.every(role => roleValues.includes(role));
@@ -31,32 +33,49 @@ export async function getUsersFromDB(chosenRoles: string[]) {
     .in("role", chosenRoles)
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
   }
 
-  return users;
+  return (users ?? []) as T[];
 }
 
-type TableNames = "collaboration" | "project" | "client" | "service";
+export type TableNames =
+  | "collaboration"
+  | "project"
+  | "client"
+  | "service"
+  | "analysis"
+  | "sample"
+  | "service_report"
+  | "training_program"
+  | "training_session"
+  | "module"
+  | "onboarding_document"
+  | "assessment"
+  | "assessment_response"
+  | "certificate"
+  | "task"
+  | "users";
 
-export async function getNameIdFromDB(table: TableNames) {
+export async function getNameIdFromDB<T = { id: string; name: string }>(table: TableNames): Promise<T[]> {
   const { data: users, error: fetchError } = await supabase
     .from(table)
     .select("id,name")
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
   }
 
-  return users;
+  return (users ?? []) as T[];
 }
 
 // Projects and Collab function =========================================================
 //Get all collab rows from database
 
-export async function getRowsFromDB(table: TableNames) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   const { data: rows, error: fetchError } = await supabase
     .from(table)
     .select("*")
@@ -66,11 +85,15 @@ export async function getRowsFromDB(table: TableNames) {
     throw fetchError;
   }
 
-  return rows ?? [];
+  return (rows ?? []) as T[];
 }
 
 //For Updating Public.Collab table
-export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
+export async function saveDataToDB<T extends Record<string, unknown> = Record<string, unknown>>(
+  table: TableNames,
+  uid: string,
+  data: Partial<T>,
+) {
   // Check if the row already exists
   const { data: existing, error: fetchError } = await supabase
     .from(table)
@@ -79,21 +102,30 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     .maybeSingle();
 
   if (fetchError) {
-    console.error("Error checking collab data:", fetchError);
+    console.error("Error retrieving data:", fetchError);
     throw fetchError;
+  }
+
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    const err = new Error(
+      `saveDataToDB: payload for table "${table}" must be a plain object, got ${Array.isArray(data) ? "array" : typeof data}`,
+    );
+    console.error(err.message);
+    throw err;
   }
 
   if (existing) {
     // Modify an existing row
     const { data: updated, error } = await supabase
       .from(table)
-      .update(data)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(data as any)
       .eq("id", uid)
       .select()
       .single();
 
     if (error) {
-      console.error("Error saving existing collab data:", error);
+      console.error("Error saving existing data:", error);
       throw error;
     }
 
@@ -102,12 +134,13 @@ export async function saveDataToDB(table: TableNames, uid: string, data: any,) {
     // Add new row data
     const { data: inserted, error } = await supabase
       .from(table)
-      .upsert({ ...data })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert({ id: uid, ...(data as any) })
       .select()
       .single();
 
     if (error) {
-      console.error("Error saving new collab data:", error);
+      console.error("Error saving new data:", error);
       throw error;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
 export interface Column<T> {
@@ -19,7 +19,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
 }
 
-export default function DataTable<T extends { id: string | number }>({
+function DataTableInner<T extends { id: string | number }>({
   columns,
   data,
   sortConfig,
@@ -109,3 +109,9 @@ export default function DataTable<T extends { id: string | number }>({
     </div>
   );
 }
+
+const DataTable = memo(DataTableInner) as unknown as <T extends { id: string | number }>(
+  props: DataTableProps<T>
+) => React.JSX.Element;
+
+export default DataTable;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -8,83 +8,12 @@ import {
   ArrowLeft,
   Award,
   HelpCircle,
+  Star,
 } from "lucide-react";
+import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import type { Question, Assessment, AssessmentResponse } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
-interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correct: number;
-}
-
-interface TestData {
-  id: string;
-  title: string;
-  preStatus: "completed" | "none";
-  postStatus: "completed" | "pending" | "none";
-}
-
-const MOCK_TESTS_DATA: TestData[] = [
-  {
-    id: "t1",
-    title: "Introduction to Bioinformatics",
-    preStatus: "completed",
-    postStatus: "completed",
-  },
-  {
-    id: "t2",
-    title: "Sequence Quality Control",
-    preStatus: "completed",
-    postStatus: "pending",
-  },
-  {
-    id: "t3",
-    title: "Alignment & Mapping",
-    preStatus: "none",
-    postStatus: "none",
-  },
-  {
-    id: "t4",
-    title: "Variant Calling Fundamentals",
-    preStatus: "none",
-    postStatus: "none",
-  },
-  {
-    id: "t5",
-    title: "Transcriptomics & RNA-Seq",
-    preStatus: "none",
-    postStatus: "none",
-  },
-  {
-    id: "t6",
-    title: "Metagenomics & Amplicon Analysis",
-    preStatus: "none",
-    postStatus: "none",
-  },
-];
-
-const MOCK_QUESTIONS: Question[] = [
-  {
-    id: "q1",
-    question:
-      "Which file format is primarily used to store raw high-throughput sequencing reads along with quality scores?",
-    options: ["FASTA", "FASTQ", "SAM", "VCF"],
-    correct: 1,
-  },
-  {
-    id: "q2",
-    question:
-      "What does a Phred quality score of 30 imply regarding base-calling error probability?",
-    options: [
-      "1 in 10 chance of error",
-      "1 in 100 chance of error",
-      "1 in 1000 chance of error",
-      "1 in 10000 chance of error",
-    ],
-    correct: 2,
-  },
-];
 
 export default function AssessmentTab({
   params,
@@ -94,31 +23,198 @@ export default function AssessmentTab({
   // Resolved parameter placeholder to ensure dynamic context alignment if API tracking is added later
   const resolvedParams = use(params);
 
-  const [activeTest, setActiveTest] = useState<TestData | null>(null);
-  const [testType, setTestType] = useState<"Pre-test" | "Post-test">(
-    "Pre-test",
-  );
+  const [activeTest, setActiveTest] = useState<"pre" | "post" | null>(null);
+  const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
+  const [postTestQuestions, setPostTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, number>
+    Record<string, number | string>
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
+  const [existingResponses, setExistingResponses] = useState<AssessmentResponse[]>([]);
+  const [assessmentIds, setAssessmentIds] = useState<{ pre?: string; post?: string }>({});
 
-  const handleStartTest = (test: TestData, type: "Pre-test" | "Post-test") => {
-    setActiveTest(test);
-    setTestType(type);
+  useEffect(() => {
+    const load = async () => {
+      const [assessments, responses, user] = await Promise.all([
+        getRowsFromDB<Assessment>("assessment"),
+        getRowsFromDB<AssessmentResponse>("assessment_response"),
+        getCurrentUser(),
+      ]);
+      const programAssessments = assessments.filter(
+        (a) => a.program_id === resolvedParams.id,
+      );
+      const pre = programAssessments.find((a) => a.type === "pre_test");
+      const post = programAssessments.find((a) => a.type === "post_test");
+      setPreTestQuestions(pre?.questions ?? []);
+      setPostTestQuestions(post?.questions ?? []);
+      setAssessmentIds({ pre: pre?.id, post: post?.id });
+      const myResponses = responses.filter(
+        (r) => r.participant_id === user?.id,
+      );
+      setExistingResponses(myResponses);
+    };
+    load();
+  }, [resolvedParams.id]);
+
+  const handleStartTest = (type: "pre" | "post") => {
+    setActiveTest(type);
     setSelectedAnswers({});
     setScoreResult(null);
   };
 
-  const calculateScore = () => {
-    let correctCount = 0;
-    MOCK_QUESTIONS.forEach((q) => {
-      if (selectedAnswers[q.id] === q.correct) {
-        correctCount++;
-      }
-    });
-    const finalScore = Math.round((correctCount / MOCK_QUESTIONS.length) * 100);
+  /** Render a single question based on its type */
+  const renderQuestion = (q: Question, idx: number) => {
+    if (q.type === "mcq") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 gap-2 pl-6">
+            {q.options.map((opt, oIdx) => (
+              <label
+                key={oIdx}
+                className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                  selectedAnswers[q.id] === oIdx
+                    ? "border-[#4ec2bb] bg-[#f2fdfc]"
+                    : "border-slate-100 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={q.id}
+                  checked={selectedAnswers[q.id] === oIdx}
+                  onChange={() =>
+                    setSelectedAnswers({
+                      ...selectedAnswers,
+                      [q.id]: oIdx,
+                    })
+                  }
+                  className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "rating") {
+      const scale = q.scale || 5;
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <Star className="w-4 h-4 text-[#f57f17] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="flex items-center gap-2 pl-6">
+            {Array.from({ length: scale }, (_, i) => i + 1).map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: val })
+                }
+                className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
+                  selectedAnswers[q.id] === val
+                    ? "bg-[#f57f17] text-white shadow-md"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+              >
+                {val}
+              </button>
+            ))}
+            {/* ponytail: numbered buttons 1–scale. Star icons or a slider would be nicer but more work. */}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "text") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="pl-6">
+            {q.multiline ? (
+              <textarea
+                rows={3}
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            ) : (
+              <input
+                type="text"
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const calculateScore = async () => {
+    const questions = activeTest === "pre" ? preTestQuestions : postTestQuestions;
+    const assessmentId = activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
+    if (!assessmentId || questions.length === 0) return;
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    // Only MCQ questions contribute to the score
+    const mcqQuestions = questions.filter((q): q is Question & { type: "mcq" } => q.type === "mcq");
+    const correctCount = mcqQuestions.filter(
+      (q) => selectedAnswers[q.id] === q.correct,
+    ).length;
+    const finalScore = mcqQuestions.length > 0
+      ? Math.round((correctCount / mcqQuestions.length) * 100)
+      : 0;
+
     setScoreResult(finalScore);
+
+    // Ponytail: rating and text answers are stored but not scored
+    const typedAnswers: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(selectedAnswers)) {
+      typedAnswers[key] = val;
+    }
+
+    await saveDataToDB("assessment_response", crypto.randomUUID(), {
+      assessment_id: assessmentId,
+      participant_id: user.id,
+      answers: typedAnswers,
+      score: finalScore,
+      submitted_at: new Date().toISOString(),
+    });
   };
 
   return (
@@ -130,7 +226,7 @@ export default function AssessmentTab({
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-                Pre / Post Tests Matrix
+                Pre / Post Tests
               </h2>
             </div>
             <span className="text-[10px] font-bold tracking-wider text-[#359b95] bg-[#e6f7f6] px-4 py-1.5 rounded-full uppercase">
@@ -138,72 +234,54 @@ export default function AssessmentTab({
             </span>
           </div>
 
-          {/* Test Matrix List */}
-          <div className="space-y-3">
-            {MOCK_TESTS_DATA.map((test) => (
-              <div
-                key={test.id}
-                className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 shadow-sm"
-              >
-                <h3 className="text-sm font-bold text-slate-800 tracking-tight">
-                  {test.title}
-                </h3>
-
-                <div className="flex items-center gap-6 justify-between sm:justify-end shrink-0">
-                  <div className="flex flex-col items-center gap-1 min-w-[55px]">
-                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                      Pre-test
-                    </span>
-                    {test.preStatus === "completed" ? (
-                      <CheckCircle2 className="w-[18px] h-[18px] text-[#4ec2bb]" />
-                    ) : (
-                      <div
-                        onClick={() => handleStartTest(test, "Pre-test")}
-                        className="w-[18px] h-[18px] rounded-full border-2 border-slate-200 cursor-pointer hover:border-[#4ec2bb]"
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-center gap-1 min-w-[55px]">
-                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                      Post-test
-                    </span>
-                    {test.postStatus === "completed" ? (
-                      <CheckCircle2 className="w-[18px] h-[18px] text-[#4ec2bb]" />
-                    ) : test.postStatus === "pending" ? (
-                      <Clock className="w-[18px] h-[18px] text-[#f57f17]" />
-                    ) : (
-                      <div
-                        onClick={() => handleStartTest(test, "Post-test")}
-                        className="w-[18px] h-[18px] rounded-full border-2 border-slate-200 cursor-pointer hover:border-[#4ec2bb]"
-                      />
-                    )}
-                  </div>
-
-                  {test.preStatus === "none" ? (
-                    <button
-                      onClick={() => handleStartTest(test, "Pre-test")}
-                      className="text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
-                    >
-                      Start pre-test
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleStartTest(test, "Post-test")}
-                      className="text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
-                    >
-                      {test.postStatus === "completed"
-                        ? "Review"
-                        : "Start post-test"}
-                    </button>
-                  )}
-                </div>
+          {/* Pre-Test and Post-Test Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-[#4ec2bb]" />
+                <h3 className="text-sm font-bold text-slate-800">Pre-Test</h3>
               </div>
-            ))}
+              <p className="text-xs text-slate-500">
+                {preTestQuestions.length > 0
+                  ? `${preTestQuestions.length} questions`
+                  : "No pre-test configured for this program."}
+              </p>
+              {preTestQuestions.length > 0 && (
+                <button
+                  onClick={() => handleStartTest("pre")}
+                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
+                >
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.pre)
+                    ? "Review Pre-Test"
+                    : "Start Pre-Test"}
+                </button>
+              )}
+            </div>
+
+            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-[#2a7797]" />
+                <h3 className="text-sm font-bold text-slate-800">Post-Test</h3>
+              </div>
+              <p className="text-xs text-slate-500">
+                {postTestQuestions.length > 0
+                  ? `${postTestQuestions.length} questions`
+                  : "No post-test configured for this program."}
+              </p>
+              {postTestQuestions.length > 0 && (
+                <button
+                  onClick={() => handleStartTest("post")}
+                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
+                >
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.post)
+                    ? "Review Post-Test"
+                    : "Start Post-Test"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ) : (
-        /* Active Testing Workspace View */
         <div className="space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <button
@@ -213,51 +291,15 @@ export default function AssessmentTab({
               <ArrowLeft className="w-4 h-4" /> Back to Dashboard List
             </button>
             <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-slate-100 text-slate-600">
-              {testType} — {activeTest.title}
+              {activeTest === "pre" ? "Pre-Test" : "Post-Test"}
             </span>
           </div>
 
           {scoreResult === null ? (
             <div className="space-y-6 max-w-3xl">
-              {MOCK_QUESTIONS.map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
-                >
-                  <div className="flex gap-2 items-start">
-                    <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
-                    <h4 className="text-sm font-bold text-slate-800 leading-snug">
-                      {idx + 1}. {q.question}
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 pl-6">
-                    {q.options.map((opt, oIdx) => (
-                      <label
-                        key={oIdx}
-                        className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                          selectedAnswers[q.id] === oIdx
-                            ? "border-[#4ec2bb] bg-[#f2fdfc]"
-                            : "border-slate-100 hover:bg-slate-50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={selectedAnswers[q.id] === oIdx}
-                          onChange={() =>
-                            setSelectedAnswers({
-                              ...selectedAnswers,
-                              [q.id]: oIdx,
-                            })
-                          }
-                          className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
-                        />
-                        <span>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {(activeTest === "pre" ? preTestQuestions : postTestQuestions).map((q, idx) =>
+                renderQuestion(q, idx)
+              )}
 
               <button
                 onClick={calculateScore}
@@ -267,7 +309,6 @@ export default function AssessmentTab({
               </button>
             </div>
           ) : (
-            /* Submission Complete / Score Display */
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
               <Award className="w-12 h-12 text-[#f57f17] mx-auto" />
               <div className="space-y-1">

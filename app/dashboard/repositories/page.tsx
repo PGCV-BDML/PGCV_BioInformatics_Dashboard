@@ -1,5 +1,3 @@
-"use client";
-
 import { Link2, Info } from "lucide-react";
 
 export default function RepositoriesComingSoonPage() {

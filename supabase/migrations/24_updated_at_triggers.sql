@@ -43,9 +43,10 @@ BEGIN
   ]
   LOOP
     EXECUTE format(
-      'CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.%I
+      'DROP TRIGGER IF EXISTS set_updated_at ON public.%I;
+       CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.%I
        FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();',
-      t
+      t, t
     );
   END LOOP;
 END;

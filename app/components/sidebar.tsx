@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useDashboardUI } from "./dashboard-ui-context";
 import {
   LayoutGrid,
   CheckSquare,
@@ -89,8 +90,8 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isSidebarHidden } = useDashboardUI();
   const [showProfileCard, setShowProfileCard] = useState(false);
-  const [localIsHidden, setLocalIsHidden] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const [userData, setUserData] = useState<{
@@ -104,18 +105,7 @@ export default function Sidebar({
   });
 
   const isCurrentlyHidden =
-    controlledIsHidden !== undefined ? controlledIsHidden : localIsHidden;
-
-  useEffect(() => {
-    const handleToggle = (e: Event) => {
-      const customEvent = e as CustomEvent<{ isOpen: boolean }>;
-      setLocalIsHidden(customEvent.detail.isOpen);
-    };
-
-    window.addEventListener("toggle-dashboard-sidebar", handleToggle);
-    return () =>
-      window.removeEventListener("toggle-dashboard-sidebar", handleToggle);
-  }, []);
+    controlledIsHidden !== undefined ? controlledIsHidden : isSidebarHidden;
 
   useEffect(() => {
     async function getUserProfile() {

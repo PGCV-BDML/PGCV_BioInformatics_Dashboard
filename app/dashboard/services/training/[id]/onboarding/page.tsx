@@ -1,7 +1,8 @@
 "use client";
 
-import React, { use, useMemo } from "react";
+import React, { useEffect, use, useState } from "react";
 import { FileText, AlertCircle, Download } from "lucide-react";
+import { getRowsFromDB } from "@/lib/supabase";
 
 interface OnboardingDocument {
   id: string;
@@ -12,45 +13,27 @@ interface OnboardingDocument {
   is_required: boolean;
 }
 
-/* ================= TRAINING DOCUMENTS DATA ================= */
-const MOCK_ONBOARDING_DOCUMENTS: OnboardingDocument[] = [
-  {
-    id: "doc-1",
-    program_id: "tp-1",
-    title: "Laboratory Security Protocol & Compute Compliance Agreement",
-    file_name: "GATK_Compute_Security_v1.2.pdf",
-    file_size: "1.4 MB",
-    is_required: true,
-  },
-  {
-    id: "doc-2",
-    program_id: "tp-1",
-    title: "NextGen Cluster Pipeline Environment Setup Manual",
-    file_name: "Cluster_Env_Provisioning.pdf",
-    file_size: "3.8 MB",
-    is_required: false,
-  },
-  {
-    id: "doc-3",
-    program_id: "tp-2",
-    title: "QIIME2 Framework Baseline Dataset Verification Questionnaire",
-    file_name: "Metagenomics_Data_Checklist.docx",
-    file_size: "420 KB",
-    is_required: true,
-  },
-];
-
 export default function TrainingOnboardingTab({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
+  const [documents, setDocuments] = useState<OnboardingDocument[]>([]);
 
-  const cohortDocuments = useMemo(() => {
-    return MOCK_ONBOARDING_DOCUMENTS.filter(
-      (doc) => doc.program_id === resolvedParams.id,
-    );
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const docs = await getRowsFromDB<OnboardingDocument>("onboarding_document");
+        const filtered = docs.filter(
+          (d) => d.program_id === resolvedParams.id,
+        );
+        setDocuments(filtered);
+      } catch (err) {
+        console.error("Error loading onboarding documents:", err);
+      }
+    };
+    load();
   }, [resolvedParams.id]);
 
   return (
@@ -68,13 +51,13 @@ export default function TrainingOnboardingTab({
         </div>
       </div>
 
-      {cohortDocuments.length === 0 ? (
+      {documents.length === 0 ? (
         <p className="text-xs text-slate-400 italic py-2">
           No active compliance parameters mapped to this training cohort track.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {cohortDocuments.map((doc) => (
+          {documents.map((doc) => (
             <div
               key={doc.id}
               className="flex items-start justify-between p-4 bg-[#fffdf8] border border-slate-200 rounded-[20px] transition-all shadow-sm cursor-default"

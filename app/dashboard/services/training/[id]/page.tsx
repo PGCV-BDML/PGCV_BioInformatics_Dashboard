@@ -1,22 +1,15 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import { CheckCircle2, Check } from "lucide-react";
+import { getRowsFromDB } from "../../../../../lib/supabase";
+import type { Module } from "../../../../../types/database";
 
 interface ModuleItem {
   id: string;
-  step: string;
+  step?: string;
   title: string;
 }
-
-const MODULES_DATA: ModuleItem[] = [
-  { id: "m1", step: "M1", title: "Introduction to Bioinformatics" },
-  { id: "m2", step: "M2", title: "Sequence Quality Control" },
-  { id: "m3", step: "M3", title: "Alignment & Mapping" },
-  { id: "m4", step: "M4", title: "Variant Calling Fundamentals" },
-  { id: "m5", step: "M5", title: "Transcriptomics & RNA-Seq" },
-  { id: "m6", step: "M6", title: "Metagenomics & Amplicon Analysis" },
-];
 
 export default function TrainingModulesPage({
   params,
@@ -27,7 +20,46 @@ export default function TrainingModulesPage({
   const resolvedParams = use(params);
 
   // Manage module read state locally matching the portfolio pipeline layout rules
+  // ponytail: module_progress table not in schema — local state only, resets on navigation
+  // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`training-modules-read-${resolvedParams.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+      }
+    } catch {
+      // ignore corrupted localStorage; fall back to empty state
+    }
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`training-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
+    } catch {
+      // localStorage may be full or disabled; ignore
+    }
+  }, [readModuleIds, resolvedParams.id]);
+  const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const modules = await getRowsFromDB<Module>("module");
+      const filtered = modules
+        .filter((m) => m.program_id === resolvedParams.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const mapped: ModuleItem[] = filtered.map((m, i) => ({
+        id: m.id,
+        step: m.title ? `M${i + 1}` : undefined,
+        title: m.title ?? "Untitled Module",
+      }));
+      setModulesList(mapped);
+    };
+    load();
+  }, [resolvedParams.id]);
 
   const toggleMarkAsRead = (moduleId: string) => {
     setReadModuleIds((prev) =>
@@ -45,7 +77,7 @@ export default function TrainingModulesPage({
             Training Modules Progression
           </h3>
           <p className="text-xs font-semibold text-slate-500">
-            {readModuleIds.length} of {MODULES_DATA.length} modules completed •
+            {readModuleIds.length} of {modulesList.length} modules completed •
             Progress synced to cohort standard
           </p>
         </div>
@@ -55,7 +87,7 @@ export default function TrainingModulesPage({
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {MODULES_DATA.map((module) => {
+        {modulesList.map((module) => {
           const isRead = readModuleIds.includes(module.id);
 
           return (

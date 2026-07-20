@@ -1,35 +1,10 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { BarChart3, Star, Send, CheckCircle, Award } from "lucide-react";
-
-interface EvaluationQuestion {
-  id: string;
-  label: string;
-  type: "rating" | "text";
-}
-
-const EVALUATION_QUESTIONS: EvaluationQuestion[] = [
-  {
-    id: "eq1",
-    label:
-      "How would you rate the depth of content and bioinformatics pipeline coverage?",
-    type: "rating",
-  },
-  {
-    id: "eq2",
-    label:
-      "Rate the speed, responsiveness, and approachability of the course instructor.",
-    type: "rating",
-  },
-  {
-    id: "eq3",
-    label:
-      "What parts of the workflow curriculum or software tracking exercises could be optimized?",
-    type: "text",
-  },
-];
+import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import type { Assessment, Question } from "@/types/database";
 
 export default function EvaluationPage({
   params,
@@ -43,17 +18,114 @@ export default function EvaluationPage({
   const [selectedProgram, setSelectedProgram] = useState(
     "Advanced Bioinformatics Sequencing & GATK Architecture",
   );
-  const [formValues, setFormValues] = useState<Record<string, any>>({
-    eq1: 5,
-    eq2: 5,
-    eq3: "",
-  });
+  const [formValues, setFormValues] = useState<Record<string, number | string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
-  const handleSubmitEvaluation = (e: React.FormEvent) => {
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const assessments = await getRowsFromDB<Assessment>("assessment");
+        const evalAssessment = assessments.find(
+          (a) => a.program_id === resolvedParams.id && a.type === "evaluation",
+        );
+        if (evalAssessment?.questions) {
+          setAssessmentId(evalAssessment.id);
+          setQuestions(evalAssessment.questions as Question[]);
+        }
+      } catch (err) {
+        console.error("Error loading evaluation questions:", err);
+      }
+    };
+    load();
+  }, [resolvedParams.id]);
+
+  const handleSubmitEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    // In a real application, you would POST the data here.
+    if (!assessmentId) return;
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+      await saveDataToDB("assessment_response", crypto.randomUUID(), {
+        assessment_id: assessmentId,
+        participant_id: user.id,
+        answers: formValues,
+        score: null, // ponytail: evaluation is unscored
+        submitted_at: new Date().toISOString(),
+      });
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting evaluation:", err);
+    }
+  };
+
+  /** Render a single evaluation question (rating or text only) */
+  const renderQuestion = (q: Question) => {
+    if (q.type === "rating") {
+      const scale = q.scale || 5;
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200/80 p-4 rounded-[16px] space-y-2"
+        >
+          <label className="text-xs font-bold text-slate-700 block leading-snug">
+            {q.question}
+          </label>
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: scale }, (_, i) => i + 1).map((starValue) => (
+              <button
+                type="button"
+                key={starValue}
+                onClick={() =>
+                  setFormValues({
+                    ...formValues,
+                    [q.id]: starValue,
+                  })
+                }
+                className="focus:outline-none transition-transform active:scale-95"
+              >
+                <Star
+                  className={`w-5 h-5 ${
+                    starValue <= Number(formValues[q.id])
+                      ? "fill-[#f57f17] text-[#f57f17]"
+                      : "text-slate-200"
+                  }`}
+                />
+              </button>
+            ))}
+            {/* ponytail: star-based rating. Numbered buttons or a slider would be an alternative. */}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "text") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200/80 p-4 rounded-[16px] space-y-2"
+        >
+          <label className="text-xs font-bold text-slate-700 block leading-snug">
+            {q.question}
+          </label>
+          <textarea
+            rows={q.multiline ? 3 : 2}
+            value={formValues[q.id] ?? ""}
+            onChange={(e) =>
+              setFormValues({
+                ...formValues,
+                [q.id]: e.target.value,
+              })
+            }
+            placeholder="Type your response here..."
+            className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2 text-slate-600 bg-slate-50/50"
+          />
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -64,7 +136,7 @@ export default function EvaluationPage({
           1. Submit Evaluation
         </span>
         <Link
-          href={`/${resolvedParams.id}/certificate`}
+          href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
           className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
         >
           2. Certificate Registry{" "}
@@ -118,57 +190,16 @@ export default function EvaluationPage({
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2">
-                {EVALUATION_QUESTIONS.map((q) => (
-                  <div
-                    key={q.id}
-                    className="bg-white border border-slate-200/80 p-4 rounded-[16px] space-y-2"
-                  >
-                    <label className="text-xs font-bold text-slate-700 block leading-snug">
-                      {q.label}
-                    </label>
-                    {q.type === "rating" ? (
-                      <div className="flex items-center gap-1.5">
-                        {[1, 2, 3, 4, 5].map((starValue) => (
-                          <button
-                            type="button"
-                            key={starValue}
-                            onClick={() =>
-                              setFormValues({
-                                ...formValues,
-                                [q.id]: starValue,
-                              })
-                            }
-                            className="focus:outline-none transition-transform active:scale-95"
-                          >
-                            <Star
-                              className={`w-5 h-5 ${
-                                starValue <= formValues[q.id]
-                                  ? "fill-[#f57f17] text-[#f57f17]"
-                                  : "text-slate-200"
-                              }`}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <textarea
-                        rows={2}
-                        value={formValues[q.id]}
-                        onChange={(e) =>
-                          setFormValues({
-                            ...formValues,
-                            [q.id]: e.target.value,
-                          })
-                        }
-                        placeholder="Provide pipeline workflow optimizations here..."
-                        className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2 text-slate-600 bg-slate-50/50"
-                        required
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              {questions.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  {questions.map((q) => renderQuestion(q))}
+                </div>
+              )}
+              {questions.length === 0 && (
+                <p className="text-xs text-slate-400 italic text-center py-4">
+                  No evaluation questions configured for this program.
+                </p>
+              )}
 
               <button
                 type="submit"
@@ -192,7 +223,7 @@ export default function EvaluationPage({
               </div>
               <div className="flex flex-col gap-2">
                 <Link
-                  href={`/${resolvedParams.id}/certificate`}
+                  href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
                   className="w-full py-2 bg-[#4ec2bb] text-white font-bold text-xs rounded-xl hover:bg-[#3db0a9] transition-colors shadow-sm text-center block"
                 >
                   Go View Certificates Table
@@ -200,7 +231,7 @@ export default function EvaluationPage({
                 <button
                   onClick={() => {
                     setIsSubmitted(false);
-                    setFormValues({ eq1: 5, eq2: 5, eq3: "" });
+                    setFormValues({});
                   }}
                   className="w-full py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors"
                 >

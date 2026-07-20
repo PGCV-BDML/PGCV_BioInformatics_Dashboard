@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
+import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -8,86 +9,11 @@ import {
   ArrowLeft,
   Award,
   HelpCircle,
-  Play,
-  Eye,
+  Star,
 } from "lucide-react";
+import type { Question, Assessment, AssessmentResponse } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
-interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correct: number;
-}
-
-interface TestData {
-  id: string;
-  title: string;
-  preStatus: "completed" | "none";
-  postStatus: "completed" | "pending" | "none";
-}
-
-/* ================= INTERNSHIP CURRICULUM TESTS MATRIX ================= */
-const MOCK_TESTS_DATA: TestData[] = [
-  {
-    id: "t1",
-    title: "Clinical Environment Setup & High-Throughput Pipelines",
-    preStatus: "completed",
-    postStatus: "completed",
-  },
-  {
-    id: "t2",
-    title: "Variant Quality Score Recalibration (VQSR)",
-    preStatus: "completed",
-    postStatus: "pending",
-  },
-  {
-    id: "t3",
-    title: "RNA-Seq Assembly & Gene Expression Metrics",
-    preStatus: "none",
-    postStatus: "none",
-  },
-  {
-    id: "t4",
-    title: "Pathway Analysis & Interactive Enrichment Tools",
-    preStatus: "none",
-    postStatus: "none",
-  },
-  {
-    id: "t5",
-    title: "Clinical Variant Filtering Protocols",
-    preStatus: "none",
-    postStatus: "none",
-  },
-];
-
-/* ================= ADVANCED CLINICAL INTERNSHIP QUESTIONS ================= */
-const MOCK_QUESTIONS: Question[] = [
-  {
-    id: "q1",
-    question:
-      "When configuring a clinical RNA-Seq pipeline, which normalization metric is mathematically preferred for cross-sample differential expression comparison?",
-    options: [
-      "RPKM (Reads Per Kilobase Million)",
-      "FPKM (Fragments Per Kilobase Million)",
-      "TPM (Transcripts Per Million)",
-      "DESeq2's Median-of-Ratios (or TMM)",
-    ],
-    correct: 3,
-  },
-  {
-    id: "q2",
-    question:
-      "During GATK Variant Discovery, what is the primary structural limitation of Hard Filtering compared to Variant Quality Score Recalibration (VQSR)?",
-    options: [
-      "Hard filtering requires a high-quality, pre-existing database of true positive sites.",
-      "Hard filtering applies rigid, one-dimensional cutoffs that fail to leverage multidimensional annotation profiles, raising false-positive rates.",
-      "Hard filtering requires significantly more compute clusters and memory footprint than VQSR.",
-      "Hard filtering is only capable of processing single-end sequences.",
-    ],
-    correct: 1,
-  },
-];
 
 export default function InternshipAssessmentPage({
   params,
@@ -97,39 +23,206 @@ export default function InternshipAssessmentPage({
   // Resolved parameter placeholder to ensure dynamic context alignment
   const resolvedParams = use(params);
 
-  const [activeTest, setActiveTest] = useState<TestData | null>(null);
-  const [testType, setTestType] = useState<"Pre-test" | "Post-test">(
-    "Pre-test",
-  );
+  const [activeTest, setActiveTest] = useState<"pre" | "post" | null>(null);
+  const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
+  const [postTestQuestions, setPostTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, number>
+    Record<string, number | string>
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
+  const [existingResponses, setExistingResponses] = useState<AssessmentResponse[]>([]);
+  const [assessmentIds, setAssessmentIds] = useState<{ pre?: string; post?: string }>({});
 
-  const handleStartTest = (test: TestData, type: "Pre-test" | "Post-test") => {
-    setActiveTest(test);
-    setTestType(type);
+  useEffect(() => {
+    const load = async () => {
+      const [assessments, responses, user] = await Promise.all([
+        getRowsFromDB<Assessment>("assessment"),
+        getRowsFromDB<AssessmentResponse>("assessment_response"),
+        getCurrentUser(),
+      ]);
+      const programAssessments = assessments.filter(
+        (a) => a.program_id === resolvedParams.id,
+      );
+      const pre = programAssessments.find((a) => a.type === "pre_test");
+      const post = programAssessments.find((a) => a.type === "post_test");
+      setPreTestQuestions(pre?.questions ?? []);
+      setPostTestQuestions(post?.questions ?? []);
+      setAssessmentIds({ pre: pre?.id, post: post?.id });
+      const myResponses = responses.filter(
+        (r) => r.participant_id === user?.id,
+      );
+      setExistingResponses(myResponses);
+    };
+    load();
+  }, [resolvedParams.id]);
+
+  const handleStartTest = (type: "pre" | "post") => {
+    setActiveTest(type);
     setSelectedAnswers({});
     setScoreResult(null);
   };
 
-  const calculateScore = () => {
-    let correctCount = 0;
-    MOCK_QUESTIONS.forEach((q) => {
-      if (selectedAnswers[q.id] === q.correct) {
-        correctCount++;
-      }
-    });
-    const finalScore = Math.round((correctCount / MOCK_QUESTIONS.length) * 100);
+  /** Render a single question based on its type */
+  const renderQuestion = (q: Question, idx: number) => {
+    if (q.type === "mcq") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 gap-2 pl-6">
+            {q.options.map((opt, oIdx) => (
+              <label
+                key={oIdx}
+                className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                  selectedAnswers[q.id] === oIdx
+                    ? "border-[#4ec2bb] bg-[#f2fdfc]"
+                    : "border-slate-100 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={q.id}
+                  checked={selectedAnswers[q.id] === oIdx}
+                  onChange={() =>
+                    setSelectedAnswers({
+                      ...selectedAnswers,
+                      [q.id]: oIdx,
+                    })
+                  }
+                  className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "rating") {
+      const scale = q.scale || 5;
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <Star className="w-4 h-4 text-[#f57f17] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="flex items-center gap-2 pl-6">
+            {Array.from({ length: scale }, (_, i) => i + 1).map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: val })
+                }
+                className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
+                  selectedAnswers[q.id] === val
+                    ? "bg-[#f57f17] text-white shadow-md"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+              >
+                {val}
+              </button>
+            ))}
+            {/* ponytail: numbered buttons 1–scale. Star icons or a slider would be nicer but more work. */}
+          </div>
+        </div>
+      );
+    }
+
+    if (q.type === "text") {
+      return (
+        <div
+          key={q.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          <div className="flex gap-2 items-start">
+            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+            <h4 className="text-sm font-bold text-slate-800 leading-snug">
+              {idx + 1}. {q.question}
+            </h4>
+          </div>
+          <div className="pl-6">
+            {q.multiline ? (
+              <textarea
+                rows={3}
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            ) : (
+              <input
+                type="text"
+                value={(selectedAnswers[q.id] as string) ?? ""}
+                onChange={(e) =>
+                  setSelectedAnswers({ ...selectedAnswers, [q.id]: e.target.value })
+                }
+                placeholder="Type your answer here..."
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const calculateScore = async () => {
+    const questions = activeTest === "pre" ? preTestQuestions : postTestQuestions;
+    const assessmentId = activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
+    if (!assessmentId || questions.length === 0) return;
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    // Only MCQ questions contribute to the score
+    const mcqQuestions = questions.filter((q): q is Question & { type: "mcq" } => q.type === "mcq");
+    const correctCount = mcqQuestions.filter(
+      (q) => selectedAnswers[q.id] === q.correct,
+    ).length;
+    const finalScore = mcqQuestions.length > 0
+      ? Math.round((correctCount / mcqQuestions.length) * 100)
+      : 0;
+
     setScoreResult(finalScore);
+
+    // Ponytail: rating and text answers are stored but not scored
+    const typedAnswers: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(selectedAnswers)) {
+      typedAnswers[key] = val;
+    }
+
+    await saveDataToDB("assessment_response", crypto.randomUUID(), {
+      assessment_id: assessmentId,
+      participant_id: user.id,
+      answers: typedAnswers,
+      score: finalScore,
+      submitted_at: new Date().toISOString(),
+    });
   };
 
   return (
     <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
       {!activeTest ? (
-        <div className="space-y-8">
-          {/* Workspace Title Header */}
-          <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
+        <div className="space-y-6">
+          {/* Internal Title Header inside Workspace Panel */}
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
@@ -137,197 +230,101 @@ export default function InternshipAssessmentPage({
               </h2>
             </div>
             <span className="text-[10px] font-bold tracking-wider text-[#359b95] bg-[#e6f7f6] px-4 py-1.5 rounded-full uppercase">
-              Cohort ID: {resolvedParams.id}
+              Assessments Panel
             </span>
           </div>
 
-          {/* Separated Sections Container */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* ================= PRE-TESTS SECTION ================= */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-200/40">
-                <div className="w-2 h-2 rounded-full bg-[#4ec2bb]" />
-                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-                  Pre-Test Milestones
-                </h3>
+          {/* Pre-Test and Post-Test Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-[#4ec2bb]" />
+                <h3 className="text-sm font-bold text-slate-800">Pre-Test</h3>
               </div>
-
-              <div className="space-y-3">
-                {MOCK_TESTS_DATA.map((test) => (
-                  <div
-                    key={`pre-${test.id}`}
-                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        Assessment {test.id.toUpperCase()}
-                      </h4>
-                      <h3 className="text-sm font-bold text-slate-800 tracking-tight leading-tight">
-                        {test.title}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-center">
-                      {test.preStatus === "completed" ? (
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#4ec2bb] bg-[#eaf7f6] px-3 py-1.5 rounded-xl border border-[#4ec2bb]/10">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Passed</span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleStartTest(test, "Pre-test")}
-                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all shadow-sm"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-white" /> Start
-                          Pre-Test
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-slate-500">
+                {preTestQuestions.length > 0
+                  ? `${preTestQuestions.length} questions`
+                  : "No pre-test configured for this internship."}
+              </p>
+              {preTestQuestions.length > 0 && (
+                <button
+                  onClick={() => handleStartTest("pre")}
+                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
+                >
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.pre)
+                    ? "Review Pre-Test"
+                    : "Start Pre-Test"}
+                </button>
+              )}
             </div>
 
-            {/* ================= POST-TESTS SECTION ================= */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-200/40">
-                <div className="w-2 h-2 rounded-full bg-[#2a7797]" />
-                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-                  Post-Test Milestones
-                </h3>
+            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-[#2a7797]" />
+                <h3 className="text-sm font-bold text-slate-800">Post-Test</h3>
               </div>
-
-              <div className="space-y-3">
-                {MOCK_TESTS_DATA.map((test) => (
-                  <div
-                    key={`post-${test.id}`}
-                    className="w-full rounded-[20px] p-5 border border-slate-300/60 bg-[#fffdf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 hover:shadow-sm"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        Assessment {test.id.toUpperCase()}
-                      </h4>
-                      <h3 className="text-sm font-bold text-slate-800 tracking-tight leading-tight">
-                        {test.title}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-center">
-                      {test.postStatus === "completed" ? (
-                        <button
-                          onClick={() => handleStartTest(test, "Post-test")}
-                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Review
-                        </button>
-                      ) : test.postStatus === "pending" ? (
-                        <button
-                          onClick={() => handleStartTest(test, "Post-test")}
-                          className="flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 bg-[#fff8e1] text-[#b78103] border border-[#ffe082] rounded-xl hover:bg-[#fff3cd] transition-all"
-                        >
-                          <Clock className="w-3.5 h-3.5 text-[#f57f17]" />{" "}
-                          Complete Post-Test
-                        </button>
-                      ) : (
-                        <button
-                          disabled={test.preStatus !== "completed"}
-                          onClick={() => handleStartTest(test, "Post-test")}
-                          className={`flex items-center gap-1.5 text-[11px] font-bold px-4 py-2 rounded-xl transition-all ${
-                            test.preStatus === "completed"
-                              ? "bg-[#2a7797] text-white hover:bg-[#1f5a73] shadow-sm"
-                              : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/40"
-                          }`}
-                        >
-                          Start Post-Test
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-slate-500">
+                {postTestQuestions.length > 0
+                  ? `${postTestQuestions.length} questions`
+                  : "No post-test configured for this internship."}
+              </p>
+              {postTestQuestions.length > 0 && (
+                <button
+                  onClick={() => handleStartTest("post")}
+                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
+                >
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.post)
+                    ? "Review Post-Test"
+                    : "Start Post-Test"}
+                </button>
+              )}
             </div>
           </div>
         </div>
       ) : (
-        /* Active Testing Screen View */
+        /* Active Testing Workspace View */
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <button
               onClick={() => setActiveTest(null)}
               className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800"
             >
-              <ArrowLeft className="w-4 h-4" /> Back to Assessments Matrix
+              <ArrowLeft className="w-4 h-4" /> Back to Dashboard List
             </button>
-            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-slate-150 text-slate-600 border border-slate-200/40">
-              {testType} — {activeTest.title}
+            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-slate-100 text-slate-600">
+              {activeTest === "pre" ? "Pre-Test" : "Post-Test"}
             </span>
           </div>
 
           {scoreResult === null ? (
             <div className="space-y-6 max-w-3xl">
-              {MOCK_QUESTIONS.map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="bg-[#fffdf8] border border-slate-300/60 p-5 rounded-[20px] space-y-4 shadow-sm"
-                >
-                  <div className="flex gap-2 items-start">
-                    <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
-                    <h4 className="text-sm font-bold text-slate-800 leading-snug">
-                      {idx + 1}. {q.question}
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 pl-6">
-                    {q.options.map((opt, oIdx) => (
-                      <label
-                        key={oIdx}
-                        className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                          selectedAnswers[q.id] === oIdx
-                            ? "border-[#4ec2bb] bg-[#f2fdfc]"
-                            : "border-slate-300/40 bg-white hover:bg-slate-100/50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={selectedAnswers[q.id] === oIdx}
-                          onChange={() =>
-                            setSelectedAnswers({
-                              ...selectedAnswers,
-                              [q.id]: oIdx,
-                            })
-                          }
-                          className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
-                        />
-                        <span>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {(activeTest === "pre" ? preTestQuestions : postTestQuestions).map((q, idx) =>
+                renderQuestion(q, idx)
+              )}
 
               <button
                 onClick={calculateScore}
                 className="px-6 py-2.5 bg-[#2a7797] text-white font-bold text-xs rounded-xl hover:bg-[#1f5a73] shadow-sm transition-all"
               >
-                Submit Answers & Save to Portfolio
+                Submit Answers & Calculate Score
               </button>
             </div>
           ) : (
-            /* Submission Summary Panel */
-            <div className="bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
+            /* Submission Complete / Score Display */
+            <div className="bg-white border border-slate-200/80 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">
               <Award className="w-12 h-12 text-[#f57f17] mx-auto" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-slate-800">
-                  Assessment Complete
+                  Assessment Submitted
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Your answers have been integrated into your core internship
-                  portfolio records.
+                  Your test answers have been saved to the database logs
+                  repository.
                 </p>
               </div>
-              <div className="bg-white border border-slate-200/50 rounded-2xl p-4 inline-block min-w-[120px]">
+              <div className="bg-slate-50 rounded-2xl p-4 inline-block min-w-[120px]">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold block">
-                  Scored Record
+                  Your Score
                 </span>
                 <span className="text-3xl font-black text-[#2a7797] font-quicksand">
                   {scoreResult}%
@@ -335,7 +332,7 @@ export default function InternshipAssessmentPage({
               </div>
               <button
                 onClick={() => setActiveTest(null)}
-                className="w-full py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors border border-slate-300/40"
+                className="w-full py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
               >
                 Return to Matrix Panel
               </button>

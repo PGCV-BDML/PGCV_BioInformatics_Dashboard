@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import CollaborationSidebar from "../../components/collaborationmodal";
-import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs"; // Relative to components folder
 import { CollaborationRow, UserOption } from "../../../types/database";
+import { PageHeader } from "../../components/pageheader";
 import {
   Search,
   Users2,
@@ -17,10 +17,17 @@ import {
   Inbox,
   GitBranch,
   ChevronDown,
+  AlertCircle,
 } from "lucide-react";
 
 //Database imports
-import { getRowsFromDB, getUsersFromDB, saveDataToDB, deleteDataFromDB } from "@/lib/supabase";
+import { getRowsFromDB, getUsersFromDB, saveDataToDB } from "@/lib/supabase";
+import { formatDate } from "@/lib/utils";
+import { collaborationsBreadcrumbs } from "@/lib/breadcrumbs";
+import { useTableState } from "@/hooks/useTableState";
+import { useDeleteRecord } from "@/hooks/useDeleteRecord";
+import { useDashboardUI } from "../../components/dashboard-ui-context";
+import { useToast } from "../../components/toast";
 
 type CollaborationFormState = {
   partner_org: string;
@@ -56,14 +63,7 @@ const STATUS_OPTIONS = [
   { value: "finished", label: "Finished" },
 ];
 
-// Split-based MM/DD/YYYY formatter
-const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return "";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return dateStr;
-  const [year, month, day] = parts;
-  return `${month}/${day}/${year}`;
-};
+
 
 export default function CollaborationsPage() {
   const [collaborationsList, setCollaborationsList] = useState<
@@ -71,45 +71,36 @@ export default function CollaborationsPage() {
   >([]);
   const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [formState, setFormState] =
     useState<CollaborationFormState>(EMPTY_FORM);
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof CollaborationRow;
-    direction: "asc" | "desc";
-  } | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // ponytail: naming inconsistency — consider standardizing to isPanelOpen pattern
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedCollaboration, setSelectedCollaboration] =
     useState<CollaborationRow | null>(null);
 
   const isPanelOpen = isAdding || isEditing;
 
-  // Breadcrumb Trail Config
-  const breadcrumbTrail = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Collaborations" },
-  ];
-
   // Selected Index of Active Filter for Slider
   const activeFilterIndex = useMemo(() => {
     return FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter);
   }, [activeFilter]);
 
+  const { toggleSidebar } = useDashboardUI();
+  const { showToast } = useToast();
   useEffect(() => {
-    const toggleEvent = new CustomEvent("toggle-dashboard-sidebar", {
-      detail: { isOpen: isPanelOpen },
-    });
-    window.dispatchEvent(toggleEvent);
-  }, [isPanelOpen]);
+    toggleSidebar(isPanelOpen);
+  }, [isPanelOpen, toggleSidebar]);
 
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const [users, collaborations] = await Promise.all([
           getUsersFromDB(["team_lead", "team_member"]),
@@ -119,6 +110,7 @@ export default function CollaborationsPage() {
         setCollaborationsList(collaborations);
       } catch (error) {
         console.error("Error launching client data layer:", error);
+        setLoadError("Failed to load collaborations. Please refresh the page.");
       } finally {
         setIsLoading(false);
       }
@@ -129,25 +121,25 @@ export default function CollaborationsPage() {
   useEffect(() => {
     if (availableUsers.length > 0 && !formState.lead_user_id) {
       setFormState(
-        (prev) => ({ ...prev, lead_user_id: availableUsers[0].id }) as any,
+        (prev) => ({ ...prev, lead_user_id: availableUsers[0]?.id ?? "" }),
       );
     }
   }, [availableUsers, formState.lead_user_id]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, activeFilter]);
-
-  const handleInputChange = (key: keyof CollaborationFormState, value: any) => {
+  const handleInputChange = useCallback((key: keyof CollaborationFormState, value: string | number | string[] | boolean) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
-  };
+  }, []);
+
+  const handleCloseSidebar = useCallback(() => {
+    setIsAdding(false);
+    setIsEditing(false);
+  }, []);
 
   //Save changes to DB and change the value of collaborations list to update what is displayed
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await saveDataToDB("collaboration", id, {
         status: newStatus,
-        updated_at: new Date().toISOString()
       });
 
       setCollaborationsList((prev) =>
@@ -166,19 +158,7 @@ export default function CollaborationsPage() {
     }
   };
 
-  const handleSort = (key: keyof CollaborationRow) => {
-    let direction: "asc" | "desc" = "asc";
-    if (
-      sortConfig &&
-      sortConfig.key === key &&
-      sortConfig.direction === "asc"
-    ) {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
     const id = crypto.randomUUID();
@@ -188,26 +168,32 @@ export default function CollaborationsPage() {
       partner_org: formState.partner_org,
       lead_user_id: formState.lead_user_id,
       start_date:
-        formState.start_date || new Date().toISOString().split("T")[0],
+        (formState.start_date || new Date().toISOString().split("T")[0]) ?? "",
       status: formState.status as CollaborationRow["status"],
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
       repository_link: formState.repository_link || null,
       created_at: new Date().toISOString(),
+      // ponytail: updated_at is set by the column default on INSERT and by the
+      // BEFORE-UPDATE trigger on subsequent edits — do not send from the client.
+      // This local value is only used to satisfy the CollaborationRow type for
+      // the setCollaborationsList() call below; it is stripped before sending to saveDataToDB.
       updated_at: new Date().toISOString(),
     };
     try {
-      await saveDataToDB("collaboration", id, newRecord);
+      const { updated_at: _updatedAt, ...dbPayload } = newRecord;
+      await saveDataToDB("collaboration", id, dbPayload);
       setCollaborationsList((prev) => [newRecord, ...prev]);
+      showToast("Collaboration created successfully.", "success");
     } catch (error) {
-      console.error("Error saving collaboration:", error);
+      showToast("Failed to save collaboration. Please try again.", "error");
       return;
     }
     setIsAdding(false);
     setFormState(EMPTY_FORM);
-  };
+  }, [formState, showToast]);
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCollaboration) return;
     const cleanDocs = formState.documents_links.filter((l) => l.trim() !== "");
@@ -220,7 +206,6 @@ export default function CollaborationsPage() {
       documents: cleanDocs.length > 0 ? cleanDocs : null,
       notes: formState.notes || null,
       repository_link: formState.repository_link || "",
-      updated_at: new Date().toISOString(),
     };
 
     try {
@@ -235,23 +220,24 @@ export default function CollaborationsPage() {
 
       setIsEditing(false);
       setFormState(EMPTY_FORM);
+      showToast("Collaboration updated successfully.", "success");
     } catch (error) {
-      console.error("Error saving edited data:", error);
+      showToast("Failed to update collaboration.", "error");
     }
-  };
+  }, [formState, selectedCollaboration, showToast]);
 
-  const handleDeleteRecord = async () => {
+  const deleteRecord = useDeleteRecord<CollaborationRow>(
+    "collaboration",
+    setCollaborationsList,
+    (err) => showToast("Failed to delete collaboration.", "error"),
+  );
+  const handleDeleteRecord = useCallback(() => {
     if (!selectedCollaboration) return;
-    try {
-      await deleteDataFromDB("collaboration", selectedCollaboration.id);
-      setCollaborationsList((prev) =>
-        prev.filter((item) => item.id !== selectedCollaboration.id),
-      );
+    deleteRecord(selectedCollaboration, () => {
       setShowDeleteConfirm(false);
-    } catch (error) {
-      console.error("Error deleting collaboration:", error)
-    }
-  };
+      showToast("Collaboration deleted.", "success");
+    });
+  }, [selectedCollaboration, deleteRecord, showToast]);
 
   const filteredCollaborations = useMemo(() => {
     let records = collaborationsList;
@@ -275,33 +261,22 @@ export default function CollaborationsPage() {
     });
   }, [searchQuery, collaborationsList, activeFilter]);
 
-  const sortedCollaborations = useMemo(() => {
-    const sortableItems = [...filteredCollaborations];
-    if (!sortConfig) return sortableItems;
-    return sortableItems.sort((a, b) => {
-      let valA =
-        sortConfig.key === "lead_user_id"
-          ? a.user?.name || ""
-          : (a[sortConfig.key] ?? "");
-      let valB =
-        sortConfig.key === "lead_user_id"
-          ? b.user?.name || ""
-          : (b[sortConfig.key] ?? "");
-      const strA = String(valA).toLowerCase();
-      const strB = String(valB).toLowerCase();
-      if (strA < strB) return sortConfig.direction === "asc" ? -1 : 1;
-      if (strA > strB) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [filteredCollaborations, sortConfig]);
-
-  const displayedCollaborations = useMemo(() => {
-    const startOffset = (currentPage - 1) * ITEMS_PER_PAGE;
-    return sortedCollaborations.slice(
-      startOffset,
-      startOffset + ITEMS_PER_PAGE,
-    );
-  }, [sortedCollaborations, currentPage]);
+  const {
+    sortConfig,
+    handleSort,
+    sorted: sortedCollaborations,
+    displayed: displayedCollaborations,
+    currentPage,
+    setCurrentPage,
+  } = useTableState<CollaborationRow>({
+    items: filteredCollaborations,
+    itemsPerPage: ITEMS_PER_PAGE,
+    resetKey: `${searchQuery}-${activeFilter}`,
+    customSorters: {
+      lead_user_id: (a, b) =>
+        (a.user?.name ?? "").localeCompare(b.user?.name ?? ""),
+    },
+  });
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
     const status = currentStatus || "for_approval";
@@ -437,11 +412,11 @@ export default function CollaborationsPage() {
         ),
     },
     {
-      key: "repository_link" as any,
+      key: "repository_link",
       label: "Repository Link",
       width: "14%",
       render: (c) => {
-        const repoUrl = (c as any).repository_link || "";
+        const repoUrl = c.repository_link || "";
         return repoUrl ? (
           <a
             href={repoUrl}
@@ -475,7 +450,7 @@ export default function CollaborationsPage() {
                 notes: c.notes || "",
                 start_date: c.start_date || "",
                 status: c.status || "ongoing",
-                repository_link: (c as any).repository_link || "",
+                repository_link: c.repository_link || "",
               });
               setIsEditing(true);
             }}
@@ -503,53 +478,38 @@ export default function CollaborationsPage() {
       className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
         }`}
     >
-      {/* Top Header Controls Area formatted exactly like the landing/tasks page */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
-        <div className="flex flex-col gap-1">
-          {/* Breadcrumbs Wrapper */}
-          <div className="opacity-95 text-xs tracking-wide transition-colors">
-            <DashboardBreadcrumbs items={breadcrumbTrail} />
-          </div>
-
-          {/* Main Title formatted with landing page styling */}
-          <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
-            Collaborations
-          </h1>
-
-          {/* Subheader styled to match landing page secondary details */}
-          <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Strategic partnerships · Academic connections and inter-agency
-            alignments
-          </p>
-        </div>
-
-        {/* Action controls aligned to the right side of the header */}
-        <div className="flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full min-[480px]:w-64">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search collaborations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setFormState({
-                ...EMPTY_FORM,
-                lead_user_id: availableUsers[0]?.id || "",
-              });
-              setIsAdding(true);
-            }}
-            className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Collaboration
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbTrail={collaborationsBreadcrumbs}
+        title="Collaborations"
+        subtitle="Strategic partnerships · Academic connections and inter-agency alignments"
+        actions={
+          <>
+            <div className="relative w-full min-[480px]:w-64">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search collaborations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 bg-[#fffdf8] rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFormState({
+                  ...EMPTY_FORM,
+                  lead_user_id: availableUsers[0]?.id || "",
+                });
+                setIsAdding(true);
+              }}
+              className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Collaboration
+            </button>
+          </>
+        }
+      />
 
       <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4 mb-5">
@@ -585,7 +545,12 @@ export default function CollaborationsPage() {
           </div>
         </div>
 
-        {isLoading ? (
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6">
+            <AlertCircle className="w-10 h-10 text-red-600 mb-2" />
+            <span className="text-sm font-medium text-red-600">{loadError}</span>
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-12">
             <span className="text-sm font-medium text-slate-400 animate-pulse">
               Loading database records...
@@ -621,10 +586,7 @@ export default function CollaborationsPage() {
         isAdding={isAdding}
         formState={formState}
         availableUsers={availableUsers}
-        onClose={() => {
-          setIsAdding(false);
-          setIsEditing(false);
-        }}
+        onClose={handleCloseSidebar}
         onChange={handleInputChange}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />
