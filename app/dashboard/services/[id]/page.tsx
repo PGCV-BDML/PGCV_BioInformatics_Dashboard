@@ -134,7 +134,7 @@ export default function AnalysisDetailPage({
           analysis_pipeline:
             `${analysis.pipeline ?? ""} ${analysis.pipeline_version ?? ""}`.trim() || "—",
           status: analysis.status as ServiceProjectRow["status"],
-          assignee: "—",
+          assignee: userMapData.get(analysis.assignee_id) ?? "—",
           started: analysis.started_at ? analysis.started_at.split("T")[0] ?? "" : "—",
           completed: analysis.completed_at
             ? analysis.completed_at.split("T")[0] ?? ""

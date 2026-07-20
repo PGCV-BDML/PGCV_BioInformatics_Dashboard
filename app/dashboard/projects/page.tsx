@@ -53,6 +53,7 @@ export default function ProjectsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isPanelOpen = isAdding || isEditing;
 
@@ -141,15 +142,27 @@ export default function ProjectsPage() {
     }
   };
 
-  const updateProjectService = (projectId: string, newServiceId: string) => {
+  const updateProjectService = async (projectId: string, newServiceId: string) => {
+    const previous = projectsList.find((p) => p.id === projectId)?.service_id;
     setProjectsList((prev) =>
       prev.map((proj) =>
         proj.id === projectId ? { ...proj, service_id: newServiceId } : proj,
       ),
     );
-    saveDataToDB("project", projectId, { service_id: newServiceId }).catch((error) =>
-      console.error("Failed to update service:", error),
-    );
+    try {
+      await saveDataToDB("project", projectId, { service_id: newServiceId });
+    } catch (error) {
+      console.error("Failed to update project service:", error);
+      // Rollback the frontend update on DB failure
+      setProjectsList((prev) =>
+        prev.map((proj) =>
+          proj.id === projectId && previous !== undefined
+            ? { ...proj, service_id: previous }
+            : proj,
+        ),
+      );
+      showToast("Failed to update service. Reverting.", "error");
+    }
   };
 
   const handleAddSubmit = useCallback(async (formData: ProjectFormData) => {
@@ -214,15 +227,34 @@ export default function ProjectsPage() {
     setIsEditing(false);
   }, []);
 
+  const initialData = useMemo(() => {
+    if (!selectedProject) return null;
+    return {
+      name: selectedProject.name,
+      client_id: selectedProject.client_id,
+      service_id: selectedProject.service_id,
+      status: selectedProject.status,
+      lead_user_id: selectedProject.lead_user_id,
+      start_date: selectedProject.start_date,
+      target_delivery_date: selectedProject.target_delivery_date || "",
+      repository_link: selectedProject.repository_link || "",
+    };
+  }, [selectedProject]);
+
   const deleteRecord = useDeleteRecord<Project>("project", setProjectsList, (err) =>
     showToast("Failed to delete project.", "error"),
   );
-  const handleDeleteRecord = useCallback(() => {
+  const handleDeleteRecord = useCallback(async () => {
     if (!selectedProject) return;
-    deleteRecord(selectedProject, () => {
-      setShowDeleteConfirm(false);
-      showToast("Project deleted.", "success");
-    });
+    setIsDeleting(true);
+    try {
+      await deleteRecord(selectedProject, () => {
+        setShowDeleteConfirm(false);
+        showToast("Project deleted.", "success");
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   }, [selectedProject, deleteRecord, showToast]);
 
   const filteredProjects = useMemo(() => {
@@ -557,20 +589,7 @@ export default function ProjectsPage() {
         isOpen={isPanelOpen}
         isAdding={isAdding}
         isSaving={isSaving}
-        initialData={
-          selectedProject
-            ? {
-              name: selectedProject.name,
-              client_id: selectedProject.client_id,
-              service_id: selectedProject.service_id,
-              status: selectedProject.status,
-              lead_user_id: selectedProject.lead_user_id,
-              start_date: selectedProject.start_date,
-              target_delivery_date: selectedProject.target_delivery_date || "",
-              repository_link: selectedProject.repository_link || "",
-            }
-            : null
-        }
+        initialData={initialData}
         availableClients={availableClients}
         availableServices={availableServices}
         availableUsers={availableUsers}
@@ -583,6 +602,7 @@ export default function ProjectsPage() {
         itemName={selectedProject?.name || ""}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteRecord}
+        isDeleting={isDeleting}
       />
     </div>
   );

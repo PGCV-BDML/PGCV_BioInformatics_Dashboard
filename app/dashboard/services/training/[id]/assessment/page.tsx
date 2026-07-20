@@ -31,6 +31,7 @@ export default function AssessmentTab({
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
   const [existingResponses, setExistingResponses] = useState<AssessmentResponse[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [assessmentIds, setAssessmentIds] = useState<{ pre?: string; post?: string }>({});
 
   useEffect(() => {
@@ -185,36 +186,43 @@ export default function AssessmentTab({
   };
 
   const calculateScore = async () => {
-    const questions = activeTest === "pre" ? preTestQuestions : postTestQuestions;
-    const assessmentId = activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
-    if (!assessmentId || questions.length === 0) return;
-    const user = await getCurrentUser();
-    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const questions = activeTest === "pre" ? preTestQuestions : postTestQuestions;
+      const assessmentId = activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
+      if (!assessmentId || questions.length === 0) return;
+      const user = await getCurrentUser();
+      if (!user) return;
 
-    // Only MCQ questions contribute to the score
-    const mcqQuestions = questions.filter((q): q is Question & { type: "mcq" } => q.type === "mcq");
-    const correctCount = mcqQuestions.filter(
-      (q) => selectedAnswers[q.id] === q.correct,
-    ).length;
-    const finalScore = mcqQuestions.length > 0
-      ? Math.round((correctCount / mcqQuestions.length) * 100)
-      : 0;
+      // Only MCQ questions contribute to the score
+      const mcqQuestions = questions.filter((q): q is Question & { type: "mcq" } => q.type === "mcq");
+      const correctCount = mcqQuestions.filter(
+        (q) => selectedAnswers[q.id] === q.correct,
+      ).length;
+      const finalScore = mcqQuestions.length > 0
+        ? Math.round((correctCount / mcqQuestions.length) * 100)
+        : 0;
 
-    setScoreResult(finalScore);
+      setScoreResult(finalScore);
 
-    // Ponytail: rating and text answers are stored but not scored
-    const typedAnswers: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(selectedAnswers)) {
-      typedAnswers[key] = val;
+      // Ponytail: rating and text answers are stored but not scored
+      const typedAnswers: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(selectedAnswers)) {
+        typedAnswers[key] = val;
+      }
+
+      await saveDataToDB("assessment_response", crypto.randomUUID(), {
+        assessment_id: assessmentId,
+        participant_id: user.id,
+        answers: typedAnswers,
+        score: finalScore,
+        submitted_at: new Date().toISOString(),
+      });
+    } catch {
+      // Submission failed — isSubmitting will be reset in finally
+    } finally {
+      setIsSubmitting(false);
     }
-
-    await saveDataToDB("assessment_response", crypto.randomUUID(), {
-      assessment_id: assessmentId,
-      participant_id: user.id,
-      answers: typedAnswers,
-      score: finalScore,
-      submitted_at: new Date().toISOString(),
-    });
   };
 
   return (
@@ -303,9 +311,14 @@ export default function AssessmentTab({
 
               <button
                 onClick={calculateScore}
-                className="px-6 py-2.5 bg-[#2a7797] text-white font-bold text-xs rounded-xl hover:bg-[#1f5a73] shadow-sm transition-all"
+                disabled={isSubmitting}
+                className={`px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-sm transition-all ${
+                  isSubmitting
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-[#2a7797] hover:bg-[#1f5a73]"
+                }`}
               >
-                Submit Answers & Calculate Score
+                {isSubmitting ? "Submitting..." : "Submit Answers & Calculate Score"}
               </button>
             </div>
           ) : (

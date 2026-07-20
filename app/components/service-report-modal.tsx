@@ -43,7 +43,7 @@ export default function ServiceReportModal({
     if (!analysis || !currentUserId) return;
 
     try {
-      await saveDataToDB("service_report", crypto.randomUUID(), {
+      const saved = await saveDataToDB("service_report", crypto.randomUUID(), {
         analysis_id: analysis.id,
         report_link: fallbackUrl,
         delivered_by: currentUserId,
@@ -61,7 +61,7 @@ export default function ServiceReportModal({
       supabase
         .rpc("audit_data_modification", {
           target_type: "service_report",
-          target_id: analysis.id,
+          target_id: (saved as { id: string })?.id ?? analysis.id,
           event_details: { action: "delivered", report_link: fallbackUrl },
         })
         .then(({ error }) => {

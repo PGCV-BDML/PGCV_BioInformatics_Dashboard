@@ -18,6 +18,7 @@ export default function InternshipEvaluationPage({
   const [participantName, setParticipantName] = useState("Marcus Vance");
   const [formValues, setFormValues] = useState<Record<string, number | string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
@@ -41,7 +42,8 @@ export default function InternshipEvaluationPage({
 
   const handleSubmitEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assessmentId) return;
+    if (!assessmentId || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const user = await getCurrentUser();
       if (!user) return;
@@ -52,9 +54,22 @@ export default function InternshipEvaluationPage({
         score: null, // ponytail: evaluation is unscored
         submitted_at: new Date().toISOString(),
       });
+      // Create a certificate record for this completed evaluation
+      try {
+        await saveDataToDB("certificate", crypto.randomUUID(), {
+          participant_id: user.id,
+          program_id: resolvedParams.id,
+          issued_at: new Date().toISOString(),
+          pdf_link: null,
+        });
+      } catch (certErr) {
+        console.error("Certificate creation failed (evaluation still saved):", certErr);
+      }
       setIsSubmitted(true);
     } catch (err) {
       console.error("Error submitting evaluation:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -184,10 +199,15 @@ export default function InternshipEvaluationPage({
 
             <button
               type="submit"
-              className="w-full py-3 bg-[#2a7797] text-white font-bold text-xs rounded-xl hover:bg-[#1f5a73] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 shadow-md shadow-slate-300/20"
+              disabled={isSubmitting}
+              className={`w-full py-3 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md shadow-slate-300/20 ${
+                isSubmitting
+                  ? "bg-slate-400 text-white cursor-not-allowed"
+                  : "bg-[#2a7797] text-white hover:bg-[#1f5a73] active:scale-[0.99]"
+              }`}
             >
-              <Send className="w-3.5 h-3.5" /> Submit Metrics & Generate
-              Internship Certificate
+              <Send className="w-3.5 h-3.5" />{" "}
+              {isSubmitting ? "Submitting..." : "Submit Metrics & Generate Internship Certificate"}
             </button>
           </form>
         ) : (

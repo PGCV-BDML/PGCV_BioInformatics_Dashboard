@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import DataTable, { Column } from "../../../../../components/datatable";
 import { getRowsFromDB, getUsersFromDB } from "../../../../../../lib/supabase";
-import type { AssessmentResponse, Certificate, User } from "@/types/database";
+import type { Assessment, AssessmentResponse, Certificate, User } from "@/types/database";
 
 interface Intern {
   id: string;
@@ -39,33 +39,52 @@ export default function InternshipPerformanceTab({
   useEffect(() => {
     const load = async () => {
       try {
-        const [responses, certificates, users] = await Promise.all([
+        const [assessments, responses, certificates, users] = await Promise.all([
+          getRowsFromDB<Assessment>("assessment"),
           getRowsFromDB<AssessmentResponse>("assessment_response"),
           getRowsFromDB<Certificate>("certificate"),
           getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
         ]);
+        // Filter to this program
+        const programAssessmentIds = assessments
+          .filter((a) => a.program_id === resolvedParams.id)
+          .map((a) => a.id);
+        const programResponses = responses.filter((r) =>
+          programAssessmentIds.includes(r.assessment_id),
+        );
+        const programCertificates = certificates.filter(
+          (c) => c.program_id === resolvedParams.id,
+        );
+        // Build assessment type map for score disambiguation
+        const assessmentTypeMap = new Map<string, string>();
+        for (const a of assessments) {
+          if (a.program_id === resolvedParams.id) {
+            assessmentTypeMap.set(a.id, a.type);
+          }
+        }
         const userMap = new Map<string, User>();
         for (const u of users) userMap.set(u.id, u);
         // ponytail: shows only users with responses/certificates for this program
         // (institution now comes from users.institution — added 2026-07-21)
         const seen = new Set<string>();
         const rows: Intern[] = [];
-        for (const r of responses) {
+        for (const r of programResponses) {
           const u = userMap.get(r.participant_id);
           if (u && !seen.has(u.id)) {
             seen.add(u.id);
+            const assessmentType = assessmentTypeMap.get(r.assessment_id);
             rows.push({
               id: u.id,
               name: u.name,
               email: u.email,
               institution: u.institution ?? null,
-              pre_test_score: null,
-              post_test_score: r.score,
+              pre_test_score: assessmentType === "pre_test" ? r.score : null,
+              post_test_score: assessmentType === "post_test" ? r.score : null,
               has_certificate: false,
             });
           }
         }
-        for (const c of certificates) {
+        for (const c of programCertificates) {
           const existing = rows.find((r) => r.id === c.participant_id);
           if (existing) existing.has_certificate = true;
           else {

@@ -7,6 +7,7 @@ interface DeleteModalProps {
   itemName: string;
   onClose: () => void;
   onConfirm: () => void;
+  isDeleting?: boolean;
 }
 
 export default function DeleteModal({
@@ -14,6 +15,7 @@ export default function DeleteModal({
   itemName,
   onClose,
   onConfirm,
+  isDeleting = false,
 }: DeleteModalProps) {
   if (!isOpen) return null;
 
@@ -45,9 +47,10 @@ export default function DeleteModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="h-10 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors"
+            disabled={isDeleting}
+            className="h-10 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm shadow-md transition-colors"
           >
-            Confirm Delete
+            {isDeleting ? "Deleting..." : "Confirm Delete"}
           </button>
         </div>
       </div>

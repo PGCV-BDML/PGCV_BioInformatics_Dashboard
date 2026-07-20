@@ -35,23 +35,27 @@ export default function InternshipAssessmentPage({
 
   useEffect(() => {
     const load = async () => {
-      const [assessments, responses, user] = await Promise.all([
-        getRowsFromDB<Assessment>("assessment"),
-        getRowsFromDB<AssessmentResponse>("assessment_response"),
-        getCurrentUser(),
-      ]);
-      const programAssessments = assessments.filter(
-        (a) => a.program_id === resolvedParams.id,
-      );
-      const pre = programAssessments.find((a) => a.type === "pre_test");
-      const post = programAssessments.find((a) => a.type === "post_test");
-      setPreTestQuestions(pre?.questions ?? []);
-      setPostTestQuestions(post?.questions ?? []);
-      setAssessmentIds({ pre: pre?.id, post: post?.id });
-      const myResponses = responses.filter(
-        (r) => r.participant_id === user?.id,
-      );
-      setExistingResponses(myResponses);
+      try {
+        const [assessments, responses, user] = await Promise.all([
+          getRowsFromDB<Assessment>("assessment"),
+          getRowsFromDB<AssessmentResponse>("assessment_response"),
+          getCurrentUser(),
+        ]);
+        const programAssessments = assessments.filter(
+          (a) => a.program_id === resolvedParams.id,
+        );
+        const pre = programAssessments.find((a) => a.type === "pre_test");
+        const post = programAssessments.find((a) => a.type === "post_test");
+        setPreTestQuestions(pre?.questions ?? []);
+        setPostTestQuestions(post?.questions ?? []);
+        setAssessmentIds({ pre: pre?.id, post: post?.id });
+        const myResponses = responses.filter(
+          (r) => r.participant_id === user?.id,
+        );
+        setExistingResponses(myResponses);
+      } catch (error) {
+        console.error("Failed to load assessment data:", error);
+      }
     };
     load();
   }, [resolvedParams.id]);

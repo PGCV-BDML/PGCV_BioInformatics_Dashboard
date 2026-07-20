@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use, useEffect } from "react";
+import React, { useState, use, useEffect, useRef } from "react";
 import { CheckCircle2, Check } from "lucide-react";
 import { getRowsFromDB } from "../../../../../lib/supabase";
 import type { Module } from "../../../../../types/database";
@@ -23,8 +23,10 @@ export default function TrainingModulesPage({
   // ponytail: module_progress table not in schema — local state only, resets on navigation
   // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
   const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+  const lastSavedProgramId = useRef(resolvedParams.id);
 
   useEffect(() => {
+    // Load new program's read state
     try {
       const raw = localStorage.getItem(`training-modules-read-${resolvedParams.id}`);
       if (raw) {
@@ -34,9 +36,12 @@ export default function TrainingModulesPage({
     } catch {
       // ignore corrupted localStorage; fall back to empty state
     }
+    lastSavedProgramId.current = resolvedParams.id;
   }, [resolvedParams.id]);
 
   useEffect(() => {
+    // Only save if we're still on the same program (not during a program switch)
+    if (lastSavedProgramId.current !== resolvedParams.id) return;
     try {
       localStorage.setItem(`training-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
     } catch {

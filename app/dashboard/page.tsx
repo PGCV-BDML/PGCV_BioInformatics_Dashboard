@@ -172,9 +172,9 @@ export default function DashboardLandingPage() {
   const serviceReportsDeliveredByYear = [
     { year: "2022", Delivered: 42 },
     { year: "2023", Delivered: 55 },
-    { year: "2024", Delivered: 70 },
-    { year: "2025", Delivered: 88 },
-    { year: "2026", Delivered: stats?.reportsDelivered || 55 },
+    { year: "2024", Delivered: yearlyMockDB["2024"]?.reportsDelivered ?? 70 },
+    { year: "2025", Delivered: yearlyMockDB["2025"]?.reportsDelivered ?? 64 },
+    { year: "2026", Delivered: yearlyMockDB["2026"]?.reportsDelivered ?? 18 },
   ];
 
   const projectStatusDistribution = stats
