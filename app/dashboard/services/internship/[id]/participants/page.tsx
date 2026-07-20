@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import DataTable, { Column } from "../../../../../components/datatable";
 import { getRowsFromDB, getUsersFromDB } from "../../../../../../lib/supabase";
+import type { AssessmentResponse, Certificate, User } from "@/types/database";
 
 interface Intern {
   id: string;
@@ -39,17 +40,17 @@ export default function InternshipPerformanceTab({
     const load = async () => {
       try {
         const [responses, certificates, users] = await Promise.all([
-          getRowsFromDB("assessment_response"),
-          getRowsFromDB("certificate"),
+          getRowsFromDB<AssessmentResponse>("assessment_response"),
+          getRowsFromDB<Certificate>("certificate"),
           getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
         ]);
-        const userMap = new Map<string, any>();
-        for (const u of users as any[]) userMap.set(u.id, u);
+        const userMap = new Map<string, User>();
+        for (const u of users) userMap.set(u.id, u);
         // ponytail: shows only users with responses/certificates for this program
         // (institution now comes from users.institution — added 2026-07-21)
         const seen = new Set<string>();
         const rows: Intern[] = [];
-        for (const r of responses as any[]) {
+        for (const r of responses) {
           const u = userMap.get(r.participant_id);
           if (u && !seen.has(u.id)) {
             seen.add(u.id);
@@ -64,7 +65,7 @@ export default function InternshipPerformanceTab({
             });
           }
         }
-        for (const c of certificates as any[]) {
+        for (const c of certificates) {
           const existing = rows.find((r) => r.id === c.participant_id);
           if (existing) existing.has_certificate = true;
           else {

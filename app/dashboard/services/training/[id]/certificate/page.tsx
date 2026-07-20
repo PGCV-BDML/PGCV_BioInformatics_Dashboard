@@ -13,6 +13,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
+import type { Certificate, TrainingProgram, User } from "@/types/database";
 
 /* ================= CERTIFICATE TEMPLATE ================= */
 const CERTIFICATE_TEMPLATE = {
@@ -48,7 +49,7 @@ export default function CertificateRegistryPage({
 
   // Certificate Registry
   const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
-  const [program, setProgram] = useState<any>(null);
+  const [program, setProgram] = useState<TrainingProgram | null>(null);
 
   const [viewingCertificate, setViewingCertificate] =
     useState<CertificateRecord | null>(null);
@@ -58,16 +59,16 @@ export default function CertificateRegistryPage({
     const load = async () => {
       try {
         const [certs, users, programs] = await Promise.all([
-          getRowsFromDB("certificate"),
+          getRowsFromDB<Certificate>("certificate"),
           getUsersFromDB(["trainee", "intern", "team_lead", "team_member"]),
-          getRowsFromDB("training_program"),
+          getRowsFromDB<TrainingProgram>("training_program"),
         ]);
-        const prog = (programs as any[]).find((p) => p.id === resolvedParams.id);
-        setProgram(prog);
+        const prog = programs.find((p) => p.id === resolvedParams.id);
+        setProgram(prog ?? null);
 
-        const userMap = new Map<string, any>();
-        for (const u of users as any[]) userMap.set(u.id, u);
-        const programCerts = (certificates as any[]).filter(
+        const userMap = new Map<string, User>();
+        for (const u of (users as User[])) userMap.set(u.id, u);
+        const programCerts = certs.filter(
           (c) => c.program_id === resolvedParams.id,
         );
         const rows: CertificateRecord[] = programCerts.map((c) => {
@@ -76,7 +77,7 @@ export default function CertificateRegistryPage({
             id: c.id,
             name: u?.name ?? "—",
             programTitle: prog?.title ?? programTitle,
-            date: c.issued_at ? c.issued_at.split("T")[0] : "—",
+            date: c.issued_at ? c.issued_at.split("T")[0] ?? "—" : "—",
             participant_id: c.participant_id,
           };
         });
@@ -110,8 +111,8 @@ export default function CertificateRegistryPage({
       name: cert.name,
       hours: "—", // ponytail: hours not yet available in training_program schema
       trainingType: program?.type ?? "training",
-      startDate: program?.start_date ? program.start_date.split("T")[0] : "—",
-      endDate: program?.end_date ? program.end_date.split("T")[0] : "—",
+      startDate: program?.start_date ? program.start_date.split("T")[0] ?? "—" : "—",
+      endDate: program?.end_date ? program.end_date.split("T")[0] ?? "—" : "—",
     });
   };
 
@@ -278,11 +279,11 @@ export default function CertificateRegistryPage({
                 <div className="text-left">
                   <div className="border-b border-slate-300 pb-0.5">
                     <p className="font-serif italic text-xs text-slate-800">
-                      {CERTIFICATE_TEMPLATE.signatories[0].name}
-                    </p>
-                  </div>
-                  <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400 block pt-1">
-                    {CERTIFICATE_TEMPLATE.signatories[0].title}
+                    {CERTIFICATE_TEMPLATE.signatories[0]!.name}
+                     </p>
+                   </div>
+                   <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400 block pt-1">
+                    {CERTIFICATE_TEMPLATE.signatories[0]!.title}
                   </span>
                 </div>
 

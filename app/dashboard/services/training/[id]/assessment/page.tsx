@@ -11,7 +11,7 @@ import {
   Star,
 } from "lucide-react";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import type { Question } from "@/types/database";
+import type { Question, Assessment, AssessmentResponse } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
 
@@ -30,17 +30,17 @@ export default function AssessmentTab({
     Record<string, number | string>
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
-  const [existingResponses, setExistingResponses] = useState<any[]>([]);
+  const [existingResponses, setExistingResponses] = useState<AssessmentResponse[]>([]);
   const [assessmentIds, setAssessmentIds] = useState<{ pre?: string; post?: string }>({});
 
   useEffect(() => {
     const load = async () => {
       const [assessments, responses, user] = await Promise.all([
-        getRowsFromDB("assessment"),
-        getRowsFromDB("assessment_response"),
+        getRowsFromDB<Assessment>("assessment"),
+        getRowsFromDB<AssessmentResponse>("assessment_response"),
         getCurrentUser(),
       ]);
-      const programAssessments = (assessments as any[]).filter(
+      const programAssessments = assessments.filter(
         (a) => a.program_id === resolvedParams.id,
       );
       const pre = programAssessments.find((a) => a.type === "pre_test");
@@ -48,7 +48,7 @@ export default function AssessmentTab({
       setPreTestQuestions(pre?.questions ?? []);
       setPostTestQuestions(post?.questions ?? []);
       setAssessmentIds({ pre: pre?.id, post: post?.id });
-      const myResponses = (responses as any[]).filter(
+      const myResponses = responses.filter(
         (r) => r.participant_id === user?.id,
       );
       setExistingResponses(myResponses);
@@ -251,7 +251,7 @@ export default function AssessmentTab({
                   onClick={() => handleStartTest("pre")}
                   className="w-full text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
                 >
-                  {existingResponses.some((r: any) => r.assessment_id === assessmentIds.pre)
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.pre)
                     ? "Review Pre-Test"
                     : "Start Pre-Test"}
                 </button>
@@ -273,7 +273,7 @@ export default function AssessmentTab({
                   onClick={() => handleStartTest("post")}
                   className="w-full text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
                 >
-                  {existingResponses.some((r: any) => r.assessment_id === assessmentIds.post)
+                  {existingResponses.some((r) => r.assessment_id === assessmentIds.post)
                     ? "Review Post-Test"
                     : "Start Post-Test"}
                 </button>

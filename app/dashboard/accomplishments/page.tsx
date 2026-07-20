@@ -1,5 +1,3 @@
-"use client";
-
 import { Award, Hourglass } from "lucide-react";
 
 export default function AccomplishmentsComingSoonPage() {

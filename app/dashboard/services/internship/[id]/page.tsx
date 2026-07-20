@@ -3,6 +3,10 @@
 import React, { useState, useEffect, use } from "react";
 import { CheckCircle2, Check } from "lucide-react";
 import { getRowsFromDB } from "@/lib/supabase";
+import type { Module } from "@/types/database";
+
+// DB module rows include a `step` column not captured in the Module type
+type ModuleRow = Module & { step: string };
 
 interface ModuleItem {
   id: string;
@@ -40,10 +44,11 @@ export default function InternshipModulesPage({ params }: { params: Promise<{ id
   useEffect(() => {
     const load = async () => {
       try {
-        const modules = await getRowsFromDB("module");
-        const filtered = (modules as any[])
-          .filter((m: any) => m.program_id === resolvedParams.id)
-          .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+        const modules = await getRowsFromDB<ModuleRow>("module");
+        const filtered: ModuleItem[] = modules
+          .filter((m) => m.program_id === resolvedParams.id)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((m) => ({ id: m.id, step: m.step, title: m.title ?? "" }));
         setModulesList(filtered);
       } catch (err) {
         console.error("Error loading modules:", err);

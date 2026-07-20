@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { use } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   Dna,
   Building,
@@ -21,7 +22,7 @@ import {
   getCurrentUser,
   supabase,
 } from "@/lib/supabase";
-import { AnalysisStatus } from "../../../../types/database";
+import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User } from "../../../../types/database";
 
 interface SampleRow {
   sample_id: string;
@@ -64,8 +65,9 @@ export default function AnalysisDetailPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<ServiceReport | null>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Synchronized state object structure matching Collaboration sidebar architecture
   const [formState, setFormState] = useState<SampleFormState>({
@@ -78,45 +80,46 @@ export default function AnalysisDetailPage({
 
   useEffect(() => {
     const loadData = async () => {
+      setLoadError(null);
       try {
         const [analyses, projects, clients, services, samples, serviceReports, users] =
           await Promise.all([
-            getRowsFromDB("analysis"),
-            getRowsFromDB("project"),
+            getRowsFromDB<Analysis>("analysis"),
+            getRowsFromDB<Project>("project"),
             getNameIdFromDB("client"),
             getNameIdFromDB("service"),
-            getRowsFromDB("sample"),
-            getRowsFromDB("service_report"),
+            getRowsFromDB<Sample>("sample"),
+            getRowsFromDB<ServiceReport>("service_report"),
             getUsersFromDB(["team_lead", "team_member"]),
           ]);
 
         // Build a user id → name map for resolving delivered_by
         const userMapData = new Map<string, string>();
-        (users as any[]).forEach((u: any) => {
+        (users as User[]).forEach((u) => {
           userMapData.set(u.id, u.name ?? u.email ?? u.id);
         });
         setUserMap(userMapData);
 
-        const analysis = (analyses as any[]).find(
+        const analysis = analyses.find(
           (a) => a.id === resolvedParams.id,
         );
         if (!analysis) {
           setRecord(null);
           return;
         }
-        const project = (projects as any[]).find(
+        const project = projects.find(
           (p) => p.id === analysis.project_id,
         );
         const client = project
-          ? (clients as any[]).find((c: any) => c.id === project.client_id)
+          ? clients.find((c) => c.id === project.client_id)
           : null;
         const service = project
-          ? (services as any[]).find((s: any) => s.id === project.service_id)
+          ? services.find((s) => s.id === project.service_id)
           : null;
-        const analysisSamples = (samples as any[]).filter(
+        const analysisSamples = samples.filter(
           (s) => s.project_id === analysis.project_id,
         );
-        const foundReport = (serviceReports as any[]).find(
+        const foundReport = serviceReports.find(
           (r) => r.analysis_id === analysis.id,
         );
         setReport(foundReport ?? null);
@@ -132,9 +135,9 @@ export default function AnalysisDetailPage({
             `${analysis.pipeline ?? ""} ${analysis.pipeline_version ?? ""}`.trim() || "—",
           status: analysis.status as ServiceProjectRow["status"],
           assignee: "—",
-          started: analysis.started_at ? analysis.started_at.split("T")[0] : "—",
+          started: analysis.started_at ? analysis.started_at.split("T")[0] ?? "" : "—",
           completed: analysis.completed_at
-            ? analysis.completed_at.split("T")[0]
+            ? analysis.completed_at.split("T")[0] ?? ""
             : "—",
           report_link: foundReport?.report_link ?? "",
           output_link: analysis.output_link ?? "",
@@ -152,6 +155,7 @@ export default function AnalysisDetailPage({
         setRecord(displayRecord);
       } catch (err) {
         console.error("Error loading analysis detail:", err);
+        setLoadError("Failed to load analysis details. Please try again.");
       }
     };
     loadData();
@@ -175,7 +179,7 @@ export default function AnalysisDetailPage({
               ...prev,
               status: updated.status as ServiceProjectRow["status"],
               completed: updated.completed_at
-                ? updated.completed_at.split("T")[0]
+                ? updated.completed_at.split("T")[0] ?? ""
                 : "—",
             }
           : null,
@@ -187,7 +191,7 @@ export default function AnalysisDetailPage({
     }
   };
 
-  const handleFormChange = (key: keyof SampleFormState, value: any) => {
+  const handleFormChange = (key: keyof SampleFormState, value: string | number | string[] | boolean | { key: string; value: string }[]) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -244,7 +248,7 @@ export default function AnalysisDetailPage({
       await saveDataToDB("service_report", report.id, {
         client_acknowledged_at: now,
       });
-      setReport((prev: any) => (prev ? { ...prev, client_acknowledged_at: now } : prev));
+      setReport((prev) => (prev ? { ...prev, client_acknowledged_at: now } : prev));
 
       // Audit trail for acknowledgment
       supabase.rpc("audit_data_modification", {
@@ -258,6 +262,14 @@ export default function AnalysisDetailPage({
       console.error("Error acknowledging report:", err);
     }
   };
+
+  if (loadError)
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center bg-red-50/50 rounded-2xl border border-dashed border-red-200 p-6 max-w-[600px] mx-auto mt-12">
+        <AlertCircle className="w-10 h-10 text-red-400 mb-2" />
+        <span className="text-sm font-medium text-red-600">{loadError}</span>
+      </div>
+    );
 
   if (!record)
     return <div className="text-center py-24">Loading Workspace Record...</div>;
@@ -316,7 +328,7 @@ export default function AnalysisDetailPage({
           <select
             value={record.status}
             disabled={isUpdating}
-            onChange={(e) => handleStatusChange(e.target.value as any)}
+            onChange={(e) => handleStatusChange(e.target.value as AnalysisStatus)}
             className="bg-[#f8fafc] text-xs font-bold border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 outline-none"
           >
             {STATUS_OPTIONS.map((opt) => (

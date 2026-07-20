@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "../components/sidebar";
+import { DashboardUIProvider } from "../components/dashboard-ui-context";
+import { ToastProvider } from "../components/toast";
 
 export default function DashboardLayout({
   children,
@@ -50,12 +52,16 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-[#F6F4EE] overflow-hidden">
-      {/* ── SIDEBAR (STAYS ON THE LEFT FOR ALL DASHBOARD PAGES) ── */}
-      <Sidebar />
+    <DashboardUIProvider>
+      <ToastProvider>
+        <div className="flex w-full min-h-screen bg-[#F6F4EE] overflow-hidden">
+          {/* ── SIDEBAR (STAYS ON THE LEFT FOR ALL DASHBOARD PAGES) ── */}
+          <Sidebar />
 
-      {/* ── DYNAMIC PAGE CONTENT CONTAINER ── */}
-      <main className="flex-1 h-screen overflow-y-auto p-8">{children}</main>
-    </div>
+          {/* ── DYNAMIC PAGE CONTENT CONTAINER ── */}
+          <main className="flex-1 h-screen overflow-y-auto p-8">{children}</main>
+        </div>
+      </ToastProvider>
+    </DashboardUIProvider>
   );
 }

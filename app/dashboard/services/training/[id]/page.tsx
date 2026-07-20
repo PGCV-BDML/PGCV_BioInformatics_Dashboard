@@ -3,6 +3,7 @@
 import React, { useState, use, useEffect } from "react";
 import { CheckCircle2, Check } from "lucide-react";
 import { getRowsFromDB } from "../../../../../lib/supabase";
+import type { Module } from "../../../../../types/database";
 
 interface ModuleItem {
   id: string;
@@ -46,11 +47,11 @@ export default function TrainingModulesPage({
 
   useEffect(() => {
     const load = async () => {
-      const modules = await getRowsFromDB("module");
-      const filtered = (modules as any[])
-        .filter((m: any) => m.program_id === resolvedParams.id)
-        .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
-      const mapped: ModuleItem[] = filtered.map((m: any, i: number) => ({
+      const modules = await getRowsFromDB<Module>("module");
+      const filtered = modules
+        .filter((m) => m.program_id === resolvedParams.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const mapped: ModuleItem[] = filtered.map((m, i) => ({
         id: m.id,
         step: m.title ? `M${i + 1}` : undefined,
         title: m.title ?? "Untitled Module",

@@ -1,5 +1,3 @@
-"use client";
-
 import { Calendar, Hourglass } from "lucide-react";
 
 export default function CalendarPage() {

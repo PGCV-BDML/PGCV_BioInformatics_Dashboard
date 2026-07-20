@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getRowsFromDB, getUsersFromDB } from "../../../../../lib/supabase";
+import type { TrainingProgram } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */
 interface InternshipProgram {
@@ -63,17 +64,21 @@ export default function InternshipProgramLayout({
   useEffect(() => {
     const load = async () => {
       const [programs, users] = await Promise.all([
-        getRowsFromDB("training_program"),
+        getRowsFromDB<TrainingProgram>("training_program"),
         getUsersFromDB(["team_lead", "team_member"]),
       ]);
       const userMap = new Map<string, string>();
-      for (const u of users as any[]) userMap.set(u.id, u.name);
-      const found = (programs as any[]).find(
+      for (const u of users) userMap.set(u.id, u.name);
+      const found = programs.find(
         (p) => p.id === resolvedParams.id && p.type === "internship",
       );
       if (found) {
         setSelectedProgram({
           ...found,
+          type: found.type ?? "internship",
+          start_date: found.start_date ?? "",
+          end_date: found.end_date ?? "",
+          description: found.description ?? "",
           mentor: { name: userMap.get(found.instructor_id) ?? "—" },
         });
       }

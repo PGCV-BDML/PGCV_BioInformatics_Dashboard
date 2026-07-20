@@ -24,8 +24,8 @@ export default function TrainingOnboardingTab({
   useEffect(() => {
     const load = async () => {
       try {
-        const docs = await getRowsFromDB("onboarding_document");
-        const filtered = (docs as any[]).filter(
+        const docs = await getRowsFromDB<OnboardingDocument>("onboarding_document");
+        const filtered = docs.filter(
           (d) => d.program_id === resolvedParams.id,
         );
         setDocuments(filtered);

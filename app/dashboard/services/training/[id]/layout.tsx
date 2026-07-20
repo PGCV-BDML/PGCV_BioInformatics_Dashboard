@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getRowsFromDB, getUsersFromDB } from "../../../../../lib/supabase";
+import type { User as UserType } from "../../../../../types/database";
 
 /* ================= TYPES & CONFIG ================= */
 interface TrainingProgram {
@@ -27,6 +28,7 @@ interface TrainingProgram {
   end_date: string;
   duration?: string;
   description: string;
+  instructor_id: string;
   instructor: { name: string };
 }
 
@@ -63,12 +65,12 @@ export default function DynamicProgramLayout({
   useEffect(() => {
     const load = async () => {
       const [programs, users] = await Promise.all([
-        getRowsFromDB("training_program"),
+        getRowsFromDB<TrainingProgram>("training_program"),
         getUsersFromDB(["team_lead", "team_member"]),
       ]);
       const userMap = new Map<string, string>();
-      for (const u of users as any[]) userMap.set(u.id, u.name);
-      const found = (programs as any[]).find(
+      for (const u of (users as UserType[])) userMap.set(u.id, u.name);
+      const found = programs.find(
         (p) => p.id === resolvedParams.id && p.type === "training",
       );
       if (found) {

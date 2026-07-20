@@ -4,7 +4,7 @@ import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { BarChart3, Star, Send, CheckCircle, Award } from "lucide-react";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import type { Question } from "@/types/database";
+import type { Assessment, Question } from "@/types/database";
 
 export default function EvaluationPage({
   params,
@@ -18,7 +18,7 @@ export default function EvaluationPage({
   const [selectedProgram, setSelectedProgram] = useState(
     "Advanced Bioinformatics Sequencing & GATK Architecture",
   );
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [formValues, setFormValues] = useState<Record<string, number | string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -26,8 +26,8 @@ export default function EvaluationPage({
   useEffect(() => {
     const load = async () => {
       try {
-        const assessments = await getRowsFromDB("assessment");
-        const evalAssessment = (assessments as any[]).find(
+        const assessments = await getRowsFromDB<Assessment>("assessment");
+        const evalAssessment = assessments.find(
           (a) => a.program_id === resolvedParams.id && a.type === "evaluation",
         );
         if (evalAssessment?.questions) {
@@ -87,7 +87,7 @@ export default function EvaluationPage({
               >
                 <Star
                   className={`w-5 h-5 ${
-                    starValue <= formValues[q.id]
+                    starValue <= Number(formValues[q.id])
                       ? "fill-[#f57f17] text-[#f57f17]"
                       : "text-slate-200"
                   }`}
