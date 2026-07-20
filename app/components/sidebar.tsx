@@ -90,7 +90,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSidebarHidden } = useDashboardUI();
+  const { isSidebarHidden, toggleSidebar } = useDashboardUI();
   const [showProfileCard, setShowProfileCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -147,9 +147,9 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`h-screen bg-[#fffdf8] flex flex-col justify-between border-r border-[rgba(23,33,38,0.08)] flex-shrink-0 relative transition-all duration-300 ease-in-out overflow-hidden ${
+      className={`h-screen bg-surface flex flex-col justify-between border-r border-[rgba(23,33,38,0.08)] flex-shrink-0 lg:relative fixed z-[100] transition-all duration-300 ease-in-out overflow-hidden ${
         isCurrentlyHidden
-          ? "w-0 p-0 opacity-0 -translate-x-full border-r-0 shadow-none"
+          ? "w-[340px] p-6 opacity-0 -translate-x-full lg:w-0 lg:p-0 lg:border-r-0 lg:shadow-none"
           : "w-[340px] p-6 opacity-100 translate-x-0 shadow-[6px_0_24px_rgba(0,0,0,0.06)]"
       }`}
     >
@@ -163,15 +163,17 @@ export default function Sidebar({
             href="/dashboard"
             className="flex items-center gap-3 pb-5 border-b border-gray-100 cursor-pointer select-none"
           >
+            {/* ponytail: UP logo asset not available — needs official file from PGC External Drive. Brand guide rule #8 requires UP logo on LEFT of PGCV logo. */}
             <img
               src="/assets/pgcv_logo.png"
-              alt="Logo"
+              alt="Philippine Genome Center Visayas logo"
               className="h-11 w-auto object-contain"
             />
             <div className="flex flex-col">
               <span className="text-[#2a7797] font-black text-[13px] leading-tight font-aileron tracking-wide uppercase">
                 Bioinformatics Workflow Dashboard
               </span>
+              <span className="text-[#8499a5] text-[10px] font-quicksand tracking-wide mt-0.5">University of the Philippines</span>
             </div>
           </Link>
 
@@ -180,7 +182,7 @@ export default function Sidebar({
             <p className="text-[#8499a5] text-[11px] font-extrabold tracking-[1.5px] uppercase font-quicksand px-3 mb-3">
               Navigation
             </p>
-            <nav className="flex flex-col gap-1">
+            <nav aria-label="Main navigation" className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -188,10 +190,11 @@ export default function Sidebar({
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={() => { if (typeof window !== "undefined" && window.innerWidth < 1024) toggleSidebar(true); }}
                     className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
                       isActive
                         ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
-                        : "text-[#1e293b] hover:bg-[#e6f5ff] hover:text-[#2a7797]"
+                        : "text-[#1e293b] hover:bg-brand-tint hover:text-[#2a7797]"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -214,7 +217,7 @@ export default function Sidebar({
         <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
           {/* Animated Popout Container */}
           <div
-            className={`absolute bottom-[76px] left-0 w-full bg-[#FFFDF8] border border-[rgba(23,33,38,0.1)] rounded-2xl py-1 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30 transition-all duration-200 ease-out origin-bottom ${
+            className={`absolute bottom-[76px] left-0 w-full bg-surface border border-[rgba(23,33,38,0.1)] rounded-2xl py-1 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30 transition-all duration-200 ease-out origin-bottom ${
               showProfileCard
                 ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                 : "opacity-0 translate-y-2 scale-95 pointer-events-none"
@@ -232,18 +235,20 @@ export default function Sidebar({
 
           <button
             type="button"
+            aria-label="Toggle profile menu"
+            aria-expanded={showProfileCard}
             onClick={() => setShowProfileCard(!showProfileCard)}
             className={`w-full flex items-center justify-between p-2 rounded-2xl transition-all duration-300 transform font-aileron focus:outline-none min-w-0 group ${
               showProfileCard
-                ? "bg-[#e6f5ff] text-[#2a7797] -translate-y-0.5 scale-[1.01]"
-                : "text-[#1e293b] hover:bg-[#e6f5ff] hover:text-[#2a7797] hover:-translate-y-0.5 hover:scale-[1.01]"
+                ? "bg-brand-tint text-[#2a7797] -translate-y-0.5 scale-[1.01]"
+                : "text-[#1e293b] hover:bg-brand-tint hover:text-[#2a7797] hover:-translate-y-0.5 hover:scale-[1.01]"
             }`}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {userData.avatarUrl ? (
                 <img
                   src={userData.avatarUrl}
-                  alt="profile"
+                  alt="User profile avatar"
                   className="w-10 h-10 rounded-full object-cover border border-slate-200/60"
                 />
               ) : (

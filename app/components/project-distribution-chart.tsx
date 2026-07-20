@@ -24,7 +24,7 @@ export function ProjectDistributionChart({
   totalProjects,
 }: ProjectDistributionChartProps) {
   return (
-    <div className="md:col-span-2 bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col justify-between">
+    <div className="md:col-span-2 bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-4 font-quicksand">
           <div className="flex items-center gap-2 text-[#2a7797]">

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import {
   FlaskConical,
@@ -48,6 +48,30 @@ export default function CollaborationSidebar({
   onChange,
   onSubmit,
 }: CollaborationSidebarProps) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formState.partner_org.trim()) errs.partner_org = "Partner organization is required";
+    if (!formState.lead_user_id) errs.lead_user_id = "Please select a lead coordinator";
+    if (!formState.start_date) errs.start_date = "Start date is required";
+    if (formState.repository_link && !/^https?:\/\//.test(formState.repository_link)) {
+      errs.repository_link = "Must be a valid URL starting with http:// or https://";
+    }
+    return errs;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    onSubmit(e);
+  };
+
   const handleDocLinkChange = (index: number, value: string) => {
     const updatedLinks = [...formState.documents_links];
     updatedLinks[index] = value;
@@ -71,7 +95,7 @@ export default function CollaborationSidebar({
       onClose={onClose}
       title={isAdding ? "Add New Collaboration" : "Modify Collaboration"}
       subtitle="Fill in the information required by the registry."
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
       submitLabel="Save"
       isSaving={isSaving}
       submitDisabled={submitDisabled}
@@ -83,17 +107,25 @@ export default function CollaborationSidebar({
           "Identity & Core Details",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="collab-partner-org" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Partner Organization
           </label>
           <input
+            id="collab-partner-org"
             type="text"
             required
+            aria-invalid={!!errors.partner_org}
             value={formState.partner_org}
-            onChange={(e) => onChange("partner_org", e.target.value)}
+            onChange={(e) => {
+              onChange("partner_org", e.target.value);
+              setErrors((prev) => ({ ...prev, partner_org: "" }));
+            }}
             placeholder="e.g., Philippine Genome Center"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.partner_org && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.partner_org}</p>
+          )}
         </div>
       </div>
 
@@ -101,12 +133,18 @@ export default function CollaborationSidebar({
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Assignment")}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="collab-lead-coordinator" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Lead Coordinator
           </label>
           <select
+            id="collab-lead-coordinator"
+            required
+            aria-invalid={!!errors.lead_user_id}
             value={formState.lead_user_id}
-            onChange={(e) => onChange("lead_user_id", e.target.value)}
+            onChange={(e) => {
+              onChange("lead_user_id", e.target.value);
+              setErrors((prev) => ({ ...prev, lead_user_id: "" }));
+            }}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
             <option value="" disabled className="text-slate-400 font-bold">
@@ -122,6 +160,9 @@ export default function CollaborationSidebar({
               </option>
             ))}
           </select>
+          {errors.lead_user_id && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.lead_user_id}</p>
+          )}
         </div>
       </div>
 
@@ -132,10 +173,11 @@ export default function CollaborationSidebar({
           "Lifecycle Status",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="collab-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Status
           </label>
           <select
+            id="collab-status"
             required
             value={formState.status}
             onChange={(e) => onChange("status", e.target.value)}
@@ -167,16 +209,24 @@ export default function CollaborationSidebar({
           "Timeline",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="collab-start-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Start Date
           </label>
           <input
+            id="collab-start-date"
             type="date"
             required
+            aria-invalid={!!errors.start_date}
             value={formState.start_date}
-            onChange={(e) => onChange("start_date", e.target.value)}
+            onChange={(e) => {
+              onChange("start_date", e.target.value);
+              setErrors((prev) => ({ ...prev, start_date: "" }));
+            }}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           />
+          {errors.start_date && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.start_date}</p>
+          )}
         </div>
       </div>
 
@@ -233,19 +283,27 @@ export default function CollaborationSidebar({
             </div>
             <input
               type="url"
+              aria-invalid={!!errors.repository_link}
               value={formState.repository_link}
-              onChange={(e) => onChange("repository_link", e.target.value)}
+              onChange={(e) => {
+                onChange("repository_link", e.target.value);
+                setErrors((prev) => ({ ...prev, repository_link: "" }));
+              }}
               placeholder="https://github.com/..."
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
             />
+            {errors.repository_link && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.repository_link}</p>
+            )}
           </div>
 
           {/* 7. Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="collab-notes" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Notes
             </label>
             <textarea
+              id="collab-notes"
               rows={3}
               value={formState.notes}
               onChange={(e) => onChange("notes", e.target.value)}

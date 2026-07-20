@@ -77,7 +77,7 @@ export default function ProgramSearchGrid({
         {filteredPrograms.map((prog) => (
           <div
             key={prog.id}
-            className="flex flex-col justify-between bg-[#fffdf8] border border-slate-300/60 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group"
+            className="flex flex-col justify-between bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group"
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">

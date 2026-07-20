@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { Dna, User, Activity, Plus, Trash2, Info } from "lucide-react";
 
@@ -31,6 +31,32 @@ export default function AddSampleSidebar({
   onChange,
   onSubmit,
 }: AddSampleSidebarProps) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formState.sample_id.trim()) errs.sample_id = "Sample ID is required";
+    if (!formState.sample_name.trim()) errs.sample_name = "Sample name is required";
+    if (!formState.organism.trim()) errs.organism = "Organism is required";
+    return errs;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    onSubmit(e);
+  };
+
+  const handleChange = (key: keyof SampleFormState, value: string | number | string[] | boolean | { key: string; value: string }[]) => {
+    setErrors((prev) => ({ ...prev, [key]: "" }));
+    onChange(key, value);
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -89,7 +115,7 @@ export default function AddSampleSidebar({
       onClose={onClose}
       title="Link New Biological Sample"
       subtitle="Register sample parameters mapped to tracking expectations."
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
       submitLabel="Link Sample"
       isSaving={isSaving}
       submitDisabled={isSaving}
@@ -101,30 +127,40 @@ export default function AddSampleSidebar({
           "Identity & Core Details",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="sample-id" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Sample ID Reference
           </label>
           <input
+            id="sample-id"
             type="text"
             required
+            aria-invalid={!!errors.sample_id}
             value={formState.sample_id}
-            onChange={(e) => onChange("sample_id", e.target.value)}
+            onChange={(e) => handleChange("sample_id", e.target.value)}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-mono font-bold text-slate-800 transition-all shadow-sm"
           />
+          {errors.sample_id && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.sample_id}</p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="sample-name" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Target Identifier / Name
           </label>
           <input
+            id="sample-name"
             type="text"
             required
+            aria-invalid={!!errors.sample_name}
             value={formState.sample_name}
-            onChange={(e) => onChange("sample_name", e.target.value)}
+            onChange={(e) => handleChange("sample_name", e.target.value)}
             placeholder="e.g., Primary_Tumor_01"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.sample_name && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.sample_name}</p>
+          )}
         </div>
       </div>
 
@@ -135,17 +171,22 @@ export default function AddSampleSidebar({
           "Taxonomy Context",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="sample-organism" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Organism Host
           </label>
           <input
+            id="sample-organism"
             type="text"
             required
+            aria-invalid={!!errors.organism}
             value={formState.organism}
-            onChange={(e) => onChange("organism", e.target.value)}
+            onChange={(e) => handleChange("organism", e.target.value)}
             placeholder="e.g., Homo sapiens"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
+          {errors.organism && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.organism}</p>
+          )}
         </div>
       </div>
 
@@ -156,10 +197,11 @@ export default function AddSampleSidebar({
           "Lifecycle Status",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="sample-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Status Target
           </label>
           <select
+            id="sample-status"
             required
             value={formState.status}
             onChange={(e) => onChange("status", e.target.value)}

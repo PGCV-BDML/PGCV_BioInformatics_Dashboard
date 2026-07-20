@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { User, Activity, Layers, Dna } from "lucide-react";
 import type { AnalysisStatus } from "@/types/database";
@@ -42,13 +42,40 @@ export default function AnalysisSidebar({
   onChange,
   onSubmit,
 }: AnalysisSidebarProps) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formState.project_id) errs.project_id = "Please select a project";
+    if (!formState.pipeline) errs.pipeline = "Please select a pipeline";
+    if (!formState.pipeline_version.trim()) errs.pipeline_version = "Version is required";
+    if (!formState.assignee) errs.assignee = "Please select an assignee";
+    return errs;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    onSubmit(e);
+  };
+
+  const handleChange = (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => {
+    setErrors((prev) => ({ ...prev, [key]: "" }));
+    onChange(key, value);
+  };
+
   return (
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
       title="Run New Pipeline"
       subtitle="Fill in the parameters to initiate a pipeline analysis."
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
       submitLabel="Initialize Run"
       isSaving={isSaving}
       submitDisabled={isSaving}
@@ -60,13 +87,15 @@ export default function AnalysisSidebar({
           "Project Context",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="analysis-project" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Select Project
           </label>
           <select
+            id="analysis-project"
             required
+            aria-invalid={!!errors.project_id}
             value={formState.project_id}
-            onChange={(e) => onChange("project_id", e.target.value)}
+            onChange={(e) => handleChange("project_id", e.target.value)}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
             <option value="" disabled className="text-slate-400 font-bold">
@@ -82,6 +111,9 @@ export default function AnalysisSidebar({
               </option>
             ))}
           </select>
+          {errors.project_id && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.project_id}</p>
+          )}
         </div>
       </div>
 
@@ -93,13 +125,15 @@ export default function AnalysisSidebar({
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="analysis-pipeline" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Pipeline
             </label>
             <select
+              id="analysis-pipeline"
               required
+              aria-invalid={!!errors.pipeline}
               value={formState.pipeline}
-              onChange={(e) => onChange("pipeline", e.target.value)}
+              onChange={(e) => handleChange("pipeline", e.target.value)}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             >
               <option
@@ -119,20 +153,28 @@ export default function AnalysisSidebar({
                 </option>
               ))}
             </select>
+            {errors.pipeline && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.pipeline}</p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            <label htmlFor="analysis-version" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Version
             </label>
             <input
+              id="analysis-version"
               type="text"
               required
+              aria-invalid={!!errors.pipeline_version}
               value={formState.pipeline_version}
-              onChange={(e) => onChange("pipeline_version", e.target.value)}
+              onChange={(e) => handleChange("pipeline_version", e.target.value)}
               placeholder="e.g., v1.0.0"
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
             />
+            {errors.pipeline_version && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.pipeline_version}</p>
+            )}
           </div>
         </div>
       </div>
@@ -144,13 +186,15 @@ export default function AnalysisSidebar({
           "Personnel Assignment",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="analysis-assignee" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Assignee
           </label>
           <select
+            id="analysis-assignee"
             required
+            aria-invalid={!!errors.assignee}
             value={formState.assignee}
-            onChange={(e) => onChange("assignee", e.target.value)}
+            onChange={(e) => handleChange("assignee", e.target.value)}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
             <option value="" disabled className="text-slate-400 font-bold">
@@ -166,6 +210,9 @@ export default function AnalysisSidebar({
               </option>
             ))}
           </select>
+          {errors.assignee && (
+            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.assignee}</p>
+          )}
         </div>
       </div>
 
@@ -176,10 +223,11 @@ export default function AnalysisSidebar({
           "Initial Status",
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+          <label htmlFor="analysis-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
             Status
           </label>
           <select
+            id="analysis-status"
             required
             value={formState.status}
             onChange={(e) => onChange("status", e.target.value as AnalysisStatus)}

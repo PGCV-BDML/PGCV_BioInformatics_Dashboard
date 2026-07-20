@@ -27,7 +27,7 @@ function DataTableInner<T extends { id: string | number }>({
   emptyMessage = "No active records found matching your criteria.",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-[#fffdf8] shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-surface shadow-sm">
       <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
         <thead>
           <tr className="border-b border-gray-200 text-[13px] font-semibold text-[#55656e] select-none">
@@ -70,7 +70,7 @@ function DataTableInner<T extends { id: string | number }>({
           {data.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-[#FFFDF8] even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
+              className="odd:bg-surface even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
             >
               {columns.map((col, colIndex) => (
                 <td

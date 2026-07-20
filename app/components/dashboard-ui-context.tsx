@@ -9,7 +9,10 @@ interface DashboardUIContextValue {
 const DashboardUIContext = createContext<DashboardUIContextValue | null>(null);
 
 export function DashboardUIProvider({ children }: { children: ReactNode }) {
-  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(() => {
+    if (typeof window === "undefined") return false; // SSR: default visible
+    return window.innerWidth < 1024; // Client: hidden on mobile
+  });
 
   return (
     <DashboardUIContext.Provider

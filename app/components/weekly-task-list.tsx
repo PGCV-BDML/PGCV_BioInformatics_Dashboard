@@ -55,7 +55,7 @@ export function WeeklyTaskList({
   onToggleTask,
 }: WeeklyTaskListProps) {
   return (
-    <div className="bg-[#fffdf8] border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
+    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
       <div className="flex items-center justify-between mb-6 font-quicksand">
         <div className="flex items-center gap-2 text-[#2a7797]">
           <CheckSquare className="w-4 h-4" />
@@ -111,7 +111,7 @@ export function WeeklyTaskList({
                 href={`/dashboard/tasks?search=${encodeURIComponent(task.title)}`}
                 className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 cursor-pointer select-none group font-aileron ${isCompleted
                   ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-[0_4px_12px_rgba(0,0,0,0.02)]"
-                  : "bg-[#fffdf8] border-slate-300 shadow-[0_8px_20px_rgba(15,23,42,0.06)] hover:bg-slate-50 hover:border-slate-400 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5"
+                  : "bg-surface border-slate-300 shadow-[0_8px_20px_rgba(15,23,42,0.06)] hover:bg-slate-50 hover:border-slate-400 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5"
                   }`}
               >
                 {/* Left Area */}
