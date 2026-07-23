@@ -1,13 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL or Anon Key is missing from environment variables.');
+  console.warn(
+    "Supabase URL or Anon Key is missing from environment variables.",
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || "http://localhost:54321",
+  supabaseAnonKey || "dummy-key",
+);
 
 export async function getCurrentUser() {
   // supabase.auth.getUser() is async; getSession() reads the local cache synchronously
@@ -17,10 +25,12 @@ export async function getCurrentUser() {
 
 //Get all user rows from database
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getUsersFromDB<T = any>(chosenRoles: string[]): Promise<T[]> {
-  const roleValues = ["team_lead", "team_member", "intern", "trainee"]
+export async function getUsersFromDB<T = any>(
+  chosenRoles: string[],
+): Promise<T[]> {
+  const roleValues = ["team_lead", "team_member", "intern", "trainee"];
 
-  const isValid = chosenRoles.every(role => roleValues.includes(role));
+  const isValid = chosenRoles.every((role) => roleValues.includes(role));
 
   if (!isValid || chosenRoles.length === 0) {
     console.error("Error: One or more invalid roles provided");
@@ -30,7 +40,7 @@ export async function getUsersFromDB<T = any>(chosenRoles: string[]): Promise<T[
   const { data: users, error: fetchError } = await supabase
     .from("users")
     .select("*")
-    .in("role", chosenRoles)
+    .in("role", chosenRoles);
 
   if (fetchError) {
     console.error("Error retrieving data:", fetchError);
@@ -58,10 +68,12 @@ export type TableNames =
   | "task"
   | "users";
 
-export async function getNameIdFromDB<T = { id: string; name: string }>(table: TableNames): Promise<T[]> {
+export async function getNameIdFromDB<T = { id: string; name: string }>(
+  table: TableNames,
+): Promise<T[]> {
   const { data: users, error: fetchError } = await supabase
     .from(table)
-    .select("id,name")
+    .select("id,name");
 
   if (fetchError) {
     console.error("Error retrieving data:", fetchError);
@@ -78,7 +90,7 @@ export async function getNameIdFromDB<T = { id: string; name: string }>(table: T
 export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   const { data: rows, error: fetchError } = await supabase
     .from(table)
-    .select("*")
+    .select("*");
 
   if (fetchError) {
     console.error(`Error retrieving ${table} data:`, fetchError);
@@ -89,11 +101,9 @@ export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
 }
 
 //For Updating Public.Collab table
-export async function saveDataToDB<T extends Record<string, unknown> = Record<string, unknown>>(
-  table: TableNames,
-  uid: string,
-  data: Partial<T>,
-) {
+export async function saveDataToDB<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>(table: TableNames, uid: string, data: Partial<T>) {
   // Check if the row already exists
   const { data: existing, error: fetchError } = await supabase
     .from(table)
@@ -149,10 +159,7 @@ export async function saveDataToDB<T extends Record<string, unknown> = Record<st
 }
 
 export async function deleteDataFromDB(table: TableNames, id: string) {
-  const { error } = await supabase
-    .from(table)
-    .delete()
-    .eq("id", id)
+  const { error } = await supabase.from(table).delete().eq("id", id);
 
   if (error) {
     console.error(`Error deleting ${table} data:`, error);
