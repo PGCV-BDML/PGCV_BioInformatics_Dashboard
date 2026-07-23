@@ -2,6 +2,7 @@
 
 import React, { useState, use, useEffect, useRef } from "react";
 import { CheckCircle2, Check } from "lucide-react";
+import SlideOverModal from "../../../../../components/slidemodal";
 import { getRowsFromDB } from "../../../../../lib/supabase";
 import type { Module } from "../../../../../types/database";
 
@@ -10,6 +11,7 @@ interface ModuleItem {
   step?: string;
   title: string;
   htmlLink?: string;
+  subModules?: ModuleItem[];
 }
 
 const STATIC_TRAINING_MODULES: Omit<ModuleItem, "step">[] = [
@@ -38,6 +40,34 @@ const STATIC_TRAINING_MODULES: Omit<ModuleItem, "step">[] = [
     title: "Transcriptome Module",
     htmlLink: "/assets/Training/transcriptome-module.html",
   },
+  {
+    id: "metagenomics",
+    title: "Metagenomics",
+    subModules: [
+      {
+        id: "16s-metagenomics-module",
+        title: "16s-metagenomics-module",
+        htmlLink: "/assets/Training/Metagenomics/16s-metagenomics-module.html",
+      },
+      {
+        id: "r-short-course",
+        title: "R-short-course",
+        htmlLink: "/assets/Training/Metagenomics/R-short-course.html",
+      },
+    ],
+  },
+  {
+    id: "whole-genome-assembly",
+    title: "Whole Genome Assembly",
+    subModules: [
+      {
+        id: "whole-genome-assembly-module-with-lecture",
+        title: "whole-genome-assembly-module-with-lecture",
+        htmlLink:
+          "/assets/Training/Whole Genome Assembly/whole-genome-assembly-module-with-lecture.html",
+      },
+    ],
+  },
 ];
 
 export default function TrainingModulesPage({
@@ -47,6 +77,8 @@ export default function TrainingModulesPage({
 }) {
   // Safe runtime resolution of the dynamic structural path parameter
   const resolvedParams = use(params);
+
+  const [selectedModuleGroup, setSelectedModuleGroup] = useState<ModuleItem | null>(null);
 
   // Manage module read state locally matching the portfolio pipeline layout rules
   // ponytail: module_progress table not in schema — local state only, resets on navigation
@@ -118,8 +150,22 @@ export default function TrainingModulesPage({
     );
   };
 
+  const openModuleMaterials = (module: ModuleItem) => {
+    if (module.subModules?.length) {
+      setSelectedModuleGroup(module);
+      return;
+    }
+
+    if (module.htmlLink) {
+      window.open(module.htmlLink, "_blank", "noopener,noreferrer");
+    } else {
+      console.log(`No material link available for ${module.title}`);
+    }
+  };
+
   return (
-    <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
+    <>
+      <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
         <div>
           <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">
@@ -191,19 +237,7 @@ export default function TrainingModulesPage({
 
                 {/* Secondary Course Content Trigger Button */}
                 <button
-                  onClick={() => {
-                    if (module.htmlLink) {
-                      window.open(
-                        module.htmlLink,
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
-                    } else {
-                      console.log(
-                        `No material link available for ${module.title}`,
-                      );
-                    }
-                  }}
+                  onClick={() => openModuleMaterials(module)}
                   className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   View Materials
@@ -213,6 +247,40 @@ export default function TrainingModulesPage({
           );
         })}
       </div>
-    </div>
+      <SlideOverModal
+        isOpen={selectedModuleGroup !== null}
+        onClose={() => setSelectedModuleGroup(null)}
+        title={selectedModuleGroup?.title ?? "Materials"}
+        subtitle="Choose a resource to open"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedModuleGroup(null)}
+              className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {selectedModuleGroup?.subModules?.map((subModule) => (
+            <button
+              key={subModule.id}
+              type="button"
+              onClick={() => {
+                if (subModule.htmlLink) {
+                  window.open(subModule.htmlLink, "_blank", "noopener,noreferrer");
+                }
+              }}
+              className="w-full text-left rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 transition-colors"
+            >
+              {subModule.title}
+            </button>
+          ))}
+        </div>
+      </SlideOverModal>
+    </>
   );
 }
