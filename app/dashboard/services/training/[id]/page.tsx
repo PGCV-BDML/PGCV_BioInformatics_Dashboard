@@ -12,8 +12,33 @@ interface ModuleItem {
   htmlLink?: string;
 }
 
-const BASIC_CODING_MODULE_LINK = "/assets/Training/basic-coding-module.html";
-const BASIC_CODING_MODULE_ID = "basic-coding-module";
+const STATIC_TRAINING_MODULES: Omit<ModuleItem, "step">[] = [
+  {
+    id: "basic-coding-module",
+    title: "Basic Coding Module",
+    htmlLink: "/assets/Training/basic-coding-module.html",
+  },
+  {
+    id: "dna-barcoding-module",
+    title: "DNA Barcoding Module",
+    htmlLink: "/assets/Training/dna-barcoding-module.html",
+  },
+  {
+    id: "phylogenetic-analysis-internship-module",
+    title: "Phylogenetic Analysis Internship Module",
+    htmlLink: "/assets/Training/phylogenetic-analysis-internship-module.html",
+  },
+  {
+    id: "setting-up-workstation",
+    title: "Setting Up Workstation",
+    htmlLink: "/assets/Training/setting-up-workstation.html",
+  },
+  {
+    id: "transcriptome-module",
+    title: "Transcriptome Module",
+    htmlLink: "/assets/Training/transcriptome-module.html",
+  },
+];
 
 export default function TrainingModulesPage({
   params,
@@ -73,15 +98,14 @@ export default function TrainingModulesPage({
         htmlLink: m.html_content_link ?? undefined,
       }));
 
-      // Add the Basic Coding Module as a static training module entry.
-      const basicCodingModule: ModuleItem = {
-        id: BASIC_CODING_MODULE_ID,
-        step: `M${mapped.length + 1}`,
-        title: "Basic Coding Module",
-        htmlLink: BASIC_CODING_MODULE_LINK,
-      };
+      const staticModules: ModuleItem[] = STATIC_TRAINING_MODULES.map(
+        (module, index) => ({
+          ...module,
+          step: `M${mapped.length + index + 1}`,
+        }),
+      );
 
-      setModulesList([...mapped, basicCodingModule]);
+      setModulesList([...mapped, ...staticModules]);
     };
     load();
   }, [resolvedParams.id]);
