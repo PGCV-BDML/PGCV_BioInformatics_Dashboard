@@ -9,7 +9,11 @@ interface ModuleItem {
   id: string;
   step?: string;
   title: string;
+  htmlLink?: string;
 }
+
+const BASIC_CODING_MODULE_LINK = "/assets/Training/basic-coding-module.html";
+const BASIC_CODING_MODULE_ID = "basic-coding-module";
 
 export default function TrainingModulesPage({
   params,
@@ -27,10 +31,13 @@ export default function TrainingModulesPage({
   useEffect(() => {
     // Load new program's read state — no save in this effect
     try {
-      const raw = localStorage.getItem(`training-modules-read-${resolvedParams.id}`);
+      const raw = localStorage.getItem(
+        `training-modules-read-${resolvedParams.id}`,
+      );
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+        if (Array.isArray(parsed))
+          setReadModuleIds(parsed.filter((x) => typeof x === "string"));
         else setReadModuleIds([]);
       } else {
         setReadModuleIds([]);
@@ -43,7 +50,10 @@ export default function TrainingModulesPage({
   // Save only when readModuleIds changes from a user toggle, not on program switch
   useEffect(() => {
     try {
-      localStorage.setItem(`training-modules-read-${resolvedParams.id}`, JSON.stringify(readModuleIds));
+      localStorage.setItem(
+        `training-modules-read-${resolvedParams.id}`,
+        JSON.stringify(readModuleIds),
+      );
     } catch {
       // localStorage may be full or disabled; ignore
     }
@@ -60,8 +70,18 @@ export default function TrainingModulesPage({
         id: m.id,
         step: m.title ? `M${i + 1}` : undefined,
         title: m.title ?? "Untitled Module",
+        htmlLink: m.html_content_link ?? undefined,
       }));
-      setModulesList(mapped);
+
+      // Add the Basic Coding Module as a static training module entry.
+      const basicCodingModule: ModuleItem = {
+        id: BASIC_CODING_MODULE_ID,
+        step: `M${mapped.length + 1}`,
+        title: "Basic Coding Module",
+        htmlLink: BASIC_CODING_MODULE_LINK,
+      };
+
+      setModulesList([...mapped, basicCodingModule]);
     };
     load();
   }, [resolvedParams.id]);
@@ -147,9 +167,19 @@ export default function TrainingModulesPage({
 
                 {/* Secondary Course Content Trigger Button */}
                 <button
-                  onClick={() =>
-                    console.log(`View training materials for ${module.title}`)
-                  }
+                  onClick={() => {
+                    if (module.htmlLink) {
+                      window.open(
+                        module.htmlLink,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    } else {
+                      console.log(
+                        `No material link available for ${module.title}`,
+                      );
+                    }
+                  }}
                   className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   View Materials
