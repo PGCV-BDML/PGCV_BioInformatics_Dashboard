@@ -40,11 +40,6 @@ const STATIC_TRAINING_MODULES: Omit<ModuleItem, "step">[] = [
     title: "Transcriptome Module",
     htmlLink: "/assets/Training/transcriptome-module.html",
   },
-    {
-    id: "transcriptome-module2",
-    title: "Transcriptome Module 2",
-    htmlLink: "/assets/Training/transcriptome-module.html",
-  },
   {
     id: "metagenomics",
     title: "Metagenomics",
