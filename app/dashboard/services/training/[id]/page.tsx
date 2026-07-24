@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use, useEffect, useRef } from "react";
+import React, { useState, use, useEffect } from "react";
 import { CheckCircle2, Check } from "lucide-react";
 import SlideOverModal from "../../../../components/slidemodal";
 import { getRowsFromDB } from "../../../../../lib/supabase";
@@ -84,38 +84,32 @@ export default function TrainingModulesPage({
   // Manage module read state locally matching the portfolio pipeline layout rules
   // ponytail: module_progress table not in schema — local state only, resets on navigation
   // ponytail: localStorage persistence — survives page navigation, not cross-device. Next cohort should add a `module_progress` table for server-side persistence.
-  const [readModuleIds, setReadModuleIds] = useState<string[]>([]);
+  const storageKey = `training-modules-read-${resolvedParams.id}`;
 
-  useEffect(() => {
-    // Load new program's read state — no save in this effect
-    try {
-      const raw = localStorage.getItem(
-        `training-modules-read-${resolvedParams.id}`,
-      );
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed))
-          setReadModuleIds(parsed.filter((x) => typeof x === "string"));
-        else setReadModuleIds([]);
-      } else {
-        setReadModuleIds([]);
-      }
-    } catch {
-      setReadModuleIds([]);
+  const [readModuleIds, setReadModuleIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
     }
-  }, [resolvedParams.id]);
 
-  // Save only when readModuleIds changes from a user toggle, not on program switch
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed)
+        ? parsed.filter((x) => typeof x === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Save only when readModuleIds or the active program changes
   useEffect(() => {
     try {
-      localStorage.setItem(
-        `training-modules-read-${resolvedParams.id}`,
-        JSON.stringify(readModuleIds),
-      );
+      localStorage.setItem(storageKey, JSON.stringify(readModuleIds));
     } catch {
       // localStorage may be full or disabled; ignore
     }
-  }, [readModuleIds]);
+  }, [readModuleIds, storageKey]);
   const [modulesList, setModulesList] = useState<ModuleItem[]>([]);
 
   useEffect(() => {
@@ -159,8 +153,6 @@ export default function TrainingModulesPage({
 
     if (module.htmlLink) {
       window.open(module.htmlLink, "_blank", "noopener,noreferrer");
-    } else {
-      console.log(`No material link available for ${module.title}`);
     }
   };
 
