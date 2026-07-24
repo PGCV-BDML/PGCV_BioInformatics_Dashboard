@@ -1,0 +1,32 @@
+﻿
+C:\Users\PGCV\Documents\pgcv-bioinfo-dashboard\PGCV_BioInformatics_Dashboard\app\dashboard\services\training\[id]\page.tsx
+    3:43  warning  'useRef' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   98:11  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\PGCV\Documents\pgcv-bioinfo-dashboard\PGCV_BioInformatics_Dashboard\app\dashboard\services\training\[id]\page.tsx:98:11
+   96 |         const parsed = JSON.parse(raw);
+   97 |         if (Array.isArray(parsed))
+>  98 |           setReadModuleIds(parsed.filter((x) => typeof x === "string"));
+      |           ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+   99 |         else setReadModuleIds([]);
+  100 |       } else {
+  101 |         setReadModuleIds([]);  react-hooks/set-state-in-effect
+  118:6   warning  React Hook useEffect has a missing dependency: 'resolvedParams.id'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  163:7   warning  Unexpected console statement. Only these console methods are allowed: warn, error                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              no-console
+
+Γ£û 4 problems (0 errors, 4 warnings)
+
+node.exe : ESLint found too many warnings (maximum: 0).
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ESLint found to...s (maximum: 0). 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
