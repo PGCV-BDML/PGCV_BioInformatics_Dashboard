@@ -22,6 +22,11 @@ import {
   getCurrentUser,
   supabase,
 } from "@/lib/supabase";
+import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
+import {
+  displayAnalysisLabel,
+  labelFromAnalysisStatus,
+} from "@/lib/analysis-tracker";
 import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User } from "../../../../types/database";
 
 interface SampleRow {
@@ -39,11 +44,19 @@ interface ServiceProjectRow {
   service_type: string;
   analysis_pipeline: string;
   status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
+  status_of_completion: string;
+  status_of_submission: string;
+  status_of_analysis: string;
+  sample_type: string;
+  run_id: string;
+  external_client_id: string;
+  external_project_id: string;
   assignee: string;
   started: string;
   completed: string;
   report_link: string;
   output_link?: string;
+  notes: string;
   samples?: SampleRow[];
 }
 
@@ -108,18 +121,18 @@ export default function AnalysisDetailPage({
           setRecord(null);
           return;
         }
-        const project = projects.find(
-          (p) => p.id === analysis.project_id,
-        );
+        const project = analysis.project_id
+          ? projects.find((p) => p.id === analysis.project_id)
+          : undefined;
         const client = project
           ? clients.find((c) => c.id === project.client_id)
           : null;
         const service = project
           ? services.find((s) => s.id === project.service_id)
           : null;
-        const analysisSamples = samples.filter(
-          (s) => s.project_id === analysis.project_id,
-        );
+        const analysisSamples = analysis.project_id
+          ? samples.filter((s) => s.project_id === analysis.project_id)
+          : [];
         const foundReport = serviceReports.find(
           (r) => r.analysis_id === analysis.id,
         );
@@ -129,19 +142,41 @@ export default function AnalysisDetailPage({
 
         const displayRecord: ServiceProjectRow = {
           id: analysis.id,
-          project_name: project?.name ?? "(unknown project)",
-          client: client?.name ?? "—",
-          service_type: service?.name ?? "—",
-          analysis_pipeline:
-            `${analysis.pipeline ?? ""} ${analysis.pipeline_version ?? ""}`.trim() || "—",
+          project_name:
+            analysis.service_report_number ||
+            analysis.external_project_id ||
+            project?.name ||
+            "Untitled analysis",
+          client: analysis.client_name || client?.name || "—",
+          service_type: service?.name ?? analysis.client_type ?? "—",
+          analysis_pipeline: displayAnalysisLabel(
+            analysis.pipeline,
+            analysis.application,
+          ),
           status: analysis.status as ServiceProjectRow["status"],
-          assignee: userMapData.get(analysis.assignee_id) ?? "—",
-          started: analysis.started_at ? analysis.started_at.split("T")[0] ?? "" : "—",
+          status_of_completion: analysis.status_of_completion ?? "",
+          status_of_submission: analysis.status_of_submission ?? "",
+          status_of_analysis: analysis.status_of_analysis ?? "",
+          sample_type: analysis.sample_type ?? "",
+          run_id: analysis.run_id ?? "",
+          external_client_id: analysis.external_client_id ?? "",
+          external_project_id: analysis.external_project_id ?? "",
+          assignee: analysis.assignee_id
+            ? (userMapData.get(analysis.assignee_id) ?? "—")
+            : "Unassigned",
+          started: analysis.service_report_date
+            ? analysis.service_report_date
+            : analysis.started_at
+              ? (analysis.started_at.split("T")[0] ?? "")
+              : "—",
           completed: analysis.completed_at
-            ? analysis.completed_at.split("T")[0] ?? ""
+            ? (analysis.completed_at.split("T")[0] ?? "")
             : "—",
-          report_link: foundReport?.report_link ?? "",
-          output_link: analysis.output_link ?? "",
+          report_link:
+            analysis.service_report_link || foundReport?.report_link || "",
+          output_link:
+            analysis.client_sequences_link || analysis.output_link || "",
+          notes: analysis.notes ?? "",
           samples: analysisSamples.map((s) => {
             const m = (s.metadata ?? {}) as Record<string, unknown>;
             return {
@@ -170,8 +205,10 @@ export default function AnalysisDetailPage({
     try {
       const completedAt =
         newStatus === "completed" ? new Date().toISOString() : null;
+      const completionLabel = labelFromAnalysisStatus(newStatus);
       const updated = await saveDataToDB("analysis", record.id, {
         status: newStatus,
+        status_of_completion: completionLabel,
         completed_at: completedAt,
       });
       setRecord((prev) =>
@@ -179,12 +216,27 @@ export default function AnalysisDetailPage({
           ? {
               ...prev,
               status: updated.status as ServiceProjectRow["status"],
+              status_of_completion:
+                updated.status_of_completion ?? completionLabel,
               completed: updated.completed_at
-                ? updated.completed_at.split("T")[0] ?? ""
+                ? (updated.completed_at.split("T")[0] ?? "")
                 : "—",
             }
           : null,
       );
+      await syncAnalysisToTaskSafe({
+        id: updated.id,
+        project_id: updated.project_id,
+        pipeline: updated.pipeline,
+        pipeline_version: updated.pipeline_version,
+        status: updated.status as AnalysisStatus,
+        assignee_id: updated.assignee_id,
+        started_at: updated.started_at,
+        completed_at: updated.completed_at,
+        projectName: record.project_name,
+        serviceReportNumber: updated.service_report_number,
+        application: updated.application,
+      });
     } catch (err) {
       console.error("Error updating analysis status:", err);
     } finally {
@@ -199,7 +251,10 @@ export default function AnalysisDetailPage({
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!record || !projectId) return;
+    if (!record || !projectId) {
+      console.error("Cannot add sample without a linked project");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -304,10 +359,10 @@ export default function AnalysisDetailPage({
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
         <div className="flex flex-col gap-1">
           <Link
-            href="/dashboard/services"
+            href="/dashboard/services/tracker"
             className="flex items-center gap-1.5 text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand hover:text-[#2a7797] transition-colors mb-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Services Queue
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Service Report Tracker
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
@@ -359,7 +414,7 @@ export default function AnalysisDetailPage({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Analysis Pipeline
+                Analysis Classification
               </span>
               <code className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[#2a7797] font-mono font-bold">
                 {record.analysis_pipeline}
@@ -367,14 +422,55 @@ export default function AnalysisDetailPage({
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Service Category Type
+                Sample Type
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {record.sample_type || "—"}
+              </span>
+            </div>
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                RUN ID
+              </span>
+              <span className="text-xs font-semibold text-slate-700 font-mono">
+                {record.run_id || "—"}
+              </span>
+            </div>
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Status of Completion
               </span>
               <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-slate-400" />{" "}
-                {record.service_type}
+                <Activity className="w-3.5 h-3.5 text-slate-400" />
+                {record.status_of_completion || record.status.replace("_", " ")}
+              </span>
+            </div>
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Status of Submission
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {record.status_of_submission || "—"}
+              </span>
+            </div>
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Status of Analysis
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {record.status_of_analysis || "—"}
               </span>
             </div>
           </div>
+
+          {record.notes ? (
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Notes / Remarks
+              </span>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{record.notes}</p>
+            </div>
+          ) : null}
 
           {/* Connected Processing Samples Log Sub-table Array list */}
           <div className="space-y-3 pt-2">
@@ -385,13 +481,19 @@ export default function AnalysisDetailPage({
                   {record.samples?.length || 0} Artifacts
                 </span>
               </h3>
-              <button
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#2a7797] hover:text-[#215d76] bg-slate-100 hover:bg-slate-200/70 py-1.5 px-3 rounded-lg transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Sample
-              </button>
+              {projectId ? (
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#2a7797] hover:text-[#215d76] bg-slate-100 hover:bg-slate-200/70 py-1.5 px-3 rounded-lg transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Sample
+                </button>
+              ) : (
+                <span className="text-[11px] text-slate-400 italic">
+                  Link a project to add samples
+                </span>
+              )}
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -462,12 +564,28 @@ export default function AnalysisDetailPage({
                 <Building className="w-4 h-4 text-slate-400 mt-0.5" />
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">
-                    Client Laboratory
+                    Client
                   </h4>
                   <p className="text-sm font-bold text-slate-800">
                     {record.client}
                   </p>
                 </div>
+              </div>
+              <div>
+                <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                  Client ID
+                </h4>
+                <p className="text-sm font-bold text-slate-800">
+                  {record.external_client_id || "—"}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                  Project ID
+                </h4>
+                <p className="text-sm font-bold text-slate-800">
+                  {record.external_project_id || "—"}
+                </p>
               </div>
             </div>
           </div>
@@ -477,56 +595,75 @@ export default function AnalysisDetailPage({
             <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
               Service Report Delivery
             </h3>
-            {report ? (
+            {(record.report_link || report) ? (
               <div className="space-y-3">
-                <div>
-                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
-                    Delivered By
-                  </h4>
-                  <p className="text-sm font-bold text-slate-800">
-                    {userMap.get(report.delivered_by) ?? report.delivered_by ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
-                    Delivered At
-                  </h4>
-                  <p className="text-sm font-bold text-slate-800">
-                    {report.delivered_at
-                      ? new Date(report.delivered_at).toLocaleString()
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] text-slate-400 font-bold uppercase">
-                    Client Acknowledged
-                  </h4>
-                  <p
-                    className={`text-sm font-bold ${report.client_acknowledged_at ? "text-[#2e7d32]" : "text-slate-500"}`}
-                  >
-                    {report.client_acknowledged_at
-                      ? new Date(report.client_acknowledged_at).toLocaleString()
-                      : "Pending"}
-                  </p>
-                </div>
+                {report ? (
+                  <>
+                    <div>
+                      <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                        Delivered By
+                      </h4>
+                      <p className="text-sm font-bold text-slate-800">
+                        {userMap.get(report.delivered_by) ?? report.delivered_by ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                        Delivered At
+                      </h4>
+                      <p className="text-sm font-bold text-slate-800">
+                        {report.delivered_at
+                          ? new Date(report.delivered_at).toLocaleString()
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                        Client Acknowledged
+                      </h4>
+                      <p
+                        className={`text-sm font-bold ${report.client_acknowledged_at ? "text-[#2e7d32]" : "text-slate-500"}`}
+                      >
+                        {report.client_acknowledged_at
+                          ? new Date(report.client_acknowledged_at).toLocaleString()
+                          : "Pending"}
+                      </p>
+                    </div>
+                  </>
+                ) : null}
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                     Report Link
                   </h4>
-                  {report.report_link ? (
+                  {(record.report_link || report?.report_link) ? (
                     <a
-                      href={report.report_link}
+                      href={record.report_link || report?.report_link || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted break-all"
                     >
-                      {report.report_link}
+                      {record.report_link || report?.report_link}
                     </a>
                   ) : (
                     <p className="text-sm text-slate-500">—</p>
                   )}
                 </div>
-                {!report.client_acknowledged_at && (
+                {record.output_link ? (
+                  <div>
+                    <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                      Client Sequences Link
+                    </h4>
+                    <a
+                      href={record.output_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted break-all"
+                    >
+                      {record.output_link}
+                    </a>
+                  </div>
+                ) : null}
+                {report && !report.client_acknowledged_at && (
                   <button
                     type="button"
                     onClick={handleAcknowledge}
@@ -538,8 +675,8 @@ export default function AnalysisDetailPage({
               </div>
             ) : (
               <p className="text-sm text-slate-500 italic">
-                No report delivered yet. Use the &ldquo;Generate Report&rdquo; button on the services queue
-                once the analysis is marked as completed.
+                No report link yet. Paste one when creating the record, or use
+                &ldquo;Generate Report&rdquo; once completion status is Completed.
               </p>
             )}
           </div>

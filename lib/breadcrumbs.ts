@@ -15,20 +15,29 @@ export const tasksBreadcrumbs: BreadcrumbItem[] = [
   { label: "Tasks" },
 ];
 
+export const calendarBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Calendar" },
+];
+
 export const servicesBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Bioinformatics Services", href: "/dashboard/services" },
-  { label: "3.1 Client Sequence Analysis" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Service Report Tracker" },
+];
+
+export const servicesDashboardBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Overview" },
 ];
 
 export const trainingBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Bioinformatics Services", href: "/dashboard/services" },
-  { label: "3.2 Training" },
+  { label: "Training" },
 ];
 
 export const internshipBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Bioinformatics Services", href: "/dashboard/services" },
-  { label: "3.3 Internship" },
+  { label: "Internship" },
 ];

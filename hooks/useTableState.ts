@@ -11,13 +11,17 @@ export function useTableState<T extends { id: string }>({
   itemsPerPage,
   resetKey,
   customSorters,
+  initialSort = null,
 }: {
   items: T[];
   itemsPerPage: number;
   resetKey: string;
   customSorters?: Partial<Record<keyof T, (a: T, b: T) => number>>;
+  initialSort?: SortConfig<T> | null;
 }) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(
+    initialSort,
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleSort = useCallback((key: keyof T) => {

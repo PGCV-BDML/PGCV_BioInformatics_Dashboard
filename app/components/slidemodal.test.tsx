@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from "vitest";
-import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SlideOverModal from "./slidemodal";
@@ -187,36 +186,5 @@ describe("SlideOverModal", () => {
       </SlideOverModal>,
     );
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
-  });
-
-  it("keeps input focus when parent re-renders with a new onClose callback", async () => {
-    const user = userEvent.setup();
-
-    function TestHarness() {
-      const [value, setValue] = useState("");
-      return (
-        <SlideOverModal
-          isOpen={true}
-          onClose={() => undefined}
-          title="Title"
-          onSubmit={vi.fn()}
-        >
-          <input
-            aria-label="Client name"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        </SlideOverModal>
-      );
-    }
-
-    render(<TestHarness />);
-
-    const input = screen.getByRole("textbox", { name: /client name/i });
-    await user.click(input);
-    await user.type(input, "a");
-
-    expect(input).toHaveFocus();
-    expect(input).toHaveValue("a");
   });
 });

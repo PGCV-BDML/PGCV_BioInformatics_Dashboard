@@ -61,6 +61,21 @@ export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" |
 //For Tasks ===========================================================================
 export type TaskStatus = "pending" | "in_progress" | "completed" | "on_hold";
 export type TaskPriority = "low" | "medium" | "high";
+
+export type TaskCategory =
+  | "client_communication"
+  | "code_workflow_optimization"
+  | "sequence_analysis"
+  | "tour"
+  | "meeting"
+  | "internship"
+  | "collaboration"
+  | "engagements"
+  | "projects"
+  | "professional_development"
+  | "future_planning"
+  | "skill_development";
+
 export type Task = {
   id: string;
   title: string;
@@ -68,12 +83,24 @@ export type Task = {
   due_date: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  linked_project_id: string;
+  linked_project_id: string | null;
+  linked_analysis_id?: string | null;
+  /** Client-enriched from task_tag; not a column on task. */
+  categories?: TaskCategory[];
   updated_at?: string;
 };
 
+export type TaskTag = {
+  task_id: string;
+  category: TaskCategory;
+  created_at?: string;
+};
+
+/** Persistable task fields (excludes client-only `categories`). */
+export type TaskRecord = Omit<Task, "categories">;
+
 // ============================================================
-// 3.1 Client Sequence Analysis types
+// Client Sequence Analysis types
 // ============================================================
 
 export type AnalysisStatus =
@@ -93,14 +120,32 @@ export const ANALYSIS_STATUS_OPTIONS: { value: AnalysisStatus; label: string }[]
 
 export interface Analysis {
   id: string;
-  project_id: string;
+  /** Optional link to an internal project; Tracker records may be unlinked. */
+  project_id: string | null;
   pipeline: string | null;
   pipeline_version: string | null;
+  /** Legacy single status; kept in sync from status_of_completion when possible. */
   status: AnalysisStatus;
-  assignee_id: string;
+  assignee_id: string | null;
   started_at: string | null;
   completed_at: string | null;
   output_link: string | null;
+  // Service Report Tracker fields (Excel parity)
+  service_report_number: string | null;
+  service_report_date: string | null;
+  application: string | null;
+  client_name: string | null;
+  client_type: string | null;
+  external_client_id: string | null;
+  external_project_id: string | null;
+  sample_type: string | null;
+  run_id: string | null;
+  status_of_analysis: string | null;
+  status_of_completion: string | null;
+  status_of_submission: string | null;
+  service_report_link: string | null;
+  client_sequences_link: string | null;
+  notes: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -126,7 +171,7 @@ export interface ServiceReport {
 }
 
 // ============================================================
-// 3.2 Training & 3.3 Internship types
+// Training & Internship types
 // ============================================================
 
 export type TrainingType = "training" | "internship";

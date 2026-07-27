@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { TaskCategory } from "@/types/database";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -66,6 +67,7 @@ export type TableNames =
   | "assessment_response"
   | "certificate"
   | "task"
+  | "task_tag"
   | "users";
 
 export async function getNameIdFromDB<T = { id: string; name: string }>(
@@ -164,5 +166,54 @@ export async function deleteDataFromDB(table: TableNames, id: string) {
   if (error) {
     console.error(`Error deleting ${table} data:`, error);
     throw error;
+  }
+}
+
+/** Load all task_tag rows grouped by task_id. */
+export async function getTaskCategoriesByTaskId(): Promise<
+  Map<string, TaskCategory[]>
+> {
+  const { data, error } = await supabase.from("task_tag").select("task_id, category");
+  if (error) {
+    console.error("Error retrieving task tags:", error);
+    throw error;
+  }
+
+  const map = new Map<string, TaskCategory[]>();
+  for (const row of data ?? []) {
+    const taskId = row.task_id as string;
+    const category = row.category as TaskCategory;
+    const list = map.get(taskId) ?? [];
+    list.push(category);
+    map.set(taskId, list);
+  }
+  return map;
+}
+
+/** Replace all categories for a task (delete + insert). */
+export async function replaceTaskCategories(
+  taskId: string,
+  categories: TaskCategory[],
+) {
+  const { error: deleteError } = await supabase
+    .from("task_tag")
+    .delete()
+    .eq("task_id", taskId);
+
+  if (deleteError) {
+    console.error("Error clearing task tags:", deleteError);
+    throw deleteError;
+  }
+
+  const unique = Array.from(new Set(categories));
+  if (unique.length === 0) return;
+
+  const { error: insertError } = await supabase.from("task_tag").insert(
+    unique.map((category) => ({ task_id: taskId, category })),
+  );
+
+  if (insertError) {
+    console.error("Error inserting task tags:", insertError);
+    throw insertError;
   }
 }
