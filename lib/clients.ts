@@ -76,14 +76,29 @@ export function buildClientPayload(form: ClientFormState) {
     .filter(Boolean)
     .join(" | ");
 
-  return {
-    client_id: trimmed.clientId || null,
-    name: trimmed.clientName || null,
-    project_id: trimmed.projectId || null,
-    email_address: trimmed.emailAddress || null,
-    affiliation: trimmed.affiliation || null,
-    designation: trimmed.designation || null,
-    contact_info: contactInfo || trimmed.clientName || null,
+  const payload: Record<string, string | null> = {
+    name: trimmed.clientName || "Unnamed client",
+    affiliation: trimmed.affiliation || "Unspecified",
+    contact_info:
+      contactInfo || trimmed.clientName || "No contact information provided",
     updated_at: new Date().toISOString(),
   };
+
+  if (trimmed.clientId) {
+    payload.client_id = trimmed.clientId;
+  }
+
+  if (trimmed.projectId) {
+    payload.project_id = trimmed.projectId;
+  }
+
+  if (trimmed.emailAddress) {
+    payload.email_address = trimmed.emailAddress;
+  }
+
+  if (trimmed.designation) {
+    payload.designation = trimmed.designation;
+  }
+
+  return payload;
 }

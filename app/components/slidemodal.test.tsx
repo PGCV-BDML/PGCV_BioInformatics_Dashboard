@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SlideOverModal from "./slidemodal";
 
@@ -73,6 +73,22 @@ describe("SlideOverModal", () => {
 
     expect(closeButton).not.toHaveFocus();
     expect(closeButton).toHaveAttribute("data-modal-close");
+  });
+
+  it("restores focus to the active input when the close button receives focus", async () => {
+    render(
+      <SlideOverModal isOpen={true} onClose={vi.fn()} title="Title">
+        <input aria-label="Client name" />
+      </SlideOverModal>,
+    );
+
+    const input = screen.getByRole("textbox", { name: /client name/i });
+    const closeButton = screen.getByRole("button", { name: /close/i });
+
+    input.focus();
+    closeButton.focus();
+
+    await waitFor(() => expect(input).toHaveFocus());
   });
 
   it("calls onClose when close (X) button is clicked", async () => {

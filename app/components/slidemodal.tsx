@@ -62,6 +62,7 @@ const SlideOverModal = memo(function SlideOverModal({
 }: SlideOverModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -84,10 +85,12 @@ const SlideOverModal = memo(function SlideOverModal({
         "input, select, textarea",
       );
       if (firstField) {
+        lastFocusedElementRef.current = firstField;
         firstField.focus();
       } else {
         const focusable = getFocusableElements(panel);
         if (focusable.length > 0) {
+          lastFocusedElementRef.current = focusable[0];
           focusable[0]?.focus();
         } else {
           panel.focus();
@@ -97,6 +100,40 @@ const SlideOverModal = memo(function SlideOverModal({
 
     return () => {
       previousFocusRef.current?.focus();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target.closest("[data-modal-close]")) {
+        const fallbackTarget =
+          lastFocusedElementRef.current ??
+          panel.querySelector<HTMLElement>(
+            'input, select, textarea, button:not([data-modal-close]), [href], [tabindex]:not([tabindex="-1"])',
+          );
+
+        if (fallbackTarget && fallbackTarget !== target) {
+          requestAnimationFrame(() => fallbackTarget.focus());
+        }
+        return;
+      }
+
+      if (panel.contains(target)) {
+        lastFocusedElementRef.current = target;
+      }
+    };
+
+    panel.addEventListener("focusin", handleFocusIn);
+    return () => {
+      panel.removeEventListener("focusin", handleFocusIn);
     };
   }, [isOpen]);
 
@@ -211,6 +248,7 @@ const SlideOverModal = memo(function SlideOverModal({
             aria-label="Close"
             data-modal-close
             tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
             className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
           >
             <X className="w-4 h-4" />
