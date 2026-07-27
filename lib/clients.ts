@@ -3,10 +3,7 @@ export interface ClientFormState {
   clientName: string;
   projectId: string;
   emailAddress: string;
-  sex: string;
-  mobileNumber: string;
   affiliation: string;
-  affiliationAddress: string;
   designation: string;
 }
 
@@ -37,10 +34,7 @@ export function createEmptyClientForm(): ClientFormState {
     clientName: "",
     projectId: "",
     emailAddress: "",
-    sex: "",
-    mobileNumber: "",
     affiliation: "",
-    affiliationAddress: "",
     designation: "",
   };
 }
@@ -55,8 +49,6 @@ export function createClientRecord(form: ClientFormState): ClientRecord {
 
 export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
   const email = row.email_address?.trim() ?? "";
-  const mobile = row.mobile_number?.trim() ?? "";
-  const contactInfo = [email, mobile].filter(Boolean).join(" | ");
 
   return {
     id: row.id,
@@ -65,12 +57,8 @@ export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
     clientName: row.name ?? "",
     projectId: row.project_id ?? "",
     emailAddress: email || row.contact_info || "",
-    sex: row.sex ?? "",
-    mobileNumber: mobile || "",
     affiliation: row.affiliation ?? "",
-    affiliationAddress: row.affiliation_address ?? "",
     designation: row.designation ?? "",
-    ...(contactInfo ? { emailAddress: email || contactInfo } : {}),
   };
 }
 
@@ -80,18 +68,11 @@ export function buildClientPayload(form: ClientFormState) {
     clientName: form.clientName.trim(),
     projectId: form.projectId.trim(),
     emailAddress: form.emailAddress.trim(),
-    sex: form.sex.trim(),
-    mobileNumber: form.mobileNumber.trim(),
     affiliation: form.affiliation.trim(),
-    affiliationAddress: form.affiliationAddress.trim(),
     designation: form.designation.trim(),
   };
 
-  const contactInfo = [
-    trimmed.emailAddress,
-    trimmed.mobileNumber,
-    trimmed.affiliation,
-  ]
+  const contactInfo = [trimmed.emailAddress, trimmed.affiliation]
     .filter(Boolean)
     .join(" | ");
 
@@ -100,10 +81,7 @@ export function buildClientPayload(form: ClientFormState) {
     name: trimmed.clientName || null,
     project_id: trimmed.projectId || null,
     email_address: trimmed.emailAddress || null,
-    sex: trimmed.sex || null,
-    mobile_number: trimmed.mobileNumber || null,
     affiliation: trimmed.affiliation || null,
-    affiliation_address: trimmed.affiliationAddress || null,
     designation: trimmed.designation || null,
     contact_info: contactInfo || trimmed.clientName || null,
     updated_at: new Date().toISOString(),
