@@ -10,6 +10,7 @@ import { AnalysisStatusChart } from "../../components/analysis-status-chart";
 import { ErrorState, LoadingState } from "../../components/state-views";
 import { getRowsFromDB } from "@/lib/supabase";
 import {
+  formatAnalysisYearLabel,
   getAnalysisDashboardStats,
   getAnalysesByStatus,
   getAnalysesByType,
@@ -19,11 +20,14 @@ import {
 import { servicesDashboardBreadcrumbs } from "@/lib/breadcrumbs";
 import type { Analysis } from "@/types/database";
 
+const ALL_TIME = "all";
+
 export default function ServicesDashboardPage() {
   const [rows, setRows] = useState<AnalysisDashboardRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>(ALL_TIME);
+  const [typeChartYear, setTypeChartYear] = useState<string>(ALL_TIME);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,10 +51,11 @@ export default function ServicesDashboardPage() {
         }));
 
         setRows(mapped);
-        const years = getAvailableAnalysisYears(mapped);
-        setSelectedYear((prev) =>
-          prev && years.includes(prev) ? prev : (years[0] ?? String(new Date().getFullYear())),
-        );
+        setSelectedYear((prev) => {
+          if (prev === ALL_TIME) return ALL_TIME;
+          const years = getAvailableAnalysisYears(mapped);
+          return years.includes(prev) ? prev : ALL_TIME;
+        });
       } catch (err) {
         console.error("Failed to load analysis dashboard:", err);
         if (!cancelled) {
@@ -67,36 +72,47 @@ export default function ServicesDashboardPage() {
     };
   }, []);
 
+  // Keep type-chart year in sync when the page-level year changes.
+  useEffect(() => {
+    setTypeChartYear(selectedYear);
+  }, [selectedYear]);
+
   const availableYears = useMemo(
     () => getAvailableAnalysisYears(rows),
     [rows],
   );
 
+  const yearLabel = formatAnalysisYearLabel(selectedYear);
+
   const stats = useMemo(
-    () =>
-      selectedYear
-        ? getAnalysisDashboardStats(rows, selectedYear)
-        : null,
+    () => getAnalysisDashboardStats(rows, selectedYear || ALL_TIME),
     [rows, selectedYear],
   );
 
   const byType = useMemo(
-    () => (selectedYear ? getAnalysesByType(rows, selectedYear) : []),
-    [rows, selectedYear],
+    () => getAnalysesByType(rows, typeChartYear || ALL_TIME),
+    [rows, typeChartYear],
   );
 
   const byStatus = useMemo(
-    () => (selectedYear ? getAnalysesByStatus(rows, selectedYear) : []),
+    () => getAnalysesByStatus(rows, selectedYear || ALL_TIME),
     [rows, selectedYear],
   );
 
   const trackerHrefForPipeline = (pipeline: string) => {
     const params = new URLSearchParams();
-    if (selectedYear) params.set("year", selectedYear);
+    if (typeChartYear && typeChartYear !== ALL_TIME) {
+      params.set("year", typeChartYear);
+    }
     if (pipeline && pipeline !== "—") params.set("pipeline", pipeline);
     const qs = params.toString();
     return `/dashboard/services/tracker${qs ? `?${qs}` : ""}`;
   };
+
+  const trackerHref =
+    selectedYear && selectedYear !== ALL_TIME
+      ? `/dashboard/services/tracker?year=${selectedYear}`
+      : "/dashboard/services/tracker";
 
   return (
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
@@ -115,11 +131,7 @@ export default function ServicesDashboardPage() {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start sm:self-auto mb-1">
           <Link
-            href={
-              selectedYear
-                ? `/dashboard/services/tracker?year=${selectedYear}`
-                : "/dashboard/services/tracker"
-            }
+            href={trackerHref}
             className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
             Service Report Tracker
@@ -133,7 +145,7 @@ export default function ServicesDashboardPage() {
                 Year:
               </span>
               <span className="text-xs font-bold text-[#174e64] font-quicksand">
-                {selectedYear || "—"}
+                {yearLabel}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-[#174e64] ml-1" />
             </div>
@@ -142,9 +154,10 @@ export default function ServicesDashboardPage() {
               aria-label="Filter analyses by year"
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              disabled={isLoading || availableYears.length === 0}
+              disabled={isLoading}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-bold text-xs font-quicksand"
             >
+              <option value={ALL_TIME}>All time</option>
               {availableYears.map((year) => (
                 <option key={year} value={year}>
                   {year}
@@ -157,26 +170,28 @@ export default function ServicesDashboardPage() {
 
       {loadError ? (
         <ErrorState message={loadError} />
-      ) : isLoading && !stats ? (
+      ) : isLoading ? (
         <LoadingState message="Loading sequence analysis metrics…" />
       ) : (
         <>
           <AnalysisDashboardStatCards
             stats={stats}
             isLoading={isLoading}
-            selectedYear={selectedYear || "—"}
+            selectedYear={yearLabel}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <AnalysisTypeChart
               data={byType}
-              selectedYear={selectedYear || "—"}
+              selectedYear={typeChartYear}
+              availableYears={availableYears}
+              onYearChange={setTypeChartYear}
               trackerHref={trackerHrefForPipeline}
             />
             <AnalysisStatusChart
               data={byStatus}
-              selectedYear={selectedYear || "—"}
-              total={stats?.total ?? 0}
+              selectedYear={selectedYear}
+              total={stats.total}
             />
           </div>
         </>
