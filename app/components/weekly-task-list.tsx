@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
+import { taskHref } from "@/lib/calendar-tasks";
 
 export interface WeeklyTask {
   id: string;
@@ -108,7 +109,7 @@ export function WeeklyTaskList({
             return (
               <Link
                 key={task.id}
-                href={`/dashboard/tasks?search=${encodeURIComponent(task.title)}`}
+                href={taskHref({ id: task.id, title: task.title })}
                 className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 cursor-pointer select-none group font-aileron ${isCompleted
                   ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-[0_4px_12px_rgba(0,0,0,0.02)]"
                   : "bg-surface border-slate-300 shadow-[0_8px_20px_rgba(15,23,42,0.06)] hover:bg-slate-50 hover:border-slate-400 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5"
