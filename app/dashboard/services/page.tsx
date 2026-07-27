@@ -68,7 +68,6 @@ export default function ServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]>([]);
-  const [availablePipelines, setAvailablePipelines] = useState<string[]>([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -160,9 +159,6 @@ export default function ServicesPage() {
         setServicesList(rows);
         setAvailableProjects(
           Array.from(tmpProjectMap.entries()).map(([id, v]) => ({ id, ...v })),
-        );
-        setAvailablePipelines(
-          Array.from(new Set(analyses.map((a) => a.pipeline).filter(Boolean))) as string[],
         );
         setAvailableAssignees(Array.from(tmpUserMap.values()));
       } catch (err) {
@@ -568,7 +564,7 @@ export default function ServicesPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Pipeline
+                        Analysis
                       </span>
                       <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono">
                         {s.analysis_pipeline}
@@ -632,7 +628,6 @@ export default function ServicesPage() {
         isSaving={isSubmitting}
         formState={formState}
         availableProjects={availableProjects}
-        availablePipelines={availablePipelines}
         availableAssignees={availableAssignees}
         onClose={() => setIsSidebarOpen(false)}
         onChange={handleInputChange}
