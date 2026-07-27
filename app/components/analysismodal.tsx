@@ -65,6 +65,7 @@ interface ProjectOption {
 interface AnalysisSidebarProps {
   isOpen: boolean;
   isSaving?: boolean;
+  isEditing?: boolean;
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availableAssignees: string[];
@@ -79,6 +80,7 @@ const inputClass =
 export default function AnalysisSidebar({
   isOpen,
   isSaving = false,
+  isEditing = false,
   formState,
   availableProjects,
   availableAssignees,
@@ -155,10 +157,14 @@ export default function AnalysisSidebar({
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Service Report Tracker"
-      subtitle="Record a client sequence analysis. Empty fields are allowed."
+      title={isEditing ? "Edit Service Report" : "Service Report Tracker"}
+      subtitle={
+        isEditing
+          ? "Update this service report tracker record."
+          : "Record a client sequence analysis. Empty fields are allowed."
+      }
       onSubmit={handleSubmit}
-      submitLabel="Save Record"
+      submitLabel={isEditing ? "Save Changes" : "Save Record"}
       isSaving={isSaving}
       submitDisabled={isSaving}
     >
