@@ -447,7 +447,7 @@ export default function ServicesPage() {
     >
       <PageHeader
         breadcrumbTrail={servicesBreadcrumbs}
-        title="Bioinformatics Services"
+        title="Sequence Analysis"
         subtitle="Client sequence analysis · Review active sequences, configurations, and analytical reporting metrics"
         actions={
           <>
