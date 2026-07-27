@@ -19,9 +19,27 @@ import {
   ChevronRight,
   ChevronDown,
   LogOut,
+  LayoutDashboard,
+  ClipboardList,
 } from "lucide-react";
 
-const navItems = [
+type NavChild = {
+  name: string;
+  href: string;
+  exact?: boolean;
+  icon: typeof LayoutGrid;
+};
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof LayoutGrid;
+  exact?: boolean;
+  animationClass: string;
+  children?: NavChild[];
+};
+
+const navItems: NavItem[] = [
   {
     name: "Landing Page",
     href: "/dashboard",
@@ -49,6 +67,19 @@ const navItems = [
     icon: Microscope,
     animationClass:
       "group-hover:scale-110 group-hover:rotate-6 transition-all duration-300",
+    children: [
+      {
+        name: "Dashboard",
+        href: "/dashboard/services",
+        exact: true,
+        icon: LayoutDashboard,
+      },
+      {
+        name: "Service Report Tracker",
+        href: "/dashboard/services/tracker",
+        icon: ClipboardList,
+      },
+    ],
   },
   {
     name: "Training",
@@ -94,6 +125,11 @@ const navItems = [
   },
 ];
 
+function isPathActive(pathname: string, href: string, exact?: boolean) {
+  if (exact) return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 interface SidebarProps {
   isHidden?: boolean;
 }
@@ -105,6 +141,9 @@ export default function Sidebar({
   const router = useRouter();
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
   const [showProfileCard, setShowProfileCard] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(
+    {},
+  );
   const cardRef = useRef<HTMLDivElement>(null);
 
   const [userData, setUserData] = useState<{
@@ -148,6 +187,16 @@ export default function Sidebar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const next: Record<string, boolean> = {};
+    for (const item of navItems) {
+      if (item.children?.length) {
+        next[item.name] = isPathActive(pathname, item.href);
+      }
+    }
+    setExpandedMenus((prev) => ({ ...prev, ...next }));
+  }, [pathname]);
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -155,6 +204,12 @@ export default function Sidebar({
     } catch (err) {
       console.error("Sign out failed:", err);
       router.push("/login"); // redirect anyway — user wants to sign out
+    }
+  };
+
+  const closeMobileSidebar = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      toggleSidebar(true);
     }
   };
 
@@ -200,37 +255,104 @@ export default function Sidebar({
             <nav aria-label="Main navigation" className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.exact
-                  ? pathname === item.href
-                  : pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
+                const hasChildren = Boolean(item.children?.length);
+                const childActive = item.children?.some((child) =>
+                  isPathActive(pathname, child.href, child.exact),
+                );
+                const isActive = hasChildren
+                  ? isPathActive(pathname, item.href) || Boolean(childActive)
+                  : isPathActive(pathname, item.href, item.exact);
+                const isExpanded = hasChildren
+                  ? (expandedMenus[item.name] ?? isActive)
+                  : false;
+
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => {
-                      if (
-                        typeof window !== "undefined" &&
-                        window.innerWidth < 1024
-                      )
-                        toggleSidebar(true);
-                    }}
-                    className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
-                      isActive
-                        ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
-                        : "text-[#1e293b] hover:bg-brand-tint hover:text-[#2a7797]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon
-                        className={`w-4 h-4 stroke-[2.5] ${item.animationClass} ${isActive ? "text-white" : "text-[#334155] group-hover:text-[#2a7797]"}`}
-                      />
-                      <span>{item.name}</span>
-                    </div>
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 stroke-[2.5] transition-transform group-hover:translate-x-0.5 ${isActive ? "text-white" : "text-[#64748b]"}`}
-                    />
-                  </Link>
+                  <div key={item.name} className="flex flex-col gap-0.5">
+                    {hasChildren ? (
+                      <div
+                        className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
+                          isActive
+                            ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
+                            : "text-[#1e293b] hover:bg-brand-tint hover:text-[#2a7797]"
+                        }`}
+                      >
+                        <Link
+                          href={item.href}
+                          onClick={closeMobileSidebar}
+                          className="flex items-center gap-3 flex-1 min-w-0"
+                        >
+                          <Icon
+                            className={`w-4 h-4 stroke-[2.5] ${item.animationClass} ${isActive ? "text-white" : "text-[#334155] group-hover:text-[#2a7797]"}`}
+                          />
+                          <span>{item.name}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          aria-label={`Toggle ${item.name} submenu`}
+                          aria-expanded={isExpanded}
+                          onClick={() =>
+                            setExpandedMenus((prev) => ({
+                              ...prev,
+                              [item.name]: !isExpanded,
+                            }))
+                          }
+                          className="p-0.5 rounded-md"
+                        >
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 stroke-[2.5] transition-transform ${isExpanded ? "rotate-180" : ""} ${isActive ? "text-white" : "text-[#64748b]"}`}
+                          />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={closeMobileSidebar}
+                        className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
+                          isActive
+                            ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
+                            : "text-[#1e293b] hover:bg-brand-tint hover:text-[#2a7797]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon
+                            className={`w-4 h-4 stroke-[2.5] ${item.animationClass} ${isActive ? "text-white" : "text-[#334155] group-hover:text-[#2a7797]"}`}
+                          />
+                          <span>{item.name}</span>
+                        </div>
+                        <ChevronRight
+                          className={`w-3.5 h-3.5 stroke-[2.5] transition-transform group-hover:translate-x-0.5 ${isActive ? "text-white" : "text-[#64748b]"}`}
+                        />
+                      </Link>
+                    )}
+
+                    {hasChildren && isExpanded ? (
+                      <div className="ml-4 pl-3 border-l border-slate-200/80 flex flex-col gap-0.5 py-1">
+                        {item.children!.map((child) => {
+                          const ChildIcon = child.icon;
+                          const childIsActive = isPathActive(
+                            pathname,
+                            child.href,
+                            child.exact,
+                          );
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={closeMobileSidebar}
+                              className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-bold font-aileron transition-colors ${
+                                childIsActive
+                                  ? "bg-[#e6f4f8] text-[#2a7797]"
+                                  : "text-[#475569] hover:bg-brand-tint hover:text-[#2a7797]"
+                              }`}
+                            >
+                              <ChildIcon className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>{child.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </nav>
