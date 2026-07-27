@@ -27,6 +27,7 @@ import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
   nextServiceReportNumber,
+  parseServiceReportNumber,
   STATUS_OF_ANALYSIS_OPTIONS,
   STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
@@ -685,6 +686,22 @@ export default function ServiceReportTrackerPage() {
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
     resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}`,
+    initialSort: { key: "service_report_number", direction: "desc" },
+    customSorters: {
+      service_report_number: (a, b) => {
+        const pa = parseServiceReportNumber(a.service_report_number);
+        const pb = parseServiceReportNumber(b.service_report_number);
+        if (pa && pb) {
+          if (pa.sequence !== pb.sequence) return pa.sequence - pb.sequence;
+          return pa.year - pb.year;
+        }
+        if (pa && !pb) return 1;
+        if (!pa && pb) return -1;
+        return a.service_report_number
+          .toLowerCase()
+          .localeCompare(b.service_report_number.toLowerCase());
+      },
+    },
   });
 
   const statusChipColors = (value: string) => {
