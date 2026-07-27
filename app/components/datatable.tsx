@@ -6,6 +6,8 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 export interface Column<T> {
   key: keyof T | "actions";
   label: string;
+  /** Optional shorter header text; full `label` still used for hover title. */
+  shortLabel?: string;
   width?: string;
   sortable?: boolean;
   render?: (item: T) => React.ReactNode;
@@ -30,24 +32,29 @@ function DataTableInner<T extends { id: string | number }>({
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-surface shadow-sm">
       <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
         <thead>
-          <tr className="border-b border-gray-200 text-[13px] font-semibold text-[#55656e] select-none">
+          <tr className="border-b border-gray-200 text-[12px] font-semibold text-[#3d4f58] select-none">
             {columns.map((col, index) => {
               const isSortable =
                 col.sortable && onSort && col.key !== "actions";
+              const headerText = col.shortLabel ?? col.label;
 
               return (
                 <th
                   key={index}
                   style={{ width: col.width }}
+                  title={col.label}
+                  aria-label={col.label}
                   onClick={() => isSortable && onSort(col.key as keyof T)}
-                  className={`px-4 py-3.5 bg-[#2A7797]/10 transition-colors ${
+                  className={`sticky top-0 z-10 px-3 py-3 bg-[#dceaf0] shadow-[inset_0_-1px_0_rgba(42,119,151,0.25)] transition-colors ${
                     isSortable
-                      ? "group cursor-pointer hover:bg-[#2A7797]/20"
+                      ? "group cursor-pointer hover:bg-[#cfe3ec]"
                       : ""
                   }`}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate">{col.label}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="truncate" title={col.label}>
+                      {headerText}
+                    </span>
 
                     {isSortable &&
                       (sortConfig?.key === col.key ? (
@@ -75,7 +82,7 @@ function DataTableInner<T extends { id: string | number }>({
               {columns.map((col, colIndex) => (
                 <td
                   key={colIndex}
-                  className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
+                  className="px-3 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {col.render ? (
                     <div className="w-full h-full overflow-hidden text-ellipsis">
