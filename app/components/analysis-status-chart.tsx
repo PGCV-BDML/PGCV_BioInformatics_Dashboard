@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { PieChart as PieIcon, ExternalLink } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
 
 const PIE_COLORS = ["#f59e0b", "#4ec2bb", "#94a3b8", "#6366f1", "#2a7797"];
 
 export interface AnalysisStatusChartProps {
   data: { name: string; value: number }[];
+  /** Raw year value (`all` or `YYYY`). */
   selectedYear: string;
   total: number;
 }
@@ -17,6 +19,12 @@ export function AnalysisStatusChart({
   selectedYear,
   total,
 }: AnalysisStatusChartProps) {
+  const yearLabel = formatAnalysisYearLabel(selectedYear);
+  const trackerUrl =
+    selectedYear && selectedYear !== "all"
+      ? `/dashboard/services/tracker?year=${selectedYear}`
+      : "/dashboard/services/tracker";
+
   return (
     <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col justify-between">
       <div>
@@ -24,11 +32,11 @@ export function AnalysisStatusChart({
           <div className="flex items-center gap-2 text-[#2a7797]">
             <PieIcon className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
-              Status Breakdown ({selectedYear})
+              Status Breakdown ({yearLabel})
             </h3>
           </div>
           <Link
-            href={`/dashboard/services/tracker?year=${selectedYear}`}
+            href={trackerUrl}
             className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-[0_4px_10px_rgba(15,23,42,0.04)]"
           >
             <span>View Tracker</span>
@@ -38,7 +46,7 @@ export function AnalysisStatusChart({
 
         {data.length === 0 ? (
           <div className="h-48 flex items-center justify-center text-sm text-slate-400 font-aileron">
-            No analyses for {selectedYear}
+            No analyses for {yearLabel}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center my-auto py-2">

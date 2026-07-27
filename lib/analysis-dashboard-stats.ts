@@ -59,6 +59,12 @@ export function filterAnalysesByYear<T extends AnalysisDashboardRow>(
   return rows.filter((row) => getAnalysisYear(row) === year);
 }
 
+/** Display label for year filters (`all` → All time). */
+export function formatAnalysisYearLabel(year: string): string {
+  if (!year || year === "all") return "All time";
+  return year;
+}
+
 /** Distinct years descending, derived from data (fallback to current year). */
 export function getAvailableAnalysisYears(
   rows: AnalysisDashboardRow[],
