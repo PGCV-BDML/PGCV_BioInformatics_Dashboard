@@ -8,7 +8,7 @@ import {
   FolderGit2,
   CheckSquare,
 } from "lucide-react";
-import { getRowsFromDB, getNameIdFromDB } from "@/lib/supabase";
+import { getRowsFromDB, getNameIdFromDB, getTaskCategoriesByTaskId } from "@/lib/supabase";
 import type { Task } from "@/types/database";
 import {
   type CalendarTask,
@@ -18,6 +18,7 @@ import {
   upcomingTasks,
 } from "@/lib/calendar-tasks";
 import { formatDate } from "@/lib/utils";
+import { CategoryChips } from "./category-chips";
 
 export function UpcomingEvents() {
   const [events, setEvents] = useState<CalendarTask[]>([]);
@@ -31,9 +32,10 @@ export function UpcomingEvents() {
       setIsLoading(true);
       setError(null);
       try {
-        const [taskRows, projects] = await Promise.all([
+        const [taskRows, projects, categoriesByTask] = await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
+          getTaskCategoriesByTaskId(),
         ]);
 
         if (cancelled) return;
@@ -41,8 +43,12 @@ export function UpcomingEvents() {
         const projectNameById = new Map(
           (projects ?? []).map((p) => [p.id, p.name]),
         );
+        const enriched = taskRows.map((t) => ({
+          ...t,
+          categories: categoriesByTask.get(t.id) ?? [],
+        }));
         const mapped = mapTasksForCalendar(
-          taskRows,
+          enriched,
           projectNameById,
           new Map(),
         );
@@ -147,6 +153,7 @@ export function UpcomingEvents() {
                     {formatDate(task.due_date)}
                   </span>
                 </div>
+                <CategoryChips categories={task.categories} maxVisible={2} />
               </Link>
             );
           })}

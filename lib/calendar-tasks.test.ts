@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/types/database";
 import {
+  filterByCategory,
   getMonthGrid,
   mapTasksForCalendar,
   taskHref,
@@ -63,15 +64,16 @@ describe("mapTasksForCalendar", () => {
 describe("upcomingTasks", () => {
   it("returns non-completed tasks within the window, sorted by due date", () => {
     const todayKey = toDateKey(new Date());
-    const tasks = [
+    const tasks: Parameters<typeof upcomingTasks>[0] = [
       {
         id: "a",
         title: "Later",
         due_date: "2099-01-15",
-        status: "pending" as const,
-        priority: "low" as const,
+        status: "pending",
+        priority: "low",
         assignee_id: "u",
         linked_project_id: "p",
+        categories: [],
         projectName: "P",
         assigneeName: "U",
       },
@@ -79,10 +81,11 @@ describe("upcomingTasks", () => {
         id: "b",
         title: "Soon",
         due_date: todayKey,
-        status: "pending" as const,
-        priority: "high" as const,
+        status: "pending",
+        priority: "high",
         assignee_id: "u",
         linked_project_id: "p",
+        categories: ["sequence_analysis"],
         projectName: "P",
         assigneeName: "U",
       },
@@ -90,10 +93,11 @@ describe("upcomingTasks", () => {
         id: "c",
         title: "Done",
         due_date: todayKey,
-        status: "completed" as const,
-        priority: "high" as const,
+        status: "completed",
+        priority: "high",
         assignee_id: "u",
         linked_project_id: "p",
+        categories: [],
         projectName: "P",
         assigneeName: "U",
       },
@@ -101,6 +105,41 @@ describe("upcomingTasks", () => {
 
     const result = upcomingTasks(tasks, { limit: 5, daysAhead: 0 });
     expect(result.map((t) => t.id)).toEqual(["b"]);
+  });
+});
+
+describe("filterByCategory", () => {
+  it("keeps tasks that include the selected category", () => {
+    const tasks = [
+      {
+        id: "1",
+        title: "A",
+        due_date: "2026-07-28",
+        status: "pending" as const,
+        priority: "high" as const,
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: ["sequence_analysis" as const],
+        projectName: "P",
+        assigneeName: "U",
+      },
+      {
+        id: "2",
+        title: "B",
+        due_date: "2026-07-29",
+        status: "pending" as const,
+        priority: "low" as const,
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: ["meeting" as const],
+        projectName: "P",
+        assigneeName: "U",
+      },
+    ];
+    expect(filterByCategory(tasks, "sequence_analysis").map((t) => t.id)).toEqual([
+      "1",
+    ]);
+    expect(filterByCategory(tasks, "All")).toHaveLength(2);
   });
 });
 

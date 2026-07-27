@@ -11,11 +11,12 @@ import {
   FolderGit2,
   User,
 } from "lucide-react";
-import { getRowsFromDB, getUsersFromDB, getNameIdFromDB } from "@/lib/supabase";
-import type { Task, User as DbUser } from "@/types/database";
+import { getRowsFromDB, getUsersFromDB, getNameIdFromDB, getTaskCategoriesByTaskId } from "@/lib/supabase";
+import type { Task, TaskCategory, User as DbUser } from "@/types/database";
 import {
   type CalendarTask,
   addMonths,
+  filterByCategory,
   getMonthGrid,
   isSameDay,
   mapTasksForCalendar,
@@ -24,8 +25,10 @@ import {
   taskHref,
   toDateKey,
 } from "@/lib/calendar-tasks";
+import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import { formatDate } from "@/lib/utils";
 import { ErrorState, LoadingState } from "./state-views";
+import { CategoryChips } from "./category-chips";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -38,6 +41,7 @@ export default function TaskCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
 
   useEffect(() => {
@@ -47,10 +51,11 @@ export default function TaskCalendar() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [taskRows, projects, users] = await Promise.all([
+        const [taskRows, projects, users, categoriesByTask] = await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
           getUsersFromDB(["team_lead", "team_member"]),
+          getTaskCategoriesByTaskId(),
         ]);
 
         if (cancelled) return;
@@ -62,7 +67,12 @@ export default function TaskCalendar() {
           ((users ?? []) as DbUser[]).map((u) => [u.id, u.name]),
         );
 
-        setTasks(mapTasksForCalendar(taskRows, projectNameById, assigneeNameById));
+        const enriched = taskRows.map((t) => ({
+          ...t,
+          categories: categoriesByTask.get(t.id) ?? [],
+        }));
+
+        setTasks(mapTasksForCalendar(enriched, projectNameById, assigneeNameById));
       } catch (err) {
         console.error("Failed to load calendar tasks:", err);
         if (!cancelled) {
@@ -83,9 +93,12 @@ export default function TaskCalendar() {
   const today = useMemo(() => new Date(), []);
 
   const visibleTasks = useMemo(() => {
-    if (showCompleted) return tasks;
-    return tasks.filter((t) => t.status !== "completed");
-  }, [tasks, showCompleted]);
+    let list = showCompleted
+      ? tasks
+      : tasks.filter((t) => t.status !== "completed");
+    list = filterByCategory(list, categoryFilter);
+    return list;
+  }, [tasks, showCompleted, categoryFilter]);
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, CalendarTask[]>();
@@ -160,15 +173,36 @@ export default function TaskCalendar() {
             </button>
           </div>
 
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={(e) => setShowCompleted(e.target.checked)}
-              className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
-            />
-            Show completed
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 font-aileron">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+                Category
+              </span>
+              <select
+                value={categoryFilter}
+                onChange={(e) =>
+                  setCategoryFilter(e.target.value as TaskCategory | "All")
+                }
+                className="h-8 px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 max-w-[180px]"
+              >
+                <option value="All">All</option>
+                {TASK_CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
+              <input
+                type="checkbox"
+                checked={showCompleted}
+                onChange={(e) => setShowCompleted(e.target.checked)}
+                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+              />
+              Show completed
+            </label>
+          </div>
         </div>
 
         <p className="text-xs text-slate-500 mb-4 font-aileron">
@@ -316,24 +350,24 @@ export default function TaskCalendar() {
               const priority = PRIORITY_STYLES[task.priority];
               return (
                 <li key={task.id}>
-                  <Link
-                    href={taskHref(task)}
-                    className={`block border rounded-2xl p-3.5 transition-all group ${
+                  <div
+                    className={`border rounded-2xl p-3.5 transition-all ${
                       task.status === "completed"
                         ? "bg-slate-50 border-slate-200 opacity-70"
                         : "bg-surface border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <span
-                        className={`text-sm font-bold tracking-tight font-aileron ${
+                      <Link
+                        href={taskHref(task)}
+                        className={`text-sm font-bold tracking-tight font-aileron hover:underline ${
                           task.status === "completed"
                             ? "line-through text-slate-400"
-                            : "text-slate-800 group-hover:text-[#2a7797]"
+                            : "text-slate-800 hover:text-[#2a7797]"
                         }`}
                       >
                         {task.title}
-                      </span>
+                      </Link>
                       <span
                         className={`shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand ${priority.chip}`}
                       >
@@ -341,6 +375,7 @@ export default function TaskCalendar() {
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 text-[11px] text-slate-500 font-aileron">
+                      <CategoryChips categories={task.categories} maxVisible={3} />
                       <span className="flex items-center gap-1.5 truncate">
                         <FolderGit2 className="w-3 h-3 shrink-0" />
                         {task.projectName}
@@ -349,6 +384,24 @@ export default function TaskCalendar() {
                         <User className="w-3 h-3 shrink-0" />
                         {task.assigneeName}
                       </span>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <Link
+                          href={taskHref(task)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:underline font-quicksand"
+                        >
+                          Open task
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                        {task.linked_analysis_id && (
+                          <Link
+                            href={`/dashboard/services/${task.linked_analysis_id}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 hover:underline font-quicksand"
+                          >
+                            Open analysis
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        )}
+                      </div>
                       <span className="flex items-center justify-between gap-2 mt-0.5">
                         <span className="font-semibold text-slate-600">
                           {STATUS_LABELS[task.status]}
@@ -358,7 +411,7 @@ export default function TaskCalendar() {
                         </span>
                       </span>
                     </div>
-                  </Link>
+                  </div>
                 </li>
               );
             })}

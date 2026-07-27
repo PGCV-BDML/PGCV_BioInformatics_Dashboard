@@ -13,7 +13,8 @@ import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
-import { Task, TaskStatus, TaskPriority, User } from "../../../types/database";
+import { CategoryChips } from "../../components/category-chips";
+import { Task, TaskStatus, TaskPriority, TaskCategory, User } from "../../../types/database";
 import {
   Search,
   CheckSquare,
@@ -27,9 +28,20 @@ import {
   Calendar,
 } from "lucide-react";
 
-import { getRowsFromDB, getUsersFromDB, saveDataToDB, getNameIdFromDB } from "@/lib/supabase";
+import {
+  getRowsFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+  getNameIdFromDB,
+  getTaskCategoriesByTaskId,
+  replaceTaskCategories,
+} from "@/lib/supabase";
 import { formatDate } from "@/lib/utils";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
+import {
+  TASK_CATEGORY_LABELS,
+  TASK_CATEGORY_OPTIONS,
+} from "@/lib/task-categories";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -74,6 +86,7 @@ function TasksPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -103,6 +116,8 @@ function TasksPageContent() {
     status: "pending",
     priority: "medium",
     linked_project_id: availableProjects[0]?.id ?? "",
+    linked_analysis_id: null,
+    categories: [],
   };
 
   const [formState, setFormState] = useState<Omit<Task, "id">>(emptyForm);
@@ -112,13 +127,19 @@ function TasksPageContent() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [tasks, projects, users] = await Promise.all([
+        const [tasks, projects, users, categoriesByTask] = await Promise.all([
           getRowsFromDB("task"),
           getNameIdFromDB("project"),
           getUsersFromDB(["team_lead", "team_member"]),
+          getTaskCategoriesByTaskId(),
         ]);
 
-        setTasksList(tasks as Task[]);
+        const enriched = (tasks as Task[]).map((t) => ({
+          ...t,
+          categories: categoriesByTask.get(t.id) ?? [],
+        }));
+
+        setTasksList(enriched);
         setAvailableProjects(projects ?? []);
         setAvailableUsers((users ?? []).map((u: User) => ({ id: u.id, name: u.name })));
       } catch (err) {
@@ -155,6 +176,8 @@ function TasksPageContent() {
       status: match.status,
       priority: match.priority,
       linked_project_id: match.linked_project_id,
+      linked_analysis_id: match.linked_analysis_id ?? null,
+      categories: match.categories ?? [],
     });
     setIsEditing(true);
   }, [isLoading, tasksList, searchParams]);
@@ -240,8 +263,17 @@ function TasksPageContent() {
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
       if (activeFilter !== "All" && task.status !== activeFilter) return false;
+      if (
+        categoryFilter !== "All" &&
+        !(task.categories ?? []).includes(categoryFilter)
+      ) {
+        return false;
+      }
       const assignee = availableUsers.find((u) => u.id === task.assignee_id);
       const project = availableProjects.find((p) => p.id === task.linked_project_id);
+      const categoryLabels = (task.categories ?? [])
+        .map((c) => TASK_CATEGORY_LABELS[c])
+        .join(" ");
       const searchPool = [
         task.title ?? "",
         assignee ? assignee.name : "",
@@ -249,12 +281,20 @@ function TasksPageContent() {
         task.priority,
         task.due_date,
         project ? project.name : "",
+        categoryLabels,
       ]
         .join(" ")
         .toLowerCase();
       return searchPool.includes(searchQuery.toLowerCase().trim());
     });
-  }, [searchQuery, tasksList, activeFilter, availableUsers, availableProjects]);
+  }, [
+    searchQuery,
+    tasksList,
+    activeFilter,
+    categoryFilter,
+    availableUsers,
+    availableProjects,
+  ]);
 
   const { 
     sortConfig, 
@@ -266,7 +306,7 @@ function TasksPageContent() {
   } = useTableState<Task>({
     items: filteredTasks,
     itemsPerPage,
-    resetKey: `${searchQuery}-${activeFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${categoryFilter}`,
     customSorters: {
       priority: (a, b) => {
         const priorityWeights: Record<string, number> = {
@@ -296,16 +336,27 @@ function TasksPageContent() {
     [],
   );
 
+  const handleCategoriesChange = useCallback((categories: TaskCategory[]) => {
+    setFormState((prev) => ({ ...prev, categories }));
+  }, []);
+
+  const persistTaskPayload = (form: Omit<Task, "id">) => {
+    const { categories: _categories, ...record } = form;
+    return record;
+  };
+
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; // prevent double-submit
     setIsSubmitting(true);
 
     const generatedId = crypto.randomUUID();
-    const newTask: Task = { id: generatedId, ...formState };
+    const categories = formState.categories ?? [];
+    const newTask: Task = { id: generatedId, ...formState, categories };
 
     try {
-      await saveDataToDB("task", generatedId, formState);
+      await saveDataToDB("task", generatedId, persistTaskPayload(formState));
+      await replaceTaskCategories(generatedId, categories);
       setTasksList((prev) => [newTask, ...prev]);
       showToast("Task created successfully.", "success");
     } catch (error) {
@@ -325,11 +376,16 @@ function TasksPageContent() {
     if (isSubmitting) return; // prevent double-submit
     setIsSubmitting(true);
 
+    const categories = formState.categories ?? [];
+
     try {
-      await saveDataToDB("task", selectedTask.id, formState);
+      await saveDataToDB("task", selectedTask.id, persistTaskPayload(formState));
+      await replaceTaskCategories(selectedTask.id, categories);
       setTasksList((prev) =>
         prev.map((item) =>
-          item.id === selectedTask.id ? { ...item, ...formState } : item,
+          item.id === selectedTask.id
+            ? { ...item, ...formState, categories }
+            : item,
         ),
       );
       showToast("Task updated successfully.", "success");
@@ -389,18 +445,31 @@ function TasksPageContent() {
     {
       key: "title",
       label: "Task Description",
-      width: "24%",
+      width: "20%",
       sortable: true,
       render: (t) => (
-        <span className="font-bold text-[#11161a] block whitespace-normal break-words leading-snug py-1">
-          {t.title}
-        </span>
+        <div className="py-1 space-y-1">
+          <span className="font-bold text-[#11161a] block whitespace-normal break-words leading-snug">
+            {t.title}
+          </span>
+          {t.linked_analysis_id && (
+            <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200/70 px-1.5 py-0.5 rounded-md font-quicksand">
+              Sequence analysis
+            </span>
+          )}
+        </div>
       ),
+    },
+    {
+      key: "categories",
+      label: "Categories",
+      width: "16%",
+      render: (t) => <CategoryChips categories={t.categories ?? []} maxVisible={2} />,
     },
     {
       key: "linked_project_id",
       label: "Linked Project",
-      width: "20%",
+      width: "14%",
       render: (t) => {
         const project = availableProjects.find(
           (p) => p.id === t.linked_project_id,
@@ -418,7 +487,7 @@ function TasksPageContent() {
     {
       key: "assignee_id",
       label: "Assignee",
-      width: "13%",
+      width: "11%",
       render: (t) => {
         const assignee = availableUsers.find((u) => u.id === t.assignee_id);
         return (
@@ -434,7 +503,7 @@ function TasksPageContent() {
     {
       key: "priority",
       label: "Priority",
-      width: "12%",
+      width: "10%",
       sortable: true,
       render: (t) => (
         <div className="flex items-center justify-center w-full py-1">
@@ -462,7 +531,7 @@ function TasksPageContent() {
     {
       key: "status",
       label: "Status",
-      width: "13%",
+      width: "11%",
       sortable: true,
       render: (t) => (
         <div className="flex items-center justify-center w-full py-1">
@@ -490,11 +559,10 @@ function TasksPageContent() {
     {
       key: "due_date",
       label: "Due Date",
-      width: "13%",
+      width: "10%",
       sortable: true,
       render: (t) => (
         <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
-          {/* Formats standard YYYY-MM-DD input to MM/DD/YYYY using the helper */}
           {formatDate(t.due_date) || "-"}
         </span>
       ),
@@ -502,7 +570,7 @@ function TasksPageContent() {
     {
       key: "id",
       label: "Actions",
-      width: "12%",
+      width: "8%",
       render: (t) => (
         <div className="flex items-center justify-center gap-1.5">
           <button
@@ -516,6 +584,8 @@ function TasksPageContent() {
                 status: t.status,
                 priority: t.priority,
                 linked_project_id: t.linked_project_id,
+                linked_analysis_id: t.linked_analysis_id ?? null,
+                categories: t.categories ?? [],
               });
               setIsEditing(true);
             }}
@@ -640,6 +710,27 @@ function TasksPageContent() {
               );
             })}
           </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="task-category-filter" className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+              Category
+            </label>
+            <select
+              id="task-category-filter"
+              value={categoryFilter}
+              onChange={(e) =>
+                setCategoryFilter(e.target.value as TaskCategory | "All")
+              }
+              className="h-8 px-2.5 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 font-aileron max-w-[200px]"
+            >
+              <option value="All">All categories</option>
+              {TASK_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {isLoading ? (
@@ -686,6 +777,7 @@ function TasksPageContent() {
         statusOptions={STATUS_OPTIONS}
         priorityOptions={PRIORITY_OPTIONS}
         onInputChange={handleInputChange}
+        onCategoriesChange={handleCategoriesChange}
         onClose={handleCloseTaskModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />

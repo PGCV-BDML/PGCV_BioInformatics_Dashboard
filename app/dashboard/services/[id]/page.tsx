@@ -22,6 +22,7 @@ import {
   getCurrentUser,
   supabase,
 } from "@/lib/supabase";
+import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User } from "../../../../types/database";
 
 interface SampleRow {
@@ -185,6 +186,17 @@ export default function AnalysisDetailPage({
             }
           : null,
       );
+      await syncAnalysisToTaskSafe({
+        id: updated.id,
+        project_id: updated.project_id,
+        pipeline: updated.pipeline,
+        pipeline_version: updated.pipeline_version,
+        status: updated.status as AnalysisStatus,
+        assignee_id: updated.assignee_id,
+        started_at: updated.started_at,
+        completed_at: updated.completed_at,
+        projectName: record.project_name,
+      });
     } catch (err) {
       console.error("Error updating analysis status:", err);
     } finally {

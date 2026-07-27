@@ -1,4 +1,4 @@
-import type { Task, TaskPriority, TaskStatus } from "@/types/database";
+import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types/database";
 
 export type CalendarTask = {
   id: string;
@@ -8,6 +8,8 @@ export type CalendarTask = {
   priority: TaskPriority;
   assignee_id: string;
   linked_project_id: string;
+  linked_analysis_id?: string | null;
+  categories: TaskCategory[];
   projectName: string;
   assigneeName: string;
 };
@@ -85,6 +87,8 @@ export function mapTasksForCalendar(
         priority: t.priority,
         assignee_id: t.assignee_id,
         linked_project_id: projectId,
+        linked_analysis_id: t.linked_analysis_id ?? null,
+        categories: t.categories ?? [],
         projectName: projectId
           ? (projectNameById.get(projectId) ?? "Unlinked project")
           : "No linked project",
@@ -139,6 +143,14 @@ export function upcomingTasks(
       return (priorityWeight[a.priority] ?? 9) - (priorityWeight[b.priority] ?? 9);
     })
     .slice(0, limit);
+}
+
+export function filterByCategory(
+  tasks: CalendarTask[],
+  category: TaskCategory | "All",
+): CalendarTask[] {
+  if (category === "All") return tasks;
+  return tasks.filter((t) => t.categories.includes(category));
 }
 
 export const PRIORITY_STYLES: Record<
