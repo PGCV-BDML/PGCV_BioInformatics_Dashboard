@@ -58,6 +58,22 @@ def cell_str(v):
     return s if s else None
 
 
+def normalize_date(v):
+    """Return YYYY-MM-DD or None. Reject year-only / invalid Excel values."""
+    raw = cell_str(v)
+    if not raw:
+        return None
+    if isinstance(v, datetime):
+        return v.date().isoformat()
+    if isinstance(v, date):
+        return v.isoformat()
+    # Already ISO date
+    if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
+        return raw[:10]
+    # Year-only or other junk from Excel (e.g. "2025")
+    return None
+
+
 def format_sr(prefix, suffix):
     p = cell_str(prefix)
     if not p:
@@ -126,7 +142,7 @@ def main():
         pipeline = normalize_class(classification)
         if application:
             pipeline = "Others"
-        sr_date = cell_str(row[2])
+        sr_date = normalize_date(row[2])
         status_analysis = cell_str(row[11])
         status_completion = cell_str(row[12])
         status_submission = cell_str(row[13])
