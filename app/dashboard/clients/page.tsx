@@ -187,11 +187,14 @@ export default function ClientsPage() {
           savedRow = (await saveDataToDB("client", clientId, {
             name: formState.clientName.trim(),
             affiliation: formState.affiliation.trim(),
+            project_id: formState.projectId.trim() || null,
+            designation: formState.designation.trim() || null,
             contact_info:
               [formState.emailAddress.trim()].filter(Boolean).join(" | ") ||
               formState.clientName.trim(),
             notes: `Project ID: ${formState.projectId.trim() || "N/A"}`,
             client_id: formState.clientId.trim(),
+            email_address: formState.emailAddress.trim() || null,
           })) as SupabaseClientRow;
         }
 
