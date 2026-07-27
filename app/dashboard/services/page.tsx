@@ -99,11 +99,44 @@ export default function ServicesDashboardPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
-        <div className="flex flex-col gap-1">
-          <div className="opacity-95 text-xs tracking-wide">
-            <DashboardBreadcrumbs items={servicesDashboardBreadcrumbs} />
+    <div
+      className={`space-y-8 mx-auto font-aileron w-full transition-all duration-300 ease-in-out ${
+        isSidebarOpen ? "xl:pr-[448px]" : "max-w-full"
+      }`}
+    >
+      <PageHeader
+        breadcrumbTrail={servicesBreadcrumbs}
+        title="Sequence Analysis"
+        subtitle="Client sequence analysis · Review active sequences, configurations, and analytical reporting metrics"
+        actions={
+          <>
+            <div className="relative w-full min-[480px]:w-64">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search analysis..."
+                aria-label="Search services"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={openCreateSidebar}
+              className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
+            </button>
+          </>
+        }
+      />
+
+      <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <Dna className="w-5 h-5 text-[#333333]" />
+            <h2 className="text-2xl font-bold text-[#333333]">Service Report Tracker</h2>
           </div>
           <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
             Sequence Analysis Dashboard

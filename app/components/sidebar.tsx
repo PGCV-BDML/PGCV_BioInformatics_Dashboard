@@ -62,7 +62,7 @@ const navItems: NavItem[] = [
       "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
-    name: "Bioinformatics Services",
+    name: "Sequence Analysis",
     href: "/dashboard/services",
     icon: Microscope,
     animationClass:
