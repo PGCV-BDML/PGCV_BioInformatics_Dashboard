@@ -5,6 +5,7 @@ import { Calendar, ChevronDown } from "lucide-react";
 import { DashboardBreadcrumbs } from "../components/dashboardbreadcrumbs";
 import { DashboardStatsCards } from "../components/dashboard-stat-cards";
 import { WeeklyTaskList } from "../components/weekly-task-list";
+import { UpcomingEvents } from "../components/upcoming-events";
 import { ServiceReportsChart } from "../components/service-reports-chart";
 import { ProjectDistributionChart } from "../components/project-distribution-chart";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
@@ -318,28 +319,7 @@ export default function DashboardLandingPage() {
           selectedYear={selectedYear}
         />
 
-        {/* Upcoming Events Column */}
-        <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
-          <div className="flex items-center gap-2 text-[#2a7797] mb-6 font-quicksand">
-            <Calendar className="w-4 h-4" />
-            <h3 className="text-xs font-extrabold uppercase tracking-wider">
-              Upcoming Events
-            </h3>
-          </div>
-
-          <div className="flex flex-col items-center justify-center h-full pb-10 text-center">
-            <div className="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-slate-100 border border-slate-200 shadow-inner">
-              <Calendar className="w-6 h-6 text-[#7a8e9b]" />
-            </div>
-            <span className="text-xs font-extrabold uppercase tracking-[2px] text-[#2a7797] font-quicksand block mb-1">
-              Coming Soon
-            </span>
-            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-sm font-aileron">
-              The automated event tracker and synchronization feature is
-              currently under development. Check back later for updates.
-            </p>
-          </div>
-        </div>
+        <UpcomingEvents />
 
         <ProjectDistributionChart
           data={projectStatusDistribution}

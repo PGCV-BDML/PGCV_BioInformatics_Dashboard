@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTableState } from "@/hooks/useTableState";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
@@ -23,6 +24,7 @@ import {
   ChevronRight,
   ChevronDown,
   SlidersHorizontal,
+  Calendar,
 } from "lucide-react";
 
 import { getRowsFromDB, getUsersFromDB, saveDataToDB, getNameIdFromDB } from "@/lib/supabase";
@@ -50,12 +52,27 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 
 
 export default function TasksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-8 mx-auto pb-16 px-4 font-aileron max-w-[1240px]">
+          <LoadingState message="Loading tasks…" />
+        </div>
+      }
+    >
+      <TasksPageContent />
+    </Suspense>
+  );
+}
+
+function TasksPageContent() {
+  const searchParams = useSearchParams();
   const [tasksList, setTasksList] = useState<Task[]>([]);
   const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]);
   const [availableUsers, setAvailableUsers] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [activeFilter, setActiveFilter] = useState("All");
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -65,6 +82,7 @@ export default function TasksPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const deepLinkHandled = useRef(false);
 
   // Refs and state for the sliding filter bar mechanism
   const filterContainerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +131,33 @@ export default function TasksPage() {
 
     loadData();
   }, []);
+
+  // Apply calendar / weekly-list deep links (?search=…&task=…)
+  useEffect(() => {
+    const search = searchParams.get("search");
+    if (search) setSearchQuery(search);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isLoading || deepLinkHandled.current) return;
+    const taskId = searchParams.get("task");
+    if (!taskId) return;
+
+    const match = tasksList.find((t) => t.id === taskId);
+    if (!match) return;
+
+    deepLinkHandled.current = true;
+    setSelectedTask(match);
+    setFormState({
+      title: match.title,
+      assignee_id: match.assignee_id,
+      due_date: match.due_date,
+      status: match.status,
+      priority: match.priority,
+      linked_project_id: match.linked_project_id,
+    });
+    setIsEditing(true);
+  }, [isLoading, tasksList, searchParams]);
 
   useEffect(() => {
     toggleSidebar(isSidebarOpen);
@@ -534,6 +579,12 @@ export default function TasksPage() {
                 className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
+            <Link
+              href="/dashboard/calendar"
+              className="flex items-center justify-center gap-1.5 h-10 px-4 bg-[#e6f4f8] hover:bg-[#d5eff6] text-[#2a7797] text-xs font-bold rounded-full border border-[rgba(42,119,151,0.25)] shadow-sm transition-all whitespace-nowrap"
+            >
+              <Calendar className="w-3.5 h-3.5" /> Calendar
+            </Link>
             <button
               type="button"
               onClick={() => {

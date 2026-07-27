@@ -15,6 +15,11 @@ export const tasksBreadcrumbs: BreadcrumbItem[] = [
   { label: "Tasks" },
 ];
 
+export const calendarBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Calendar" },
+];
+
 export const servicesBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Bioinformatics Services", href: "/dashboard/services" },
