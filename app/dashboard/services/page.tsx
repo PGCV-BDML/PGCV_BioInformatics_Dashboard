@@ -465,32 +465,33 @@ export default function ServicesPage() {
   });
 
   const renderStatusDropdown = (id: string, currentStatus: string) => {
-    let colorClasses = "bg-gray-100 text-gray-700";
+    let colorClasses = "bg-gray-100 text-gray-700 border-gray-200";
     let chevronClass = "text-gray-500";
 
     if (currentStatus === "completed") {
-      colorClasses = "bg-[#eaf7ee] text-[#2e7d32]";
+      colorClasses = "bg-[#eaf7ee] text-[#2e7d32] border-[#2e7d32]/25";
       chevronClass = "text-[#2e7d32]";
     } else if (currentStatus === "ongoing") {
-      colorClasses = "bg-[#fffde7] text-[#f57f17]";
+      colorClasses = "bg-[#fff8e1] text-[#f57f17] border-[#f57f17]/25";
       chevronClass = "text-[#f57f17]";
     } else if (currentStatus === "for_approval") {
-      colorClasses = "bg-blue-50 text-blue-700";
+      colorClasses = "bg-blue-50 text-blue-700 border-blue-200";
       chevronClass = "text-blue-700";
     } else if (currentStatus === "on_hold") {
-      colorClasses = "bg-slate-100 text-slate-600";
+      colorClasses = "bg-slate-100 text-slate-600 border-slate-200";
       chevronClass = "text-slate-500";
     } else if (currentStatus === "submitted") {
-      colorClasses = "bg-[#f3e8ff] text-[#6b21a8]";
+      colorClasses = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
       chevronClass = "text-[#6b21a8]";
     }
 
     return (
-      <div className="relative flex items-center justify-center w-full max-w-[130px]">
+      <div className="relative inline-flex items-center max-w-full">
         <select
           value={currentStatus}
           onChange={(e) => handleStatusChange(id, e.target.value)}
-          className={`pl-3 pr-7 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-0 outline-none focus:outline-none focus:ring-0 text-center appearance-none whitespace-nowrap w-full transition-all ${colorClasses}`}
+          aria-label="Status of Completion"
+          className={`pl-2.5 pr-6 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 appearance-none whitespace-nowrap max-w-full transition-all ${colorClasses}`}
         >
           {ANALYSIS_STATUS_OPTIONS.map((opt) => (
             <option
@@ -503,9 +504,39 @@ export default function ServicesPage() {
           ))}
         </select>
         <ChevronDown
-          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+          className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
         />
       </div>
+    );
+  };
+
+  const renderStatusChip = (label: string | null | undefined) => {
+    const value = (label ?? "").trim();
+    if (!value) {
+      return <span className="text-slate-400">—</span>;
+    }
+
+    const key = value.toLowerCase();
+    let chipClass = "bg-slate-100 text-slate-600 border-slate-200";
+    if (key === "completed") {
+      chipClass = "bg-[#eaf7ee] text-[#2e7d32] border-[#2e7d32]/25";
+    } else if (key === "on-going" || key === "ongoing" || key === "on going") {
+      chipClass = "bg-[#fff8e1] text-[#f57f17] border-[#f57f17]/25";
+    } else if (key === "submitted") {
+      chipClass = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
+    } else if (key === "for approval" || key === "for_approval") {
+      chipClass = "bg-blue-50 text-blue-700 border-blue-200";
+    } else if (key.includes("on hold")) {
+      chipClass = "bg-slate-100 text-slate-600 border-slate-200";
+    }
+
+    return (
+      <span
+        title={value}
+        className={`inline-flex max-w-full items-center truncate rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chipClass}`}
+      >
+        {value}
+      </span>
     );
   };
 
@@ -529,6 +560,7 @@ export default function ServicesPage() {
     {
       key: "service_report_number",
       label: "Service Report Number",
+      shortLabel: "SR Number",
       width: "11%",
       sortable: true,
       render: (s) => (
@@ -543,7 +575,8 @@ export default function ServicesPage() {
     },
     {
       key: "service_report_date",
-      label: "Date",
+      label: "Date (Service Report)",
+      shortLabel: "Date",
       width: "6%",
       sortable: true,
       render: (s) => dash(s.service_report_date),
@@ -560,6 +593,7 @@ export default function ServicesPage() {
     {
       key: "analysis_classification",
       label: "Analysis Classification",
+      shortLabel: "Classification",
       width: "8%",
       sortable: true,
       render: (s) => (
@@ -576,6 +610,7 @@ export default function ServicesPage() {
     {
       key: "client_type",
       label: "Client Type",
+      shortLabel: "Type",
       width: "5%",
       sortable: true,
       render: (s) => dash(s.client_type),
@@ -601,6 +636,7 @@ export default function ServicesPage() {
     {
       key: "sample_type",
       label: "Sample Type",
+      shortLabel: "Sample",
       width: "6%",
       sortable: true,
       render: (s) => dash(s.sample_type),
@@ -619,27 +655,31 @@ export default function ServicesPage() {
     {
       key: "status_of_analysis",
       label: "Status of Analysis",
-      width: "6%",
+      shortLabel: "Analysis Status",
+      width: "7%",
       sortable: true,
-      render: (s) => dash(s.status_of_analysis),
+      render: (s) => renderStatusChip(s.status_of_analysis),
     },
     {
       key: "status_of_completion",
       label: "Status of Completion",
-      width: "7%",
+      shortLabel: "Completion",
+      width: "8%",
       sortable: true,
       render: (s) => renderStatusDropdown(s.id, s.status),
     },
     {
       key: "status_of_submission",
       label: "Status of Submission",
-      width: "6%",
+      shortLabel: "Submission",
+      width: "7%",
       sortable: true,
-      render: (s) => dash(s.status_of_submission),
+      render: (s) => renderStatusChip(s.status_of_submission),
     },
     {
       key: "report_link",
       label: "Service Report Link",
+      shortLabel: "Report Link",
       width: "5%",
       render: (s) =>
         s.report_link ? (
@@ -659,12 +699,14 @@ export default function ServicesPage() {
     {
       key: "client_sequences_link",
       label: "Client Sequences Link",
+      shortLabel: "Sequences",
       width: "5%",
       render: (s) => renderLinkCell(s.client_sequences_link, "Sequences"),
     },
     {
       key: "notes",
       label: "Notes/Remarks",
+      shortLabel: "Notes",
       width: "6%",
       sortable: true,
       render: (s) => (
