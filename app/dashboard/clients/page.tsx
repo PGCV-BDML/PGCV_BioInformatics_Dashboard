@@ -22,40 +22,14 @@ import {
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
 import {
+  buildClientPayload,
   createEmptyClientForm,
-  createClientRecord,
+  mapClientRowToRecord,
   type ClientFormState,
   type ClientRecord,
+  type SupabaseClientRow,
 } from "@/lib/clients";
-
-const clientRowsSeed: ClientRecord[] = [
-  {
-    id: "client-001",
-    createdAt: new Date().toISOString(),
-    clientId: "CL-1001",
-    clientName: "Dr. Maria Santos",
-    projectId: "PRJ-204",
-    emailAddress: "maria.santos@example.org",
-    sex: "Female",
-    mobileNumber: "+63 917 123 4567",
-    affiliation: "Philippine Genome Center Visayas",
-    affiliationAddress: "Diliman, Quezon City",
-    designation: "Research Scientist",
-  },
-  {
-    id: "client-002",
-    createdAt: new Date().toISOString(),
-    clientId: "CL-1002",
-    clientName: "Prof. Daniel Cruz",
-    projectId: "PRJ-205",
-    emailAddress: "daniel.cruz@example.org",
-    sex: "Male",
-    mobileNumber: "+63 920 987 6543",
-    affiliation: "UP Visayas",
-    affiliationAddress: "Iloilo City",
-    designation: "Professor",
-  },
-];
+import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 
 const FIELD_CONFIG: Array<{
   key: keyof ClientFormState;
@@ -130,20 +104,51 @@ const FIELD_CONFIG: Array<{
 ];
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<ClientRecord[]>(clientRowsSeed);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
   const [formState, setFormState] = useState<ClientFormState>(
     createEmptyClientForm(),
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading] = useState(false);
-  const [loadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
 
   useEffect(() => {
     toggleSidebar(false);
   }, [toggleSidebar]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadClients() {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const rows = await getRowsFromDB<SupabaseClientRow>("client");
+        if (!isMounted) return;
+
+        setClients(rows.map(mapClientRowToRecord));
+      } catch (error) {
+        console.error("Failed to load clients", error);
+        if (isMounted) {
+          setLoadError("Couldn't load client records right now.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadClients();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -172,7 +177,41 @@ export default function ClientsPage() {
       setIsSaving(true);
 
       try {
-        const nextClient = createClientRecord(formState);
+        const clientId = crypto.randomUUID();
+        const payload = buildClientPayload(formState);
+
+        let savedRow: SupabaseClientRow | null = null;
+
+        try {
+          savedRow = (await saveDataToDB(
+            "client",
+            clientId,
+            payload,
+          )) as SupabaseClientRow;
+        } catch (error) {
+          console.warn(
+            "Primary client insert failed; trying legacy fallback.",
+            error,
+          );
+          savedRow = (await saveDataToDB("client", clientId, {
+            name: formState.clientName.trim(),
+            affiliation: formState.affiliation.trim(),
+            contact_info:
+              [formState.emailAddress.trim(), formState.mobileNumber.trim()]
+                .filter(Boolean)
+                .join(" | ") || formState.clientName.trim(),
+            notes: `Project ID: ${formState.projectId.trim() || "N/A"}`,
+            client_id: formState.clientId.trim(),
+          })) as SupabaseClientRow;
+        }
+
+        const nextClient = mapClientRowToRecord(
+          savedRow ?? {
+            id: clientId,
+            ...payload,
+          },
+        );
+
         setClients((prev) => [nextClient, ...prev]);
         setFormState(createEmptyClientForm());
         showToast("Client added successfully.", "success");
