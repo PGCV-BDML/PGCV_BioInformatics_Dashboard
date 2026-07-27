@@ -62,55 +62,33 @@ const SlideOverModal = memo(function SlideOverModal({
 }: SlideOverModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
 
-  const getFocusableElements = (panel: HTMLElement) =>
-    panel.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-
-  // Initial focus + restore on close — only when isOpen toggles, not on parent re-renders.
   useEffect(() => {
     if (!isOpen) return;
 
+    // Store current focus to restore later
     previousFocusRef.current = document.activeElement as HTMLElement;
 
+    // Focus the panel
     const panel = panelRef.current;
     if (panel) {
-      const firstField = panel.querySelector<HTMLElement>(
-        "input, select, textarea",
-      );
-      if (firstField) {
-        firstField.focus();
+      // Focus first focusable element or the panel itself
+      const focusable = panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length > 0) {
+        focusable[0]?.focus();
       } else {
-        const focusable = getFocusableElements(panel);
-        if (focusable.length > 0) {
-          focusable[0]?.focus();
-        } else {
-          panel.focus();
-        }
+        panel.focus();
       }
     }
 
-    return () => {
-      previousFocusRef.current?.focus();
-    };
-  }, [isOpen]);
-
-  // Keyboard trap — stable handler; onClose read from ref to avoid re-subscribing.
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const panel = panelRef.current;
-
+    // Trap Tab key and handle Escape
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onCloseRef.current();
+      if (e.key === 'Escape') {
+        onClose();
         return;
       }
-      if (e.key === "Tab" && panel) {
-        const focusable = getFocusableElements(panel);
+      if (e.key === 'Tab' && panel) {
+        const focusable = panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusable.length === 0) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -124,11 +102,13 @@ const SlideOverModal = memo(function SlideOverModal({
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
+      // Restore focus
+      previousFocusRef.current?.focus();
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   const renderDefaultFooter = () => (
     <div className="flex gap-2.5 justify-end">
