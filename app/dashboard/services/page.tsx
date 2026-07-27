@@ -1,27 +1,16 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useTableState } from "@/hooks/useTableState";
-import { useDashboardUI } from "../../components/dashboard-ui-context";
-import Link from "next/link";
-
-import Pagination from "../../components/pagination";
-import DataTable, { Column } from "../../components/datatable";
-import AnalysisSidebar, {
-  AnalysisFormState,
-  EMPTY_ANALYSIS_FORM,
-} from "../../components/analysismodal";
-import ServiceReportModal from "../../components/service-report-modal";
-import { PageHeader } from "../../components/pageheader";
-import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import {
   Search,
   Dna,
   FileText,
   ChevronDown,
+  ChevronRight,
   Plus,
   Inbox,
   ExternalLink,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -29,6 +18,8 @@ import {
   getNameIdFromDB,
   getUsersFromDB,
   saveDataToDB,
+  deleteDataFromDB,
+  supabase,
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import {
@@ -36,6 +27,8 @@ import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
   nextServiceReportNumber,
+  STATUS_OF_ANALYSIS_OPTIONS,
+  STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
   Analysis,
@@ -48,6 +41,20 @@ import {
 } from "../../../types/database";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../components/toast";
+import DeleteModal from "../../components/deletemodal";
+import Pagination from "../../components/pagination";
+import DataTable, { Column } from "../../components/datatable";
+import AnalysisSidebar, {
+  AnalysisFormState,
+  EMPTY_ANALYSIS_FORM,
+} from "../../components/analysismodal";
+import ServiceReportModal from "../../components/service-report-modal";
+import { PageHeader } from "../../components/pageheader";
+import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
+import { useTableState } from "@/hooks/useTableState";
+import { useDashboardUI } from "../../components/dashboard-ui-context";
+import Link from "next/link";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 
 interface ServiceProjectRow {
   id: string;
@@ -67,6 +74,7 @@ interface ServiceProjectRow {
   report_link: string;
   client_sequences_link: string;
   notes: string;
+  linked_project_id: string;
   /** Display helpers / legacy */
   project_name: string;
   analysis_pipeline: string;
@@ -98,6 +106,78 @@ function dash(value: string | null | undefined): string {
   return t || "—";
 }
 
+function rowToFormState(row: ServiceProjectRow): AnalysisFormState {
+  return {
+    service_report_number: row.service_report_number,
+    service_report_date: row.service_report_date,
+    pipeline: row.analysis_classification,
+    application: row.application,
+    client_name: row.client === "—" ? "" : row.client,
+    client_type: row.client_type,
+    external_client_id: row.external_client_id,
+    external_project_id: row.external_project_id,
+    sample_type: row.sample_type,
+    run_id: row.run_id,
+    status_of_analysis: row.status_of_analysis,
+    status_of_completion: row.status_of_completion,
+    status_of_submission: row.status_of_submission,
+    service_report_link: row.report_link,
+    client_sequences_link: row.client_sequences_link,
+    notes: row.notes,
+    project_id: row.linked_project_id,
+    assignee: row.assignee === "Unassigned" ? "" : row.assignee,
+  };
+}
+
+function analysisToRow(
+  a: Analysis,
+  opts: {
+    projectName?: string | null;
+    clientFromProject?: string | null;
+    serviceName?: string | null;
+    serviceCategory?: ServiceCategory | null;
+    assigneeName: string;
+  },
+): ServiceProjectRow {
+  const srDate = a.service_report_date
+    ? a.service_report_date
+    : a.started_at
+      ? (a.started_at.split("T")[0] ?? "")
+      : "";
+  return {
+    id: a.id,
+    service_report_number: a.service_report_number ?? "",
+    service_report_date: srDate,
+    application: a.application ?? "",
+    analysis_classification: a.pipeline ?? "",
+    client: a.client_name || opts.clientFromProject || "",
+    client_type: a.client_type ?? "",
+    external_client_id: a.external_client_id ?? "",
+    external_project_id: a.external_project_id ?? "",
+    sample_type: a.sample_type ?? "",
+    run_id: a.run_id ?? "",
+    status_of_analysis: a.status_of_analysis ?? "",
+    status_of_completion: a.status_of_completion ?? "",
+    status_of_submission: a.status_of_submission ?? "",
+    report_link: a.service_report_link ?? "",
+    client_sequences_link: a.client_sequences_link ?? "",
+    notes: a.notes ?? "",
+    linked_project_id: a.project_id ?? "",
+    project_name:
+      a.service_report_number ||
+      a.external_project_id ||
+      opts.projectName ||
+      "Untitled analysis",
+    analysis_pipeline: displayAnalysisLabel(a.pipeline, a.application),
+    status: a.status as AnalysisStatus,
+    assignee: opts.assigneeName,
+    started: srDate || "—",
+    completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
+    service_name: opts.serviceName ?? null,
+    service_category: opts.serviceCategory ?? null,
+  };
+}
+
 export default function ServicesPage() {
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,7 +191,11 @@ export default function ServicesPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formState, setFormState] = useState<AnalysisFormState>(EMPTY_ANALYSIS_FORM);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<ServiceProjectRow | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [selectedReportRow, setSelectedReportRow] =
     useState<ServiceProjectRow | null>(null);
@@ -172,42 +256,13 @@ export default function ServicesPage() {
           const assigneeName = a.assignee_id
             ? (tmpUserMap.get(a.assignee_id) ?? "Unassigned")
             : "Unassigned";
-          const srDate = a.service_report_date
-            ? a.service_report_date
-            : a.started_at
-              ? (a.started_at.split("T")[0] ?? "")
-              : "";
-          return {
-            id: a.id,
-            service_report_number: a.service_report_number ?? "",
-            service_report_date: srDate,
-            application: a.application ?? "",
-            analysis_classification: a.pipeline ?? "",
-            client: a.client_name || proj?.client || "",
-            client_type: a.client_type ?? "",
-            external_client_id: a.external_client_id ?? "",
-            external_project_id: a.external_project_id ?? "",
-            sample_type: a.sample_type ?? "",
-            run_id: a.run_id ?? "",
-            status_of_analysis: a.status_of_analysis ?? "",
-            status_of_completion: a.status_of_completion ?? "",
-            status_of_submission: a.status_of_submission ?? "",
-            report_link: a.service_report_link ?? "",
-            client_sequences_link: a.client_sequences_link ?? "",
-            notes: a.notes ?? "",
-            project_name:
-              a.service_report_number ||
-              a.external_project_id ||
-              proj?.name ||
-              "Untitled analysis",
-            analysis_pipeline: displayAnalysisLabel(a.pipeline, a.application),
-            status: a.status as AnalysisStatus,
-            assignee: assigneeName,
-            started: srDate || "—",
-            completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
-            service_name: proj?.service_name ?? null,
-            service_category: proj?.service_category ?? null,
-          };
+          return analysisToRow(a, {
+            projectName: proj?.name,
+            clientFromProject: proj?.client,
+            serviceName: proj?.service_name,
+            serviceCategory: proj?.service_category,
+            assigneeName,
+          });
         });
 
         setServicesList(rows);
@@ -290,6 +345,65 @@ export default function ServicesPage() {
     }
   };
 
+  const handleTrackerStatusChange = async (
+    id: string,
+    field: "status_of_analysis" | "status_of_submission",
+    label: string,
+  ) => {
+    const row = servicesList.find((s) => s.id === id);
+    if (!row) return;
+
+    const nextAnalysis =
+      field === "status_of_analysis" ? label : row.status_of_analysis;
+    const nextSubmission =
+      field === "status_of_submission" ? label : row.status_of_submission;
+    const legacyStatus = deriveLegacyStatus({
+      status_of_completion: row.status_of_completion,
+      status_of_submission: nextSubmission,
+      status_of_analysis: nextAnalysis,
+    });
+    const completedAt =
+      legacyStatus === "completed" ? new Date().toISOString() : null;
+
+    try {
+      const updated = await saveDataToDB("analysis", id, {
+        [field]: label || null,
+        status: legacyStatus,
+        completed_at: completedAt,
+      });
+      setServicesList((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                [field]: label,
+                status: updated.status as AnalysisStatus,
+                completed: updated.completed_at
+                  ? (updated.completed_at.split("T")[0] ?? "—")
+                  : "—",
+              }
+            : item,
+        ),
+      );
+      await syncAnalysisToTaskSafe({
+        id: updated.id,
+        project_id: updated.project_id,
+        pipeline: updated.pipeline,
+        pipeline_version: updated.pipeline_version,
+        status: updated.status as AnalysisStatus,
+        assignee_id: updated.assignee_id,
+        started_at: updated.started_at,
+        completed_at: updated.completed_at,
+        projectName: row.project_name,
+        serviceReportNumber: updated.service_report_number,
+        application: updated.application,
+      });
+      showToast("Status updated.", "success");
+    } catch {
+      showToast("Failed to update status.", "error");
+    }
+  };
+
   const handleInputChange = useCallback(
     (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => {
       setFormState((prev) => ({ ...prev, [key]: value }));
@@ -297,7 +411,37 @@ export default function ServicesPage() {
     [],
   );
 
-  const handleCreateAnalysis = useCallback(
+  const closeSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+    setIsEditing(false);
+    setSelectedAnalysis(null);
+    setFormState(EMPTY_ANALYSIS_FORM);
+  }, []);
+
+  const openCreateSidebar = useCallback(() => {
+    const today = new Date();
+    const dateKey = today.toISOString().slice(0, 10);
+    setIsEditing(false);
+    setSelectedAnalysis(null);
+    setFormState({
+      ...EMPTY_ANALYSIS_FORM,
+      service_report_number: nextServiceReportNumber(
+        servicesList.map((s) => s.service_report_number),
+        today,
+      ),
+      service_report_date: dateKey,
+    });
+    setIsSidebarOpen(true);
+  }, [servicesList]);
+
+  const openEditSidebar = useCallback((row: ServiceProjectRow) => {
+    setSelectedAnalysis(row);
+    setIsEditing(true);
+    setFormState(rowToFormState(row));
+    setIsSidebarOpen(true);
+  }, []);
+
+  const handleSaveAnalysis = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (isSubmitting) return;
@@ -324,16 +468,15 @@ export default function ServicesPage() {
           status_of_submission: formState.status_of_submission,
           status_of_analysis: formState.status_of_analysis,
         });
-        const startedAt = new Date().toISOString();
-        const completedAt = legacyStatus === "completed" ? startedAt : null;
+        const nowIso = new Date().toISOString();
+        const completedAt = legacyStatus === "completed" ? nowIso : null;
 
-        const created = await saveDataToDB("analysis", crypto.randomUUID(), {
+        const payload = {
           project_id: emptyToNull(formState.project_id),
           pipeline: emptyToNull(formState.pipeline),
           pipeline_version: null,
           assignee_id: assigneeId,
           status: legacyStatus,
-          started_at: startedAt,
           completed_at: completedAt,
           service_report_number: emptyToNull(formState.service_report_number),
           service_report_date: emptyToNull(formState.service_report_date),
@@ -350,66 +493,97 @@ export default function ServicesPage() {
           service_report_link: emptyToNull(formState.service_report_link),
           client_sequences_link: emptyToNull(formState.client_sequences_link),
           notes: emptyToNull(formState.notes),
-        });
-
-        const targetProject = availableProjects.find((p) => p.id === formState.project_id);
-        await syncAnalysisToTaskSafe({
-          id: created.id,
-          project_id: created.project_id,
-          pipeline: created.pipeline,
-          pipeline_version: created.pipeline_version,
-          status: created.status as AnalysisStatus,
-          assignee_id: created.assignee_id,
-          started_at: created.started_at,
-          completed_at: created.completed_at,
-          projectName: targetProject?.name ?? created.client_name,
-          serviceReportNumber: created.service_report_number,
-          application: created.application,
-        });
-
-        const newRow: ServiceProjectRow = {
-          id: created.id,
-          service_report_number: created.service_report_number ?? "",
-          service_report_date: created.service_report_date ?? "",
-          application: created.application ?? "",
-          analysis_classification: created.pipeline ?? "",
-          client: created.client_name || targetProject?.client || "",
-          client_type: created.client_type ?? "",
-          external_client_id: created.external_client_id ?? "",
-          external_project_id: created.external_project_id ?? "",
-          sample_type: created.sample_type ?? "",
-          run_id: created.run_id ?? "",
-          status_of_analysis: created.status_of_analysis ?? "",
-          status_of_completion: created.status_of_completion ?? "",
-          status_of_submission: created.status_of_submission ?? "",
-          report_link: created.service_report_link ?? "",
-          client_sequences_link: created.client_sequences_link ?? "",
-          notes: created.notes ?? "",
-          project_name:
-            created.service_report_number ||
-            created.external_project_id ||
-            targetProject?.name ||
-            "Untitled analysis",
-          analysis_pipeline: displayAnalysisLabel(created.pipeline, created.application),
-          status: created.status as AnalysisStatus,
-          assignee: formState.assignee || "Unassigned",
-          started: created.service_report_date || (startedAt.split("T")[0] ?? ""),
-          completed: completedAt ? (completedAt.split("T")[0] ?? "—") : "—",
-          service_name: targetProject?.service_name ?? null,
-          service_category: targetProject?.service_category ?? null,
+          ...(isEditing ? {} : { started_at: nowIso }),
         };
-        setServicesList((prev) => [newRow, ...prev]);
-        setFormState(EMPTY_ANALYSIS_FORM);
-        setIsSidebarOpen(false);
-        showToast("Analysis created successfully.", "success");
+
+        const targetId = isEditing && selectedAnalysis
+          ? selectedAnalysis.id
+          : crypto.randomUUID();
+        const saved = await saveDataToDB("analysis", targetId, payload);
+        const targetProject = availableProjects.find((p) => p.id === formState.project_id);
+
+        await syncAnalysisToTaskSafe({
+          id: saved.id,
+          project_id: saved.project_id,
+          pipeline: saved.pipeline,
+          pipeline_version: saved.pipeline_version,
+          status: saved.status as AnalysisStatus,
+          assignee_id: saved.assignee_id,
+          started_at: saved.started_at,
+          completed_at: saved.completed_at,
+          projectName: targetProject?.name ?? saved.client_name,
+          serviceReportNumber: saved.service_report_number,
+          application: saved.application,
+        });
+
+        const row = analysisToRow(saved as Analysis, {
+          projectName: targetProject?.name,
+          clientFromProject: targetProject?.client,
+          serviceName: targetProject?.service_name,
+          serviceCategory: targetProject?.service_category,
+          assigneeName: formState.assignee || "Unassigned",
+        });
+
+        if (isEditing) {
+          setServicesList((prev) =>
+            prev.map((item) => (item.id === row.id ? row : item)),
+          );
+          showToast("Analysis updated successfully.", "success");
+        } else {
+          setServicesList((prev) => [row, ...prev]);
+          showToast("Analysis created successfully.", "success");
+        }
+        closeSidebar();
       } catch {
-        showToast("Failed to create analysis.", "error");
+        showToast(
+          isEditing ? "Failed to update analysis." : "Failed to create analysis.",
+          "error",
+        );
       } finally {
         setIsSubmitting(false);
       }
     },
-    [formState, availableProjects, showToast, isSubmitting],
+    [
+      formState,
+      availableProjects,
+      showToast,
+      isSubmitting,
+      isEditing,
+      selectedAnalysis,
+      closeSidebar,
+    ],
   );
+
+  const handleDeleteAnalysis = useCallback(async () => {
+    if (!selectedAnalysis) return;
+    setIsDeleting(true);
+    try {
+      const analysisId = selectedAnalysis.id;
+
+      // Clear dependent rows first (no ON DELETE CASCADE on these FKs).
+      const { data: linkedTasks } = await supabase
+        .from("task")
+        .select("id")
+        .eq("linked_analysis_id", analysisId);
+      const taskIds = (linkedTasks ?? []).map((t) => t.id as string);
+      if (taskIds.length > 0) {
+        await supabase.from("task_tag").delete().in("task_id", taskIds);
+        await supabase.from("task").delete().in("id", taskIds);
+      }
+      await supabase.from("service_report").delete().eq("analysis_id", analysisId);
+      await deleteDataFromDB("analysis", analysisId);
+
+      setServicesList((prev) => prev.filter((item) => item.id !== analysisId));
+      setShowDeleteConfirm(false);
+      setSelectedAnalysis(null);
+      showToast("Analysis deleted.", "success");
+    } catch (err) {
+      console.error("Failed to delete analysis:", err);
+      showToast("Failed to delete analysis.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedAnalysis, showToast]);
 
   const handleReportGenerated = useCallback(
     (analysisId: string, reportLink: string) => {
@@ -464,26 +638,33 @@ export default function ServicesPage() {
     resetKey: `${searchQuery}-${activeFilter}`,
   });
 
-  const renderStatusDropdown = (id: string, currentStatus: string) => {
+  const statusChipColors = (value: string) => {
+    const key = value.toLowerCase();
     let colorClasses = "bg-gray-100 text-gray-700 border-gray-200";
     let chevronClass = "text-gray-500";
 
-    if (currentStatus === "completed") {
+    if (key === "completed") {
       colorClasses = "bg-[#eaf7ee] text-[#2e7d32] border-[#2e7d32]/25";
       chevronClass = "text-[#2e7d32]";
-    } else if (currentStatus === "ongoing") {
+    } else if (key === "ongoing" || key === "on-going" || key === "on going") {
       colorClasses = "bg-[#fff8e1] text-[#f57f17] border-[#f57f17]/25";
       chevronClass = "text-[#f57f17]";
-    } else if (currentStatus === "for_approval") {
+    } else if (key === "for_approval" || key === "for approval") {
       colorClasses = "bg-blue-50 text-blue-700 border-blue-200";
       chevronClass = "text-blue-700";
-    } else if (currentStatus === "on_hold") {
+    } else if (key.includes("on hold") || key === "on_hold") {
       colorClasses = "bg-slate-100 text-slate-600 border-slate-200";
       chevronClass = "text-slate-500";
-    } else if (currentStatus === "submitted") {
+    } else if (key === "submitted") {
       colorClasses = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
       chevronClass = "text-[#6b21a8]";
     }
+
+    return { colorClasses, chevronClass };
+  };
+
+  const renderStatusDropdown = (id: string, currentStatus: string) => {
+    const { colorClasses, chevronClass } = statusChipColors(currentStatus);
 
     return (
       <div className="relative inline-flex items-center max-w-full">
@@ -510,33 +691,47 @@ export default function ServicesPage() {
     );
   };
 
-  const renderStatusChip = (label: string | null | undefined) => {
-    const value = (label ?? "").trim();
-    if (!value) {
-      return <span className="text-slate-400">—</span>;
-    }
-
-    const key = value.toLowerCase();
-    let chipClass = "bg-slate-100 text-slate-600 border-slate-200";
-    if (key === "completed") {
-      chipClass = "bg-[#eaf7ee] text-[#2e7d32] border-[#2e7d32]/25";
-    } else if (key === "on-going" || key === "ongoing" || key === "on going") {
-      chipClass = "bg-[#fff8e1] text-[#f57f17] border-[#f57f17]/25";
-    } else if (key === "submitted") {
-      chipClass = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
-    } else if (key === "for approval" || key === "for_approval") {
-      chipClass = "bg-blue-50 text-blue-700 border-blue-200";
-    } else if (key.includes("on hold")) {
-      chipClass = "bg-slate-100 text-slate-600 border-slate-200";
-    }
+  const renderTrackerStatusDropdown = (
+    id: string,
+    field: "status_of_analysis" | "status_of_submission",
+    currentLabel: string,
+    options: readonly string[],
+    ariaLabel: string,
+  ) => {
+    const value = currentLabel.trim();
+    const optionSet = new Set(options);
+    const { colorClasses, chevronClass } = statusChipColors(value || "blank");
 
     return (
-      <span
-        title={value}
-        className={`inline-flex max-w-full items-center truncate rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chipClass}`}
-      >
-        {value}
-      </span>
+      <div className="relative inline-flex items-center max-w-full">
+        <select
+          value={value}
+          onChange={(e) => handleTrackerStatusChange(id, field, e.target.value)}
+          aria-label={ariaLabel}
+          className={`pl-2.5 pr-6 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 appearance-none whitespace-nowrap max-w-full transition-all ${colorClasses}`}
+        >
+          <option value="" className="bg-white text-slate-800 normal-case text-xs">
+            —
+          </option>
+          {options.map((opt) => (
+            <option
+              key={opt}
+              value={opt}
+              className="bg-white text-slate-800 normal-case text-xs"
+            >
+              {opt}
+            </option>
+          ))}
+          {value && !optionSet.has(value) ? (
+            <option value={value} className="bg-white text-slate-800 normal-case text-xs">
+              {value}
+            </option>
+          ) : null}
+        </select>
+        <ChevronDown
+          className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+        />
+      </div>
     );
   };
 
@@ -656,14 +851,21 @@ export default function ServicesPage() {
       key: "status_of_analysis",
       label: "Status of Analysis",
       shortLabel: "Analysis Status",
-      width: "7%",
+      width: "8%",
       sortable: true,
-      render: (s) => renderStatusChip(s.status_of_analysis),
+      render: (s) =>
+        renderTrackerStatusDropdown(
+          s.id,
+          "status_of_analysis",
+          s.status_of_analysis,
+          STATUS_OF_ANALYSIS_OPTIONS,
+          "Status of Analysis",
+        ),
     },
     {
       key: "status_of_completion",
       label: "Status of Completion",
-      shortLabel: "Completion",
+      shortLabel: "Completion Status",
       width: "8%",
       sortable: true,
       render: (s) => renderStatusDropdown(s.id, s.status),
@@ -671,10 +873,17 @@ export default function ServicesPage() {
     {
       key: "status_of_submission",
       label: "Status of Submission",
-      shortLabel: "Submission",
-      width: "7%",
+      shortLabel: "Submission Status",
+      width: "8%",
       sortable: true,
-      render: (s) => renderStatusChip(s.status_of_submission),
+      render: (s) =>
+        renderTrackerStatusDropdown(
+          s.id,
+          "status_of_submission",
+          s.status_of_submission,
+          STATUS_OF_SUBMISSION_OPTIONS,
+          "Status of Submission",
+        ),
     },
     {
       key: "report_link",
@@ -713,6 +922,36 @@ export default function ServicesPage() {
         <span title={s.notes || undefined}>{dash(s.notes)}</span>
       ),
     },
+    {
+      key: "id",
+      label: "Actions",
+      width: "5%",
+      render: (s) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => openEditSidebar(s)}
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+            title="Edit analysis"
+          >
+            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAnalysis(s);
+              setShowDeleteConfirm(true);
+            }}
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
+            title="Delete analysis"
+          >
+            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -740,19 +979,7 @@ export default function ServicesPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                const today = new Date();
-                const dateKey = today.toISOString().slice(0, 10);
-                setFormState({
-                  ...EMPTY_ANALYSIS_FORM,
-                  service_report_number: nextServiceReportNumber(
-                    servicesList.map((s) => s.service_report_number),
-                    today,
-                  ),
-                  service_report_date: dateKey,
-                });
-                setIsSidebarOpen(true);
-              }}
+              onClick={openCreateSidebar}
               className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
@@ -846,12 +1073,28 @@ export default function ServicesPage() {
       <AnalysisSidebar
         isOpen={isSidebarOpen}
         isSaving={isSubmitting}
+        isEditing={isEditing}
         formState={formState}
         availableProjects={availableProjects}
         availableAssignees={availableAssignees}
-        onClose={() => setIsSidebarOpen(false)}
+        onClose={closeSidebar}
         onChange={handleInputChange}
-        onSubmit={handleCreateAnalysis}
+        onSubmit={handleSaveAnalysis}
+      />
+
+      <DeleteModal
+        isOpen={showDeleteConfirm}
+        itemName={
+          selectedAnalysis?.service_report_number ||
+          selectedAnalysis?.project_name ||
+          "this analysis"
+        }
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          if (!isSidebarOpen) setSelectedAnalysis(null);
+        }}
+        onConfirm={handleDeleteAnalysis}
+        isDeleting={isDeleting}
       />
     </div>
   );
