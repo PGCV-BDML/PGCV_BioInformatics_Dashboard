@@ -1,9 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { User, Activity, Layers, Dna } from "lucide-react";
 import type { AnalysisStatus } from "@/types/database";
+
+export const ANALYSIS_OPTIONS = [
+  "Amplicon",
+  "Whole Genome Assembly",
+  "16s Metabarcoding",
+  "eDNA Analysis",
+  "Phylogenetics",
+  "Transcriptomics",
+  "CapSeq",
+  "mtDNA",
+  "cpDNA",
+  "Shotgun Metagenomics",
+  "Population Genetics",
+  "Others",
+] as const;
+
+export const ANALYSIS_OTHER = "Others";
 
 export type AnalysisFormState = {
   project_id: string;
@@ -24,7 +41,6 @@ interface AnalysisSidebarProps {
   isSaving?: boolean;
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
-  availablePipelines: string[];
   availableAssignees: string[];
   onClose: () => void;
   onChange: (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => void;
@@ -36,18 +52,30 @@ export default function AnalysisSidebar({
   isSaving = false,
   formState,
   availableProjects,
-  availablePipelines,
   availableAssignees,
   onClose,
   onChange,
   onSubmit,
 }: AnalysisSidebarProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [analysisSelection, setAnalysisSelection] = useState("");
+  const [otherSpecify, setOtherSpecify] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setAnalysisSelection("");
+      setOtherSpecify("");
+      setErrors({});
+    }
+  }, [isOpen]);
 
   const validate = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!formState.project_id) errs.project_id = "Please select a project";
-    if (!formState.pipeline) errs.pipeline = "Please select a pipeline";
+    if (!analysisSelection) errs.pipeline = "Please select an analysis";
+    else if (analysisSelection === ANALYSIS_OTHER && !otherSpecify.trim()) {
+      errs.pipeline = "Please specify the analysis type";
+    }
     if (!formState.pipeline_version.trim()) errs.pipeline_version = "Version is required";
     if (!formState.assignee) errs.assignee = "Please select an assignee";
     return errs;
@@ -69,12 +97,24 @@ export default function AnalysisSidebar({
     onChange(key, value);
   };
 
+  const handleAnalysisSelect = (value: string) => {
+    setErrors((prev) => ({ ...prev, pipeline: "" }));
+    setAnalysisSelection(value);
+    if (value === ANALYSIS_OTHER) {
+      setOtherSpecify("");
+      onChange("pipeline", "");
+    } else {
+      setOtherSpecify("");
+      onChange("pipeline", value);
+    }
+  };
+
   return (
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Run New Pipeline"
-      subtitle="Fill in the parameters to initiate a pipeline analysis."
+      title="Service Report Tracker"
+      subtitle="Fill in the parameters to record a service analysis."
       onSubmit={handleSubmit}
       submitLabel="Initialize Run"
       isSaving={isSaving}
@@ -117,23 +157,23 @@ export default function AnalysisSidebar({
         </div>
       </div>
 
-      {/* 2. Pipeline Configuration */}
+      {/* 2. Analysis Configuration */}
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(
           <Dna className="w-3.5 h-3.5" />,
-          "Analysis Pipeline",
+          "Analysis",
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="analysis-pipeline" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-              Pipeline
+              Analysis
             </label>
             <select
               id="analysis-pipeline"
               required
               aria-invalid={!!errors.pipeline}
-              value={formState.pipeline}
-              onChange={(e) => handleChange("pipeline", e.target.value)}
+              value={analysisSelection}
+              onChange={(e) => handleAnalysisSelect(e.target.value)}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             >
               <option
@@ -141,18 +181,34 @@ export default function AnalysisSidebar({
                 disabled
                 className="text-slate-400 font-bold"
               >
-                Select pipeline...
+                Select analysis...
               </option>
-              {availablePipelines.map((pipeline) => (
+              {ANALYSIS_OPTIONS.map((analysis) => (
                 <option
-                  key={pipeline}
-                  value={pipeline}
+                  key={analysis}
+                  value={analysis}
                   className="text-slate-800 font-bold"
                 >
-                  {pipeline}
+                  {analysis === ANALYSIS_OTHER ? "Others: specify" : analysis}
                 </option>
               ))}
             </select>
+            {analysisSelection === ANALYSIS_OTHER && (
+              <input
+                id="analysis-other-specify"
+                type="text"
+                required
+                aria-invalid={!!errors.pipeline}
+                value={otherSpecify}
+                onChange={(e) => {
+                  setErrors((prev) => ({ ...prev, pipeline: "" }));
+                  setOtherSpecify(e.target.value);
+                  onChange("pipeline", e.target.value);
+                }}
+                placeholder="Specify analysis type..."
+                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
+              />
+            )}
             {errors.pipeline && (
               <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.pipeline}</p>
             )}
