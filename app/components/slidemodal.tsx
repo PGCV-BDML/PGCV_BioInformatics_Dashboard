@@ -63,6 +63,14 @@ const SlideOverModal = memo(function SlideOverModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
+  const getFocusableElements = (panel: HTMLElement) =>
+    Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'button:not([data-modal-close]):not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])',
+      ),
+    );
+
+  // Initial focus + restore on close — only when isOpen toggles, not on parent re-renders.
   useEffect(() => {
     if (!isOpen) return;
 
@@ -187,6 +195,7 @@ const SlideOverModal = memo(function SlideOverModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
+            data-modal-close
             tabIndex={-1}
             className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
           >

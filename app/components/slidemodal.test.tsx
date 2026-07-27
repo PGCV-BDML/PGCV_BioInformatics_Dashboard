@@ -51,18 +51,27 @@ describe("SlideOverModal", () => {
     );
   });
 
-  it("keeps the close control out of the keyboard tab order", () => {
-    const { container } = render(
-      <SlideOverModal isOpen={true} onClose={vi.fn()} title="Title">
-        <p>body</p>
+  it("keeps the close control out of the keyboard tab order", async () => {
+    const user = userEvent.setup();
+    render(
+      <SlideOverModal
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Title"
+        onSubmit={vi.fn()}
+      >
+        <input aria-label="Client name" />
       </SlideOverModal>,
     );
 
-    const xButton = container
-      .querySelector("button .lucide-x")
-      ?.closest("button");
-    expect(xButton).toBeDefined();
-    expect(xButton).toHaveAttribute("tabindex", "-1");
+    const closeButton = screen.getByRole("button", { name: /close/i });
+    const saveButton = screen.getByRole("button", { name: /save/i });
+
+    saveButton.focus();
+    await user.tab({ shift: true });
+
+    expect(closeButton).not.toHaveFocus();
+    expect(closeButton).toHaveAttribute("data-modal-close");
   });
 
   it("calls onClose when close (X) button is clicked", async () => {
