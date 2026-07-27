@@ -171,7 +171,10 @@ const SlideOverModal = memo(function SlideOverModal({
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-start justify-between border-b border-slate-100 bg-[#ffffff]">
           <div>
-            <h3 id="slideover-title" className="text-lg font-bold text-[#2a7797] tracking-tight font-aileron">
+            <h3
+              id="slideover-title"
+              className="text-lg font-bold text-[#2a7797] tracking-tight font-aileron"
+            >
               {title}
             </h3>
             {subtitle && (
@@ -184,6 +187,7 @@ const SlideOverModal = memo(function SlideOverModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
+            tabIndex={-1}
             className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
           >
             <X className="w-4 h-4" />

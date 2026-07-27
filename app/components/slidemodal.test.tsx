@@ -8,7 +8,7 @@ describe("SlideOverModal", () => {
     render(
       <SlideOverModal isOpen={true} onClose={vi.fn()} title="Modal Title">
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     expect(screen.getByText("Modal Title")).toBeInTheDocument();
   });
@@ -17,7 +17,7 @@ describe("SlideOverModal", () => {
     render(
       <SlideOverModal isOpen={false} onClose={vi.fn()} title="Modal Title">
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     // Sidebar panel is always rendered but hidden via translate-x-full
     const panel = screen
@@ -35,7 +35,7 @@ describe("SlideOverModal", () => {
         subtitle="Optional subtitle"
       >
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     expect(screen.getByText("Optional subtitle")).toBeInTheDocument();
   });
@@ -44,11 +44,25 @@ describe("SlideOverModal", () => {
     render(
       <SlideOverModal isOpen={true} onClose={vi.fn()} title="Title">
         <p data-testid="child">Custom child content</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     expect(screen.getByTestId("child")).toHaveTextContent(
-      "Custom child content"
+      "Custom child content",
     );
+  });
+
+  it("keeps the close control out of the keyboard tab order", () => {
+    const { container } = render(
+      <SlideOverModal isOpen={true} onClose={vi.fn()} title="Title">
+        <p>body</p>
+      </SlideOverModal>,
+    );
+
+    const xButton = container
+      .querySelector("button .lucide-x")
+      ?.closest("button");
+    expect(xButton).toBeDefined();
+    expect(xButton).toHaveAttribute("tabindex", "-1");
   });
 
   it("calls onClose when close (X) button is clicked", async () => {
@@ -57,12 +71,14 @@ describe("SlideOverModal", () => {
     const { container } = render(
       <SlideOverModal isOpen={true} onClose={onClose} title="Title">
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     // The close button wraps the lucide-react X icon (class "lucide-x").
     // Since the SVG is aria-hidden, the button has no accessible name,
     // so we locate it by finding the button that contains .lucide-x.
-    const xButton = container.querySelector("button .lucide-x")?.closest("button");
+    const xButton = container
+      .querySelector("button .lucide-x")
+      ?.closest("button");
     expect(xButton).toBeDefined();
     await user.click(xButton!);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -79,7 +95,7 @@ describe("SlideOverModal", () => {
         onSubmit={onSubmit}
       >
         <p>form body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     // The submit button has text "Save"
     const saveButton = screen.getByRole("button", { name: /save/i });
@@ -91,7 +107,7 @@ describe("SlideOverModal", () => {
     render(
       <SlideOverModal isOpen={true} onClose={vi.fn()} title="Title">
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     // When onSubmit is not provided, no <form> element is rendered
     expect(document.querySelector("form")).toBeNull();
@@ -109,7 +125,7 @@ describe("SlideOverModal", () => {
         submitDisabled={true}
       >
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     const saveButton = screen.getByRole("button", { name: /save/i });
     expect(saveButton).toBeDisabled();
@@ -124,11 +140,11 @@ describe("SlideOverModal", () => {
         footer={<div data-testid="custom-footer">Custom Footer</div>}
       >
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
     expect(screen.getByTestId("custom-footer")).toBeInTheDocument();
     expect(screen.getByTestId("custom-footer")).toHaveTextContent(
-      "Custom Footer"
+      "Custom Footer",
     );
     // Default footer buttons should not be present
     expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull();
@@ -144,11 +160,9 @@ describe("SlideOverModal", () => {
         submitLabel="Create"
       >
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
-    expect(
-      screen.getByRole("button", { name: /create/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create/i })).toBeInTheDocument();
   });
 
   it("renders default submit label 'Save' when submitLabel is not provided", () => {
@@ -160,10 +174,8 @@ describe("SlideOverModal", () => {
         onSubmit={vi.fn()}
       >
         <p>body</p>
-      </SlideOverModal>
+      </SlideOverModal>,
     );
-    expect(
-      screen.getByRole("button", { name: /save/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
   });
 });
