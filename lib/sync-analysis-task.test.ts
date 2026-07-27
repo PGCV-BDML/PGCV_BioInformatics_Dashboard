@@ -3,6 +3,7 @@ import {
   deriveLegacyStatus,
   displayAnalysisLabel,
   formatServiceReportNumber,
+  nextServiceReportNumber,
   normalizeClassification,
 } from "./analysis-tracker";
 import { buildAnalysisTaskTitle } from "./sync-analysis-task";
@@ -23,6 +24,23 @@ describe("formatServiceReportNumber", () => {
     expect(formatServiceReportNumber("PGCV-BIOINFO-SR-2024", 38)).toBe(
       "PGCV-BIOINFO-SR-2024-038",
     );
+  });
+});
+
+describe("nextServiceReportNumber", () => {
+  it("continues the global sequence with the current year", () => {
+    expect(
+      nextServiceReportNumber(
+        ["PGCV-BIOINFO-SR-2025-201", "PGCV-BIOINFO-SR-2026-273"],
+        new Date("2026-07-27T00:00:00Z"),
+      ),
+    ).toBe("PGCV-BIOINFO-SR-2026-274");
+  });
+
+  it("starts at 001 when no prior SR numbers exist", () => {
+    expect(
+      nextServiceReportNumber([], new Date("2026-07-27T00:00:00Z")),
+    ).toBe("PGCV-BIOINFO-SR-2026-001");
   });
 });
 
