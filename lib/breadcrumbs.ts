@@ -22,7 +22,14 @@ export const calendarBreadcrumbs: BreadcrumbItem[] = [
 
 export const servicesBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Sequence Analysis" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Service Report Tracker" },
+];
+
+export const servicesDashboardBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Overview" },
 ];
 
 export const trainingBreadcrumbs: BreadcrumbItem[] = [
