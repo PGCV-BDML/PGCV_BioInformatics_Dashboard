@@ -175,9 +175,12 @@ export default function AnalysisSidebar({
               type="text"
               value={formState.service_report_number}
               onChange={(e) => handleChange("service_report_number", e.target.value)}
-              placeholder="PGCV-BIOINFO-SR-2026-001"
+              placeholder="Auto: PGCV-BIOINFO-SR-YYYY-NNN"
               className={inputClass}
             />
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              Prefills with the next number after the latest SR# (editable).
+            </p>
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="analysis-sr-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">

@@ -6,6 +6,7 @@ import { useDashboardUI } from "../../components/dashboard-ui-context";
 import Link from "next/link";
 
 import Pagination from "../../components/pagination";
+import DataTable, { Column } from "../../components/datatable";
 import AnalysisSidebar, {
   AnalysisFormState,
   EMPTY_ANALYSIS_FORM,
@@ -20,6 +21,7 @@ import {
   ChevronDown,
   Plus,
   Inbox,
+  ExternalLink,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -33,6 +35,7 @@ import {
   deriveLegacyStatus,
   displayAnalysisLabel,
   labelFromAnalysisStatus,
+  nextServiceReportNumber,
 } from "@/lib/analysis-tracker";
 import {
   Analysis,
@@ -49,19 +52,30 @@ import { useToast } from "../../components/toast";
 interface ServiceProjectRow {
   id: string;
   service_report_number: string;
-  project_name: string;
+  service_report_date: string;
+  application: string;
+  analysis_classification: string;
   client: string;
-  service_name: string | null;
-  service_category: ServiceCategory | null;
-  analysis_pipeline: string;
-  status: AnalysisStatus;
+  client_type: string;
+  external_client_id: string;
+  external_project_id: string;
+  sample_type: string;
+  run_id: string;
+  status_of_analysis: string;
   status_of_completion: string;
   status_of_submission: string;
+  report_link: string;
+  client_sequences_link: string;
+  notes: string;
+  /** Display helpers / legacy */
+  project_name: string;
+  analysis_pipeline: string;
+  status: AnalysisStatus;
   assignee: string;
   started: string;
   completed: string;
-  report_link: string;
-  run_id: string;
+  service_name: string | null;
+  service_category: ServiceCategory | null;
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
@@ -72,11 +86,16 @@ const FILTER_OPTIONS = [
   ...ANALYSIS_STATUS_OPTIONS,
 ];
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 
 function emptyToNull(value: string): string | null {
   const t = value.trim();
   return t ? t : null;
+}
+
+function dash(value: string | null | undefined): string {
+  const t = (value ?? "").trim();
+  return t || "—";
 }
 
 export default function ServicesPage() {
@@ -153,30 +172,41 @@ export default function ServicesPage() {
           const assigneeName = a.assignee_id
             ? (tmpUserMap.get(a.assignee_id) ?? "Unassigned")
             : "Unassigned";
+          const srDate = a.service_report_date
+            ? a.service_report_date
+            : a.started_at
+              ? (a.started_at.split("T")[0] ?? "")
+              : "";
           return {
             id: a.id,
             service_report_number: a.service_report_number ?? "",
+            service_report_date: srDate,
+            application: a.application ?? "",
+            analysis_classification: a.pipeline ?? "",
+            client: a.client_name || proj?.client || "",
+            client_type: a.client_type ?? "",
+            external_client_id: a.external_client_id ?? "",
+            external_project_id: a.external_project_id ?? "",
+            sample_type: a.sample_type ?? "",
+            run_id: a.run_id ?? "",
+            status_of_analysis: a.status_of_analysis ?? "",
+            status_of_completion: a.status_of_completion ?? "",
+            status_of_submission: a.status_of_submission ?? "",
+            report_link: a.service_report_link ?? "",
+            client_sequences_link: a.client_sequences_link ?? "",
+            notes: a.notes ?? "",
             project_name:
               a.service_report_number ||
               a.external_project_id ||
               proj?.name ||
               "Untitled analysis",
-            client: a.client_name || proj?.client || "—",
-            service_name: proj?.service_name ?? null,
-            service_category: proj?.service_category ?? null,
             analysis_pipeline: displayAnalysisLabel(a.pipeline, a.application),
             status: a.status as AnalysisStatus,
-            status_of_completion: a.status_of_completion ?? "",
-            status_of_submission: a.status_of_submission ?? "",
             assignee: assigneeName,
-            started: a.service_report_date
-              ? a.service_report_date
-              : a.started_at
-                ? (a.started_at.split("T")[0] ?? "—")
-                : "—",
+            started: srDate || "—",
             completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
-            report_link: a.service_report_link ?? "",
-            run_id: a.run_id ?? "",
+            service_name: proj?.service_name ?? null,
+            service_category: proj?.service_category ?? null,
           };
         });
 
@@ -340,23 +370,33 @@ export default function ServicesPage() {
         const newRow: ServiceProjectRow = {
           id: created.id,
           service_report_number: created.service_report_number ?? "",
+          service_report_date: created.service_report_date ?? "",
+          application: created.application ?? "",
+          analysis_classification: created.pipeline ?? "",
+          client: created.client_name || targetProject?.client || "",
+          client_type: created.client_type ?? "",
+          external_client_id: created.external_client_id ?? "",
+          external_project_id: created.external_project_id ?? "",
+          sample_type: created.sample_type ?? "",
+          run_id: created.run_id ?? "",
+          status_of_analysis: created.status_of_analysis ?? "",
+          status_of_completion: created.status_of_completion ?? "",
+          status_of_submission: created.status_of_submission ?? "",
+          report_link: created.service_report_link ?? "",
+          client_sequences_link: created.client_sequences_link ?? "",
+          notes: created.notes ?? "",
           project_name:
             created.service_report_number ||
             created.external_project_id ||
             targetProject?.name ||
             "Untitled analysis",
-          client: created.client_name || targetProject?.client || "—",
-          service_name: targetProject?.service_name ?? null,
-          service_category: targetProject?.service_category ?? null,
           analysis_pipeline: displayAnalysisLabel(created.pipeline, created.application),
           status: created.status as AnalysisStatus,
-          status_of_completion: created.status_of_completion ?? "",
-          status_of_submission: created.status_of_submission ?? "",
           assignee: formState.assignee || "Unassigned",
           started: created.service_report_date || (startedAt.split("T")[0] ?? ""),
           completed: completedAt ? (completedAt.split("T")[0] ?? "—") : "—",
-          report_link: created.service_report_link ?? "",
-          run_id: created.run_id ?? "",
+          service_name: targetProject?.service_name ?? null,
+          service_category: targetProject?.service_category ?? null,
         };
         setServicesList((prev) => [newRow, ...prev]);
         setFormState(EMPTY_ANALYSIS_FORM);
@@ -397,12 +437,18 @@ export default function ServicesPage() {
 
     return records.filter(
       (item) =>
-        item.project_name.toLowerCase().includes(query) ||
         item.service_report_number.toLowerCase().includes(query) ||
+        item.project_name.toLowerCase().includes(query) ||
         item.client.toLowerCase().includes(query) ||
         item.analysis_pipeline.toLowerCase().includes(query) ||
+        item.analysis_classification.toLowerCase().includes(query) ||
+        item.application.toLowerCase().includes(query) ||
+        item.external_client_id.toLowerCase().includes(query) ||
+        item.external_project_id.toLowerCase().includes(query) ||
+        item.sample_type.toLowerCase().includes(query) ||
+        item.run_id.toLowerCase().includes(query) ||
         item.assignee.toLowerCase().includes(query) ||
-        item.run_id.toLowerCase().includes(query),
+        item.notes.toLowerCase().includes(query),
     );
   }, [searchQuery, servicesList, activeFilter]);
 
@@ -410,6 +456,8 @@ export default function ServicesPage() {
     displayed: displayedServices,
     currentPage,
     setCurrentPage,
+    sortConfig,
+    handleSort,
   } = useTableState<ServiceProjectRow>({
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
@@ -455,60 +503,180 @@ export default function ServicesPage() {
           ))}
         </select>
         <ChevronDown
-          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-0.5 pointer-events-none ${chevronClass}`}
+          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
         />
       </div>
     );
   };
 
-  const renderReportAction = (s: ServiceProjectRow) => {
-    const isCompleted = s.status === "completed";
-    return s.report_link ? (
+  const renderLinkCell = (url: string, label = "Open") => {
+    if (!url) return <span className="text-slate-400">—</span>;
+    return (
       <a
-        href={s.report_link}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-xs text-[#2e7d32] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
+        className="inline-flex items-center gap-1 text-[#2a7797] hover:text-[#4ec2bb] font-semibold underline decoration-dotted"
+        title={url}
       >
-        <FileText className="w-3.5 h-3.5" /> View Report
+        <ExternalLink className="w-3 h-3 shrink-0" />
+        {label}
       </a>
-    ) : isCompleted ? (
-      <button
-        type="button"
-        onClick={() => setSelectedReportRow(s)}
-        className="inline-flex items-center gap-1 text-[11px] bg-[#2a7797] hover:bg-[#1f5c76] text-white px-2.5 py-1 rounded-md font-semibold transition-all shadow-sm"
-      >
-        Generate Report
-      </button>
-    ) : (
-      <span className="text-xs text-slate-400 italic">Pending</span>
     );
   };
 
-  const getServiceCategoryBadge = (category: ServiceCategory | null) => {
-    if (!category) return null;
-    const colorMap: Record<ServiceCategory, string> = {
-      WGS: "bg-[#2a7797]/10 text-[#2a7797]",
-      amplicon: "bg-[#4ec2bb]/10 text-[#4ec2bb]",
-      metabarcoding: "bg-[#6bb155]/10 text-[#6bb155]",
-      transcriptomics: "bg-[#fcb016]/10 text-[#fcb016]",
-      shotgun_metag: "bg-[#92298d]/10 text-[#92298d]",
-      phylogenetics: "bg-[#282560]/10 text-[#282560]",
-      custom: "bg-slate-100 text-slate-600",
-    };
-    return (
-      <span
-        className={`inline-flex items-center text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${colorMap[category]}`}
-      >
-        {category}
-      </span>
-    );
-  };
+  const columns: Column<ServiceProjectRow>[] = [
+    {
+      key: "service_report_number",
+      label: "Service Report Number",
+      width: "11%",
+      sortable: true,
+      render: (s) => (
+        <Link
+          href={`/dashboard/services/${s.id}`}
+          className="font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-colors"
+          title={s.service_report_number || s.project_name}
+        >
+          {dash(s.service_report_number)}
+        </Link>
+      ),
+    },
+    {
+      key: "service_report_date",
+      label: "Date",
+      width: "6%",
+      sortable: true,
+      render: (s) => dash(s.service_report_date),
+    },
+    {
+      key: "application",
+      label: "Application",
+      width: "8%",
+      sortable: true,
+      render: (s) => (
+        <span title={s.application || undefined}>{dash(s.application)}</span>
+      ),
+    },
+    {
+      key: "analysis_classification",
+      label: "Analysis Classification",
+      width: "8%",
+      sortable: true,
+      render: (s) => (
+        <span title={s.analysis_pipeline}>{dash(s.analysis_classification)}</span>
+      ),
+    },
+    {
+      key: "client",
+      label: "Client",
+      width: "8%",
+      sortable: true,
+      render: (s) => <span title={s.client || undefined}>{dash(s.client)}</span>,
+    },
+    {
+      key: "client_type",
+      label: "Client Type",
+      width: "5%",
+      sortable: true,
+      render: (s) => dash(s.client_type),
+    },
+    {
+      key: "external_client_id",
+      label: "Client ID",
+      width: "6%",
+      sortable: true,
+      render: (s) => (
+        <span className="font-mono text-[11px]">{dash(s.external_client_id)}</span>
+      ),
+    },
+    {
+      key: "external_project_id",
+      label: "Project ID",
+      width: "6%",
+      sortable: true,
+      render: (s) => (
+        <span className="font-mono text-[11px]">{dash(s.external_project_id)}</span>
+      ),
+    },
+    {
+      key: "sample_type",
+      label: "Sample Type",
+      width: "6%",
+      sortable: true,
+      render: (s) => dash(s.sample_type),
+    },
+    {
+      key: "run_id",
+      label: "RUN ID",
+      width: "6%",
+      sortable: true,
+      render: (s) => (
+        <span className="font-mono text-[11px]" title={s.run_id || undefined}>
+          {dash(s.run_id)}
+        </span>
+      ),
+    },
+    {
+      key: "status_of_analysis",
+      label: "Status of Analysis",
+      width: "6%",
+      sortable: true,
+      render: (s) => dash(s.status_of_analysis),
+    },
+    {
+      key: "status_of_completion",
+      label: "Status of Completion",
+      width: "7%",
+      sortable: true,
+      render: (s) => renderStatusDropdown(s.id, s.status),
+    },
+    {
+      key: "status_of_submission",
+      label: "Status of Submission",
+      width: "6%",
+      sortable: true,
+      render: (s) => dash(s.status_of_submission),
+    },
+    {
+      key: "report_link",
+      label: "Service Report Link",
+      width: "5%",
+      render: (s) =>
+        s.report_link ? (
+          renderLinkCell(s.report_link, "Report")
+        ) : s.status === "completed" ? (
+          <button
+            type="button"
+            onClick={() => setSelectedReportRow(s)}
+            className="inline-flex items-center gap-1 text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold"
+          >
+            <FileText className="w-3 h-3" /> Generate
+          </button>
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
+    },
+    {
+      key: "client_sequences_link",
+      label: "Client Sequences Link",
+      width: "5%",
+      render: (s) => renderLinkCell(s.client_sequences_link, "Sequences"),
+    },
+    {
+      key: "notes",
+      label: "Notes/Remarks",
+      width: "6%",
+      sortable: true,
+      render: (s) => (
+        <span title={s.notes || undefined}>{dash(s.notes)}</span>
+      ),
+    },
+  ];
 
   return (
     <div
       className={`space-y-8 mx-auto font-aileron w-full transition-all duration-300 ease-in-out ${
-        isSidebarOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+        isSidebarOpen ? "xl:pr-[448px]" : "max-w-full"
       }`}
     >
       <PageHeader
@@ -518,7 +686,7 @@ export default function ServicesPage() {
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-0.5 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search analysis..."
@@ -530,7 +698,19 @@ export default function ServicesPage() {
             </div>
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => {
+                const today = new Date();
+                const dateKey = today.toISOString().slice(0, 10);
+                setFormState({
+                  ...EMPTY_ANALYSIS_FORM,
+                  service_report_number: nextServiceReportNumber(
+                    servicesList.map((s) => s.service_report_number),
+                    today,
+                  ),
+                  service_report_date: dateKey,
+                });
+                setIsSidebarOpen(true);
+              }}
               className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
@@ -595,72 +775,14 @@ export default function ServicesPage() {
             description="Try adjusting your search or filter criteria."
           />
         ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {displayedServices.map((s) => (
-                <div
-                  key={s.id}
-                  className="bg-surface border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-[#4ec2bb]/40 transition-all flex flex-col gap-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/dashboard/services/${s.id}`}
-                        className="font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-all leading-tight"
-                      >
-                        {s.project_name}
-                      </Link>
-                      <p className="text-sm text-slate-500 font-medium mt-0.5">{s.client}</p>
-                      {getServiceCategoryBadge(s.service_category)}
-                    </div>
-                    <div className="shrink-0">{renderStatusDropdown(s.id, s.status)}</div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Analysis
-                      </span>
-                      <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono truncate">
-                        {s.analysis_pipeline}
-                      </code>
-                    </div>
-                    {s.status_of_submission ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                          Submission
-                        </span>
-                        <span className="text-sm text-slate-700 font-medium">
-                          {s.status_of_submission}
-                        </span>
-                      </div>
-                    ) : null}
-                    {s.run_id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                          RUN ID
-                        </span>
-                        <span className="text-sm text-slate-700 font-medium">{s.run_id}</span>
-                      </div>
-                    ) : null}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Assignee
-                      </span>
-                      <span className="text-sm text-slate-700 font-medium">{s.assignee}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Date
-                      </span>
-                      <span className="text-sm text-slate-700 font-medium">{s.started}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100">{renderReportAction(s)}</div>
-                </div>
-              ))}
-            </div>
+          <div className="w-full space-y-4 overflow-x-auto [&&_table]:min-w-[2200px] [&&_table]:table-fixed">
+            <DataTable
+              columns={columns}
+              data={displayedServices}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              emptyMessage="No matching service report records."
+            />
             <Pagination
               totalItems={filteredServices.length}
               itemsPerPage={ITEMS_PER_PAGE}

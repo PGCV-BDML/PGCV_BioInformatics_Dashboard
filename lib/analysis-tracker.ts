@@ -129,6 +129,36 @@ export function formatServiceReportNumber(
   return `${p}-${padded}`;
 }
 
+const SR_NUMBER_RE = /^PGCV-BIOINFO-SR-(\d{4})-(\d+)$/i;
+
+/** Parse `PGCV-BIOINFO-SR-YYYY-NNN` into year + sequence. */
+export function parseServiceReportNumber(
+  value: string | null | undefined,
+): { year: number; sequence: number } | null {
+  if (!value) return null;
+  const m = String(value).trim().match(SR_NUMBER_RE);
+  if (!m) return null;
+  return { year: Number(m[1]), sequence: Number(m[2]) };
+}
+
+/**
+ * Next SR number after the highest existing sequence.
+ * Format: PGCV-BIOINFO-SR-{currentYear}-{NNN} (sequence is global, not reset yearly).
+ */
+export function nextServiceReportNumber(
+  existing: Array<string | null | undefined>,
+  now: Date = new Date(),
+): string {
+  let maxSeq = 0;
+  for (const value of existing) {
+    const parsed = parseServiceReportNumber(value);
+    if (parsed && parsed.sequence > maxSeq) maxSeq = parsed.sequence;
+  }
+  const year = now.getFullYear();
+  const next = maxSeq + 1;
+  return `PGCV-BIOINFO-SR-${year}-${String(next).padStart(3, "0")}`;
+}
+
 /** Display label for cards/lists: Others uses application specify text. */
 export function displayAnalysisLabel(
   pipeline: string | null | undefined,
