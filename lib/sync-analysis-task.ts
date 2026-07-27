@@ -4,6 +4,7 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { toDateKey } from "@/lib/calendar-tasks";
+import { displayAnalysisLabel } from "@/lib/analysis-tracker";
 import type {
   Analysis,
   AnalysisStatus,
@@ -16,15 +17,17 @@ import type {
 
 export type AnalysisSyncInput = {
   id: string;
-  project_id: string;
+  project_id: string | null;
   pipeline: string | null;
   pipeline_version: string | null;
   status: AnalysisStatus;
-  assignee_id: string;
+  assignee_id: string | null;
   started_at: string | null;
   completed_at: string | null;
   /** Optional display name for the project (used in task title). */
   projectName?: string | null;
+  serviceReportNumber?: string | null;
+  application?: string | null;
 };
 
 function mapAnalysisStatusToTask(status: AnalysisStatus): TaskStatus {
@@ -45,20 +48,23 @@ function mapAnalysisStatusToTask(status: AnalysisStatus): TaskStatus {
 function dueDateFromAnalysis(analysis: AnalysisSyncInput): string {
   const raw = analysis.started_at ?? analysis.completed_at;
   if (raw) {
-    // ISO timestamp → YYYY-MM-DD, or already a date string
     return raw.includes("T") ? raw.split("T")[0]! : raw.slice(0, 10);
   }
   return toDateKey(new Date());
 }
 
 export function buildAnalysisTaskTitle(analysis: AnalysisSyncInput): string {
-  const pipeline = [analysis.pipeline, analysis.pipeline_version]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const projectBit = analysis.projectName?.trim();
-  if (pipeline && projectBit) return `${pipeline} — ${projectBit}`;
-  if (pipeline) return `Sequence Analysis: ${pipeline}`;
+  const pipeline = displayAnalysisLabel(
+    analysis.pipeline,
+    analysis.application,
+  );
+  const pipelineBit = pipeline === "—" ? "" : pipeline;
+  const projectBit =
+    analysis.serviceReportNumber?.trim() ||
+    analysis.projectName?.trim() ||
+    "";
+  if (pipelineBit && projectBit) return `${pipelineBit} — ${projectBit}`;
+  if (pipelineBit) return `Sequence Analysis: ${pipelineBit}`;
   if (projectBit) return `Sequence Analysis — ${projectBit}`;
   return "Sequence Analysis";
 }
@@ -79,12 +85,17 @@ async function findTaskByAnalysisId(analysisId: string): Promise<Task | null> {
 
 /**
  * Upsert a task linked to a sequence analysis so it appears on Tasks + Calendar.
+ * Skips when assignee is blank (task.assignee_id is required).
  * Always tags with `sequence_analysis`; preserves any extra categories on update.
  */
 export async function syncAnalysisToTask(
   analysis: AnalysisSyncInput,
   options?: { priority?: TaskPriority },
-): Promise<Task> {
+): Promise<Task | null> {
+  if (!analysis.assignee_id) {
+    return null;
+  }
+
   const existing = await findTaskByAnalysisId(analysis.id);
   const payload: Omit<TaskRecord, "id"> = {
     title: buildAnalysisTaskTitle(analysis),
@@ -101,10 +112,7 @@ export async function syncAnalysisToTask(
   await saveDataToDB("task", taskId, payload);
 
   const existingCategories = existing?.categories;
-  // On first create, only Sequence Analysis. On update, keep extra tags if we know them;
-  // otherwise ensure sequence_analysis is present via task_tag reload path.
   if (existing) {
-    // Load current tags from DB for this task
     const { data: tags } = await supabase
       .from("task_tag")
       .select("category")
@@ -139,13 +147,18 @@ export async function backfillAnalysisTasks(
 ): Promise<number> {
   let created = 0;
   for (const analysis of analyses) {
+    if (!analysis.assignee_id) continue;
     const existing = await findTaskByAnalysisId(analysis.id);
     if (existing) continue;
-    await syncAnalysisToTask({
+    const result = await syncAnalysisToTask({
       ...analysis,
-      projectName: projectNameById.get(analysis.project_id) ?? null,
+      projectName: analysis.project_id
+        ? (projectNameById.get(analysis.project_id) ?? null)
+        : (analysis.client_name ?? null),
+      serviceReportNumber: analysis.service_report_number,
+      application: analysis.application,
     });
-    created += 1;
+    if (result) created += 1;
   }
   return created;
 }
