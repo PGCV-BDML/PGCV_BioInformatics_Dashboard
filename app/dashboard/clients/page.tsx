@@ -6,9 +6,7 @@ import {
   Search,
   UserRound,
   Mail,
-  Phone,
   Building2,
-  MapPin,
   Briefcase,
   Hash,
   FolderOpen,
@@ -74,32 +72,11 @@ const FIELD_CONFIG: Array<{
     icon: Mail,
   },
   {
-    key: "sex",
-    label: "Sex",
-    type: "text",
-    placeholder: "Female",
-    icon: UserRound,
-  },
-  {
-    key: "mobileNumber",
-    label: "Mobile Number",
-    type: "tel",
-    placeholder: "+63 9XX XXX XXXX",
-    icon: Phone,
-  },
-  {
     key: "affiliation",
     label: "Affiliation",
     type: "text",
     placeholder: "Institution / Office",
     icon: Building2,
-  },
-  {
-    key: "affiliationAddress",
-    label: "Affiliation Address",
-    type: "text",
-    placeholder: "Complete address",
-    icon: MapPin,
   },
   {
     key: "designation",
@@ -211,9 +188,8 @@ export default function ClientsPage() {
             name: formState.clientName.trim(),
             affiliation: formState.affiliation.trim(),
             contact_info:
-              [formState.emailAddress.trim(), formState.mobileNumber.trim()]
-                .filter(Boolean)
-                .join(" | ") || formState.clientName.trim(),
+              [formState.emailAddress.trim()].filter(Boolean).join(" | ") ||
+              formState.clientName.trim(),
             notes: `Project ID: ${formState.projectId.trim() || "N/A"}`,
             client_id: formState.clientId.trim(),
           })) as SupabaseClientRow;
@@ -336,8 +312,6 @@ export default function ClientsPage() {
                     <th className="px-4 py-3.5 bg-[#2A7797]/10">Client Name</th>
                     <th className="px-4 py-3.5 bg-[#2A7797]/10">Project ID</th>
                     <th className="px-4 py-3.5 bg-[#2A7797]/10">Email</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Sex</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Mobile</th>
                     <th className="px-4 py-3.5 bg-[#2A7797]/10">Affiliation</th>
                     <th className="px-4 py-3.5 bg-[#2A7797]/10">Designation</th>
                   </tr>
@@ -356,7 +330,7 @@ export default function ClientsPage() {
                           {client.clientName || "—"}
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {client.affiliationAddress || "—"}
+                          {client.affiliation || "—"}
                         </div>
                       </td>
                       <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
@@ -364,12 +338,6 @@ export default function ClientsPage() {
                       </td>
                       <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
                         {client.emailAddress || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.sex || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.mobileNumber || "—"}
                       </td>
                       <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
                         {client.affiliation || "—"}
@@ -421,7 +389,7 @@ export default function ClientsPage() {
                     onChange={handleInputChange}
                     placeholder={placeholder}
                     className="w-full h-10 pl-9 pr-3 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
-                    required={key !== "affiliationAddress" && key !== "sex"}
+                    required={true}
                   />
                 </div>
               </div>
