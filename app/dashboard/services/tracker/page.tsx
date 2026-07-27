@@ -843,15 +843,6 @@ export default function ServiceReportTrackerPage() {
       render: (s) => dash(s.service_report_date),
     },
     {
-      key: "application",
-      label: "Application",
-      width: "8%",
-      sortable: true,
-      render: (s) => (
-        <span title={s.application || undefined}>{dash(s.application)}</span>
-      ),
-    },
-    {
       key: "analysis_classification",
       label: "Analysis Classification",
       shortLabel: "Classification",
