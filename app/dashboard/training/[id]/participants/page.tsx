@@ -9,8 +9,8 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import DataTable, { Column } from "../../../../../components/datatable";
-import { getRowsFromDB, getUsersFromDB } from "../../../../../../lib/supabase";
+import DataTable, { Column } from "@/app/components/datatable";
+import { getRowsFromDB, getUsersFromDB } from "@/lib/supabase";
 import type {
   Assessment,
   AssessmentResponse,

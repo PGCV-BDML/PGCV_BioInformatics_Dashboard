@@ -1,7 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
-import DataTable, { Column } from "../../../../../components/datatable";
+import DataTable, { Column } from "@/app/components/datatable";
 import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
 import type { Certificate, TrainingProgram, User } from "@/types/database";
 import {

@@ -100,7 +100,7 @@ export type TaskTag = {
 export type TaskRecord = Omit<Task, "categories">;
 
 // ============================================================
-// 3.1 Client Sequence Analysis types
+// Client Sequence Analysis types
 // ============================================================
 
 export type AnalysisStatus =
@@ -153,7 +153,7 @@ export interface ServiceReport {
 }
 
 // ============================================================
-// 3.2 Training & 3.3 Internship types
+// Training & Internship types
 // ============================================================
 
 export type TrainingType = "training" | "internship";

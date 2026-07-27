@@ -121,7 +121,7 @@ export default function CertificateRegistryPage({
       {/* Sub-tab Navigation */}
       <div className="print:hidden flex items-center gap-2 border-b border-slate-100 pb-3">
         <Link
-          href={`/dashboard/services/training/${resolvedParams.id}/evaluation`}
+          href={`/dashboard/training/${resolvedParams.id}/evaluation`}
           className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
         >
           1. Submit Evaluation{" "}

@@ -29,7 +29,6 @@ import {
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS, Project, User, Service, ServiceCategory } from "../../../types/database";
-import { SERVICES_CONFIG } from "@/lib/services-config";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../components/toast";
 
@@ -64,7 +63,6 @@ const ITEMS_PER_PAGE = 10;
 export default function ServicesPage() {
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("sequence-analysis");
   const [activeFilter, setActiveFilter] = useState("All");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -450,7 +448,7 @@ export default function ServicesPage() {
       <PageHeader
         breadcrumbTrail={servicesBreadcrumbs}
         title="Bioinformatics Services"
-        subtitle="Operational workflows · Review active sequences, configurations, and analytical reporting metrics"
+        subtitle="Client sequence analysis · Review active sequences, configurations, and analytical reporting metrics"
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
@@ -474,27 +472,6 @@ export default function ServicesPage() {
           </>
         }
       />
-
-      {/* Navigation Capsule Row */}
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        {SERVICES_CONFIG.map((service) => {
-          const isActive = activeTab === service.id;
-          return (
-            <Link
-              key={service.id}
-              href={service.href}
-              onClick={() => setActiveTab(service.id)}
-              className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-200 ${
-                isActive
-                  ? "bg-[#2a7797] text-white border-[#2a7797] shadow-md shadow-[#2a7797]/20 font-bold"
-                  : "bg-surface text-slate-600 border-slate-300/60 shadow-md shadow-slate-400/10 hover:bg-slate-50/50 hover:text-slate-800"
-              }`}
-            >
-              {service.title}
-            </Link>
-          );
-        })}
-      </div>
 
       {/* Main Table Design Layout */}
       <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
