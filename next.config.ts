@@ -7,6 +7,35 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: join(__dirname),
   },
+  async redirects() {
+    return [
+      {
+        source: "/dashboard/services/training",
+        destination: "/dashboard/training",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/services/training/:path*",
+        destination: "/dashboard/training/:path*",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/services/internship",
+        destination: "/dashboard/internship",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/services/internship/:path*",
+        destination: "/dashboard/internship/:path*",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/services-list",
+        destination: "/dashboard/services",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

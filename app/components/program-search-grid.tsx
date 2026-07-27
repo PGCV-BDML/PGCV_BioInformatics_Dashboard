@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, Calendar, Clock, User, Users, ArrowRight } from "lucide-react";
+import { programRoutes } from "@/lib/routes";
 
 export interface ProgramCard {
   id: string;
@@ -134,7 +135,7 @@ export default function ProgramSearchGrid({
 
             <div className="pt-6">
               <Link
-                href={`/dashboard/services/${type}/${prog.id}`}
+                href={programRoutes(type).detail(prog.id)}
                 className="flex items-center justify-center gap-1.5 w-full h-10 bg-[#f0fdfa] border border-[#ccfbf1] text-[#115e59] hover:bg-[#14b8a6] hover:border-[#14b8a6] hover:text-white text-xs font-bold rounded-xl shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 <span>See Details</span>

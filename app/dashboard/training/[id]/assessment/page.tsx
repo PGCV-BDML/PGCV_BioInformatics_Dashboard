@@ -11,7 +11,7 @@ import {
   Star,
 } from "lucide-react";
 import { getRowsFromDB, getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import { useToast } from "../../../../../components/toast";
+import { useToast } from "@/app/components/toast";
 import type { Question, Assessment, AssessmentResponse } from "@/types/database";
 
 /* ================= TYPES & CONFIG ================= */

@@ -2,9 +2,9 @@
 
 import React, { useState, use, useEffect } from "react";
 import { CheckCircle2, Check } from "lucide-react";
-import SlideOverModal from "../../../../components/slidemodal";
-import { getRowsFromDB } from "../../../../../lib/supabase";
-import type { Module } from "../../../../../types/database";
+import SlideOverModal from "@/app/components/slidemodal";
+import { getRowsFromDB } from "@/lib/supabase";
+import type { Module } from "@/types/database";
 
 interface ModuleItem {
   id: string;

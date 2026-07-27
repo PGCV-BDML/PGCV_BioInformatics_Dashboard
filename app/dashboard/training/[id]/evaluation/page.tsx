@@ -143,7 +143,7 @@ export default function EvaluationPage({
           1. Submit Evaluation
         </span>
         <Link
-          href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
+          href={`/dashboard/training/${resolvedParams.id}/certificate`}
           className="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all flex items-center gap-1.5"
         >
           2. Certificate Registry{" "}
@@ -198,7 +198,7 @@ export default function EvaluationPage({
               </div>
               <div className="flex flex-col gap-2">
                 <Link
-                  href={`/dashboard/services/training/${resolvedParams.id}/certificate`}
+                  href={`/dashboard/training/${resolvedParams.id}/certificate`}
                   className="w-full py-2 bg-[#4ec2bb] text-white font-bold text-xs rounded-xl hover:bg-[#3db0a9] transition-colors shadow-sm text-center block"
                 >
                   Go View Certificates Table

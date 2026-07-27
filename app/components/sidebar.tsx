@@ -10,10 +10,11 @@ import {
   CheckSquare,
   Calendar,
   Microscope,
+  GraduationCap,
+  Briefcase,
   Users2,
   Network,
   Activity,
-  ClipboardList,
   FolderGit2,
   ChevronRight,
   ChevronDown,
@@ -25,6 +26,7 @@ const navItems = [
     name: "Landing Page",
     href: "/dashboard",
     icon: LayoutGrid,
+    exact: true,
     animationClass: "group-hover:rotate-12 transition-transform duration-300",
   },
   {
@@ -49,6 +51,18 @@ const navItems = [
       "group-hover:scale-110 group-hover:rotate-6 transition-all duration-300",
   },
   {
+    name: "Training",
+    href: "/dashboard/training",
+    icon: GraduationCap,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
+    name: "Internship",
+    href: "/dashboard/internship",
+    icon: Briefcase,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
     name: "Collaborations",
     href: "/dashboard/collaborations",
     icon: Users2,
@@ -71,13 +85,6 @@ const navItems = [
     href: "/dashboard/accomplishments",
     icon: Activity,
     animationClass: "group-hover:scale-110 transition-transform duration-200",
-  },
-  {
-    name: "Services List",
-    href: "/dashboard/services-list",
-    icon: ClipboardList,
-    animationClass:
-      "group-hover:translate-x-0.5 transition-transform duration-200",
   },
   {
     name: "Repositories",
@@ -193,7 +200,10 @@ export default function Sidebar({
             <nav aria-label="Main navigation" className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = item.exact
+                  ? pathname === item.href
+                  : pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.name}
