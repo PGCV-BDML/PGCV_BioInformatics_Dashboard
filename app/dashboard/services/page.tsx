@@ -8,6 +8,7 @@ import Link from "next/link";
 import Pagination from "../../components/pagination";
 import AnalysisSidebar, {
   AnalysisFormState,
+  EMPTY_ANALYSIS_FORM,
 } from "../../components/analysismodal";
 import ServiceReportModal from "../../components/service-report-modal";
 import { PageHeader } from "../../components/pageheader";
@@ -28,22 +29,39 @@ import {
   saveDataToDB,
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
-import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS, Project, User, Service, ServiceCategory } from "../../../types/database";
+import {
+  deriveLegacyStatus,
+  displayAnalysisLabel,
+  labelFromAnalysisStatus,
+} from "@/lib/analysis-tracker";
+import {
+  Analysis,
+  AnalysisStatus,
+  ANALYSIS_STATUS_OPTIONS,
+  Project,
+  User,
+  Service,
+  ServiceCategory,
+} from "../../../types/database";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../components/toast";
 
 interface ServiceProjectRow {
   id: string;
+  service_report_number: string;
   project_name: string;
   client: string;
   service_name: string | null;
   service_category: ServiceCategory | null;
   analysis_pipeline: string;
-  status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
+  status: AnalysisStatus;
+  status_of_completion: string;
+  status_of_submission: string;
   assignee: string;
   started: string;
   completed: string;
   report_link: string;
+  run_id: string;
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
@@ -54,11 +72,12 @@ const FILTER_OPTIONS = [
   ...ANALYSIS_STATUS_OPTIONS,
 ];
 
-
-
 const ITEMS_PER_PAGE = 10;
 
-
+function emptyToNull(value: string): string | null {
+  const t = value.trim();
+  return t ? t : null;
+}
 
 export default function ServicesPage() {
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
@@ -66,26 +85,19 @@ export default function ServicesPage() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<
+    { id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]
+  >([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Sidebar Open State and Form Management
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [formState, setFormState] = useState<AnalysisFormState>({
-    project_id: "",
-    pipeline: "",
-    pipeline_version: "v1.0.0",
-    assignee: "",
-    status: "for_approval",
-  });
+  const [formState, setFormState] = useState<AnalysisFormState>(EMPTY_ANALYSIS_FORM);
 
-  // Report Generator Modal State
   const [selectedReportRow, setSelectedReportRow] =
     useState<ServiceProjectRow | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Refs and state for the sliding filter bar mechanism
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
 
@@ -111,15 +123,15 @@ export default function ServicesPage() {
         ]);
         setCurrentUserId(user?.id ?? null);
 
-        // Build service map: service_id → {name, category}
         const serviceMap = new Map<string, { name: string; category: ServiceCategory }>();
         for (const s of services as Service[]) {
           serviceMap.set(s.id, { name: s.name, category: s.category });
         }
 
-        // Build a temporary project map for immediate row construction
-        // (the hook will rerun on next render with the same data)
-        const tmpProjectMap = new Map<string, { name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }>();
+        const tmpProjectMap = new Map<
+          string,
+          { name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }
+        >();
         for (const p of projects) {
           const client = (clients as { id: string; name: string }[]).find((c) => c.id === p.client_id);
           const service = p.service_id ? serviceMap.get(p.service_id) : undefined;
@@ -137,21 +149,34 @@ export default function ServicesPage() {
         }
 
         const rows: ServiceProjectRow[] = analyses.map((a) => {
-          const proj = tmpProjectMap.get(a.project_id);
-          const assigneeName = tmpUserMap.get(a.assignee_id) ?? "Unassigned";
-          const pipeline = `${a.pipeline ?? ""} ${a.pipeline_version ?? ""}`.trim();
+          const proj = a.project_id ? tmpProjectMap.get(a.project_id) : undefined;
+          const assigneeName = a.assignee_id
+            ? (tmpUserMap.get(a.assignee_id) ?? "Unassigned")
+            : "Unassigned";
           return {
             id: a.id,
-            project_name: proj?.name ?? "(unknown project)",
-            client: proj?.client ?? "—",
+            service_report_number: a.service_report_number ?? "",
+            project_name:
+              a.service_report_number ||
+              a.external_project_id ||
+              proj?.name ||
+              "Untitled analysis",
+            client: a.client_name || proj?.client || "—",
             service_name: proj?.service_name ?? null,
             service_category: proj?.service_category ?? null,
-            analysis_pipeline: pipeline || "—",
-            status: a.status as ServiceProjectRow["status"],
+            analysis_pipeline: displayAnalysisLabel(a.pipeline, a.application),
+            status: a.status as AnalysisStatus,
+            status_of_completion: a.status_of_completion ?? "",
+            status_of_submission: a.status_of_submission ?? "",
             assignee: assigneeName,
-            started: a.started_at ? a.started_at.split("T")[0] ?? "—" : "—",
-            completed: a.completed_at ? a.completed_at.split("T")[0] ?? "—" : "—",
-            report_link: "",
+            started: a.service_report_date
+              ? a.service_report_date
+              : a.started_at
+                ? (a.started_at.split("T")[0] ?? "—")
+                : "—",
+            completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
+            report_link: a.service_report_link ?? "",
+            run_id: a.run_id ?? "",
           };
         });
 
@@ -170,7 +195,6 @@ export default function ServicesPage() {
     loadData();
   }, []);
 
-  // Recalculate slider dimensions and offset whenever activeFilter changes
   useEffect(() => {
     if (filterContainerRef.current) {
       const container = filterContainerRef.current;
@@ -181,8 +205,6 @@ export default function ServicesPage() {
       if (activeButton) {
         const containerRect = container.getBoundingClientRect();
         const buttonRect = activeButton.getBoundingClientRect();
-
-        // Calculate position relative to container, accounting for container scroll position
         const relativeLeft =
           buttonRect.left - containerRect.left + container.scrollLeft;
 
@@ -195,10 +217,13 @@ export default function ServicesPage() {
   }, [activeFilter]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
-    const completedAt = newStatus === "completed" ? new Date().toISOString() : null;
+    const status = newStatus as AnalysisStatus;
+    const completedAt = status === "completed" ? new Date().toISOString() : null;
+    const completionLabel = labelFromAnalysisStatus(status);
     try {
       const updated = await saveDataToDB("analysis", id, {
-        status: newStatus,
+        status,
+        status_of_completion: completionLabel,
         completed_at: completedAt,
       });
       setServicesList((prev) =>
@@ -206,8 +231,11 @@ export default function ServicesPage() {
           item.id === id
             ? {
                 ...item,
-                status: updated.status as ServiceProjectRow["status"],
-                completed: updated.completed_at ? updated.completed_at.split("T")[0] ?? "—" : "—",
+                status: updated.status as AnalysisStatus,
+                status_of_completion: updated.status_of_completion ?? completionLabel,
+                completed: updated.completed_at
+                  ? (updated.completed_at.split("T")[0] ?? "—")
+                  : "—",
               }
             : item,
         ),
@@ -223,9 +251,11 @@ export default function ServicesPage() {
         started_at: updated.started_at,
         completed_at: updated.completed_at,
         projectName: row?.project_name,
+        serviceReportNumber: updated.service_report_number,
+        application: updated.application,
       });
       showToast("Analysis status updated.", "success");
-    } catch (err) {
+    } catch {
       showToast("Failed to update analysis status.", "error");
     }
   };
@@ -241,31 +271,57 @@ export default function ServicesPage() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (isSubmitting) return;
-      if (!currentUserId) {
-        console.error("No current user — cannot create analysis");
-        return;
-      }
       setIsSubmitting(true);
       try {
-        // Look up the assignee user id by name (assignees dropdown shows names)
-        const users = await getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]);
-        const matchedUser = (users as User[]).find((u) => u.name === formState.assignee);
-        if (!matchedUser) {
-          console.error("Assignee not found:", formState.assignee);
-          return;
+        let assigneeId: string | null = null;
+        if (formState.assignee.trim()) {
+          const users = await getUsersFromDB([
+            "team_lead",
+            "team_member",
+            "intern",
+            "trainee",
+          ]);
+          const matchedUser = (users as User[]).find((u) => u.name === formState.assignee);
+          if (!matchedUser) {
+            showToast("Assignee not found.", "error");
+            return;
+          }
+          assigneeId = matchedUser.id;
         }
+
+        const legacyStatus = deriveLegacyStatus({
+          status_of_completion: formState.status_of_completion,
+          status_of_submission: formState.status_of_submission,
+          status_of_analysis: formState.status_of_analysis,
+        });
         const startedAt = new Date().toISOString();
-        const completedAt = formState.status === "completed" ? startedAt : null;
+        const completedAt = legacyStatus === "completed" ? startedAt : null;
+
         const created = await saveDataToDB("analysis", crypto.randomUUID(), {
-          project_id: formState.project_id,
-          pipeline: formState.pipeline,
-          pipeline_version: formState.pipeline_version,
-          assignee_id: matchedUser.id,
-          status: formState.status,
+          project_id: emptyToNull(formState.project_id),
+          pipeline: emptyToNull(formState.pipeline),
+          pipeline_version: null,
+          assignee_id: assigneeId,
+          status: legacyStatus,
           started_at: startedAt,
           completed_at: completedAt,
+          service_report_number: emptyToNull(formState.service_report_number),
+          service_report_date: emptyToNull(formState.service_report_date),
+          application: emptyToNull(formState.application),
+          client_name: emptyToNull(formState.client_name),
+          client_type: emptyToNull(formState.client_type),
+          external_client_id: emptyToNull(formState.external_client_id),
+          external_project_id: emptyToNull(formState.external_project_id),
+          sample_type: emptyToNull(formState.sample_type),
+          run_id: emptyToNull(formState.run_id),
+          status_of_analysis: emptyToNull(formState.status_of_analysis),
+          status_of_completion: emptyToNull(formState.status_of_completion),
+          status_of_submission: emptyToNull(formState.status_of_submission),
+          service_report_link: emptyToNull(formState.service_report_link),
+          client_sequences_link: emptyToNull(formState.client_sequences_link),
+          notes: emptyToNull(formState.notes),
         });
-        // Find the project/client for display
+
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
         await syncAnalysisToTaskSafe({
           id: created.id,
@@ -276,49 +332,55 @@ export default function ServicesPage() {
           assignee_id: created.assignee_id,
           started_at: created.started_at,
           completed_at: created.completed_at,
-          projectName: targetProject?.name,
+          projectName: targetProject?.name ?? created.client_name,
+          serviceReportNumber: created.service_report_number,
+          application: created.application,
         });
+
         const newRow: ServiceProjectRow = {
           id: created.id,
-          project_name: targetProject?.name ?? "(unknown project)",
-          client: targetProject?.client ?? "—",
+          service_report_number: created.service_report_number ?? "",
+          project_name:
+            created.service_report_number ||
+            created.external_project_id ||
+            targetProject?.name ||
+            "Untitled analysis",
+          client: created.client_name || targetProject?.client || "—",
           service_name: targetProject?.service_name ?? null,
           service_category: targetProject?.service_category ?? null,
-          analysis_pipeline: `${formState.pipeline} ${formState.pipeline_version}`.trim() || "—",
-          status: created.status as ServiceProjectRow["status"],
-          assignee: formState.assignee,
-          started: startedAt.split("T")[0] ?? "",
-          completed: completedAt ? completedAt.split("T")[0] ?? "—" : "—",
-          report_link: "",
+          analysis_pipeline: displayAnalysisLabel(created.pipeline, created.application),
+          status: created.status as AnalysisStatus,
+          status_of_completion: created.status_of_completion ?? "",
+          status_of_submission: created.status_of_submission ?? "",
+          assignee: formState.assignee || "Unassigned",
+          started: created.service_report_date || (startedAt.split("T")[0] ?? ""),
+          completed: completedAt ? (completedAt.split("T")[0] ?? "—") : "—",
+          report_link: created.service_report_link ?? "",
+          run_id: created.run_id ?? "",
         };
         setServicesList((prev) => [newRow, ...prev]);
-        setFormState({
-          project_id: "",
-          pipeline: "",
-          pipeline_version: "v1.0.0",
-          assignee: "",
-          status: "for_approval",
-        });
+        setFormState(EMPTY_ANALYSIS_FORM);
         setIsSidebarOpen(false);
         showToast("Analysis created successfully.", "success");
-      } catch (err) {
+      } catch {
         showToast("Failed to create analysis.", "error");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [currentUserId, formState, availableProjects, showToast, isSubmitting],
+    [formState, availableProjects, showToast, isSubmitting],
   );
 
   const handleReportGenerated = useCallback(
     (analysisId: string, reportLink: string) => {
       setServicesList((prev) =>
         prev.map((item) =>
-          item.id === analysisId
-            ? { ...item, report_link: reportLink }
-            : item,
+          item.id === analysisId ? { ...item, report_link: reportLink } : item,
         ),
       );
+      void saveDataToDB("analysis", analysisId, {
+        service_report_link: reportLink,
+      }).catch((err) => console.error("Failed to save report link on analysis:", err));
     },
     [],
   );
@@ -336,9 +398,11 @@ export default function ServicesPage() {
     return records.filter(
       (item) =>
         item.project_name.toLowerCase().includes(query) ||
+        item.service_report_number.toLowerCase().includes(query) ||
         item.client.toLowerCase().includes(query) ||
         item.analysis_pipeline.toLowerCase().includes(query) ||
-        item.assignee.toLowerCase().includes(query),
+        item.assignee.toLowerCase().includes(query) ||
+        item.run_id.toLowerCase().includes(query),
     );
   }, [searchQuery, servicesList, activeFilter]);
 
@@ -391,7 +455,7 @@ export default function ServicesPage() {
           ))}
         </select>
         <ChevronDown
-          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
+          className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-0.5 pointer-events-none ${chevronClass}`}
         />
       </div>
     );
@@ -433,7 +497,9 @@ export default function ServicesPage() {
       custom: "bg-slate-100 text-slate-600",
     };
     return (
-      <span className={`inline-flex items-center text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${colorMap[category]}`}>
+      <span
+        className={`inline-flex items-center text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${colorMap[category]}`}
+      >
         {category}
       </span>
     );
@@ -452,7 +518,7 @@ export default function ServicesPage() {
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-0.5 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search analysis..."
@@ -473,22 +539,17 @@ export default function ServicesPage() {
         }
       />
 
-      {/* Main Table Design Layout */}
       <div className="bg-surface border border-slate-300/70 rounded-[24px] p-4 md:p-6 shadow-xl shadow-slate-400/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <Dna className="w-5 h-5 text-[#333333]" />
-            <h2 className="text-2xl font-bold text-[#333333]">
-              Service Report Tracker
-            </h2>
+            <h2 className="text-2xl font-bold text-[#333333]">Service Report Tracker</h2>
           </div>
 
-          {/* Animated Filter Bar Capsule */}
           <div
             ref={filterContainerRef}
             className="relative flex items-center bg-[#fbfaf7] border border-slate-200/60 p-1 rounded-full w-fit overflow-hidden shadow-inner"
           >
-            {/* Sliding Highlight Block */}
             <div
               className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-slate-100/80 transition-all duration-300 ease-out pointer-events-none"
               style={{
@@ -517,7 +578,6 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* Card Grid */}
         {loadError ? (
           <ErrorState message={loadError} />
         ) : isLoading ? (
@@ -542,7 +602,6 @@ export default function ServicesPage() {
                   key={s.id}
                   className="bg-surface border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-[#4ec2bb]/40 transition-all flex flex-col gap-4"
                 >
-                  {/* Card Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <Link
@@ -551,56 +610,54 @@ export default function ServicesPage() {
                       >
                         {s.project_name}
                       </Link>
-                      <p className="text-sm text-slate-500 font-medium mt-0.5">
-                        {s.client}
-                      </p>
+                      <p className="text-sm text-slate-500 font-medium mt-0.5">{s.client}</p>
                       {getServiceCategoryBadge(s.service_category)}
                     </div>
-                    <div className="shrink-0">
-                      {renderStatusDropdown(s.id, s.status)}
-                    </div>
+                    <div className="shrink-0">{renderStatusDropdown(s.id, s.status)}</div>
                   </div>
 
-                  {/* Card Body */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
                         Analysis
                       </span>
-                      <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono">
+                      <code className="bg-slate-50 text-xs text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded font-mono truncate">
                         {s.analysis_pipeline}
                       </code>
                     </div>
+                    {s.status_of_submission ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                          Submission
+                        </span>
+                        <span className="text-sm text-slate-700 font-medium">
+                          {s.status_of_submission}
+                        </span>
+                      </div>
+                    ) : null}
+                    {s.run_id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
+                          RUN ID
+                        </span>
+                        <span className="text-sm text-slate-700 font-medium">{s.run_id}</span>
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
                         Assignee
                       </span>
-                      <span className="text-sm text-slate-700 font-medium">
-                        {s.assignee}
-                      </span>
+                      <span className="text-sm text-slate-700 font-medium">{s.assignee}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Started
+                        Date
                       </span>
-                      <span className="text-sm text-slate-700 font-medium">
-                        {s.started}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 uppercase tracking-wide font-quicksand min-w-[72px]">
-                        Completed
-                      </span>
-                      <span className="text-sm text-slate-700 font-medium">
-                        {s.completed}
-                      </span>
+                      <span className="text-sm text-slate-700 font-medium">{s.started}</span>
                     </div>
                   </div>
 
-                  {/* Card Footer */}
-                  <div className="pt-3 border-t border-slate-100">
-                    {renderReportAction(s)}
-                  </div>
+                  <div className="pt-3 border-t border-slate-100">{renderReportAction(s)}</div>
                 </div>
               ))}
             </div>
@@ -614,7 +671,6 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {/* Service Report Generator Modal */}
       <ServiceReportModal
         isOpen={!!selectedReportRow}
         analysis={selectedReportRow}
@@ -623,7 +679,6 @@ export default function ServicesPage() {
         onReportGenerated={handleReportGenerated}
       />
 
-      {/* Slide-over analysis matrix panel */}
       <AnalysisSidebar
         isOpen={isSidebarOpen}
         isSaving={isSubmitting}
