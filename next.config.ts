@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/dashboard/services-list",
-        destination: "/dashboard/services",
+        destination: "/dashboard/services/tracker",
         permanent: true,
       },
     ];

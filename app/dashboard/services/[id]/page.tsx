@@ -359,10 +359,10 @@ export default function AnalysisDetailPage({
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
         <div className="flex flex-col gap-1">
           <Link
-            href="/dashboard/services"
+            href="/dashboard/services/tracker"
             className="flex items-center gap-1.5 text-[10px] font-bold text-[#7a8e9b] uppercase tracking-[2px] font-quicksand hover:text-[#2a7797] transition-colors mb-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Services Queue
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Service Report Tracker
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-[#2a7797] tracking-tight">
