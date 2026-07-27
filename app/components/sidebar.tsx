@@ -61,6 +61,12 @@ const navItems = [
     animationClass: "group-hover:animate-pulse",
   },
   {
+    name: "Clients",
+    href: "/dashboard/clients",
+    icon: Users2,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
     name: "Accomplishments",
     href: "/dashboard/accomplishments",
     icon: Activity,
@@ -173,7 +179,9 @@ export default function Sidebar({
               <span className="text-[#2a7797] font-black text-[13px] leading-tight font-aileron tracking-wide uppercase">
                 Bioinformatics Workflow Dashboard
               </span>
-              <span className="text-[#8499a5] text-[10px] font-quicksand tracking-wide mt-0.5">University of the Philippines</span>
+              <span className="text-[#8499a5] text-[10px] font-quicksand tracking-wide mt-0.5">
+                University of the Philippines
+              </span>
             </div>
           </Link>
 
@@ -190,7 +198,13 @@ export default function Sidebar({
                   <Link
                     key={item.name}
                     href={item.href}
-                    onClick={() => { if (typeof window !== "undefined" && window.innerWidth < 1024) toggleSidebar(true); }}
+                    onClick={() => {
+                      if (
+                        typeof window !== "undefined" &&
+                        window.innerWidth < 1024
+                      )
+                        toggleSidebar(true);
+                    }}
                     className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
                       isActive
                         ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
