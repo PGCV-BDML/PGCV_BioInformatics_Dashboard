@@ -12,7 +12,7 @@ export default function CalendarPage() {
       <PageHeader
         breadcrumbTrail={calendarBreadcrumbs}
         title="Calendar"
-        subtitle="Task due dates from your task list, shown by month."
+        subtitle="Task due dates and sequence-analysis work, tagged by category."
         actions={
           <Link
             href="/dashboard/tasks"

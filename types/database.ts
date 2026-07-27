@@ -61,6 +61,21 @@ export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" |
 //For Tasks ===========================================================================
 export type TaskStatus = "pending" | "in_progress" | "completed" | "on_hold";
 export type TaskPriority = "low" | "medium" | "high";
+
+export type TaskCategory =
+  | "client_communication"
+  | "code_workflow_optimization"
+  | "sequence_analysis"
+  | "tour"
+  | "meeting"
+  | "internship"
+  | "collaboration"
+  | "engagements"
+  | "projects"
+  | "professional_development"
+  | "future_planning"
+  | "skill_development";
+
 export type Task = {
   id: string;
   title: string;
@@ -69,8 +84,20 @@ export type Task = {
   status: TaskStatus;
   priority: TaskPriority;
   linked_project_id: string;
+  linked_analysis_id?: string | null;
+  /** Client-enriched from task_tag; not a column on task. */
+  categories?: TaskCategory[];
   updated_at?: string;
 };
+
+export type TaskTag = {
+  task_id: string;
+  category: TaskCategory;
+  created_at?: string;
+};
+
+/** Persistable task fields (excludes client-only `categories`). */
+export type TaskRecord = Omit<Task, "categories">;
 
 // ============================================================
 // 3.1 Client Sequence Analysis types

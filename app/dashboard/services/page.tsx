@@ -27,6 +27,7 @@ import {
   getUsersFromDB,
   saveDataToDB,
 } from "@/lib/supabase";
+import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import { Analysis, AnalysisStatus, ANALYSIS_STATUS_OPTIONS, Project, User, Service, ServiceCategory } from "../../../types/database";
 import { SERVICES_CONFIG } from "@/lib/services-config";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
@@ -213,6 +214,18 @@ export default function ServicesPage() {
             : item,
         ),
       );
+      const row = servicesList.find((s) => s.id === id);
+      await syncAnalysisToTaskSafe({
+        id: updated.id,
+        project_id: updated.project_id,
+        pipeline: updated.pipeline,
+        pipeline_version: updated.pipeline_version,
+        status: updated.status as AnalysisStatus,
+        assignee_id: updated.assignee_id,
+        started_at: updated.started_at,
+        completed_at: updated.completed_at,
+        projectName: row?.project_name,
+      });
       showToast("Analysis status updated.", "success");
     } catch (err) {
       showToast("Failed to update analysis status.", "error");
@@ -256,6 +269,17 @@ export default function ServicesPage() {
         });
         // Find the project/client for display
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
+        await syncAnalysisToTaskSafe({
+          id: created.id,
+          project_id: created.project_id,
+          pipeline: created.pipeline,
+          pipeline_version: created.pipeline_version,
+          status: created.status as AnalysisStatus,
+          assignee_id: created.assignee_id,
+          started_at: created.started_at,
+          completed_at: created.completed_at,
+          projectName: targetProject?.name,
+        });
         const newRow: ServiceProjectRow = {
           id: created.id,
           project_name: targetProject?.name ?? "(unknown project)",

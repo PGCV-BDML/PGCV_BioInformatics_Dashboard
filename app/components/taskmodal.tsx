@@ -1,13 +1,18 @@
 "use client";
 //taskmodal.tsx
 import React, { useState } from "react";
-import { Task, TaskStatus, TaskPriority } from "../../types/database";
+import Link from "next/link";
+import { Task, TaskStatus, TaskPriority, TaskCategory } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
+import { CategoryMultiSelect } from "./category-chips";
+import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import {
   ClipboardCheck,
   Briefcase,
   User,
   Calendar,
+  Tags,
+  ExternalLink,
 } from "lucide-react";
 
 interface TaskModalProps {
@@ -22,6 +27,7 @@ interface TaskModalProps {
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
+  onCategoriesChange: (categories: TaskCategory[]) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -36,6 +42,7 @@ export default function TaskModal({
   statusOptions,
   priorityOptions,
   onInputChange,
+  onCategoriesChange,
   onClose,
   onSubmit,
 }: TaskModalProps) {
@@ -47,6 +54,9 @@ export default function TaskModal({
     if (!formState.linked_project_id) errs.linked_project_id = "Please select a linked project";
     if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
     if (!formState.due_date) errs.due_date = "Due date is required";
+    if (!formState.categories?.length) {
+      errs.categories = "Select at least one category";
+    }
     return errs;
   };
 
@@ -65,6 +75,13 @@ export default function TaskModal({
     setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     onInputChange(e);
   };
+
+  const handleCategoriesChange = (next: TaskCategory[]) => {
+    setErrors((prev) => ({ ...prev, categories: "" }));
+    onCategoriesChange(next);
+  };
+
+  const linkedAnalysisId = formState.linked_analysis_id;
 
   return (
     <SlideOverModal
@@ -102,6 +119,32 @@ export default function TaskModal({
             <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.title}</p>
           )}
         </div>
+
+        {linkedAnalysisId && (
+          <div className="ml-1 mt-1 flex items-center gap-2 rounded-xl border border-teal-200/70 bg-teal-50/80 px-3 py-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 font-quicksand">
+              Linked sequence analysis
+            </span>
+            <Link
+              href={`/dashboard/services/${linkedAnalysisId}`}
+              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:underline font-quicksand"
+            >
+              Open analysis
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Section: Categories */}
+      <div className="space-y-2.5 pt-1 border-t border-slate-100">
+        {renderSectionLabel(<Tags className="w-3.5 h-3.5" />, "Categories")}
+        <CategoryMultiSelect
+          selected={formState.categories ?? []}
+          options={TASK_CATEGORY_OPTIONS}
+          onChange={handleCategoriesChange}
+          error={errors.categories}
+        />
       </div>
 
       {/* Section: Project */}
