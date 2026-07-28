@@ -62,7 +62,7 @@ export default function DashboardLandingPage() {
   // Breadcrumb trail where "Dashboard" is the first element, and "Home" is second and hoverable
   const breadcrumbTrail = [
     { label: "Dashboard" },
-    { label: "Home", href: "/dashboard" },
+    { label: "Overview", href: "/dashboard" },
   ];
 
   const toggleTaskStatus = async (id: string, e: React.MouseEvent) => {
@@ -197,7 +197,10 @@ export default function DashboardLandingPage() {
   }, []);
 
   const totalProjects = stats
-    ? stats.activeProjects + stats.completedProjects + stats.backlogProjects + stats.newProjectsThisMonth + stats.ongoingTrainings
+    ? stats.activeProjects +
+      stats.completedProjects +
+      stats.backlogProjects +
+      stats.newProjectsThisMonth
     : 0;
 
   const serviceReportsDeliveredByYear = serviceReportsData;
@@ -208,7 +211,6 @@ export default function DashboardLandingPage() {
       { name: "Completed", value: stats.completedProjects },
       { name: "On-hold / Overdue", value: stats.backlogProjects },
       { name: "Submitted", value: stats.newProjectsThisMonth },
-      { name: "Ongoing Trainings", value: stats.ongoingTrainings },
     ]
     : [];
 
@@ -217,23 +219,19 @@ export default function DashboardLandingPage() {
       {/* Top Header Controls Area */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-300/40 pb-5">
         <div className="flex flex-col gap-1">
-          {/* 1. Breadcrumbs Wrapper */}
           <div className="opacity-95 text-xs tracking-wide transition-colors">
             <DashboardBreadcrumbs items={breadcrumbTrail} />
           </div>
 
-          {/* 2. Main Title - Set to a larger, bolder size */}
           <h1 className="text-4xl md:text-[42px] font-extrabold text-[#2a7797] tracking-tight font-aileron mt-2 leading-tight">
-            Landing Page
+            Overview
           </h1>
 
-          {/* 3. Subheader - Sized smaller and formatted in light muted slate gray */}
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            All statistics — Overview & Systems Status · {selectedYear}
+            Lab snapshot — services, programs, projects & collaborations · {selectedYear}
           </p>
         </div>
 
-        {/* Global Pipeline Year Filter Button Control */}
         <div className="relative self-start sm:self-auto group mb-1">
           <div className="flex items-center gap-2 bg-surface group-hover:bg-slate-50 transition-colors duration-150 border border-slate-300 rounded-xl px-3 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] text-left pointer-events-none">
             <Calendar className="w-3.5 h-3.5 text-[#2a7797]" />
@@ -265,34 +263,18 @@ export default function DashboardLandingPage() {
         </div>
       </div>
 
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-[0_20px_50px_rgba(15,23,42,0.12)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-        <div className="space-y-4 max-w-2xl z-10">
-          <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
-            Internal Operations Hub
-          </span>
-
-          <h2 className="text-4xl md:text-[44px] font-black text-slate-800 leading-[1.15] tracking-tight font-aileron">
-            Bioinformatics Workflow <br />
-            Dashboard
-          </h2>
-
-          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1 font-aileron">
-            One internal workspace for service tracking, training, internships,
-            collaborations, projects, accomplishments, documents, and repository
-            links.
-          </p>
-        </div>
-
-        <div className="flex-shrink-0 z-10 self-end md:self-auto">
-          <img
-            src="/assets/pgcv_logo.png"
-            alt="Philippine Genome Center Visayas logo"
-            className="h-28 w-auto object-contain"
-          />
-        </div>
-
-        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
+      {/* Compact lab snapshot strip */}
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-300/70 bg-gradient-to-r from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] px-5 py-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+        <p className="text-sm text-slate-600 font-medium font-aileron">
+          <span className="font-bold text-[#174e64]">PGCV-BDML</span>
+          {" — "}
+          year-filtered counts for service delivery and lab programs.
+        </p>
+        <img
+          src="/assets/pgcv_logo.png"
+          alt="Philippine Genome Center Visayas logo"
+          className="hidden sm:block h-10 w-auto object-contain shrink-0"
+        />
       </div>
 
       {statsError ? (

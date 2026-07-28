@@ -41,7 +41,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    name: "Landing Page",
+    name: "Overview",
     href: "/dashboard",
     icon: LayoutGrid,
     exact: true,
