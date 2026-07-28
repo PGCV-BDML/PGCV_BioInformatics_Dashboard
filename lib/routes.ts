@@ -4,7 +4,16 @@ export const routes = {
   services: {
     list: "/dashboard/services",
     tracker: "/dashboard/services/tracker",
+    /** Deep-link the Service Report Tracker to a sequencer run ID. */
+    trackerByRunId: (runId: string) =>
+      `/dashboard/services/tracker?run_id=${encodeURIComponent(runId.trim())}`,
     detail: (id: string) => `/dashboard/services/${id}`,
+  },
+  repositories: {
+    list: "/dashboard/repositories",
+  },
+  projects: {
+    list: "/dashboard/projects",
   },
   training: {
     list: "/dashboard/training",

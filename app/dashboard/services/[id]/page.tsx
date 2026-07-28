@@ -27,6 +27,7 @@ import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
 } from "@/lib/analysis-tracker";
+import { routes } from "@/lib/routes";
 import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User } from "../../../../types/database";
 
 interface SampleRow {
@@ -432,9 +433,17 @@ export default function AnalysisDetailPage({
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
                 RUN ID
               </span>
-              <span className="text-xs font-semibold text-slate-700 font-mono">
-                {record.run_id || "—"}
-              </span>
+              {record.run_id ? (
+                <Link
+                  href={routes.services.trackerByRunId(record.run_id)}
+                  className="text-xs font-semibold text-[#92298d] hover:text-[#7a2175] font-mono underline decoration-dotted"
+                  title="Open in Service Report Tracker"
+                >
+                  {record.run_id}
+                </Link>
+              ) : (
+                <span className="text-xs font-semibold text-slate-700 font-mono">—</span>
+              )}
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">

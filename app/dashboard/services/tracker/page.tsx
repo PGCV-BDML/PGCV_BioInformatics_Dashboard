@@ -55,12 +55,13 @@ import { LoadingState, ErrorState, EmptyState } from "../../../components/state-
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   getAnalysisYear,
   getAvailableAnalysisYears,
 } from "@/lib/analysis-dashboard-stats";
+import { routes } from "@/lib/routes";
 
 interface ServiceProjectRow {
   id: string;
@@ -185,15 +186,18 @@ function analysisToRow(
 }
 
 export default function ServiceReportTrackerPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const yearParam = searchParams.get("year")?.trim() ?? "";
   const pipelineParam = searchParams.get("pipeline")?.trim() ?? "";
+  const runIdParam = searchParams.get("run_id")?.trim() ?? "";
 
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(runIdParam);
   const [activeFilter, setActiveFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState(yearParam || "all");
   const [pipelineFilter, setPipelineFilter] = useState(pipelineParam);
+  const [runIdFilter, setRunIdFilter] = useState(runIdParam);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [availableProjects, setAvailableProjects] = useState<
@@ -222,7 +226,11 @@ export default function ServiceReportTrackerPage() {
   useEffect(() => {
     setYearFilter(yearParam || "all");
     setPipelineFilter(pipelineParam);
-  }, [yearParam, pipelineParam]);
+    setRunIdFilter(runIdParam);
+    if (runIdParam) {
+      setSearchQuery(runIdParam);
+    }
+  }, [yearParam, pipelineParam, runIdParam]);
 
   useEffect(() => {
     toggleSidebar(isSidebarOpen);
@@ -652,12 +660,25 @@ export default function ServiceReportTrackerPage() {
       );
     }
 
+    if (runIdFilter) {
+      const needle = runIdFilter.toLowerCase();
+      records = records.filter(
+        (item) => item.run_id.trim().toLowerCase() === needle,
+      );
+    }
+
     if (activeFilter !== "All") {
       records = records.filter((item) => item.status === activeFilter);
     }
 
     const query = searchQuery.toLowerCase().trim();
     if (!query) return records;
+
+    // When a run-ID deep-link filter is active and the search box still holds
+    // that same value, skip substring search — exact match already applied.
+    if (runIdFilter && query === runIdFilter.toLowerCase()) {
+      return records;
+    }
 
     return records.filter(
       (item) =>
@@ -674,7 +695,7 @@ export default function ServiceReportTrackerPage() {
         item.assignee.toLowerCase().includes(query) ||
         item.notes.toLowerCase().includes(query),
     );
-  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter]);
+  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter, runIdFilter]);
 
   const {
     displayed: displayedServices,
@@ -685,7 +706,7 @@ export default function ServiceReportTrackerPage() {
   } = useTableState<ServiceProjectRow>({
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
-    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}-${runIdFilter}`,
     initialSort: { key: "service_report_number", direction: "desc" },
     customSorters: {
       service_report_number: (a, b) => {
@@ -898,11 +919,18 @@ export default function ServiceReportTrackerPage() {
       label: "RUN ID",
       width: "6%",
       sortable: true,
-      render: (s) => (
-        <span className="font-mono text-[11px]" title={s.run_id || undefined}>
-          {dash(s.run_id)}
-        </span>
-      ),
+      render: (s) =>
+        s.run_id ? (
+          <Link
+            href={routes.services.trackerByRunId(s.run_id)}
+            className="font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
+            title={`Filter tracker by ${s.run_id}`}
+          >
+            {s.run_id}
+          </Link>
+        ) : (
+          <span className="font-mono text-[11px]">—</span>
+        ),
     },
     {
       key: "status_of_analysis",
@@ -1047,6 +1075,25 @@ export default function ServiceReportTrackerPage() {
                 title="Clear analysis type filter"
               >
                 Type: {pipelineFilter} ×
+              </button>
+            ) : null}
+            {runIdFilter ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setRunIdFilter("");
+                  setSearchQuery("");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete("run_id");
+                  const qs = params.toString();
+                  router.replace(
+                    qs ? `${routes.services.tracker}?${qs}` : routes.services.tracker,
+                  );
+                }}
+                className="h-10 px-3 rounded-full border border-[#92298d]/30 bg-[#f8eef7] text-[11px] font-bold text-[#92298d] hover:bg-[#f1e0ef] transition-colors font-mono"
+                title="Clear run ID filter"
+              >
+                Run ID: {runIdFilter} ×
               </button>
             ) : null}
             <div className="relative w-full min-[480px]:w-64">
