@@ -32,8 +32,6 @@ export type Project = {
   target_delivery_date: string;
   actual_delivery_date?: string | null;
   repository_link?: string | null;
-  /** Sequencer run ID; links to Service Report Tracker `analysis.run_id`. */
-  run_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -54,13 +52,10 @@ export const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
 ];
 
 // Shape the form works with (no id — generated on submit)
-export type ProjectFormData = Omit<
-  Project,
-  "id" | "created_at" | "updated_at" | "repository_link" | "run_id" | "target_delivery_date"
+export type ProjectFormData = Omit<Project, "id" | "created_at" | "updated_at" | "repository_link" | "target_delivery_date"
 > & {
-  repository_link: string; // always a string in the form, "" means empty
-  run_id: string; // always a string in the form, "" means empty
-  target_delivery_date: string; // same reasoning applies here (see below)
+  repository_link: string;          // always a string in the form, "" means empty
+  target_delivery_date: string;     // same reasoning applies here (see below)
 };
 
 //For Tasks ===========================================================================
@@ -351,3 +346,55 @@ export interface AuditLog {
   target_id: string;
   details: Record<string, unknown> | null;
 }
+
+// ============================================================
+// Repository (standalone source links)
+// ============================================================
+
+export type RepositoryKind = "github" | "drive" | "other";
+export type RepositoryCategory =
+  | "pipelines"
+  | "datasets"
+  | "client_sequences"
+  | "other";
+
+export const REPOSITORY_KIND_OPTIONS: {
+  value: RepositoryKind;
+  label: string;
+}[] = [
+  { value: "github", label: "GitHub" },
+  { value: "drive", label: "Google Drive" },
+  { value: "other", label: "Other" },
+];
+
+export const REPOSITORY_CATEGORY_OPTIONS: {
+  value: RepositoryCategory;
+  label: string;
+}[] = [
+  { value: "pipelines", label: "Pipelines" },
+  { value: "datasets", label: "Datasets" },
+  { value: "client_sequences", label: "Client Sequences" },
+  { value: "other", label: "Other" },
+];
+
+export type Repository = {
+  id: string;
+  kind: RepositoryKind;
+  title: string;
+  url: string;
+  description: string | null;
+  category: RepositoryCategory;
+  /** Sequencer run ID; deep-links to Service Report Tracker RUN ID. */
+  run_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type RepositoryFormData = {
+  kind: RepositoryKind;
+  title: string;
+  url: string;
+  description: string;
+  category: RepositoryCategory;
+  run_id: string;
+};
