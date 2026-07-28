@@ -5,20 +5,29 @@ import { PieChart as PieIcon, ExternalLink } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
 
-const PIE_COLORS = ["#f59e0b", "#4ec2bb", "#94a3b8", "#6366f1", "#2a7797"];
+const PIE_COLORS = [
+  "#2a7797",
+  "#4ec2bb",
+  "#91247b",
+  "#f59e0b",
+  "#6366f1",
+  "#94a3b8",
+  "#0d9488",
+  "#c026d3",
+];
 
-export interface AnalysisStatusChartProps {
+export interface AnalysisClientTypeChartProps {
   data: { name: string; value: number }[];
   /** Raw year value (`all` or `YYYY`). */
   selectedYear: string;
   total: number;
 }
 
-export function AnalysisStatusChart({
+export function AnalysisClientTypeChart({
   data,
   selectedYear,
   total,
-}: AnalysisStatusChartProps) {
+}: AnalysisClientTypeChartProps) {
   const yearLabel = formatAnalysisYearLabel(selectedYear);
   const trackerUrl =
     selectedYear && selectedYear !== "all"
@@ -32,7 +41,7 @@ export function AnalysisStatusChart({
           <div className="flex items-center gap-2 text-[#2a7797]">
             <PieIcon className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
-              Status Breakdown ({yearLabel})
+              Analyses by Client Type ({yearLabel})
             </h3>
           </div>
           <Link
@@ -64,7 +73,7 @@ export function AnalysisStatusChart({
                   >
                     {data.map((_, index) => (
                       <Cell
-                        key={`status-cell-${index}`}
+                        key={`client-type-cell-${index}`}
                         fill={PIE_COLORS[index % PIE_COLORS.length]}
                       />
                     ))}
@@ -93,24 +102,24 @@ export function AnalysisStatusChart({
               </div>
             </div>
 
-            <div className="space-y-2.5 font-aileron">
+            <div className="space-y-2.5 font-aileron max-h-56 overflow-y-auto pr-1">
               {data.map((entry, idx) => (
                 <div
                   key={entry.name}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/60 border border-slate-200 shadow-[0_4px_12px_rgba(15,23,42,0.02)]"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className="w-2.5 h-2.5 rounded-full"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{
                         backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
                       }}
                     />
-                    <span className="text-slate-500 font-semibold text-xs">
+                    <span className="text-slate-500 font-semibold text-xs truncate">
                       {entry.name}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-800">
+                  <span className="text-xs font-bold text-slate-800 shrink-0 ml-2">
                     {entry.value}
                   </span>
                 </div>

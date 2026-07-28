@@ -1,6 +1,6 @@
 import {
+  CLIENT_TYPE_OPTIONS,
   displayAnalysisLabel,
-  labelFromAnalysisStatus,
   parseServiceReportNumber,
 } from "@/lib/analysis-tracker";
 import type { AnalysisStatus } from "@/types/database";
@@ -15,6 +15,7 @@ export type AnalysisDashboardRow = {
   status?: AnalysisStatus | string | null;
   started_at?: string | null;
   client_name?: string | null;
+  client_type?: string | null;
 };
 
 export type AnalysisDashboardStats = {
@@ -65,17 +66,15 @@ export function formatAnalysisYearLabel(year: string): string {
   return year;
 }
 
-/** Distinct years descending, derived from data (fallback to current year). */
+/** Distinct years descending, derived from data (always includes current year). */
 export function getAvailableAnalysisYears(
   rows: AnalysisDashboardRow[],
 ): string[] {
   const years = new Set<string>();
+  years.add(String(new Date().getFullYear()));
   for (const row of rows) {
     const y = getAnalysisYear(row);
     if (y) years.add(y);
-  }
-  if (years.size === 0) {
-    years.add(String(new Date().getFullYear()));
   }
   return Array.from(years).sort((a, b) => Number(b) - Number(a));
 }
@@ -139,31 +138,35 @@ export function getAnalysesByType(
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
-/** Counts by legacy analysis status enum. */
-export function getAnalysesByStatus(
+/** Counts by client type (UPV, PGCV, SUCs, etc.). */
+export function getAnalysesByClientType(
   rows: AnalysisDashboardRow[],
   year: string,
 ): NamedCount[] {
   const scoped = filterAnalysesByYear(rows, year);
-  const counts = new Map<AnalysisStatus, number>();
+  const counts = new Map<string, number>();
 
   for (const row of scoped) {
-    const status = (row.status ?? "for_approval") as AnalysisStatus;
-    counts.set(status, (counts.get(status) ?? 0) + 1);
+    const name = row.client_type?.trim() || "—";
+    counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
-  const order: AnalysisStatus[] = [
-    "ongoing",
-    "completed",
-    "on_hold",
-    "submitted",
-    "for_approval",
-  ];
+  const preferred = CLIENT_TYPE_OPTIONS as readonly string[];
+  const ordered: NamedCount[] = [];
 
-  return order
-    .filter((status) => (counts.get(status) ?? 0) > 0)
-    .map((status) => ({
-      name: labelFromAnalysisStatus(status),
-      value: counts.get(status) ?? 0,
-    }));
+  for (const name of preferred) {
+    const value = counts.get(name);
+    if (value) ordered.push({ name, value });
+    counts.delete(name);
+  }
+
+  const extras = Array.from(counts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => {
+      if (a.name === "—") return 1;
+      if (b.name === "—") return -1;
+      return b.value - a.value || a.name.localeCompare(b.name);
+    });
+
+  return [...ordered, ...extras];
 }

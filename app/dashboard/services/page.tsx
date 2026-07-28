@@ -6,13 +6,13 @@ import { Calendar, ChevronDown, ExternalLink } from "lucide-react";
 import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs";
 import { AnalysisDashboardStatCards } from "../../components/analysis-dashboard-stat-cards";
 import { AnalysisTypeChart } from "../../components/analysis-type-chart";
-import { AnalysisStatusChart } from "../../components/analysis-status-chart";
+import { AnalysisClientTypeChart } from "../../components/analysis-client-type-chart";
 import { ErrorState, LoadingState } from "../../components/state-views";
 import { getRowsFromDB } from "@/lib/supabase";
 import {
   formatAnalysisYearLabel,
   getAnalysisDashboardStats,
-  getAnalysesByStatus,
+  getAnalysesByClientType,
   getAnalysesByType,
   getAvailableAnalysisYears,
   type AnalysisDashboardRow,
@@ -21,13 +21,14 @@ import { servicesDashboardBreadcrumbs } from "@/lib/breadcrumbs";
 import type { Analysis } from "@/types/database";
 
 const ALL_TIME = "all";
+const CURRENT_YEAR = String(new Date().getFullYear());
 
 export default function ServicesDashboardPage() {
   const [rows, setRows] = useState<AnalysisDashboardRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<string>(ALL_TIME);
-  const [typeChartYear, setTypeChartYear] = useState<string>(ALL_TIME);
+  const [selectedYear, setSelectedYear] = useState<string>(CURRENT_YEAR);
+  const [typeChartYear, setTypeChartYear] = useState<string>(CURRENT_YEAR);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,13 +49,14 @@ export default function ServicesDashboardPage() {
           status: a.status,
           started_at: a.started_at,
           client_name: a.client_name,
+          client_type: a.client_type,
         }));
 
         setRows(mapped);
         setSelectedYear((prev) => {
           if (prev === ALL_TIME) return ALL_TIME;
           const years = getAvailableAnalysisYears(mapped);
-          return years.includes(prev) ? prev : ALL_TIME;
+          return years.includes(prev) ? prev : CURRENT_YEAR;
         });
       } catch (err) {
         console.error("Failed to load analysis dashboard:", err);
@@ -94,8 +96,8 @@ export default function ServicesDashboardPage() {
     [rows, typeChartYear],
   );
 
-  const byStatus = useMemo(
-    () => getAnalysesByStatus(rows, selectedYear || ALL_TIME),
+  const byClientType = useMemo(
+    () => getAnalysesByClientType(rows, selectedYear || ALL_TIME),
     [rows, selectedYear],
   );
 
@@ -188,8 +190,8 @@ export default function ServicesDashboardPage() {
               onYearChange={setTypeChartYear}
               trackerHref={trackerHrefForPipeline}
             />
-            <AnalysisStatusChart
-              data={byStatus}
+            <AnalysisClientTypeChart
+              data={byClientType}
               selectedYear={selectedYear}
               total={stats.total}
             />
