@@ -176,10 +176,27 @@ export interface ServiceReport {
 
 export type TrainingType = "training" | "internship";
 
+export type TrainingProgramStatus =
+  | "draft"
+  | "ongoing"
+  | "completed"
+  | "archived";
+
+export const TRAINING_PROGRAM_STATUS_OPTIONS: {
+  value: TrainingProgramStatus;
+  label: string;
+}[] = [
+  { value: "draft", label: "Draft" },
+  { value: "ongoing", label: "On-going" },
+  { value: "completed", label: "Completed" },
+  { value: "archived", label: "Archived" },
+];
+
 export interface TrainingProgram {
   id: string;
   title: string;
   type: TrainingType | null;
+  status: TrainingProgramStatus;
   start_date: string | null;
   end_date: string | null;
   instructor_id: string;
@@ -187,6 +204,16 @@ export interface TrainingProgram {
   created_at?: string;
   updated_at?: string;
 }
+
+/** Form shape for add/edit program modal (dates always strings). */
+export type TrainingProgramFormData = {
+  title: string;
+  description: string;
+  instructor_id: string;
+  start_date: string;
+  end_date: string;
+  status: TrainingProgramStatus;
+};
 
 export interface Module {
   id: string;
