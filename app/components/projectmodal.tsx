@@ -19,6 +19,7 @@ const EMPTY_FORM: ProjectFormData = {
   start_date: "",
   target_delivery_date: "",
   repository_link: "",
+  run_id: "",
 };
 
 interface ProjectModalProps {
@@ -318,6 +319,23 @@ export default function ProjectModal({
           {errors.repository_link && (
             <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.repository_link}</p>
           )}
+        </div>
+        {/* Run ID → Service Report Tracker */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="project-run-id" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            Run ID
+          </label>
+          <input
+            id="project-run-id"
+            type="text"
+            value={formState.run_id}
+            onChange={(e) => handleInputChange("run_id", e.target.value)}
+            placeholder="e.g. PGCV_NS_0059"
+            className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm font-mono"
+          />
+          <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+            Matches the Service Report Tracker RUN ID column.
+          </p>
         </div>
       </div>
     </SlideOverModal>

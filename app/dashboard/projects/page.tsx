@@ -26,10 +26,12 @@ import {
 import { getRowsFromDB, getUsersFromDB, saveDataToDB, getNameIdFromDB } from "@/lib/supabase";
 import { formatDate } from "@/lib/utils";
 import { projectsBreadcrumbs } from "@/lib/breadcrumbs";
+import { routes } from "@/lib/routes";
 import { useTableState } from "@/hooks/useTableState";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
+import Link from "next/link";
 
 const FILTER_OPTIONS: { value: ProjectStatus | "All"; label: string }[] = [
   { value: "All", label: "All" },
@@ -178,6 +180,7 @@ export default function ProjectsPage() {
       start_date: formData.start_date,
       target_delivery_date: formData.target_delivery_date || null,
       repository_link: formData.repository_link || null,
+      run_id: formData.run_id.trim() || null,
     };
 
     setIsSaving(true);
@@ -206,6 +209,7 @@ export default function ProjectsPage() {
       start_date: formData.start_date,
       target_delivery_date: formData.target_delivery_date || null,
       repository_link: formData.repository_link || null,
+      run_id: formData.run_id.trim() || null,
     };
 
     setIsSaving(true);
@@ -239,6 +243,7 @@ export default function ProjectsPage() {
       start_date: selectedProject.start_date,
       target_delivery_date: selectedProject.target_delivery_date || "",
       repository_link: selectedProject.repository_link || "",
+      run_id: selectedProject.run_id || "",
     };
   }, [selectedProject]);
 
@@ -416,7 +421,7 @@ export default function ProjectsPage() {
     {
       key: "repository_link",
       label: "Repository Link",
-      width: "14%",
+      width: "10%",
       render: (p) =>
         p.repository_link ? (
           <a
@@ -433,9 +438,27 @@ export default function ProjectsPage() {
         ),
     },
     {
+      key: "run_id",
+      label: "Run ID",
+      width: "10%",
+      sortable: true,
+      render: (p) =>
+        p.run_id ? (
+          <Link
+            href={routes.services.trackerByRunId(p.run_id)}
+            className="inline-flex items-center gap-1 text-xs text-[#92298d] hover:text-[#7a2175] font-bold underline decoration-dotted font-mono whitespace-nowrap"
+            title="Open in Service Report Tracker"
+          >
+            {p.run_id}
+          </Link>
+        ) : (
+          <span className="text-xs text-slate-400 italic">None</span>
+        ),
+    },
+    {
       key: "id",
       label: "Actions",
-      width: "10%",
+      width: "8%",
       render: (p) => (
         <div className="flex items-center justify-center gap-1.5">
           <button
