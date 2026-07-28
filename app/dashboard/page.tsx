@@ -14,24 +14,14 @@ import { ErrorState } from "../components/state-views";
 interface TaskRow {
   id: string;
   title: string | null;
-  assignee_id: string;
   due_date: string | null;
   status: string;
   priority: string;
-  linked_project_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-interface ProjectRow {
-  id: string;
-  title?: string | null;
-  name?: string | null;
 }
 interface WeeklyTask {
   id: string;
   title: string;
   description: string;
-  linkedProject: string;
   dueDate: Date | null;
   status: "pending" | "completed";
   priority: "high" | "medium" | "low";
@@ -136,28 +126,14 @@ export default function DashboardLandingPage() {
       setTasksError(null);
 
       try {
-        const [taskRows, projectRows] = await Promise.all([
-          getRowsFromDB("task") as Promise<TaskRow[]>,
-          getRowsFromDB("project") as Promise<ProjectRow[]>,
-        ]);
+        const taskRows = await (getRowsFromDB("task") as Promise<TaskRow[]>);
 
         if (cancelled) return;
-
-        const projectNameById = new Map<string, string>();
-        for (const project of projectRows) {
-          projectNameById.set(
-            project.id,
-            project.title || project.name || "Untitled Project",
-          );
-        }
 
         const mapped: WeeklyTask[] = taskRows.map((row) => ({
           id: row.id,
           title: row.title || "Untitled task",
           description: "", // `task` table has no description column
-          linkedProject: row.linked_project_id
-            ? projectNameById.get(row.linked_project_id) ?? "Unlinked Project"
-            : "No linked project",
           dueDate: row.due_date ? new Date(row.due_date) : null,
           status: normalizeStatus(row.status),
           priority: normalizePriority(row.priority),
