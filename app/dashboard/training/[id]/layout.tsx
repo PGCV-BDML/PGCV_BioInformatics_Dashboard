@@ -36,7 +36,6 @@ export default function TrainingProgramLayout({
           description: found.description ?? "",
           start_date: found.start_date ?? "",
           end_date: found.end_date ?? "",
-          duration: undefined,
           leaderName: userMap.get(found.instructor_id) ?? "—",
           status: found.status ?? "ongoing",
         });

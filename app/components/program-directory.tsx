@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertCircle, Plus } from "lucide-react";
 import { PageHeader } from "@/app/components/pageheader";
 import ProgramSearchGrid, {
@@ -12,7 +11,6 @@ import ConfirmModal from "@/app/components/confirm-modal";
 import { useDashboardUI } from "@/app/components/dashboard-ui-context";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
-import { programRoutes } from "@/lib/routes";
 import { STAFF_ROLES } from "@/lib/portal";
 import {
   getRowsFromDB,
@@ -40,7 +38,6 @@ function mapProgramCard(
     instructor_name: userMap.get(program.instructor_id)?.name ?? "Unassigned",
     start_date: program.start_date ?? "",
     end_date: program.end_date ?? "",
-    duration: "",
     participant_count: 0,
     status: program.status ?? "ongoing",
   };
@@ -65,7 +62,6 @@ export default function ProgramDirectory({
   const [rawPrograms, setRawPrograms] = useState<TrainingProgram[]>([]);
   const [instructors, setInstructors] = useState<UserOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [didAutoOpen, setDidAutoOpen] = useState(false);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,7 +72,6 @@ export default function ProgramDirectory({
   const [archiveTarget, setArchiveTarget] = useState<ProgramCard | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
-  const router = useRouter();
   const { toggleSidebar } = useDashboardUI();
   const { isLearnerView, isStaff } = usePortal();
   const { showToast } = useToast();
@@ -127,22 +122,6 @@ export default function ProgramDirectory({
     };
     loadData();
   }, [programType]);
-
-  // Learners with exactly one course land directly in that workspace.
-  useEffect(() => {
-    if (!isLearnerView || didAutoOpen || loadError) return;
-    const onlyCourse = programsList.length === 1 ? programsList[0] : null;
-    if (!onlyCourse) return;
-    setDidAutoOpen(true);
-    router.replace(programRoutes(programType).detail(onlyCourse.id));
-  }, [
-    didAutoOpen,
-    isLearnerView,
-    loadError,
-    programsList,
-    programType,
-    router,
-  ]);
 
   const selectedRaw = useMemo(
     () => rawPrograms.find((p) => p.id === selectedProgram?.id) ?? null,
@@ -238,7 +217,6 @@ export default function ProgramDirectory({
             instructor_name: instructorName,
             start_date: saved.start_date ?? "",
             end_date: saved.end_date ?? "",
-            duration: "",
             participant_count: 0,
             status: saved.status ?? "ongoing",
           },
@@ -325,19 +303,6 @@ export default function ProgramDirectory({
       setIsArchiving(false);
     }
   }, [archiveTarget, updateProgramStatus]);
-
-  // Avoid flashing the directory while redirecting a single-enrollment learner.
-  if (isLearnerView && programsList.length === 1 && !loadError) {
-    return (
-      <div className="flex w-full items-center justify-center py-24">
-        <div
-          role="status"
-          aria-label="Opening your course"
-          className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#2a7797]"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8 mx-auto font-aileron w-full max-w-[1240px]">
