@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
+import type { TrainingProgramStatus } from "@/types/database";
 
 export interface ProgramWorkspaceData {
   id: string;
@@ -27,7 +28,30 @@ export interface ProgramWorkspaceData {
   end_date: string;
   duration?: string;
   leaderName: string;
+  status?: TrainingProgramStatus;
 }
+
+const STATUS_BADGE: Record<
+  TrainingProgramStatus,
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Draft",
+    className: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+  ongoing: {
+    label: "On-going",
+    className: "bg-teal-50 text-teal-700 border-teal-100",
+  },
+  completed: {
+    label: "Completed",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  },
+  archived: {
+    label: "Archived",
+    className: "bg-amber-50 text-amber-800 border-amber-100",
+  },
+};
 
 interface ProgramWorkspaceLayoutProps {
   programType: ProgramType;
@@ -132,9 +156,18 @@ export default function ProgramWorkspaceLayout({
 
       <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-sm space-y-4">
         <div className="space-y-1">
-          <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
-            {brandLabel}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-[9px] font-bold text-[#f57f17] uppercase tracking-[1.5px] font-quicksand">
+              {brandLabel}
+            </span>
+            {program.status && (
+              <span
+                className={`text-[9px] font-bold uppercase tracking-[1px] border px-2 py-0.5 rounded-md ${STATUS_BADGE[program.status].className}`}
+              >
+                {STATUS_BADGE[program.status].label}
+              </span>
+            )}
+          </div>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
             {program.title}
           </h2>

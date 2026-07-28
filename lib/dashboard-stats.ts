@@ -45,7 +45,7 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
     supabase.from("project").select("status, start_date"),
     supabase.from("collaboration").select("status, start_date, created_at"),
     supabase.from("service_report").select("delivered_at, created_at"),
-    supabase.from("training_program").select("type, start_date, created_at"),
+    supabase.from("training_program").select("type, status, start_date, created_at"),
   ]);
 
   if (projResult.error) throw new Error(`Project query: ${projResult.error.message}`);
@@ -89,16 +89,16 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
 
   // -- Training Programs --
   // training_type enum: 'training' | 'internship'
-  // No status column exists, so ongoingTrainings is set equal to totalTrainings
-  // as an upper-bound ceiling. Upgrade path: add a status column to
-  // training_program and filter by status='ongoing' here.
+  // training_program_status: 'draft' | 'ongoing' | 'completed' | 'archived'
   const programsInYear = programs.filter(
     (p) => matchesYear(p.start_date, selectedYear) || matchesYear(p.created_at, selectedYear),
   );
-  const totalTrainings = programsInYear.filter((p) => p.type === "training").length;
-  const totalInterns = programsInYear.filter((p) => p.type === "internship").length;
-  // ponytail: training_program has no status column — using total as ceiling
-  const ongoingTrainings = totalTrainings;
+  const trainingsInYear = programsInYear.filter((p) => p.type === "training");
+  const totalTrainings = trainingsInYear.filter((p) => p.status !== "archived").length;
+  const totalInterns = programsInYear.filter(
+    (p) => p.type === "internship" && p.status !== "archived",
+  ).length;
+  const ongoingTrainings = trainingsInYear.filter((p) => p.status === "ongoing").length;
 
   return {
     activeProjects,
