@@ -115,7 +115,7 @@ function TasksPageContent() {
     due_date: "",
     status: "pending",
     priority: "medium",
-    linked_project_id: availableProjects[0]?.id ?? "",
+    linked_project_id: null,
     linked_analysis_id: null,
     categories: [],
   };
@@ -331,7 +331,11 @@ function TasksPageContent() {
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const { name, value } = e.target;
-      setFormState((prev) => ({ ...prev, [name]: value }));
+      setFormState((prev) => ({
+        ...prev,
+        [name]:
+          name === "linked_project_id" ? value || null : value,
+      }));
     },
     [],
   );
@@ -342,7 +346,10 @@ function TasksPageContent() {
 
   const persistTaskPayload = (form: Omit<Task, "id">) => {
     const { categories: _categories, ...record } = form;
-    return record;
+    return {
+      ...record,
+      linked_project_id: record.linked_project_id || null,
+    };
   };
 
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
