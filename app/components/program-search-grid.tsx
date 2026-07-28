@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Search,
   Calendar,
-  Clock,
   User,
   Users,
   ArrowRight,
@@ -29,7 +28,6 @@ export interface ProgramCard {
   instructor_name: string;
   start_date: string;
   end_date: string;
-  duration: string;
   participant_count: number;
   status: TrainingProgramStatus;
 }
@@ -318,15 +316,6 @@ export default function ProgramSearchGrid({
                       {roleLabel}{" "}
                       <strong className="text-slate-700 font-bold">
                         {prog.instructor_name}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>
-                      Duration:{" "}
-                      <strong className="text-slate-700 font-bold">
-                        {prog.duration || "—"}
                       </strong>
                     </span>
                   </div>

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Calendar,
   User,
-  Clock,
   BookOpen,
   ClipboardCheck,
   BarChart3,
@@ -27,7 +26,6 @@ export interface ProgramWorkspaceData {
   description: string;
   start_date: string;
   end_date: string;
-  duration?: string;
   leaderName: string;
   status?: TrainingProgramStatus;
 }
@@ -192,15 +190,6 @@ export default function ProgramWorkspaceLayout({
             <span>
               {leaderLabel}:{" "}
               <strong className="text-slate-700">{program.leaderName}</strong>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>
-              Duration:{" "}
-              <strong className="text-slate-700">
-                {program.duration ?? "—"}
-              </strong>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
