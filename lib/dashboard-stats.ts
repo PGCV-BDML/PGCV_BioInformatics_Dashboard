@@ -15,6 +15,10 @@ export type DashboardStats = {
   reportsNew: number;
   totalTrainings: number;
   ongoingTrainings: number;
+  completedTrainings: number;
+  totalInternPrograms: number;
+  ongoingInternPrograms: number;
+  /** @deprecated Use totalInternPrograms — kept for older call sites */
   totalInterns: number;
 };
 
@@ -95,10 +99,16 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
   );
   const trainingsInYear = programsInYear.filter((p) => p.type === "training");
   const totalTrainings = trainingsInYear.filter((p) => p.status !== "archived").length;
-  const totalInterns = programsInYear.filter(
-    (p) => p.type === "internship" && p.status !== "archived",
-  ).length;
   const ongoingTrainings = trainingsInYear.filter((p) => p.status === "ongoing").length;
+  const completedTrainings = trainingsInYear.filter((p) => p.status === "completed").length;
+
+  const internProgramsInYear = programsInYear.filter(
+    (p) => p.type === "internship" && p.status !== "archived",
+  );
+  const totalInternPrograms = internProgramsInYear.length;
+  const ongoingInternPrograms = internProgramsInYear.filter(
+    (p) => p.status === "ongoing",
+  ).length;
 
   return {
     activeProjects,
@@ -111,7 +121,10 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
     reportsNew,
     totalTrainings,
     ongoingTrainings,
-    totalInterns,
+    completedTrainings,
+    totalInternPrograms,
+    ongoingInternPrograms,
+    totalInterns: totalInternPrograms,
   };
 }
 
