@@ -46,9 +46,9 @@ export function DashboardStatsCards({
   const cards: StatCard[] = [
     {
       href: "/dashboard/services",
-      label: `Service Reports Delivered (${selectedYear})`,
+      label: `Service Reports Generated (${selectedYear})`,
       icon: <FileCheck2 className="w-4 h-4 opacity-80" />,
-      value: stats?.reportsDelivered ?? null,
+      value: stats?.reportsGenerated ?? null,
       tone: {
         card: "bg-[#f0f4f8] border-blue-200 shadow-[0_12px_28px_rgba(23,78,100,0.1)]",
         label: "text-[#2a7797]",
@@ -58,10 +58,10 @@ export function DashboardStatsCards({
       footnotes: (
         <>
           <span className="flex items-center gap-1 bg-[#e6f4f8] text-[#174e64] px-2 py-1 rounded-full">
-            <ArrowUpRight className="w-3 h-3" /> +{stats?.reportsNew ?? 0} Pending
+            <FileCheck2 className="w-3 h-3" /> With SR#
           </span>
           <span className="flex items-center gap-1 bg-white/60 text-[#356d83] px-2 py-1 rounded-full border border-slate-200/60">
-            <FileCheck2 className="w-3 h-3" /> Delivered
+            <ArrowUpRight className="w-3 h-3" /> {stats?.reportsPending ?? 0} Pending
           </span>
         </>
       ),
