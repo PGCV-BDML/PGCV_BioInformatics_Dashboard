@@ -238,8 +238,8 @@ export default function RepositoryModal({
             />
             <p className="text-[10px] text-slate-400 ml-1 font-aileron flex items-start gap-1">
               <Link2 className="w-3 h-3 mt-0.5 shrink-0" />
-              Optional. Matches the Service Report Tracker RUN ID column and
-              opens that filter when clicked.
+              Optional. Must match a Service Report Tracker RUN ID — clicking
+              that RUN ID opens this link.
             </p>
           </div>
         </div>

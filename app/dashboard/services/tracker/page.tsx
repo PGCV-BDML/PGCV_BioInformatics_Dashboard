@@ -39,6 +39,7 @@ import {
   User,
   Service,
   ServiceCategory,
+  Repository,
 } from "../../../../types/database";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../../components/toast";
@@ -62,6 +63,10 @@ import {
   getAvailableAnalysisYears,
 } from "@/lib/analysis-dashboard-stats";
 import { routes } from "@/lib/routes";
+
+function normalizeRunId(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
 
 interface ServiceProjectRow {
   id: string;
@@ -205,6 +210,10 @@ export default function ServiceReportTrackerPage() {
   >([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  /** run_id (normalized) → repository URL from Repositories module */
+  const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
+    () => new Map(),
+  );
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -241,15 +250,27 @@ export default function ServiceReportTrackerPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [analyses, projects, clients, services, users, user] = await Promise.all([
-          getRowsFromDB<Analysis>("analysis"),
-          getRowsFromDB<Project>("project"),
-          getNameIdFromDB("client"),
-          getRowsFromDB<Service>("service"),
-          getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
-          getCurrentUser(),
-        ]);
+        const [analyses, projects, clients, services, users, user, repositories] =
+          await Promise.all([
+            getRowsFromDB<Analysis>("analysis"),
+            getRowsFromDB<Project>("project"),
+            getNameIdFromDB("client"),
+            getRowsFromDB<Service>("service"),
+            getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
+            getCurrentUser(),
+            getRowsFromDB<Repository>("repository"),
+          ]);
         setCurrentUserId(user?.id ?? null);
+
+        const repoByRunId = new Map<string, string>();
+        for (const repo of repositories) {
+          const key = normalizeRunId(repo.run_id);
+          const url = repo.url?.trim();
+          if (key && url && !repoByRunId.has(key)) {
+            repoByRunId.set(key, url);
+          }
+        }
+        setRunIdRepoLinks(repoByRunId);
 
         const serviceMap = new Map<string, { name: string; category: ServiceCategory }>();
         for (const s of services as Service[]) {
@@ -919,18 +940,31 @@ export default function ServiceReportTrackerPage() {
       label: "RUN ID",
       width: "6%",
       sortable: true,
-      render: (s) =>
-        s.run_id ? (
-          <Link
-            href={routes.services.trackerByRunId(s.run_id)}
-            className="font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
-            title={`Filter tracker by ${s.run_id}`}
-          >
+      render: (s) => {
+        if (!s.run_id) {
+          return <span className="font-mono text-[11px]">—</span>;
+        }
+        const repoUrl = runIdRepoLinks.get(normalizeRunId(s.run_id));
+        if (repoUrl) {
+          return (
+            <a
+              href={repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
+              title={repoUrl}
+            >
+              {s.run_id}
+              <ExternalLink className="w-3 h-3 shrink-0" />
+            </a>
+          );
+        }
+        return (
+          <span className="font-mono text-[11px]" title={s.run_id}>
             {s.run_id}
-          </Link>
-        ) : (
-          <span className="font-mono text-[11px]">—</span>
-        ),
+          </span>
+        );
+      },
     },
     {
       key: "status_of_analysis",
