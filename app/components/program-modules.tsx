@@ -156,6 +156,13 @@ export default function ProgramModules({
   };
 
   const persistOrder = async (ordered: ModuleRow[]) => {
+    // Two-phase write avoids unique (program_id, order) collisions when
+    // swapping: e.g. A:1↔B:2 cannot both become 2/1 in one parallel update.
+    await Promise.all(
+      ordered.map((row, index) =>
+        saveDataToDB("module", row.id, { order: -(index + 1) }),
+      ),
+    );
     await Promise.all(
       ordered.map((row, index) =>
         saveDataToDB("module", row.id, { order: index + 1 }),
@@ -179,12 +186,17 @@ export default function ProgramModules({
     next[index] = other;
     next[swapWith] = current;
 
+    const previous = modulesList;
+    setModulesList(
+      next.map((row, i) => ({ ...row, order: i + 1 })),
+    );
     setBusyModuleId(moduleId);
     try {
       await persistOrder(next);
     } catch (error) {
       console.error("Failed to reorder modules:", error);
       showToast("Failed to reorder modules.", "error");
+      setModulesList(previous);
       await load();
     } finally {
       setBusyModuleId(null);
