@@ -12,9 +12,6 @@ export const routes = {
   repositories: {
     list: "/dashboard/repositories",
   },
-  projects: {
-    list: "/dashboard/projects",
-  },
   training: {
     list: "/dashboard/training",
     detail: (id: string) => `/dashboard/training/${id}`,

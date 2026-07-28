@@ -68,6 +68,7 @@ export type TableNames =
   | "certificate"
   | "task"
   | "task_tag"
+  | "repository"
   | "users";
 
 export async function getNameIdFromDB<T = { id: string; name: string }>(
