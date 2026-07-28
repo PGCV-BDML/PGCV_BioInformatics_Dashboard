@@ -467,24 +467,6 @@ function TasksPageContent() {
       render: (t) => <CategoryChips categories={t.categories ?? []} maxVisible={2} />,
     },
     {
-      key: "linked_project_id",
-      label: "Linked Project",
-      width: "14%",
-      render: (t) => {
-        const project = availableProjects.find(
-          (p) => p.id === t.linked_project_id,
-        );
-        return (
-          <span
-            className="text-slate-600 text-xs font-medium block truncate max-w-full"
-            title={project ? project.name : "Unlinked"}
-          >
-            {project ? project.name : "Unlinked"}
-          </span>
-        );
-      },
-    },
-    {
       key: "assignee_id",
       label: "Assignee",
       width: "11%",
