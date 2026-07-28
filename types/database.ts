@@ -303,6 +303,19 @@ export interface TrainingSession {
   updated_at?: string;
 }
 
+export type EnrollmentStatus = "enrolled" | "completed" | "dropped";
+
+export interface ProgramEnrollment {
+  id: string;
+  program_id: string;
+  user_id: string;
+  status: EnrollmentStatus;
+  enrolled_at: string;
+  enrolled_by: string | null;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
 // ============================================================
 // 3.5 Core table types (Client, Service, User, AuditLog)
 // ============================================================
