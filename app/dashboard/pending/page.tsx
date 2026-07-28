@@ -39,11 +39,11 @@ export default function PendingAccessPage() {
             Contact
           </p>
           <a
-            href="mailto:pgc.visayas@up.edu.ph"
+            href="mailto:bioinfo.pgc.upvisayas@up.edu.ph"
             className="inline-flex items-center gap-2 text-sm font-bold text-[#2a7797] hover:underline"
           >
             <Mail className="w-4 h-4" />
-            pgc.visayas@up.edu.ph
+            bioinfo.pgc.upvisayas@up.edu.ph
           </a>
           <p className="text-[11px] text-slate-500">
             Include your Google account email so staff can locate your user
