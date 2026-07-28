@@ -263,18 +263,34 @@ export default function DashboardLandingPage() {
         </div>
       </div>
 
-      {/* Compact lab snapshot strip */}
-      <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-300/70 bg-gradient-to-r from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] px-5 py-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <p className="text-sm text-slate-600 font-medium font-aileron">
-          <span className="font-bold text-[#174e64]">PGCV-BDML</span>
-          {" — "}
-          year-filtered counts for service delivery and lab programs.
-        </p>
-        <img
-          src="/assets/pgcv_logo.png"
-          alt="Philippine Genome Center Visayas logo"
-          className="hidden sm:block h-10 w-auto object-contain shrink-0"
-        />
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-[0_20px_50px_rgba(15,23,42,0.12)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+        <div className="space-y-4 max-w-2xl z-10">
+          <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
+            Internal Operations Hub
+          </span>
+
+          <h2 className="text-4xl md:text-[44px] font-black text-slate-800 leading-[1.15] tracking-tight font-aileron">
+            Bioinformatics Workflow <br />
+            Dashboard
+          </h2>
+
+          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1 font-aileron">
+            One internal workspace for service tracking, training, internships,
+            collaborations, projects, accomplishments, documents, and repository
+            links.
+          </p>
+        </div>
+
+        <div className="flex-shrink-0 z-10 self-end md:self-auto">
+          <img
+            src="/assets/pgcv_logo.png"
+            alt="Philippine Genome Center Visayas logo"
+            className="h-28 w-auto object-contain"
+          />
+        </div>
+
+        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
       {statsError ? (

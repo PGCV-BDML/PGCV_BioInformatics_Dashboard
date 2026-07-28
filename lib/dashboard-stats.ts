@@ -1,4 +1,9 @@
 import { supabase } from "@/lib/supabase";
+import {
+  filterAnalysesByYear,
+  getAnalysisYear,
+  type AnalysisDashboardRow,
+} from "@/lib/analysis-dashboard-stats";
 
 // ===========================================================================
 // DashboardStats type — shape consumed by dashboard-stat-cards component
@@ -11,7 +16,13 @@ export type DashboardStats = {
   newProjectsThisMonth: number;
   activeCollaborations: number;
   completedCollaborations: number;
+  /** Analyses in the selected year that have an SR number or report link. */
+  reportsGenerated: number;
+  /** Analyses in the selected year still missing an SR number/link. */
+  reportsPending: number;
+  /** @deprecated Alias of reportsGenerated */
   reportsDelivered: number;
+  /** @deprecated Alias of reportsPending */
   reportsNew: number;
   totalTrainings: number;
   ongoingTrainings: number;
@@ -21,6 +32,13 @@ export type DashboardStats = {
   /** @deprecated Use totalInternPrograms — kept for older call sites */
   totalInterns: number;
 };
+
+function hasServiceReport(row: AnalysisDashboardRow): boolean {
+  return Boolean(
+    (row.service_report_number && String(row.service_report_number).trim()) ||
+      (row.service_report_link && String(row.service_report_link).trim()),
+  );
+}
 
 // ===========================================================================
 // Helpers
@@ -37,29 +55,31 @@ function matchesYear(dateVal: string | Date | null | undefined, year: string): b
 // ===========================================================================
 
 /**
- * Fetch dashboard KPI numbers for a given year from four Supabase tables.
+ * Fetch dashboard KPI numbers for a given year.
  *
- * All four tables are queried in parallel. Because each table has very few
- * rows (project ~3, collaboration ~?, service_report ~2, training_program ~4),
- * we fetch all rows and count client-side. This is simpler than issuing a
- * dozen individual count-head queries and equally valid for small datasets.
+ * Service-report KPIs come from `analysis` (SR number / link / date) — the same
+ * source as Sequence Analysis — not the sparse `service_report` delivery table.
  */
 export async function getDashboardStats(selectedYear: string): Promise<DashboardStats> {
-  const [projResult, collabResult, reportResult, programResult] = await Promise.all([
+  const [projResult, collabResult, analysisResult, programResult] = await Promise.all([
     supabase.from("project").select("status, start_date"),
     supabase.from("collaboration").select("status, start_date, created_at"),
-    supabase.from("service_report").select("delivered_at, created_at"),
+    supabase
+      .from("analysis")
+      .select(
+        "service_report_number, service_report_date, service_report_link, started_at",
+      ),
     supabase.from("training_program").select("type, status, start_date, created_at"),
   ]);
 
   if (projResult.error) throw new Error(`Project query: ${projResult.error.message}`);
   if (collabResult.error) throw new Error(`Collaboration query: ${collabResult.error.message}`);
-  if (reportResult.error) throw new Error(`Service report query: ${reportResult.error.message}`);
+  if (analysisResult.error) throw new Error(`Analysis query: ${analysisResult.error.message}`);
   if (programResult.error) throw new Error(`Training program query: ${programResult.error.message}`);
 
   const projects = projResult.data ?? [];
   const collabs = collabResult.data ?? [];
-  const reports = reportResult.data ?? [];
+  const analyses = (analysisResult.data ?? []) as AnalysisDashboardRow[];
   const programs = programResult.data ?? [];
 
   // -- Projects --
@@ -83,13 +103,11 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
   const activeCollaborations = collabsInYear.filter((c) => c.status === "ongoing").length;
   const completedCollaborations = collabsInYear.filter((c) => c.status === "finished").length;
 
-  // -- Service Reports --
-  // delivered_at is nullable timestamptz. reportsNew is ALL pending reports
-  // regardless of year (no year filter applied).
-  const reportsDelivered = reports.filter(
-    (r) => r.delivered_at && matchesYear(r.delivered_at, selectedYear),
-  ).length;
-  const reportsNew = reports.filter((r) => !r.delivered_at).length;
+  // -- Service Reports (from analysis tracker) --
+  // Year = service_report_date → SR# year → started_at (same as Sequence Analysis).
+  const analysesInYear = filterAnalysesByYear(analyses, selectedYear);
+  const reportsGenerated = analysesInYear.filter(hasServiceReport).length;
+  const reportsPending = analysesInYear.filter((row) => !hasServiceReport(row)).length;
 
   // -- Training Programs --
   // training_type enum: 'training' | 'internship'
@@ -117,8 +135,10 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
     newProjectsThisMonth,
     activeCollaborations,
     completedCollaborations,
-    reportsDelivered,
-    reportsNew,
+    reportsGenerated,
+    reportsPending,
+    reportsDelivered: reportsGenerated,
+    reportsNew: reportsPending,
     totalTrainings,
     ongoingTrainings,
     completedTrainings,
@@ -133,23 +153,26 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
 // ===========================================================================
 
 /**
- * Query all service_reports, group by year of delivered_at, and return
- * sorted array of { year, Delivered } objects. Only years that have at
- * least one delivered report are included.
+ * Count analyses that have a service report, grouped by analysis year
+ * (service_report_date → SR# year → started_at).
  */
 export async function getServiceReportsByYear(): Promise<{ year: string; Delivered: number }[]> {
-  const { data, error } = await supabase.from("service_report").select("delivered_at");
+  const { data, error } = await supabase
+    .from("analysis")
+    .select(
+      "service_report_number, service_report_date, service_report_link, started_at",
+    );
 
-  if (error) throw new Error(`Service report query: ${error.message}`);
+  if (error) throw new Error(`Analysis query: ${error.message}`);
 
-  const reports = data ?? [];
+  const analyses = (data ?? []) as AnalysisDashboardRow[];
 
   const yearMap = new Map<string, number>();
-  for (const report of reports) {
-    if (report.delivered_at) {
-      const year = new Date(report.delivered_at).getFullYear().toString();
-      yearMap.set(year, (yearMap.get(year) ?? 0) + 1);
-    }
+  for (const row of analyses) {
+    if (!hasServiceReport(row)) continue;
+    const year = getAnalysisYear(row);
+    if (!year) continue;
+    yearMap.set(year, (yearMap.get(year) ?? 0) + 1);
   }
 
   return Array.from(yearMap.entries())
