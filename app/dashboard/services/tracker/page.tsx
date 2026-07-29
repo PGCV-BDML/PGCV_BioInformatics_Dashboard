@@ -34,7 +34,6 @@ import {
 import {
   Analysis,
   AnalysisStatus,
-  ANALYSIS_STATUS_OPTIONS,
   Project,
   User,
   Service,
@@ -102,7 +101,9 @@ interface ServiceProjectRow {
 
 const FILTER_OPTIONS = [
   { value: "All", label: "All Records" },
-  ...ANALYSIS_STATUS_OPTIONS,
+  { value: "ongoing", label: "On-going" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "completed", label: "Completed" },
 ];
 
 const ITEMS_PER_PAGE = 15;
