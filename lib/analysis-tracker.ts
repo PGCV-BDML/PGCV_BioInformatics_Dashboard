@@ -50,19 +50,14 @@ export const CLIENT_TYPE_OPTIONS = [
 ] as const;
 
 export const STATUS_OF_COMPLETION_OPTIONS = [
-  "Completed",
   "On-going",
   "On hold (for payment)",
-  "Submitted",
-  "For approval",
+  "Completed",
 ] as const;
 
 export const STATUS_OF_SUBMISSION_OPTIONS = [
-  "Submitted",
   "For approval",
-  "On-going",
-  "Completed",
-  "On hold (for payment)",
+  "Submitted",
 ] as const;
 
 export function normalizeClassification(

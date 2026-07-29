@@ -28,6 +28,7 @@ import {
   labelFromAnalysisStatus,
   nextServiceReportNumber,
   parseServiceReportNumber,
+  STATUS_OF_COMPLETION_OPTIONS,
   STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
@@ -343,62 +344,20 @@ export default function ServiceReportTrackerPage() {
     }
   }, [activeFilter]);
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    const status = newStatus as AnalysisStatus;
-    const completedAt = status === "completed" ? new Date().toISOString() : null;
-    const completionLabel = labelFromAnalysisStatus(status);
-    try {
-      const updated = await saveDataToDB("analysis", id, {
-        status,
-        status_of_completion: completionLabel,
-        completed_at: completedAt,
-      });
-      setServicesList((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                status: updated.status as AnalysisStatus,
-                status_of_completion: updated.status_of_completion ?? completionLabel,
-                completed: updated.completed_at
-                  ? (updated.completed_at.split("T")[0] ?? "—")
-                  : "—",
-              }
-            : item,
-        ),
-      );
-      const row = servicesList.find((s) => s.id === id);
-      await syncAnalysisToTaskSafe({
-        id: updated.id,
-        project_id: updated.project_id,
-        pipeline: updated.pipeline,
-        pipeline_version: updated.pipeline_version,
-        status: updated.status as AnalysisStatus,
-        assignee_id: updated.assignee_id,
-        started_at: updated.started_at,
-        completed_at: updated.completed_at,
-        projectName: row?.project_name,
-        serviceReportNumber: updated.service_report_number,
-        application: updated.application,
-      });
-      showToast("Analysis status updated.", "success");
-    } catch {
-      showToast("Failed to update analysis status.", "error");
-    }
-  };
-
   const handleTrackerStatusChange = async (
     id: string,
-    field: "status_of_submission",
+    field: "status_of_completion" | "status_of_submission",
     label: string,
   ) => {
     const row = servicesList.find((s) => s.id === id);
     if (!row) return;
 
+    const nextCompletion =
+      field === "status_of_completion" ? label : row.status_of_completion;
     const nextSubmission =
       field === "status_of_submission" ? label : row.status_of_submission;
     const legacyStatus = deriveLegacyStatus({
-      status_of_completion: row.status_of_completion,
+      status_of_completion: nextCompletion,
       status_of_submission: nextSubmission,
     });
     const completedAt =
@@ -762,37 +721,9 @@ export default function ServiceReportTrackerPage() {
     return { colorClasses, chevronClass };
   };
 
-  const renderStatusDropdown = (id: string, currentStatus: string) => {
-    const { colorClasses, chevronClass } = statusChipColors(currentStatus);
-
-    return (
-      <div className="relative inline-flex items-center max-w-full">
-        <select
-          value={currentStatus}
-          onChange={(e) => handleStatusChange(id, e.target.value)}
-          aria-label="Status of Completion"
-          className={`pl-2.5 pr-6 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 appearance-none whitespace-nowrap max-w-full transition-all ${colorClasses}`}
-        >
-          {ANALYSIS_STATUS_OPTIONS.map((opt) => (
-            <option
-              key={opt.value}
-              value={opt.value}
-              className="bg-white text-slate-800 normal-case text-xs"
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
-        />
-      </div>
-    );
-  };
-
   const renderTrackerStatusDropdown = (
     id: string,
-    field: "status_of_submission",
+    field: "status_of_completion" | "status_of_submission",
     currentLabel: string,
     options: readonly string[],
     ariaLabel: string,
@@ -963,7 +894,14 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Completion Status",
       width: "8%",
       sortable: true,
-      render: (s) => renderStatusDropdown(s.id, s.status),
+      render: (s) =>
+        renderTrackerStatusDropdown(
+          s.id,
+          "status_of_completion",
+          s.status_of_completion || labelFromAnalysisStatus(s.status),
+          STATUS_OF_COMPLETION_OPTIONS,
+          "Status of Completion",
+        ),
     },
     {
       key: "status_of_submission",

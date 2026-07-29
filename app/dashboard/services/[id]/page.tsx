@@ -27,6 +27,8 @@ import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
+  mapLabelToAnalysisStatus,
+  STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User, Repository } from "../../../../types/database";
 
@@ -60,13 +62,10 @@ interface ServiceProjectRow {
   samples?: SampleRow[];
 }
 
-const STATUS_OPTIONS = [
-  { value: "for_approval", label: "For Approval" },
-  { value: "ongoing", label: "On-going" },
-  { value: "on_hold", label: "On Hold" },
-  { value: "submitted", label: "Submitted" },
-  { value: "completed", label: "Completed" },
-];
+const STATUS_OPTIONS = STATUS_OF_COMPLETION_OPTIONS.map((label) => ({
+  value: mapLabelToAnalysisStatus(label)!,
+  label,
+}));
 
 export default function AnalysisDetailPage({
   params,
@@ -407,6 +406,11 @@ export default function AnalysisDetailPage({
                 Move to: {opt.label}
               </option>
             ))}
+            {!STATUS_OPTIONS.some((opt) => opt.value === record.status) ? (
+              <option value={record.status}>
+                Move to: {labelFromAnalysisStatus(record.status)}
+              </option>
+            ) : null}
           </select>
         </div>
       </div>
