@@ -118,6 +118,32 @@ describe("getNameIdFromDB", () => {
 
     await expect(getNameIdFromDB("users")).rejects.toThrow("Fetch failed");
   });
+
+  it("Maps project rows using name when available", async () => {
+    const testData = [
+      { id: "p1", name: "Genome A", project_id: "P-2026-001" },
+    ];
+    mockFrom.mockReturnValue(createChain(testData) as any);
+
+    const result = await getNameIdFromDB("project");
+    expect(result).toEqual([{ id: "p1", name: "Genome A" }]);
+  });
+
+  it("Falls back to project_id when name column is missing", async () => {
+    const missingName = {
+      code: "42703",
+      message: "column project.name does not exist",
+    };
+    const fallbackRows = [{ id: "p1", project_id: "P-2026-001" }];
+
+    mockFrom
+      .mockReturnValueOnce(createChain(null, missingName) as any)
+      .mockReturnValueOnce(createChain(fallbackRows) as any);
+
+    const result = await getNameIdFromDB("project");
+    expect(result).toEqual([{ id: "p1", name: "P-2026-001" }]);
+    expect(mockFrom).toHaveBeenCalledTimes(2);
+  });
 });
 
 // ===========================================================================

@@ -76,7 +76,39 @@ export type TableNames =
 export async function getNameIdFromDB<T = { id: string; name: string }>(
   table: TableNames,
 ): Promise<T[]> {
-  const { data: users, error: fetchError } = await supabase
+  // Live DB has drifted without `project.name` on some environments.
+  // Prefer name when present; otherwise label by human-readable project_id.
+  if (table === "project") {
+    const withName = await supabase
+      .from("project")
+      .select("id, name, project_id");
+
+    if (!withName.error) {
+      return (withName.data ?? []).map((row) => ({
+        id: row.id as string,
+        name:
+          (typeof row.name === "string" && row.name.trim()) ||
+          (typeof row.project_id === "string" && row.project_id.trim()) ||
+          (row.id as string),
+      })) as T[];
+    }
+
+    // PostgREST 42703 when `name` column is absent — fall back to project_id.
+    const fallback = await supabase.from("project").select("id, project_id");
+    if (fallback.error) {
+      console.error("Error retrieving project data:", fallback.error);
+      throw fallback.error;
+    }
+
+    return (fallback.data ?? []).map((row) => ({
+      id: row.id as string,
+      name:
+        (typeof row.project_id === "string" && row.project_id.trim()) ||
+        (row.id as string),
+    })) as T[];
+  }
+
+  const { data: rows, error: fetchError } = await supabase
     .from(table)
     .select("id,name");
 
@@ -85,7 +117,7 @@ export async function getNameIdFromDB<T = { id: string; name: string }>(
     throw fetchError;
   }
 
-  return (users ?? []) as T[];
+  return (rows ?? []) as T[];
 }
 
 // Projects and Collab function =========================================================
