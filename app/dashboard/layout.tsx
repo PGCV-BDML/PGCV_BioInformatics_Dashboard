@@ -83,14 +83,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* ── DYNAMIC PAGE CONTENT CONTAINER ── */}
       <main id="main-content" className="flex-1 h-screen overflow-y-auto p-4 md:p-8">
-        <button
-          type="button"
-          onClick={() => toggleSidebar(false)}
-          className="lg:hidden mb-4 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-surface border border-slate-200 text-[#2a7797] hover:bg-brand-tint transition-colors"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        {isSidebarHidden && (
+          <button
+            type="button"
+            onClick={() => toggleSidebar(false)}
+            className="mb-4 inline-flex items-center justify-center gap-2 h-10 px-3 rounded-xl bg-surface border border-slate-200 text-[#2a7797] hover:bg-brand-tint transition-colors shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
+            aria-label="Open navigation menu"
+            title="Open navigation"
+          >
+            <Menu className="w-5 h-5" />
+            <span className="text-xs font-bold font-quicksand tracking-wide hidden sm:inline">
+              Menu
+            </span>
+          </button>
+        )}
         {children}
       </main>
     </div>

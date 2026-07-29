@@ -21,6 +21,7 @@ import {
   LogOut,
   LayoutDashboard,
   ClipboardList,
+  PanelLeftClose,
 } from "lucide-react";
 
 type NavChild = {
@@ -227,25 +228,36 @@ export default function Sidebar({
       >
         <div>
           {/* Static Header Link (Hover interactions removed) */}
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 pb-5 border-b border-gray-100 cursor-pointer select-none"
-          >
-            {/* ponytail: UP logo asset not available — needs official file from PGC External Drive. Brand guide rule #8 requires UP logo on LEFT of PGCV logo. */}
-            <img
-              src="/assets/pgcv_logo.png"
-              alt="Philippine Genome Center Visayas logo"
-              className="h-11 w-auto object-contain"
-            />
-            <div className="flex flex-col">
-              <span className="text-[#2a7797] font-black text-[13px] leading-tight font-aileron tracking-wide uppercase">
-                Bioinformatics Workflow Dashboard
-              </span>
-              <span className="text-[#8499a5] text-[10px] font-quicksand tracking-wide mt-0.5">
-                University of the Philippines
-              </span>
-            </div>
-          </Link>
+          <div className="flex items-start gap-2 pb-5 border-b border-gray-100">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
+            >
+              {/* ponytail: UP logo asset not available — needs official file from PGC External Drive. Brand guide rule #8 requires UP logo on LEFT of PGCV logo. */}
+              <img
+                src="/assets/pgcv_logo.png"
+                alt="Philippine Genome Center Visayas logo"
+                className="h-11 w-auto object-contain"
+              />
+              <div className="flex flex-col">
+                <span className="text-[#2a7797] font-black text-[13px] leading-tight font-aileron tracking-wide uppercase">
+                  Bioinformatics Workflow Dashboard
+                </span>
+                <span className="text-[#8499a5] text-[10px] font-quicksand tracking-wide mt-0.5">
+                  University of the Philippines
+                </span>
+              </div>
+            </Link>
+            <button
+              type="button"
+              onClick={() => toggleSidebar(true)}
+              aria-label="Collapse navigation"
+              title="Collapse navigation"
+              className="mt-1 inline-flex items-center justify-center w-9 h-9 flex-shrink-0 rounded-xl border border-slate-200 text-[#64748b] hover:bg-brand-tint hover:text-[#2a7797] transition-colors"
+            >
+              <PanelLeftClose className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
 
           {/* Navigation */}
           <div className="mt-6">
