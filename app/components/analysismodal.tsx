@@ -7,7 +7,6 @@ import {
   ANALYSIS_OPTIONS,
   ANALYSIS_OTHER,
   CLIENT_TYPE_OPTIONS,
-  STATUS_OF_ANALYSIS_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
   STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
@@ -25,7 +24,6 @@ export type AnalysisFormState = {
   external_project_id: string;
   sample_type: string;
   run_id: string;
-  status_of_analysis: string;
   status_of_completion: string;
   status_of_submission: string;
   service_report_link: string;
@@ -46,7 +44,6 @@ export const EMPTY_ANALYSIS_FORM: AnalysisFormState = {
   external_project_id: "",
   sample_type: "",
   run_id: "",
-  status_of_analysis: "",
   status_of_completion: "",
   status_of_submission: "",
   service_report_link: "",
@@ -364,24 +361,6 @@ export default function AnalysisSidebar({
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(<Activity className="w-3.5 h-3.5" />, "Status")}
         <div className="grid grid-cols-1 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="analysis-status-analysis" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-              Status of Analysis
-            </label>
-            <select
-              id="analysis-status-analysis"
-              value={formState.status_of_analysis}
-              onChange={(e) => handleChange("status_of_analysis", e.target.value)}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {STATUS_OF_ANALYSIS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="analysis-status-completion" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Status of Completion

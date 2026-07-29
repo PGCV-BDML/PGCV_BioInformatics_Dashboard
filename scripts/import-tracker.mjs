@@ -73,7 +73,6 @@ for (const rec of records) {
     external_project_id: rec.external_project_id,
     sample_type: rec.sample_type,
     run_id: rec.run_id,
-    status_of_analysis: rec.status_of_analysis,
     status_of_completion: rec.status_of_completion,
     status_of_submission: rec.status_of_submission,
     service_report_link: rec.service_report_link,
