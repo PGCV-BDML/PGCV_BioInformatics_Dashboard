@@ -58,8 +58,29 @@ export const STATUS_OF_COMPLETION_OPTIONS = [
 
 export const STATUS_OF_SUBMISSION_OPTIONS = [
   "For approval",
+  "Under review",
+  "Approved",
   "Submitted",
 ] as const;
+
+/** Rank used so review actions never move a report backwards. */
+export function submissionStatusRank(label: string | null | undefined): number {
+  const t = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  if (t === "submitted") return 4;
+  if (t === "approved") return 3;
+  if (t === "under review" || t === "under_review") return 2;
+  if (t === "for approval" || t === "for_approval") return 1;
+  return 0;
+}
+
+export function shouldAdvanceSubmissionStatus(
+  current: string | null | undefined,
+  next: string,
+): boolean {
+  return submissionStatusRank(next) > submissionStatusRank(current);
+}
 
 export function normalizeClassification(
   raw: string | null | undefined,
@@ -83,6 +104,8 @@ export function mapLabelToAnalysisStatus(
   if (t === "completed") return "completed";
   if (t === "on-going" || t === "ongoing" || t === "on going") return "ongoing";
   if (t === "submitted") return "submitted";
+  if (t === "approved") return "submitted";
+  if (t === "under review" || t === "under_review") return "for_approval";
   if (t === "for approval" || t === "for_approval") return "for_approval";
   if (t.includes("on hold") || t === "on_hold") return "on_hold";
   return null;

@@ -1,4 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import {
+  deriveLegacyStatus,
+  shouldAdvanceSubmissionStatus,
+} from "@/lib/analysis-tracker";
 
 export type AppNotification = {
   id: string;
@@ -14,6 +18,8 @@ export type AppNotification = {
   email_sent_at: string | null;
   created_at: string;
 };
+
+export type ReviewAction = "Under review" | "Approved";
 
 /** Fetch notifications for the currently authenticated user. */
 export async function getMyNotifications(
@@ -90,4 +96,117 @@ export function subscribeToNotifications(
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+async function getActorDisplayName(): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) return "Approving officer";
+
+  const { data } = await supabase
+    .from("users")
+    .select("name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const name = data?.name?.trim();
+  if (name) return name;
+
+  const meta = user.user_metadata as
+    | { full_name?: string; name?: string }
+    | undefined;
+  return (
+    meta?.full_name?.trim() ||
+    meta?.name?.trim() ||
+    user.email ||
+    "Approving officer"
+  );
+}
+
+function buildSystemNote(action: ReviewAction, actor: string): string {
+  const date = new Date().toISOString().slice(0, 10);
+  return `System: ${action} by ${actor} on ${date}`;
+}
+
+function appendSystemNote(
+  existing: string | null | undefined,
+  line: string,
+): string {
+  const current = (existing ?? "").trim();
+  if (current.includes(line)) return current;
+  // Avoid repeating the same action type on the same day if wording drifts.
+  const actionPrefix = line.split(" by ")[0];
+  if (actionPrefix && current.includes(actionPrefix)) return current;
+  return current ? `${current}\n${line}` : line;
+}
+
+async function applyReviewAction(
+  analysisId: string,
+  action: ReviewAction,
+): Promise<void> {
+  const { data: analysis, error } = await supabase
+    .from("analysis")
+    .select("id, status_of_completion, status_of_submission, notes")
+    .eq("id", analysisId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load analysis for review action:", error);
+    throw error;
+  }
+  if (!analysis) {
+    throw new Error("Analysis not found for review action.");
+  }
+
+  const nextSubmission = action;
+  const canAdvance = shouldAdvanceSubmissionStatus(
+    analysis.status_of_submission,
+    nextSubmission,
+  );
+
+  const actor = await getActorDisplayName();
+  const noteLine = buildSystemNote(action, actor);
+  const nextNotes = appendSystemNote(analysis.notes, noteLine);
+
+  if (!canAdvance && nextNotes === (analysis.notes ?? "").trim()) {
+    return;
+  }
+
+  const payload: Record<string, unknown> = {
+    notes: nextNotes || null,
+  };
+
+  if (canAdvance) {
+    payload.status_of_submission = nextSubmission;
+    payload.status = deriveLegacyStatus({
+      status_of_completion: analysis.status_of_completion,
+      status_of_submission: nextSubmission,
+    });
+  }
+
+  await saveDataToDB("analysis", analysisId, payload);
+}
+
+/** Set submission status to Under review + append a system note (no backwards move). */
+export async function markAnalysisUnderReview(
+  analysisId: string,
+): Promise<void> {
+  await applyReviewAction(analysisId, "Under review");
+}
+
+/** Set submission status to Approved + append a system note (no backwards move). */
+export async function approveAnalysis(analysisId: string): Promise<void> {
+  await applyReviewAction(analysisId, "Approved");
+}
+
+/**
+ * Open-report flow: mark under review when the officer actually opens the report.
+ * Safe to call repeatedly.
+ */
+export async function openReportForReview(
+  notification: AppNotification,
+): Promise<void> {
+  const analysisId = notification.payload.analysis_id;
+  if (analysisId) {
+    await markAnalysisUnderReview(analysisId);
+  }
 }

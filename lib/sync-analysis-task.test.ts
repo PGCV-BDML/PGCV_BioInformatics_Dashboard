@@ -3,8 +3,10 @@ import {
   deriveLegacyStatus,
   displayAnalysisLabel,
   formatServiceReportNumber,
+  mapLabelToAnalysisStatus,
   nextServiceReportNumber,
   normalizeClassification,
+  shouldAdvanceSubmissionStatus,
 } from "./analysis-tracker";
 import { buildAnalysisTaskTitle } from "./sync-analysis-task";
 import { TASK_CATEGORIES, TASK_CATEGORY_LABELS } from "./task-categories";
@@ -58,6 +60,24 @@ describe("deriveLegacyStatus", () => {
         status_of_submission: "Submitted",
       }),
     ).toBe("ongoing");
+  });
+
+  it("maps under review and approved submission labels", () => {
+    expect(mapLabelToAnalysisStatus("Under review")).toBe("for_approval");
+    expect(mapLabelToAnalysisStatus("Approved")).toBe("submitted");
+  });
+});
+
+describe("shouldAdvanceSubmissionStatus", () => {
+  it("allows forward moves only", () => {
+    expect(shouldAdvanceSubmissionStatus("For approval", "Under review")).toBe(
+      true,
+    );
+    expect(shouldAdvanceSubmissionStatus("Under review", "Approved")).toBe(true);
+    expect(shouldAdvanceSubmissionStatus("Approved", "Under review")).toBe(
+      false,
+    );
+    expect(shouldAdvanceSubmissionStatus("Submitted", "Approved")).toBe(false);
   });
 });
 

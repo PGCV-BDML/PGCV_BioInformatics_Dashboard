@@ -786,6 +786,12 @@ export default function ServiceReportTrackerPage() {
     } else if (key === "for_approval" || key === "for approval") {
       colorClasses = "bg-blue-50 text-blue-700 border-blue-200";
       chevronClass = "text-blue-700";
+    } else if (key === "under review" || key === "under_review") {
+      colorClasses = "bg-amber-50 text-amber-800 border-amber-200";
+      chevronClass = "text-amber-700";
+    } else if (key === "approved") {
+      colorClasses = "bg-emerald-50 text-emerald-800 border-emerald-200";
+      chevronClass = "text-emerald-700";
     } else if (key.includes("on hold") || key === "on_hold") {
       colorClasses = "bg-slate-100 text-slate-600 border-slate-200";
       chevronClass = "text-slate-500";
