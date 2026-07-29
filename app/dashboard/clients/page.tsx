@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Search,
@@ -88,11 +89,13 @@ const FIELD_CONFIG: Array<{
 ];
 
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
+  const queryFromUrl = searchParams.get("q")?.trim() ?? "";
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [formState, setFormState] = useState<ClientFormState>(
     createEmptyClientForm(),
   );
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +107,10 @@ export default function ClientsPage() {
   useEffect(() => {
     toggleSidebar(isPanelOpen);
   }, [isPanelOpen, toggleSidebar]);
+
+  useEffect(() => {
+    setSearchQuery(queryFromUrl);
+  }, [queryFromUrl]);
 
   useEffect(() => {
     let isMounted = true;
