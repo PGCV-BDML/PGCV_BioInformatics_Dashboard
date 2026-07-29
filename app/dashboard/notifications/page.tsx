@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, ExternalLink, FileCheck2 } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  FileCheck2,
+  BadgeCheck,
+} from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
 import {
+  approveAnalysis,
   getMyNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  openReportForReview,
   type AppNotification,
 } from "@/lib/notifications";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
@@ -25,6 +33,8 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterMode>("unread");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,8 +66,7 @@ export default function NotificationsPage() {
     [notifications],
   );
 
-  async function handleMarkRead(id: string) {
-    await markNotificationRead(id);
+  function dismissLocally(id: string) {
     if (filter === "unread") {
       setNotifications((prev) => prev.filter((item) => item.id !== id));
       return;
@@ -67,13 +76,74 @@ export default function NotificationsPage() {
     );
   }
 
+  async function handleMarkRead(id: string) {
+    setActionError(null);
+    setBusyId(id);
+    try {
+      await markNotificationRead(id);
+      dismissLocally(id);
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't mark notification as read.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleMarkAllRead() {
-    await markAllNotificationsRead();
-    if (filter === "unread") {
-      setNotifications([]);
+    setActionError(null);
+    try {
+      await markAllNotificationsRead();
+      if (filter === "unread") {
+        setNotifications([]);
+        return;
+      }
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, is_read: true })),
+      );
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't mark all notifications as read.");
+    }
+  }
+
+  async function handleOpenReport(notification: AppNotification) {
+    const link = notification.payload.service_report_link?.trim();
+    if (!link) return;
+
+    setActionError(null);
+    setBusyId(notification.id);
+    try {
+      await openReportForReview(notification);
+      window.open(link, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't mark report as under review.");
+      window.open(link, "_blank", "noopener,noreferrer");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleApprove(notification: AppNotification) {
+    const analysisId = notification.payload.analysis_id;
+    if (!analysisId) {
+      setActionError("Missing analysis reference for this notification.");
       return;
     }
-    setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
+
+    setActionError(null);
+    setBusyId(notification.id);
+    try {
+      await approveAnalysis(analysisId);
+      await markNotificationRead(notification.id);
+      dismissLocally(notification.id);
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't approve this report.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -122,6 +192,12 @@ export default function NotificationsPage() {
         }
       />
 
+      {actionError && (
+        <p className="text-sm text-red-600 font-aileron" role="alert">
+          {actionError}
+        </p>
+      )}
+
       {loadError ? (
         <ErrorState message={loadError} />
       ) : isLoading ? (
@@ -134,64 +210,79 @@ export default function NotificationsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                notification.is_read
-                  ? "border-slate-200 bg-slate-50/70"
-                  : "border-emerald-200 bg-white"
-              }`}
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                    <FileCheck2 className="h-4 w-4 text-emerald-700" />
+          {notifications.map((notification) => {
+            const isBusy = busyId === notification.id;
+            return (
+              <div
+                key={notification.id}
+                className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
+                  notification.is_read
+                    ? "border-slate-200 bg-slate-50/70"
+                    : "border-emerald-200 bg-white"
+                }`}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                      <FileCheck2 className="h-4 w-4 text-emerald-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 font-quicksand">
+                        Ready for review
+                      </p>
+                      <h2 className="mt-1 text-lg font-bold text-slate-900 truncate">
+                        {notification.payload.client_name || "Unnamed analysis"}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {notification.payload.service_report_number
+                          ? `Service report ${notification.payload.service_report_number}`
+                          : "Service report link available"}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-400">
+                        Notified {formatTimestamp(notification.created_at)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 font-quicksand">
-                      Ready for review
-                    </p>
-                    <h2 className="mt-1 text-lg font-bold text-slate-900 truncate">
-                      {notification.payload.client_name || "Unnamed analysis"}
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {notification.payload.service_report_number
-                        ? `Service report ${notification.payload.service_report_number}`
-                        : "Service report link available"}
-                    </p>
-                    <p className="mt-2 text-xs text-slate-400">
-                      Notified {formatTimestamp(notification.created_at)}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  {notification.payload.service_report_link && (
-                    <a
-                      href={notification.payload.service_report_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Open Report
-                    </a>
-                  )}
-                  {!notification.is_read && (
-                    <button
-                      type="button"
-                      onClick={() => void handleMarkRead(notification.id)}
-                      className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-full transition-all whitespace-nowrap"
-                    >
-                      <CheckCheck className="w-3.5 h-3.5" />
-                      Mark read
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {notification.payload.service_report_link && (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void handleOpenReport(notification)}
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open Report
+                      </button>
+                    )}
+                    {notification.payload.analysis_id && (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void handleApprove(notification)}
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <BadgeCheck className="w-3.5 h-3.5" />
+                        Approved
+                      </button>
+                    )}
+                    {!notification.is_read && (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void handleMarkRead(notification.id)}
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-slate-200 hover:bg-slate-50 disabled:opacity-60 text-slate-700 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Mark read
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
