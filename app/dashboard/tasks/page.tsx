@@ -85,7 +85,7 @@ function TasksPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState("pending");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
