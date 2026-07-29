@@ -140,7 +140,6 @@ export interface Analysis {
   external_project_id: string | null;
   sample_type: string | null;
   run_id: string | null;
-  status_of_analysis: string | null;
   status_of_completion: string | null;
   status_of_submission: string | null;
   service_report_link: string | null;

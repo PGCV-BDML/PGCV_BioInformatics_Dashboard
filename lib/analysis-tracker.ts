@@ -65,14 +65,6 @@ export const STATUS_OF_SUBMISSION_OPTIONS = [
   "On hold (for payment)",
 ] as const;
 
-export const STATUS_OF_ANALYSIS_OPTIONS = [
-  "Completed",
-  "On-going",
-  "On hold (for payment)",
-  "Submitted",
-  "For approval",
-] as const;
-
 export function normalizeClassification(
   raw: string | null | undefined,
 ): AnalysisOption | null {
@@ -100,16 +92,14 @@ export function mapLabelToAnalysisStatus(
   return null;
 }
 
-/** Prefer completion status, then submission, then analysis; default for_approval. */
+/** Prefer completion status, then submission; default for_approval. */
 export function deriveLegacyStatus(input: {
   status_of_completion?: string | null;
   status_of_submission?: string | null;
-  status_of_analysis?: string | null;
 }): AnalysisStatus {
   return (
     mapLabelToAnalysisStatus(input.status_of_completion) ??
     mapLabelToAnalysisStatus(input.status_of_submission) ??
-    mapLabelToAnalysisStatus(input.status_of_analysis) ??
     "for_approval"
   );
 }

@@ -47,7 +47,6 @@ interface ServiceProjectRow {
   status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   status_of_completion: string;
   status_of_submission: string;
-  status_of_analysis: string;
   sample_type: string;
   run_id: string;
   external_client_id: string;
@@ -168,7 +167,6 @@ export default function AnalysisDetailPage({
           status: analysis.status as ServiceProjectRow["status"],
           status_of_completion: analysis.status_of_completion ?? "",
           status_of_submission: analysis.status_of_submission ?? "",
-          status_of_analysis: analysis.status_of_analysis ?? "",
           sample_type: analysis.sample_type ?? "",
           run_id: analysis.run_id ?? "",
           external_client_id: analysis.external_client_id ?? "",
@@ -476,14 +474,6 @@ export default function AnalysisDetailPage({
               </span>
               <span className="text-xs font-semibold text-slate-700">
                 {record.status_of_submission || "—"}
-              </span>
-            </div>
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Status of Analysis
-              </span>
-              <span className="text-xs font-semibold text-slate-700">
-                {record.status_of_analysis || "—"}
               </span>
             </div>
           </div>

@@ -28,7 +28,6 @@ import {
   labelFromAnalysisStatus,
   nextServiceReportNumber,
   parseServiceReportNumber,
-  STATUS_OF_ANALYSIS_OPTIONS,
   STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
@@ -80,7 +79,6 @@ interface ServiceProjectRow {
   external_project_id: string;
   sample_type: string;
   run_id: string;
-  status_of_analysis: string;
   status_of_completion: string;
   status_of_submission: string;
   report_link: string;
@@ -130,7 +128,6 @@ function rowToFormState(row: ServiceProjectRow): AnalysisFormState {
     external_project_id: row.external_project_id,
     sample_type: row.sample_type,
     run_id: row.run_id,
-    status_of_analysis: row.status_of_analysis,
     status_of_completion: row.status_of_completion,
     status_of_submission: row.status_of_submission,
     service_report_link: row.report_link,
@@ -168,7 +165,6 @@ function analysisToRow(
     external_project_id: a.external_project_id ?? "",
     sample_type: a.sample_type ?? "",
     run_id: a.run_id ?? "",
-    status_of_analysis: a.status_of_analysis ?? "",
     status_of_completion: a.status_of_completion ?? "",
     status_of_submission: a.status_of_submission ?? "",
     report_link: a.service_report_link ?? "",
@@ -393,20 +389,17 @@ export default function ServiceReportTrackerPage() {
 
   const handleTrackerStatusChange = async (
     id: string,
-    field: "status_of_analysis" | "status_of_submission",
+    field: "status_of_submission",
     label: string,
   ) => {
     const row = servicesList.find((s) => s.id === id);
     if (!row) return;
 
-    const nextAnalysis =
-      field === "status_of_analysis" ? label : row.status_of_analysis;
     const nextSubmission =
       field === "status_of_submission" ? label : row.status_of_submission;
     const legacyStatus = deriveLegacyStatus({
       status_of_completion: row.status_of_completion,
       status_of_submission: nextSubmission,
-      status_of_analysis: nextAnalysis,
     });
     const completedAt =
       legacyStatus === "completed" ? new Date().toISOString() : null;
@@ -512,7 +505,6 @@ export default function ServiceReportTrackerPage() {
         const legacyStatus = deriveLegacyStatus({
           status_of_completion: formState.status_of_completion,
           status_of_submission: formState.status_of_submission,
-          status_of_analysis: formState.status_of_analysis,
         });
         const nowIso = new Date().toISOString();
         const completedAt = legacyStatus === "completed" ? nowIso : null;
@@ -533,7 +525,6 @@ export default function ServiceReportTrackerPage() {
           external_project_id: emptyToNull(formState.external_project_id),
           sample_type: emptyToNull(formState.sample_type),
           run_id: emptyToNull(formState.run_id),
-          status_of_analysis: emptyToNull(formState.status_of_analysis),
           status_of_completion: emptyToNull(formState.status_of_completion),
           status_of_submission: emptyToNull(formState.status_of_submission),
           service_report_link: emptyToNull(formState.service_report_link),
@@ -801,7 +792,7 @@ export default function ServiceReportTrackerPage() {
 
   const renderTrackerStatusDropdown = (
     id: string,
-    field: "status_of_analysis" | "status_of_submission",
+    field: "status_of_submission",
     currentLabel: string,
     options: readonly string[],
     ariaLabel: string,
@@ -965,21 +956,6 @@ export default function ServiceReportTrackerPage() {
           </span>
         );
       },
-    },
-    {
-      key: "status_of_analysis",
-      label: "Status of Analysis",
-      shortLabel: "Analysis Status",
-      width: "8%",
-      sortable: true,
-      render: (s) =>
-        renderTrackerStatusDropdown(
-          s.id,
-          "status_of_analysis",
-          s.status_of_analysis,
-          STATUS_OF_ANALYSIS_OPTIONS,
-          "Status of Analysis",
-        ),
     },
     {
       key: "status_of_completion",

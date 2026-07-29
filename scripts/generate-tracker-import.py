@@ -117,8 +117,8 @@ def map_status(label):
     return None
 
 
-def derive_legacy(comp, sub, ana):
-    return map_status(comp) or map_status(sub) or map_status(ana) or "for_approval"
+def derive_legacy(comp, sub):
+    return map_status(comp) or map_status(sub) or "for_approval"
 
 
 def main():
@@ -143,11 +143,10 @@ def main():
         if application:
             pipeline = "Others"
         sr_date = normalize_date(row[2])
-        status_analysis = cell_str(row[11])
         status_completion = cell_str(row[12])
         status_submission = cell_str(row[13])
         sequences_link = cell_str(row[15])
-        legacy = derive_legacy(status_completion, status_submission, status_analysis)
+        legacy = derive_legacy(status_completion, status_submission)
         completed_at = f"{sr_date}T00:00:00.000Z" if legacy == "completed" and sr_date else None
         rows_out.append(
             {
@@ -162,7 +161,6 @@ def main():
                 "external_project_id": cell_str(row[8]),
                 "sample_type": cell_str(row[9]),
                 "run_id": cell_str(row[10]),
-                "status_of_analysis": status_analysis,
                 "status_of_completion": status_completion,
                 "status_of_submission": status_submission,
                 "service_report_link": cell_str(row[14]),
