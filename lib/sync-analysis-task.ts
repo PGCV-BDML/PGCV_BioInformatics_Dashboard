@@ -86,6 +86,8 @@ async function findTaskByAnalysisId(analysisId: string): Promise<Task | null> {
 /**
  * Upsert a task linked to a sequence analysis so it appears on Tasks + Calendar.
  * Skips when assignee is blank (task.assignee_id is required).
+ * Creates a new task only when analysis status is `ongoing`; existing linked
+ * tasks are still updated on later status changes (e.g. completed / on hold).
  * Always tags with `sequence_analysis`; preserves any extra categories on update.
  */
 export async function syncAnalysisToTask(
@@ -97,6 +99,12 @@ export async function syncAnalysisToTask(
   }
 
   const existing = await findTaskByAnalysisId(analysis.id);
+
+  // New tasks are only created for on-going sequence analyses.
+  if (!existing && analysis.status !== "ongoing") {
+    return null;
+  }
+
   const payload: Omit<TaskRecord, "id"> = {
     title: buildAnalysisTaskTitle(analysis),
     assignee_id: analysis.assignee_id,
@@ -132,15 +140,25 @@ export async function syncAnalysisToTask(
 /** Best-effort sync used from UI write paths; logs but does not rethrow by default. */
 export async function syncAnalysisToTaskSafe(
   analysis: AnalysisSyncInput,
-): Promise<void> {
+): Promise<"created" | "updated" | "skipped_no_assignee" | "skipped" | "error"> {
   try {
-    await syncAnalysisToTask(analysis);
+    if (!analysis.assignee_id) {
+      return analysis.status === "ongoing" ? "skipped_no_assignee" : "skipped";
+    }
+    const existing = await findTaskByAnalysisId(analysis.id);
+    if (!existing && analysis.status !== "ongoing") {
+      return "skipped";
+    }
+    const result = await syncAnalysisToTask(analysis);
+    if (!result) return "skipped";
+    return existing ? "updated" : "created";
   } catch (err) {
     console.error("Failed to sync analysis → task:", err);
+    return "error";
   }
 }
 
-/** Backfill: create tasks for analyses that do not yet have a linked task. */
+/** Backfill: create tasks for ongoing analyses that do not yet have a linked task. */
 export async function backfillAnalysisTasks(
   analyses: Analysis[],
   projectNameById: Map<string, string>,
@@ -148,6 +166,7 @@ export async function backfillAnalysisTasks(
   let created = 0;
   for (const analysis of analyses) {
     if (!analysis.assignee_id) continue;
+    if (analysis.status !== "ongoing") continue;
     const existing = await findTaskByAnalysisId(analysis.id);
     if (existing) continue;
     const result = await syncAnalysisToTask({

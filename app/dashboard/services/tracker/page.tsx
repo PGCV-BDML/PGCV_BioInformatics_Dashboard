@@ -384,7 +384,7 @@ export default function ServiceReportTrackerPage() {
             : item,
         ),
       );
-      await syncAnalysisToTaskSafe({
+      const syncResult = await syncAnalysisToTaskSafe({
         id: updated.id,
         project_id: updated.project_id,
         pipeline: updated.pipeline,
@@ -397,7 +397,16 @@ export default function ServiceReportTrackerPage() {
         serviceReportNumber: updated.service_report_number,
         application: updated.application,
       });
-      showToast("Status updated.", "success");
+      if (syncResult === "created") {
+        showToast("Status updated. Added to Tasks as Sequence Analysis.", "success");
+      } else if (syncResult === "skipped_no_assignee") {
+        showToast(
+          "Status updated. Assign someone to add this to the task list.",
+          "success",
+        );
+      } else {
+        showToast("Status updated.", "success");
+      }
     } catch {
       showToast("Failed to update status.", "error");
     }
@@ -499,7 +508,7 @@ export default function ServiceReportTrackerPage() {
         const saved = await saveDataToDB("analysis", targetId, payload);
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
 
-        await syncAnalysisToTaskSafe({
+        const syncResult = await syncAnalysisToTaskSafe({
           id: saved.id,
           project_id: saved.project_id,
           pipeline: saved.pipeline,
@@ -525,10 +534,31 @@ export default function ServiceReportTrackerPage() {
           setServicesList((prev) =>
             prev.map((item) => (item.id === row.id ? row : item)),
           );
-          showToast("Analysis updated successfully.", "success");
         } else {
           setServicesList((prev) => [row, ...prev]);
-          showToast("Analysis created successfully.", "success");
+        }
+
+        if (syncResult === "created") {
+          showToast(
+            isEditing
+              ? "Analysis updated and added to Tasks as Sequence Analysis."
+              : "Analysis created and added to Tasks as Sequence Analysis.",
+            "success",
+          );
+        } else if (syncResult === "skipped_no_assignee") {
+          showToast(
+            isEditing
+              ? "Analysis updated. Assign someone to add this to the task list."
+              : "Analysis created. Assign someone to add this to the task list.",
+            "success",
+          );
+        } else {
+          showToast(
+            isEditing
+              ? "Analysis updated successfully."
+              : "Analysis created successfully.",
+            "success",
+          );
         }
         closeSidebar();
       } catch {
