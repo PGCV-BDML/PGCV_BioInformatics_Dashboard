@@ -3,11 +3,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  FolderGit2,
-  Network,
   FileCheck2,
   GraduationCap,
-  Users,
+  Briefcase,
   Activity,
   CheckCircle2,
   ArrowUpRight,
@@ -39,10 +37,6 @@ export function DashboardStatsCards({
   isLoading,
   selectedYear,
 }: DashboardStatsCardsProps) {
-  const totalProjects = stats
-    ? stats.activeProjects + stats.completedProjects + stats.backlogProjects
-    : null;
-
   const cards: StatCard[] = [
     {
       href: "/dashboard/services",
@@ -91,7 +85,7 @@ export function DashboardStatsCards({
     {
       href: "/dashboard/internship",
       label: `Internship Programs (${selectedYear})`,
-      icon: <Users className="w-4 h-4 opacity-80" />,
+      icon: <Briefcase className="w-4 h-4 opacity-80" />,
       value: stats?.totalInternPrograms ?? null,
       tone: {
         card: "bg-[#faf5ff] border-violet-200/70 shadow-[0_12px_28px_rgba(91,33,182,0.08)]",
@@ -105,55 +99,7 @@ export function DashboardStatsCards({
             <Activity className="w-3 h-3" /> {stats?.ongoingInternPrograms ?? 0} Active
           </span>
           <span className="flex items-center gap-1 bg-white/60 text-violet-700 px-2 py-1 rounded-full border border-violet-200/60">
-            <Users className="w-3 h-3" /> Programs
-          </span>
-        </>
-      ),
-    },
-    {
-      href: "/dashboard/projects",
-      label: `Projects (${selectedYear})`,
-      icon: <FolderGit2 className="w-4 h-4 opacity-80" />,
-      value: totalProjects,
-      tone: {
-        card: "bg-[#eafafa] border-teal-300/50 shadow-[0_12px_28px_rgba(28,92,89,0.12)]",
-        label: "text-[#2e8b87]",
-        value: "text-[#1c5c59]",
-        border: "border-[rgba(78,194,187,0.25)]",
-      },
-      footnotes: (
-        <>
-          <span className="flex items-center gap-1 bg-[#d5f5f5] text-[#1c5c59] px-2 py-1 rounded-full">
-            <Activity className="w-3 h-3" /> {stats?.activeProjects ?? 0} Active
-          </span>
-          <span className="flex items-center gap-1 bg-white/60 text-[#3ea39f] px-2 py-1 rounded-full border border-[rgba(78,194,187,0.25)]">
-            <CheckCircle2 className="w-3 h-3" /> {stats?.completedProjects ?? 0} Done
-          </span>
-        </>
-      ),
-    },
-    {
-      href: "/dashboard/collaborations",
-      label: `Collaborations (${selectedYear})`,
-      icon: <Network className="w-4 h-4 opacity-80" />,
-      value: stats
-        ? stats.activeCollaborations + stats.completedCollaborations
-        : null,
-      tone: {
-        card: "bg-[#f3faf5] border-emerald-300/50 shadow-[0_12px_28px_rgba(6,78,59,0.1)]",
-        label: "text-emerald-700",
-        value: "text-emerald-900",
-        border: "border-emerald-200",
-      },
-      footnotes: (
-        <>
-          <span className="flex items-center gap-1 bg-emerald-100/70 text-emerald-800 px-2 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {stats?.activeCollaborations ?? 0} Active
-          </span>
-          <span className="flex items-center gap-1 bg-white/60 text-emerald-700 px-2 py-1 rounded-full border border-emerald-200/60">
-            <CheckCircle2 className="w-3 h-3" />{" "}
-            {stats?.completedCollaborations ?? 0} Done
+            <Briefcase className="w-3 h-3" /> Programs
           </span>
         </>
       ),
@@ -161,7 +107,7 @@ export function DashboardStatsCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
       {cards.map((card) => (
         <Link
           key={card.href + card.label}
