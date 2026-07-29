@@ -23,7 +23,13 @@ import {
 } from "lucide-react";
 
 //Database imports
-import { getRowsFromDB, getUsersFromDB, saveDataToDB, getNameIdFromDB } from "@/lib/supabase";
+import {
+  DEFAULT_PROJECT_FALLBACK,
+  getRowsFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+  getNameIdFromDB,
+} from "@/lib/supabase";
 import { formatDate } from "@/lib/utils";
 import { projectsBreadcrumbs } from "@/lib/breadcrumbs";
 import { useTableState } from "@/hooks/useTableState";
@@ -69,7 +75,7 @@ export default function ProjectsPage() {
       setOptionsLoading(true);
       setOptionsError(null);
       try {
-        const [clients, services, users, rows] = await Promise.all([
+        const [clientsResult, servicesResult, usersResult, rowsResult] = await Promise.allSettled([
           getNameIdFromDB("client"),
           getNameIdFromDB("service"),
           getUsersFromDB(["team_lead", "team_member"]),
@@ -77,16 +83,25 @@ export default function ProjectsPage() {
         ]);
 
         if (cancelled) return;
-        setAvailableClients(clients as UserOption[]);
-        setAvailableServices(services as UserOption[]);
-        setAvailableUsers(users as UserOption[]);
-        setProjectsList(rows as Project[]);
+
+        const clients = clientsResult.status === "fulfilled" ? (clientsResult.value as UserOption[]) : [];
+        const services = servicesResult.status === "fulfilled" ? (servicesResult.value as UserOption[]) : [];
+        const users = usersResult.status === "fulfilled" ? (usersResult.value as UserOption[]) : [];
+        const rows = rowsResult.status === "fulfilled"
+          ? (rowsResult.value as Project[])
+          : DEFAULT_PROJECT_FALLBACK as Project[];
+
+        setAvailableClients(clients);
+        setAvailableServices(services);
+        setAvailableUsers(users);
+        setProjectsList(rows.length > 0 ? rows : (DEFAULT_PROJECT_FALLBACK as Project[]));
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
         if (!cancelled) {
-          setOptionsError(
-            "Couldn't load clients, services, or team members. Please refresh the page.",
-          );
+          setProjectsList(DEFAULT_PROJECT_FALLBACK as Project[]);
+          setAvailableClients([]);
+          setAvailableServices([]);
+          setAvailableUsers([]);
         }
       } finally {
         if (!cancelled) setOptionsLoading(false);

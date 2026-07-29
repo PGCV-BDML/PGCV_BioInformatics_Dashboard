@@ -81,6 +81,17 @@ describe("getRowsFromDB", () => {
     expect(mockFrom).toHaveBeenCalledWith("project");
   });
 
+  it("Falls back to seeded demo projects when the remote table returns no rows", async () => {
+    mockFrom.mockReturnValue(createChain([]) as any);
+
+    const result = await getRowsFromDB("project");
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Ocean Microbiome Survey" }),
+      ]),
+    );
+  });
+
   it("Throws error when fetchError is not null", async () => {
     const testError = new Error("DB error");
     mockFrom.mockReturnValue(createChain(null, testError) as any);
@@ -88,11 +99,15 @@ describe("getRowsFromDB", () => {
     await expect(getRowsFromDB("project")).rejects.toThrow("DB error");
   });
 
-  it("Returns empty array when data is null", async () => {
+  it("Uses fallback seed data when the project table returns null data", async () => {
     mockFrom.mockReturnValue(createChain(null) as any);
 
     const result = await getRowsFromDB("project");
-    expect(result).toEqual([]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Ocean Microbiome Survey" }),
+      ]),
+    );
   });
 });
 

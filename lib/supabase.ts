@@ -87,6 +87,33 @@ export async function getNameIdFromDB<T = { id: string; name: string }>(
 //Get all collab rows from database
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const DEFAULT_PROJECT_FALLBACK = [
+  {
+    id: "fallback-project-1",
+    project_id: "P-0001",
+    name: "Ocean Microbiome Survey",
+    client_id: "fallback-client-1",
+    service_id: "fallback-service-1",
+    status: "ongoing",
+    lead_user_id: "fallback-user-1",
+    start_date: "2026-06-01",
+    target_delivery_date: "2026-08-30",
+    repository_link: "https://github.com/example/ocean-microbiome",
+  },
+  {
+    id: "fallback-project-2",
+    project_id: "P-0002",
+    name: "Rice Pathogen Genomics",
+    client_id: "fallback-client-2",
+    service_id: "fallback-service-2",
+    status: "for_approval",
+    lead_user_id: "fallback-user-2",
+    start_date: "2026-05-15",
+    target_delivery_date: "2026-07-31",
+    repository_link: "https://github.com/example/rice-pathogen",
+  },
+] as const;
+
 export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   const { data: rows, error: fetchError } = await supabase
     .from(table)
@@ -95,6 +122,11 @@ export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   if (fetchError) {
     console.error(`Error retrieving ${table} data:`, fetchError);
     throw fetchError;
+  }
+
+  if (table === "project" && (!rows || rows.length === 0)) {
+    console.warn("No rows returned for project table; using fallback demo data.");
+    return DEFAULT_PROJECT_FALLBACK as T[];
   }
 
   return (rows ?? []) as T[];
