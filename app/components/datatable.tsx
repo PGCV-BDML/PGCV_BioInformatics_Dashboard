@@ -2,6 +2,7 @@
 
 import React, { memo } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { TruncatedText } from "./cell-tooltip";
 
 export interface Column<T> {
   key: keyof T | "actions";
@@ -85,16 +86,13 @@ function DataTableInner<T extends { id: string | number }>({
                   className="px-3 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {col.render ? (
-                    <div className="w-full h-full overflow-hidden text-ellipsis">
+                    <div className="w-full min-w-0 overflow-hidden text-ellipsis">
                       {col.render(item)}
                     </div>
                   ) : (
-                    <span
-                      className="block truncate"
-                      title={String(item[col.key as keyof T] ?? "")}
-                    >
-                      {String(item[col.key as keyof T] ?? "—")}
-                    </span>
+                    <TruncatedText
+                      text={String(item[col.key as keyof T] ?? "")}
+                    />
                   )}
                 </td>
               ))}
@@ -117,8 +115,10 @@ function DataTableInner<T extends { id: string | number }>({
   );
 }
 
-const DataTable = memo(DataTableInner) as unknown as <T extends { id: string | number }>(
-  props: DataTableProps<T>
+const DataTable = memo(DataTableInner) as unknown as <
+  T extends { id: string | number },
+>(
+  props: DataTableProps<T>,
 ) => React.JSX.Element;
 
 export default DataTable;
