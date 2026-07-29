@@ -8,10 +8,13 @@ import {
   CheckCheck,
   FileCheck2,
   BadgeCheck,
+  Eye,
 } from "lucide-react";
 import {
   approveAnalysis,
   getMyNotifications,
+  getReviewStatusLabel,
+  getReviewUiState,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForReview,
@@ -27,17 +30,14 @@ export function NotificationBell() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load current user id once
   useEffect(() => {
     getCurrentUser().then((u) => setUserId(u?.id ?? null));
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     getMyNotifications({ unreadOnly: true }).then(setNotifications);
   }, []);
 
-  // Realtime subscription — only when we have a userId
   useEffect(() => {
     if (!userId) return;
     const unsub = subscribeToNotifications(userId, (n) => {
@@ -46,7 +46,6 @@ export function NotificationBell() {
     return unsub;
   }, [userId]);
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -80,6 +79,13 @@ export function NotificationBell() {
     setBusyId(n.id);
     try {
       await openReportForReview(n);
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === n.id
+            ? { ...item, submission_status: "Under review" }
+            : item,
+        ),
+      );
     } catch (error) {
       console.error(error);
     } finally {
@@ -145,15 +151,26 @@ export function NotificationBell() {
             ) : (
               notifications.map((n) => {
                 const isBusy = busyId === n.id;
+                const reviewState = getReviewUiState(n.submission_status);
+                const canApprove =
+                  Boolean(n.payload.analysis_id) &&
+                  (reviewState === "ready" || reviewState === "under_review");
+                const StatusIcon =
+                  reviewState === "under_review"
+                    ? Eye
+                    : reviewState === "approved" || reviewState === "submitted"
+                      ? BadgeCheck
+                      : FileCheck2;
+
                 return (
                   <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <FileCheck2 className="w-3.5 h-3.5 text-emerald-700" />
+                        <StatusIcon className="w-3.5 h-3.5 text-emerald-700" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
-                          Analysis ready for review
+                          {getReviewStatusLabel(reviewState)}
                         </p>
                         <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
                           {n.payload.client_name ?? "—"}
@@ -172,15 +189,20 @@ export function NotificationBell() {
                               <ExternalLink className="w-3 h-3" /> Open Report
                             </button>
                           )}
-                          {n.payload.analysis_id && (
+                          {canApprove ? (
                             <button
                               type="button"
                               disabled={isBusy}
                               onClick={() => void handleApprove(n)}
                               className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
                             >
-                              <BadgeCheck className="w-3 h-3" /> Approved
+                              <BadgeCheck className="w-3 h-3" /> Approve
                             </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 font-aileron">
+                              <BadgeCheck className="w-3 h-3" />{" "}
+                              {getReviewStatusLabel(reviewState)}
+                            </span>
                           )}
                           <button
                             type="button"

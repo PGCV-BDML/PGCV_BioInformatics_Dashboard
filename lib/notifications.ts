@@ -2,6 +2,7 @@ import { supabase, getCurrentUser, saveDataToDB } from "@/lib/supabase";
 import {
   deriveLegacyStatus,
   shouldAdvanceSubmissionStatus,
+  submissionStatusRank,
 } from "@/lib/analysis-tracker";
 
 export type AppNotification = {
@@ -17,9 +18,71 @@ export type AppNotification = {
   is_read: boolean;
   email_sent_at: string | null;
   created_at: string;
+  /** Enriched from analysis.status_of_submission when available. */
+  submission_status?: string | null;
 };
 
 export type ReviewAction = "Under review" | "Approved";
+
+export type ReviewUiState = "ready" | "under_review" | "approved" | "submitted";
+
+export function getReviewUiState(
+  submissionStatus: string | null | undefined,
+): ReviewUiState {
+  const rank = submissionStatusRank(submissionStatus);
+  if (rank >= 4) return "submitted";
+  if (rank >= 3) return "approved";
+  if (rank >= 2) return "under_review";
+  return "ready";
+}
+
+export function getReviewStatusLabel(state: ReviewUiState): string {
+  switch (state) {
+    case "submitted":
+      return "Submitted";
+    case "approved":
+      return "Approved";
+    case "under_review":
+      return "Under review";
+    default:
+      return "Ready for review";
+  }
+}
+
+async function enrichWithSubmissionStatus(
+  notifications: AppNotification[],
+): Promise<AppNotification[]> {
+  const analysisIds = Array.from(
+    new Set(
+      notifications
+        .map((n) => n.payload.analysis_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  if (analysisIds.length === 0) return notifications;
+
+  const { data, error } = await supabase
+    .from("analysis")
+    .select("id, status_of_submission")
+    .in("id", analysisIds);
+
+  if (error) {
+    console.error("Failed to enrich notifications with submission status:", error);
+    return notifications;
+  }
+
+  const byId = new Map(
+    (data ?? []).map((row) => [row.id as string, row.status_of_submission as string | null]),
+  );
+
+  return notifications.map((n) => ({
+    ...n,
+    submission_status: n.payload.analysis_id
+      ? (byId.get(n.payload.analysis_id) ?? n.submission_status ?? null)
+      : (n.submission_status ?? null),
+  }));
+}
 
 /** Fetch notifications for the currently authenticated user. */
 export async function getMyNotifications(
@@ -40,7 +103,8 @@ export async function getMyNotifications(
     console.error("Failed to fetch notifications:", error);
     return [];
   }
-  return (data ?? []) as AppNotification[];
+
+  return enrichWithSubmissionStatus((data ?? []) as AppNotification[]);
 }
 
 /** Mark a single notification as read. */
