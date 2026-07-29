@@ -116,32 +116,30 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         className="flex-1 h-screen overflow-y-auto flex flex-col"
       >
         <PortalPreviewBanner />
-        <div className="flex-1 p-4 md:p-8">
-          {!hideChrome && (
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                {isSidebarHidden && (
-                  <button
-                    type="button"
-                    onClick={() => toggleSidebar(false)}
-                    className="inline-flex items-center justify-center gap-2 h-10 px-3 rounded-xl bg-surface border border-slate-200 text-[#2a7797] hover:bg-brand-tint transition-colors shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
-                    aria-label="Open navigation menu"
-                    title="Open navigation"
-                  >
-                    <Menu className="w-5 h-5" />
-                    <span className="text-xs font-bold font-quicksand tracking-wide hidden sm:inline">
-                      Menu
-                    </span>
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center justify-end">
-                <NotificationBell />
-              </div>
+        {!hideChrome && (
+          <header className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 md:px-8 py-3 bg-[#F6F4EE]/95 backdrop-blur-sm border-b border-[rgba(23,33,38,0.06)]">
+            <div>
+              {isSidebarHidden ? (
+                <button
+                  type="button"
+                  onClick={() => toggleSidebar(false)}
+                  className="inline-flex items-center justify-center gap-2 h-10 px-3 rounded-xl bg-surface border border-slate-200 text-[#2a7797] hover:bg-brand-tint transition-colors shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
+                  aria-label="Open navigation menu"
+                  title="Open navigation"
+                >
+                  <Menu className="w-5 h-5" />
+                  <span className="text-xs font-bold font-quicksand tracking-wide hidden sm:inline">
+                    Menu
+                  </span>
+                </button>
+              ) : (
+                <span className="sr-only">Dashboard</span>
+              )}
             </div>
-          )}
-          {children}
-        </div>
+            <NotificationBell />
+          </header>
+        )}
+        <div className="flex-1 p-4 md:p-8">{children}</div>
       </main>
     </div>
   );

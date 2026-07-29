@@ -26,6 +26,7 @@ import {
   ClipboardList,
   PanelLeftClose,
   Eye,
+  Bell,
 } from "lucide-react";
 
 type NavChild = {
@@ -51,6 +52,13 @@ const navItems: NavItem[] = [
     icon: LayoutGrid,
     exact: true,
     animationClass: "group-hover:rotate-12 transition-transform duration-300",
+  },
+  {
+    name: "Notifications",
+    href: "/dashboard/notifications",
+    icon: Bell,
+    animationClass:
+      "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
     name: "Tasks",
