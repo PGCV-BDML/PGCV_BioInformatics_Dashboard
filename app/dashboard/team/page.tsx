@@ -244,8 +244,8 @@ export default function TeamPage() {
 
       setIsSaving(true);
       try {
-        const [savedUser, savedPresence] = await Promise.all([
-          saveDataToDB<User>("users", selected.id, {
+        const [, savedPresence] = await Promise.all([
+          saveDataToDB("users", selected.id, {
             avatar_url: avatarUrl,
             designation,
           }),
@@ -262,7 +262,6 @@ export default function TeamPage() {
             m.id === selected.id
               ? {
                   ...m,
-                  ...(savedUser as User),
                   avatar_url: avatarUrl,
                   designation,
                   presence: savedPresence,
