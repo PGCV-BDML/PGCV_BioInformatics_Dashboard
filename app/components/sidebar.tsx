@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   Eye,
 } from "lucide-react";
+import { NotificationBell } from "./notification-bell";
 
 type NavChild = {
   name: string;
@@ -269,15 +270,18 @@ export default function Sidebar({
                 </span>
               </div>
             </Link>
-            <button
-              type="button"
-              onClick={() => toggleSidebar(true)}
-              aria-label="Collapse navigation"
-              title="Collapse navigation"
-              className="mt-1 inline-flex items-center justify-center w-9 h-9 flex-shrink-0 rounded-xl border border-slate-200 text-[#64748b] hover:bg-brand-tint hover:text-[#2a7797] transition-colors"
-            >
-              <PanelLeftClose className="w-4 h-4 stroke-[2.5]" />
-            </button>
+            <div className="flex items-center gap-2 mt-1 flex-shrink-0">
+              <NotificationBell />
+              <button
+                type="button"
+                onClick={() => toggleSidebar(true)}
+                aria-label="Collapse navigation"
+                title="Collapse navigation"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-[#64748b] hover:bg-brand-tint hover:text-[#2a7797] transition-colors"
+              >
+                <PanelLeftClose className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
 
           <div className="mt-6">

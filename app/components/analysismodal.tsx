@@ -31,6 +31,8 @@ export type AnalysisFormState = {
   notes: string;
   project_id: string;
   assignee: string;
+  /** UUID of the team lead assigned as approving officer. Empty string = unassigned. */
+  approver_user_id: string;
 };
 
 export const EMPTY_ANALYSIS_FORM: AnalysisFormState = {
@@ -51,12 +53,18 @@ export const EMPTY_ANALYSIS_FORM: AnalysisFormState = {
   notes: "",
   project_id: "",
   assignee: "",
+  approver_user_id: "",
 };
 
 interface ProjectOption {
   id: string;
   name: string;
   client: string;
+}
+
+export interface ApproverOption {
+  id: string;
+  name: string;
 }
 
 interface AnalysisSidebarProps {
@@ -66,6 +74,7 @@ interface AnalysisSidebarProps {
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availableAssignees: string[];
+  availableApprovers: ApproverOption[];
   onClose: () => void;
   onChange: (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -81,6 +90,7 @@ export default function AnalysisSidebar({
   formState,
   availableProjects,
   availableAssignees,
+  availableApprovers,
   onClose,
   onChange,
   onSubmit,
@@ -444,7 +454,7 @@ export default function AnalysisSidebar({
         </div>
       </div>
 
-      {/* Assignee optional */}
+      {/* Assignee + Approving Officer (optional) */}
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Personnel (optional)")}
         <div className="flex flex-col gap-1.5">
@@ -464,6 +474,27 @@ export default function AnalysisSidebar({
               </option>
             ))}
           </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="analysis-approver" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            Approving Officer
+          </label>
+          <select
+            id="analysis-approver"
+            value={formState.approver_user_id}
+            onChange={(e) => handleChange("approver_user_id", e.target.value)}
+            className={inputClass}
+          >
+            <option value="">— Assign later —</option>
+            {availableApprovers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+            When assigned, this officer will be notified once the analysis is completed and the report link is added.
+          </p>
         </div>
       </div>
     </SlideOverModal>

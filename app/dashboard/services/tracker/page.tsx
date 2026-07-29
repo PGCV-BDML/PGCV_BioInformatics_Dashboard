@@ -47,6 +47,7 @@ import DataTable, { Column } from "../../../components/datatable";
 import AnalysisSidebar, {
   AnalysisFormState,
   EMPTY_ANALYSIS_FORM,
+  type ApproverOption,
 } from "../../../components/analysismodal";
 import ServiceReportModal from "../../../components/service-report-modal";
 import { PageHeader } from "../../../components/pageheader";
@@ -107,6 +108,7 @@ interface ServiceProjectRow {
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
+  approver_user_id: string;
 }
 
 const FILTER_OPTIONS = [
@@ -147,6 +149,7 @@ function rowToFormState(row: ServiceProjectRow): AnalysisFormState {
     notes: row.notes,
     project_id: row.linked_project_id,
     assignee: row.assignee === "Unassigned" ? "" : row.assignee,
+    approver_user_id: row.approver_user_id ?? "",
   };
 }
 
@@ -204,6 +207,7 @@ function analysisToRow(
     completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
     service_name: opts.serviceName ?? null,
     service_category: opts.serviceCategory ?? null,
+    approver_user_id: (a as Analysis & { approver_user_id?: string | null }).approver_user_id ?? "",
   };
 }
 
@@ -226,6 +230,7 @@ export default function ServiceReportTrackerPage() {
     { id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]
   >([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
+  const [availableApprovers, setAvailableApprovers] = useState<ApproverOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   /** run_id (normalized) → repository URL from Repositories module */
   const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
@@ -344,6 +349,11 @@ export default function ServiceReportTrackerPage() {
           Array.from(tmpProjectMap.entries()).map(([id, v]) => ({ id, ...v })),
         );
         setAvailableAssignees(Array.from(tmpUserMap.values()));
+        setAvailableApprovers(
+          (users as User[])
+            .filter((u) => u.role === "team_lead")
+            .map((u) => ({ id: u.id, name: u.name })),
+        );
       } catch (err) {
         console.error("Error loading services data:", err);
         setLoadError("Failed to load data. Please try again.");
@@ -529,6 +539,7 @@ export default function ServiceReportTrackerPage() {
           service_report_link: emptyToNull(formState.service_report_link),
           client_sequences_link: emptyToNull(formState.client_sequences_link),
           notes: emptyToNull(formState.notes),
+          approver_user_id: emptyToNull(formState.approver_user_id),
           ...(isEditing ? {} : { started_at: nowIso }),
         };
 
@@ -1250,6 +1261,7 @@ export default function ServiceReportTrackerPage() {
         formState={formState}
         availableProjects={availableProjects}
         availableAssignees={availableAssignees}
+        availableApprovers={availableApprovers}
         onClose={closeSidebar}
         onChange={handleInputChange}
         onSubmit={handleSaveAnalysis}
