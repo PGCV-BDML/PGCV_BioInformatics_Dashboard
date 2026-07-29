@@ -11,9 +11,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
-import TeamPresenceModal, {
-  EMPTY_PRESENCE_FORM,
-} from "../../components/team-presence-modal";
+import TeamPresenceModal from "../../components/team-presence-modal";
 import {
   User,
   UserPresence,
@@ -25,6 +23,7 @@ import {
   getUsersFromDB,
   getRowsFromDB,
   upsertUserPresence,
+  saveDataToDB,
 } from "@/lib/supabase";
 import { teamBreadcrumbs } from "@/lib/breadcrumbs";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
@@ -193,6 +192,7 @@ export default function TeamPage() {
         m.name.toLowerCase().includes(q) ||
         m.email.toLowerCase().includes(q) ||
         (m.institution ?? "").toLowerCase().includes(q) ||
+        (m.designation ?? "").toLowerCase().includes(q) ||
         roleLabel(m.role).toLowerCase().includes(q) ||
         statusLabel(m.presence?.status ?? "in_office")
           .toLowerCase()
@@ -216,11 +216,12 @@ export default function TeamPage() {
 
   const initialData = useMemo((): UserPresenceFormData | null => {
     if (!selected) return null;
-    if (!selected.presence) return EMPTY_PRESENCE_FORM;
     return {
-      status: selected.presence.status,
-      note: selected.presence.note || "",
-      until_date: selected.presence.until_date || "",
+      status: selected.presence?.status ?? "in_office",
+      note: selected.presence?.note || "",
+      until_date: selected.presence?.until_date || "",
+      avatar_url: selected.avatar_url || "",
+      designation: selected.designation || "",
     };
   }, [selected]);
 
@@ -238,25 +239,42 @@ export default function TeamPage() {
     async (formData: UserPresenceFormData) => {
       if (!selected || !currentUserId) return;
 
+      const avatarUrl = formData.avatar_url.trim() || null;
+      const designation = formData.designation.trim() || null;
+
       setIsSaving(true);
       try {
-        const saved = await upsertUserPresence(selected.id, {
-          status: formData.status,
-          note: formData.note.trim() || null,
-          until_date: formData.until_date.trim() || null,
-          updated_by: currentUserId,
-        });
+        const [savedUser, savedPresence] = await Promise.all([
+          saveDataToDB<User>("users", selected.id, {
+            avatar_url: avatarUrl,
+            designation,
+          }),
+          upsertUserPresence(selected.id, {
+            status: formData.status,
+            note: formData.note.trim() || null,
+            until_date: formData.until_date.trim() || null,
+            updated_by: currentUserId,
+          }),
+        ]);
 
         setMembers((prev) =>
           prev.map((m) =>
-            m.id === selected.id ? { ...m, presence: saved } : m,
+            m.id === selected.id
+              ? {
+                  ...m,
+                  ...(savedUser as User),
+                  avatar_url: avatarUrl,
+                  designation,
+                  presence: savedPresence,
+                }
+              : m,
           ),
         );
         setIsEditing(false);
         setSelected(null);
-        showToast("Status updated.", "success");
+        showToast("Profile updated.", "success");
       } catch {
-        showToast("Failed to update status. Please try again.", "error");
+        showToast("Failed to update profile. Please try again.", "error");
       } finally {
         setIsSaving(false);
       }
@@ -343,8 +361,17 @@ export default function TeamPage() {
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <div className="relative shrink-0">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2a7797]/10 text-[#2a7797]">
-                      <UserRound className="h-5 w-5" />
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-[#2a7797]/10 text-[#2a7797]">
+                      {member.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={member.avatar_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <UserRound className="h-5 w-5" />
+                      )}
                     </div>
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${styles.dot}`}
@@ -366,6 +393,12 @@ export default function TeamPage() {
                         {roleLabel(member.role)}
                       </span>
                     </div>
+
+                    {member.designation ? (
+                      <p className="text-[13px] text-slate-600 font-quicksand truncate">
+                        {member.designation}
+                      </p>
+                    ) : null}
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500 font-quicksand">
                       <span className="inline-flex items-center gap-1 min-w-0">

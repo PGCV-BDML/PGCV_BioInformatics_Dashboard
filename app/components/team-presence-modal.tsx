@@ -7,12 +7,21 @@ import {
   PRESENCE_STATUS_OPTIONS,
 } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
-import { MapPin, StickyNote, CalendarDays } from "lucide-react";
+import {
+  MapPin,
+  StickyNote,
+  CalendarDays,
+  Briefcase,
+  ImageIcon,
+  UserRound,
+} from "lucide-react";
 
 export const EMPTY_PRESENCE_FORM: UserPresenceFormData = {
   status: "in_office",
   note: "",
   until_date: "",
+  avatar_url: "",
+  designation: "",
 };
 
 interface TeamPresenceModalProps {
@@ -34,10 +43,14 @@ export default function TeamPresenceModal({
 }: TeamPresenceModalProps) {
   const [formState, setFormState] =
     useState<UserPresenceFormData>(EMPTY_PRESENCE_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [avatarBroken, setAvatarBroken] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormState(initialData || EMPTY_PRESENCE_FORM);
+      setErrors({});
+      setAvatarBroken(false);
     }
   }, [isOpen, initialData]);
 
@@ -46,24 +59,121 @@ export default function TeamPresenceModal({
     value: UserPresenceFormData[K],
   ) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
+    if (key === "avatar_url") setAvatarBroken(false);
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    const url = formState.avatar_url.trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+      errs.avatar_url = "Must start with http:// or https://";
+    }
+    return errs;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
     onSubmit(formState);
   };
+
+  const previewUrl = formState.avatar_url.trim();
+  const showPreview = previewUrl.length > 0 && !avatarBroken;
 
   return (
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Update Status"
+      title="Update Profile"
       subtitle={memberName}
       onSubmit={handleSubmit}
-      submitLabel="Save status"
+      submitLabel="Save"
       isSaving={isSaving}
     >
       <div className="space-y-4">
+        <div className="space-y-2.5">
+          {renderSectionLabel(<UserRound className="w-3.5 h-3.5" />, "Profile")}
+
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-[#2a7797]/10 text-[#2a7797]">
+              {showPreview ? (
+                <img
+                  src={previewUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarBroken(true)}
+                />
+              ) : (
+                <UserRound className="h-6 w-6" />
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 font-quicksand leading-relaxed">
+              Paste a public image URL for the profile photo. Preview updates as
+              you type.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="presence-avatar"
+              className="text-[11px] font-semibold text-slate-500 font-quicksand"
+            >
+              Profile picture URL
+            </label>
+            <div className="relative">
+              <ImageIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="presence-avatar"
+                type="url"
+                value={formState.avatar_url}
+                onChange={(e) =>
+                  handleInputChange("avatar_url", e.target.value)
+                }
+                placeholder="https://…"
+                aria-invalid={!!errors.avatar_url}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
+              />
+            </div>
+            {errors.avatar_url ? (
+              <p className="text-red-500 text-xs font-aileron" role="alert">
+                {errors.avatar_url}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="presence-designation"
+              className="text-[11px] font-semibold text-slate-500 font-quicksand"
+            >
+              Designation
+            </label>
+            <div className="relative">
+              <Briefcase className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="presence-designation"
+                type="text"
+                value={formState.designation}
+                onChange={(e) =>
+                  handleInputChange("designation", e.target.value)
+                }
+                placeholder="e.g. Science Research Specialist II"
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2.5">
           {renderSectionLabel(<MapPin className="w-3.5 h-3.5" />, "Presence")}
 
