@@ -439,3 +439,45 @@ export type RepositoryFormData = {
   category: RepositoryCategory;
   run_id: string;
 };
+
+// ============================================================
+// Team presence / availability
+// ============================================================
+
+export type PresenceStatus =
+  | "in_office"
+  | "in_lab"
+  | "remote"
+  | "on_leave"
+  | "on_travel"
+  | "in_meeting"
+  | "unavailable";
+
+export const PRESENCE_STATUS_OPTIONS: {
+  value: PresenceStatus;
+  label: string;
+}[] = [
+  { value: "in_office", label: "In office" },
+  { value: "in_lab", label: "In lab" },
+  { value: "remote", label: "Remote / WFH" },
+  { value: "on_leave", label: "On leave" },
+  { value: "on_travel", label: "On travel" },
+  { value: "in_meeting", label: "In meeting" },
+  { value: "unavailable", label: "Unavailable" },
+];
+
+export type UserPresence = {
+  user_id: string;
+  status: PresenceStatus;
+  note: string | null;
+  until_date: string | null;
+  updated_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type UserPresenceFormData = {
+  status: PresenceStatus;
+  note: string;
+  until_date: string;
+};

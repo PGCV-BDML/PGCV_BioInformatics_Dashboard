@@ -10,6 +10,11 @@ export const repositoriesBreadcrumbs: BreadcrumbItem[] = [
   { label: "Repositories" },
 ];
 
+export const teamBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Team" },
+];
+
 export const collaborationsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Collaborations" },

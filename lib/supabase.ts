@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { TaskCategory } from "@/types/database";
+import type { TaskCategory, UserPresence } from "@/types/database";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -70,6 +70,7 @@ export type TableNames =
   | "task"
   | "task_tag"
   | "repository"
+  | "user_presence"
   | "users";
 
 export async function getNameIdFromDB<T = { id: string; name: string }>(
@@ -219,3 +220,33 @@ export async function replaceTaskCategories(
     throw insertError;
   }
 }
+
+/** Upsert presence by user_id (primary key). */
+export async function upsertUserPresence(
+  userId: string,
+  data: Omit<UserPresence, "user_id" | "created_at" | "updated_at"> & {
+    updated_by?: string | null;
+  },
+): Promise<UserPresence> {
+  const payload = {
+    user_id: userId,
+    status: data.status,
+    note: data.note,
+    until_date: data.until_date,
+    updated_by: data.updated_by ?? null,
+  };
+
+  const { data: saved, error } = await supabase
+    .from("user_presence")
+    .upsert(payload, { onConflict: "user_id" })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving user presence:", error);
+    throw error;
+  }
+
+  return saved as UserPresence;
+}
+

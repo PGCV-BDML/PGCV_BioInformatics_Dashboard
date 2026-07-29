@@ -18,6 +18,7 @@ import {
   Network,
   Activity,
   FolderGit2,
+  UserRound,
   ChevronRight,
   ChevronDown,
   LogOut,
@@ -94,6 +95,12 @@ const navItems: NavItem[] = [
     name: "Internship",
     href: "/dashboard/internship",
     icon: Briefcase,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
+    name: "Team",
+    href: "/dashboard/team",
+    icon: UserRound,
     animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
   {
