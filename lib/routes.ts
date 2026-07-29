@@ -4,6 +4,12 @@ export const routes = {
   team: {
     list: "/dashboard/team",
   },
+  clients: {
+    list: "/dashboard/clients",
+    /** Prefill Clients module search (e.g. soft-matched Client ID). */
+    byQuery: (query: string) =>
+      `/dashboard/clients?q=${encodeURIComponent(query.trim())}`,
+  },
   services: {
     list: "/dashboard/services",
     tracker: "/dashboard/services/tracker",

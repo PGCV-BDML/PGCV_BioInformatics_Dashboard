@@ -87,3 +87,146 @@ export function buildClientPayload(form: ClientFormState) {
     updated_at: new Date().toISOString(),
   };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Soft match: analysis.external_client_id ↔ client.client_id         */
+/* ------------------------------------------------------------------ */
+
+const EMPTY_CLIENT_ID_TOKENS = new Set([
+  "",
+  "-",
+  "—",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+]);
+
+export type ClientMatchStatus = "matched" | "unmatched" | "empty";
+
+export interface MatchedClientSummary {
+  id: string;
+  clientId: string;
+  name: string;
+  affiliation: string;
+  emailAddress: string;
+  designation: string;
+}
+
+export interface ExternalClientMatch {
+  status: ClientMatchStatus;
+  /** Normalized key that matched, when status is "matched". */
+  matchedKey: string | null;
+  client: MatchedClientSummary | null;
+  /** Parsed external IDs (after normalize); empty when status is "empty". */
+  parsedIds: string[];
+}
+
+/**
+ * Normalize a Client ID for soft matching.
+ * - Trims / uppercases
+ * - Strips a leading `PGCV-` prefix (Excel drift)
+ * - Returns null for blank / N/A-style placeholders
+ */
+export function normalizeClientIdKey(
+  value: string | null | undefined,
+): string | null {
+  let raw = (value ?? "").trim();
+  if (!raw) return null;
+
+  raw = raw.replace(/^PGCV-/i, "").trim();
+  const key = raw.toUpperCase();
+  if (EMPTY_CLIENT_ID_TOKENS.has(key.toLowerCase())) return null;
+  return key;
+}
+
+/** Split comma/semicolon multi-ID Excel cells into normalized keys. */
+export function parseExternalClientIds(
+  value: string | null | undefined,
+): string[] {
+  const raw = (value ?? "").trim();
+  if (!raw) return [];
+
+  const parts = raw.split(/[,;]+/);
+  const keys: string[] = [];
+  const seen = new Set<string>();
+
+  for (const part of parts) {
+    const key = normalizeClientIdKey(part);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    keys.push(key);
+  }
+
+  return keys;
+}
+
+export function toMatchedClientSummary(
+  client: Pick<
+    ClientRecord,
+    | "id"
+    | "clientId"
+    | "clientName"
+    | "affiliation"
+    | "emailAddress"
+    | "designation"
+  >,
+): MatchedClientSummary {
+  return {
+    id: client.id,
+    clientId: client.clientId,
+    name: client.clientName,
+    affiliation: client.affiliation,
+    emailAddress: client.emailAddress,
+    designation: client.designation,
+  };
+}
+
+/** Map normalized `client.client_id` → client summary. First wins on duplicates. */
+export function buildClientIdLookup(
+  clients: Array<
+    Pick<
+      ClientRecord,
+      | "id"
+      | "clientId"
+      | "clientName"
+      | "affiliation"
+      | "emailAddress"
+      | "designation"
+    >
+  >,
+): Map<string, MatchedClientSummary> {
+  const map = new Map<string, MatchedClientSummary>();
+
+  for (const client of clients) {
+    const key = normalizeClientIdKey(client.clientId);
+    if (!key || map.has(key)) continue;
+    map.set(key, toMatchedClientSummary(client));
+  }
+
+  return map;
+}
+
+/**
+ * Soft-match tracker `external_client_id` against Clients module IDs.
+ * For multi-ID cells, returns the first successful match.
+ */
+export function matchClientByExternalId(
+  externalClientId: string | null | undefined,
+  lookup: Map<string, MatchedClientSummary>,
+): ExternalClientMatch {
+  const parsedIds = parseExternalClientIds(externalClientId);
+  if (parsedIds.length === 0) {
+    return { status: "empty", matchedKey: null, client: null, parsedIds };
+  }
+
+  for (const key of parsedIds) {
+    const client = lookup.get(key);
+    if (client) {
+      return { status: "matched", matchedKey: key, client, parsedIds };
+    }
+  }
+
+  return { status: "unmatched", matchedKey: null, client: null, parsedIds };
+}

@@ -15,7 +15,6 @@ import {
 import {
   getCurrentUser,
   getRowsFromDB,
-  getNameIdFromDB,
   getUsersFromDB,
   saveDataToDB,
   deleteDataFromDB,
@@ -61,6 +60,13 @@ import {
   getAnalysisYear,
   getAvailableAnalysisYears,
 } from "@/lib/analysis-dashboard-stats";
+import {
+  buildClientIdLookup,
+  mapClientRowToRecord,
+  matchClientByExternalId,
+  type ClientMatchStatus,
+  type SupabaseClientRow,
+} from "@/lib/clients";
 import { routes } from "@/lib/routes";
 
 function normalizeRunId(value: string | null | undefined): string {
@@ -85,6 +91,10 @@ interface ServiceProjectRow {
   client_sequences_link: string;
   notes: string;
   linked_project_id: string;
+  /** Soft match: external_client_id ↔ client.client_id */
+  client_match: ClientMatchStatus;
+  matched_client_uuid: string;
+  matched_client_name: string;
   /** Display helpers / legacy */
   project_name: string;
   analysis_pipeline: string;
@@ -148,6 +158,7 @@ function analysisToRow(
     serviceName?: string | null;
     serviceCategory?: ServiceCategory | null;
     assigneeName: string;
+    clientMatch?: ReturnType<typeof matchClientByExternalId>;
   },
 ): ServiceProjectRow {
   const srDate = a.service_report_date
@@ -155,13 +166,18 @@ function analysisToRow(
     : a.started_at
       ? (a.started_at.split("T")[0] ?? "")
       : "";
+  const match = opts.clientMatch;
   return {
     id: a.id,
     service_report_number: a.service_report_number ?? "",
     service_report_date: srDate,
     application: a.application ?? "",
     analysis_classification: a.pipeline ?? "",
-    client: a.client_name || opts.clientFromProject || "",
+    client:
+      a.client_name ||
+      match?.client?.name ||
+      opts.clientFromProject ||
+      "",
     client_type: a.client_type ?? "",
     external_client_id: a.external_client_id ?? "",
     external_project_id: a.external_project_id ?? "",
@@ -173,6 +189,9 @@ function analysisToRow(
     client_sequences_link: a.client_sequences_link ?? "",
     notes: a.notes ?? "",
     linked_project_id: a.project_id ?? "",
+    client_match: match?.status ?? "empty",
+    matched_client_uuid: match?.client?.id ?? "",
+    matched_client_name: match?.client?.name ?? "",
     project_name:
       a.service_report_number ||
       a.external_project_id ||
@@ -212,6 +231,8 @@ export default function ServiceReportTrackerPage() {
   const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
     () => new Map(),
   );
+  /** Soft-match lookup: normalized client.client_id → client summary */
+  const clientIdLookupRef = useRef(buildClientIdLookup([]));
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -248,17 +269,21 @@ export default function ServiceReportTrackerPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [analyses, projects, clients, services, users, user, repositories] =
+        const [analyses, projects, clientRows, services, users, user, repositories] =
           await Promise.all([
             getRowsFromDB<Analysis>("analysis"),
             getRowsFromDB<Project>("project"),
-            getNameIdFromDB("client"),
+            getRowsFromDB<SupabaseClientRow>("client"),
             getRowsFromDB<Service>("service"),
             getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
             getCurrentUser(),
             getRowsFromDB<Repository>("repository"),
           ]);
         setCurrentUserId(user?.id ?? null);
+
+        const clients = clientRows.map(mapClientRowToRecord);
+        const clientByExternalId = buildClientIdLookup(clients);
+        clientIdLookupRef.current = clientByExternalId;
 
         const repoByRunId = new Map<string, string>();
         for (const repo of repositories) {
@@ -280,11 +305,11 @@ export default function ServiceReportTrackerPage() {
           { name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }
         >();
         for (const p of projects) {
-          const client = (clients as { id: string; name: string }[]).find((c) => c.id === p.client_id);
+          const client = clients.find((c) => c.id === p.client_id);
           const service = p.service_id ? serviceMap.get(p.service_id) : undefined;
           tmpProjectMap.set(p.id, {
             name: p.name,
-            client: client?.name ?? "—",
+            client: client?.clientName ?? "—",
             service_name: service?.name ?? null,
             service_category: service?.category ?? null,
           });
@@ -300,12 +325,17 @@ export default function ServiceReportTrackerPage() {
           const assigneeName = a.assignee_id
             ? (tmpUserMap.get(a.assignee_id) ?? "Unassigned")
             : "Unassigned";
+          const clientMatch = matchClientByExternalId(
+            a.external_client_id,
+            clientByExternalId,
+          );
           return analysisToRow(a, {
             projectName: proj?.name,
             clientFromProject: proj?.client,
             serviceName: proj?.service_name,
             serviceCategory: proj?.service_category,
             assigneeName,
+            clientMatch,
           });
         });
 
@@ -528,6 +558,10 @@ export default function ServiceReportTrackerPage() {
           serviceName: targetProject?.service_name,
           serviceCategory: targetProject?.service_category,
           assigneeName: formState.assignee || "Unassigned",
+          clientMatch: matchClientByExternalId(
+            saved.external_client_id,
+            clientIdLookupRef.current,
+          ),
         });
 
         if (isEditing) {
@@ -870,9 +904,36 @@ export default function ServiceReportTrackerPage() {
       label: "Client ID",
       width: "6%",
       sortable: true,
-      render: (s) => (
-        <span className="font-mono text-[11px]">{dash(s.external_client_id)}</span>
-      ),
+      render: (s) => {
+        const id = s.external_client_id.trim();
+        if (!id) return "—";
+
+        if (s.client_match === "matched") {
+          return (
+            <Link
+              href={routes.clients.byQuery(id)}
+              onClick={(e) => e.stopPropagation()}
+              title={
+                s.matched_client_name
+                  ? `Linked to ${s.matched_client_name}`
+                  : "Open in Clients"
+              }
+              className="font-mono text-[11px] text-[#1b5e20] hover:underline"
+            >
+              {id}
+            </Link>
+          );
+        }
+
+        return (
+          <span
+            className="font-mono text-[11px] text-amber-800/80"
+            title="No matching client in Clients module"
+          >
+            {id}
+          </span>
+        );
+      },
     },
     {
       key: "external_project_id",

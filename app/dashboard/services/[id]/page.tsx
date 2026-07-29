@@ -30,6 +30,15 @@ import {
   mapLabelToAnalysisStatus,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
+import {
+  buildClientIdLookup,
+  mapClientRowToRecord,
+  matchClientByExternalId,
+  type ClientMatchStatus,
+  type MatchedClientSummary,
+  type SupabaseClientRow,
+} from "@/lib/clients";
+import { routes } from "@/lib/routes";
 import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User, Repository } from "../../../../types/database";
 
 interface SampleRow {
@@ -53,6 +62,8 @@ interface ServiceProjectRow {
   run_id: string;
   external_client_id: string;
   external_project_id: string;
+  client_match: ClientMatchStatus;
+  matched_client: MatchedClientSummary | null;
   assignee: string;
   started: string;
   completed: string;
@@ -96,11 +107,11 @@ export default function AnalysisDetailPage({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [analyses, projects, clients, services, samples, serviceReports, users, repositories] =
+        const [analyses, projects, clientRows, services, samples, serviceReports, users, repositories] =
           await Promise.all([
             getRowsFromDB<Analysis>("analysis"),
             getRowsFromDB<Project>("project"),
-            getNameIdFromDB("client"),
+            getRowsFromDB<SupabaseClientRow>("client"),
             getNameIdFromDB("service"),
             getRowsFromDB<Sample>("sample"),
             getRowsFromDB<ServiceReport>("service_report"),
@@ -114,6 +125,9 @@ export default function AnalysisDetailPage({
           userMapData.set(u.id, u.name ?? u.email ?? u.id);
         });
         setUserMap(userMapData);
+
+        const clients = clientRows.map(mapClientRowToRecord);
+        const clientByExternalId = buildClientIdLookup(clients);
 
         const analysis = analyses.find(
           (a) => a.id === resolvedParams.id,
@@ -134,9 +148,13 @@ export default function AnalysisDetailPage({
         const project = analysis.project_id
           ? projects.find((p) => p.id === analysis.project_id)
           : undefined;
-        const client = project
+        const projectClient = project
           ? clients.find((c) => c.id === project.client_id)
           : null;
+        const softMatch = matchClientByExternalId(
+          analysis.external_client_id,
+          clientByExternalId,
+        );
         const service = project
           ? services.find((s) => s.id === project.service_id)
           : null;
@@ -157,7 +175,11 @@ export default function AnalysisDetailPage({
             analysis.external_project_id ||
             project?.name ||
             "Untitled analysis",
-          client: analysis.client_name || client?.name || "—",
+          client:
+            analysis.client_name ||
+            softMatch.client?.name ||
+            projectClient?.clientName ||
+            "—",
           service_type: service?.name ?? analysis.client_type ?? "—",
           analysis_pipeline: displayAnalysisLabel(
             analysis.pipeline,
@@ -170,6 +192,8 @@ export default function AnalysisDetailPage({
           run_id: analysis.run_id ?? "",
           external_client_id: analysis.external_client_id ?? "",
           external_project_id: analysis.external_project_id ?? "",
+          client_match: softMatch.status,
+          matched_client: softMatch.client,
           assignee: analysis.assignee_id
             ? (userMapData.get(analysis.assignee_id) ?? "—")
             : "Unassigned",
@@ -594,9 +618,48 @@ export default function AnalysisDetailPage({
                 <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                   Client ID
                 </h4>
-                <p className="text-sm font-bold text-slate-800">
-                  {record.external_client_id || "—"}
-                </p>
+                {record.external_client_id ? (
+                  record.client_match === "matched" ? (
+                    <Link
+                      href={routes.clients.byQuery(record.external_client_id)}
+                      className="text-sm font-bold text-[#1b5e20] hover:underline font-mono"
+                    >
+                      {record.external_client_id}
+                    </Link>
+                  ) : (
+                    <p
+                      className="text-sm font-bold text-amber-800/90 font-mono"
+                      title="No matching client in Clients module"
+                    >
+                      {record.external_client_id}
+                    </p>
+                  )
+                ) : (
+                  <p className="text-sm font-bold text-slate-800">—</p>
+                )}
+                {record.client_match === "matched" && record.matched_client ? (
+                  <div className="mt-2 space-y-1 text-xs text-slate-600">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#2e7d32]">
+                      Linked in Clients
+                    </p>
+                    {record.matched_client.affiliation ? (
+                      <p>{record.matched_client.affiliation}</p>
+                    ) : null}
+                    {record.matched_client.emailAddress ? (
+                      <p>{record.matched_client.emailAddress}</p>
+                    ) : null}
+                    {record.matched_client.designation ? (
+                      <p className="text-slate-500">
+                        {record.matched_client.designation}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {record.client_match === "unmatched" ? (
+                  <p className="mt-1.5 text-[11px] text-amber-700">
+                    No Clients module record matches this ID yet.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <h4 className="text-[10px] text-slate-400 font-bold uppercase">
