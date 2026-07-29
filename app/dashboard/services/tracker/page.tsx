@@ -747,6 +747,9 @@ export default function ServiceReportTrackerPage() {
     } else if (key === "submitted") {
       colorClasses = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
       chevronClass = "text-[#6b21a8]";
+    } else if (key === "cancelled" || key === "canceled") {
+      colorClasses = "bg-rose-50 text-rose-700 border-rose-200";
+      chevronClass = "text-rose-600";
     }
 
     return { colorClasses, chevronClass };
