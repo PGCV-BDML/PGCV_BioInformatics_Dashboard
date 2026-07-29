@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Calendar,
   User,
-  Clock,
   BookOpen,
   ClipboardCheck,
   BarChart3,
@@ -19,6 +18,7 @@ import {
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
 import type { TrainingProgramStatus } from "@/types/database";
+import { usePortal } from "@/app/components/portal-context";
 
 export interface ProgramWorkspaceData {
   id: string;
@@ -26,7 +26,6 @@ export interface ProgramWorkspaceData {
   description: string;
   start_date: string;
   end_date: string;
-  duration?: string;
   leaderName: string;
   status?: TrainingProgramStatus;
 }
@@ -65,6 +64,7 @@ export default function ProgramWorkspaceLayout({
   children,
 }: ProgramWorkspaceLayoutProps) {
   const pathname = usePathname();
+  const { isLearnerView } = usePortal();
   const routes = programRoutes(programType);
   const isTraining = programType === "training";
   const moduleTitle = isTraining ? "Training" : "Internship";
@@ -75,42 +75,49 @@ export default function ProgramWorkspaceLayout({
 
   const workspaceTabs = useMemo(() => {
     if (!program) return [];
-    const base = routes.detail(program.id);
-    return [
+    const programPaths = programRoutes(programType);
+    const base = programPaths.detail(program.id);
+    const allTabs = [
       { id: "modules", label: "Modules", icon: BookOpen, href: base },
       {
         id: "onboarding",
         label: "Onboarding Docs",
         icon: FileText,
-        href: routes.onboarding(program.id),
+        href: programPaths.onboarding(program.id),
       },
       {
         id: "participants",
         label: "Participants",
         icon: Users,
-        href: routes.participants(program.id),
+        href: programPaths.participants(program.id),
+        staffOnly: true,
       },
       {
         id: "assessment",
         label: "Pre/Post Tests",
         icon: ClipboardCheck,
-        href: routes.assessment(program.id),
+        href: programPaths.assessment(program.id),
       },
       {
         id: "evaluation",
         label: "Evaluation",
         icon: BarChart3,
-        href: routes.evaluation(program.id),
+        href: programPaths.evaluation(program.id),
       },
       {
         id: "certificate",
-        label: "Certificate",
+        label: isLearnerView ? "My Certificate" : "Certificate",
         icon: Award,
-        href: routes.certificate(program.id),
+        href: programPaths.certificate(program.id),
       },
     ];
-  }, [program, routes]);
 
+    return isLearnerView
+      ? allTabs.filter((tab) => !("staffOnly" in tab && tab.staffOnly))
+      : allTabs;
+  }, [program, programType, isLearnerView]);
+
+  const tabCount = workspaceTabs.length || 1;
   const activeIndex = useMemo(() => {
     const index = workspaceTabs.findIndex((tab) => pathname === tab.href);
     return index !== -1 ? index : 0;
@@ -150,7 +157,9 @@ export default function ProgramWorkspaceLayout({
           className="group flex items-center gap-2 h-10 px-5 bg-surface hover:bg-[#4ec2bb] border border-slate-300 hover:border-[#4ec2bb] text-slate-700 hover:text-white text-xs font-extrabold rounded-full transition-all duration-200 self-start md:self-auto shadow-sm hover:shadow-md hover:-translate-y-0.5"
         >
           <ArrowLeft className="w-4 h-4 text-slate-700 group-hover:text-white transition-colors duration-200" />
-          <span>Back to Programs</span>
+          <span>
+            {isLearnerView ? "Back to My Courses" : "Back to Programs"}
+          </span>
         </Link>
       </div>
 
@@ -184,15 +193,6 @@ export default function ProgramWorkspaceLayout({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>
-              Duration:{" "}
-              <strong className="text-slate-700">
-                {program.duration ?? "—"}
-              </strong>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span>
               Timeline:{" "}
@@ -205,12 +205,16 @@ export default function ProgramWorkspaceLayout({
       </div>
 
       <div className="bg-surface border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
-        <div className="relative grid grid-cols-6 gap-1 min-w-[760px] md:min-w-full">
+        <div
+          className="relative grid gap-1 min-w-[760px] md:min-w-full"
+          style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
+        >
           <div
             style={{
+              width: `${100 / tabCount}%`,
               transform: `translateX(${activeIndex * 100}%)`,
             }}
-            className="absolute top-0 bottom-0 left-0 w-1/6 p-0.5 transition-transform duration-300 ease-out pointer-events-none"
+            className="absolute top-0 bottom-0 left-0 p-0.5 transition-transform duration-300 ease-out pointer-events-none"
           >
             <div className="w-full h-full bg-[#4ec2bb] rounded-[18px] shadow-md shadow-[#4ec2bb]/10" />
           </div>

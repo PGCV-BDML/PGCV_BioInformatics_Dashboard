@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useDashboardUI } from "./dashboard-ui-context";
+import { usePortal } from "./portal-context";
+import { getHomePathForRole } from "@/lib/portal";
 import {
   LayoutGrid,
   CheckSquare,
@@ -22,6 +24,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   PanelLeftClose,
+  Eye,
 } from "lucide-react";
 
 type NavChild = {
@@ -141,6 +144,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
+  const { effectiveRole, isStaff, previewMode, setPreviewMode } = usePortal();
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(
     {},
@@ -159,6 +163,18 @@ export default function Sidebar({
 
   const isCurrentlyHidden =
     controlledIsHidden !== undefined ? controlledIsHidden : isSidebarHidden;
+
+  const homeHref = getHomePathForRole(effectiveRole);
+
+  const visibleNavItems = useMemo(() => {
+    if (effectiveRole === "trainee") {
+      return navItems.filter((item) => item.href === "/dashboard/training");
+    }
+    if (effectiveRole === "intern") {
+      return navItems.filter((item) => item.href === "/dashboard/internship");
+    }
+    return navItems;
+  }, [effectiveRole]);
 
   useEffect(() => {
     async function getUserProfile() {
@@ -190,13 +206,13 @@ export default function Sidebar({
 
   useEffect(() => {
     const next: Record<string, boolean> = {};
-    for (const item of navItems) {
+    for (const item of visibleNavItems) {
       if (item.children?.length) {
         next[item.name] = isPathActive(pathname, item.href);
       }
     }
     setExpandedMenus((prev) => ({ ...prev, ...next }));
-  }, [pathname]);
+  }, [pathname, visibleNavItems]);
 
   const handleSignOut = async () => {
     try {
@@ -204,7 +220,7 @@ export default function Sidebar({
       router.push("/login");
     } catch (err) {
       console.error("Sign out failed:", err);
-      router.push("/login"); // redirect anyway — user wants to sign out
+      router.push("/login");
     }
   };
 
@@ -222,15 +238,13 @@ export default function Sidebar({
           : "w-[340px] p-6 opacity-100 translate-x-0 shadow-[6px_0_24px_rgba(0,0,0,0.06)]"
       }`}
     >
-      {/* Wrapped Content Layer */}
       <div
         className={`w-[292px] flex flex-col justify-between h-full transition-opacity duration-200 ${isCurrentlyHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       >
         <div>
-          {/* Static Header Link (Hover interactions removed) */}
           <div className="flex items-start gap-2 pb-5 border-b border-gray-100">
             <Link
-              href="/dashboard"
+              href={homeHref}
               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
             >
               {/* ponytail: UP logo asset not available — needs official file from PGC External Drive. Brand guide rule #8 requires UP logo on LEFT of PGCV logo. */}
@@ -259,13 +273,12 @@ export default function Sidebar({
             </button>
           </div>
 
-          {/* Navigation */}
           <div className="mt-6">
             <p className="text-[#8499a5] text-[11px] font-extrabold tracking-[1.5px] uppercase font-quicksand px-3 mb-3">
               Navigation
             </p>
             <nav aria-label="Main navigation" className="flex flex-col gap-1">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const hasChildren = Boolean(item.children?.length);
                 const childActive = item.children?.some((child) =>
@@ -371,9 +384,7 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Profile Controls */}
         <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
-          {/* Animated Popout Container */}
           <div
             className={`absolute bottom-[76px] left-0 w-full bg-surface border border-[rgba(23,33,38,0.1)] rounded-2xl py-1 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30 transition-all duration-200 ease-out origin-bottom ${
               showProfileCard
@@ -381,6 +392,44 @@ export default function Sidebar({
                 : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             }`}
           >
+            {isStaff && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewMode(
+                      previewMode === "trainee" ? null : "trainee",
+                    );
+                    setShowProfileCard(false);
+                    router.push("/dashboard/training");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#1e293b] hover:bg-[#f5f5f4] rounded-xl font-bold text-[13px] font-aileron transition-colors"
+                >
+                  <Eye className="w-4 h-4 text-[#64748b] stroke-[2.5]" />
+                  <span>
+                    {previewMode === "trainee"
+                      ? "Exit trainee preview"
+                      : "Preview as trainee"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewMode(previewMode === "intern" ? null : "intern");
+                    setShowProfileCard(false);
+                    router.push("/dashboard/internship");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#1e293b] hover:bg-[#f5f5f4] rounded-xl font-bold text-[13px] font-aileron transition-colors"
+                >
+                  <Eye className="w-4 h-4 text-[#64748b] stroke-[2.5]" />
+                  <span>
+                    {previewMode === "intern"
+                      ? "Exit intern preview"
+                      : "Preview as intern"}
+                  </span>
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={handleSignOut}

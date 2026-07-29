@@ -51,7 +51,6 @@ export default function TaskModal({
   const validate = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!formState.title.trim()) errs.title = "Task description is required";
-    if (!formState.linked_project_id) errs.linked_project_id = "Please select a linked project";
     if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
     if (!formState.due_date) errs.due_date = "Due date is required";
     if (!formState.categories?.length) {
@@ -155,17 +154,18 @@ export default function TaskModal({
         )}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="task-linked-project" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-            Linked Project
+            Linked Project (optional)
           </label>
           <select
             id="task-linked-project"
             name="linked_project_id"
-            required
-            aria-invalid={!!errors.linked_project_id}
             value={formState.linked_project_id ?? ""}
             onChange={handleFieldChange}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
+            <option value="" className="text-slate-800 font-bold">
+              Unlinked
+            </option>
             {availableProjects.map((project) => (
               <option
                 key={project.id}
@@ -176,9 +176,6 @@ export default function TaskModal({
               </option>
             ))}
           </select>
-          {errors.linked_project_id && (
-            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.linked_project_id}</p>
-          )}
         </div>
       </div>
 

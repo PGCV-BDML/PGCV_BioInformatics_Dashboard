@@ -28,17 +28,17 @@ import {
   labelFromAnalysisStatus,
   nextServiceReportNumber,
   parseServiceReportNumber,
-  STATUS_OF_ANALYSIS_OPTIONS,
+  STATUS_OF_COMPLETION_OPTIONS,
   STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
   Analysis,
   AnalysisStatus,
-  ANALYSIS_STATUS_OPTIONS,
   Project,
   User,
   Service,
   ServiceCategory,
+  Repository,
 } from "../../../../types/database";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../../components/toast";
@@ -55,12 +55,17 @@ import { LoadingState, ErrorState, EmptyState } from "../../../components/state-
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   getAnalysisYear,
   getAvailableAnalysisYears,
 } from "@/lib/analysis-dashboard-stats";
+import { routes } from "@/lib/routes";
+
+function normalizeRunId(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
 
 interface ServiceProjectRow {
   id: string;
@@ -74,7 +79,6 @@ interface ServiceProjectRow {
   external_project_id: string;
   sample_type: string;
   run_id: string;
-  status_of_analysis: string;
   status_of_completion: string;
   status_of_submission: string;
   report_link: string;
@@ -97,7 +101,9 @@ interface ServiceProjectRow {
 
 const FILTER_OPTIONS = [
   { value: "All", label: "All Records" },
-  ...ANALYSIS_STATUS_OPTIONS,
+  { value: "ongoing", label: "On-going" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "completed", label: "Completed" },
 ];
 
 const ITEMS_PER_PAGE = 15;
@@ -124,7 +130,6 @@ function rowToFormState(row: ServiceProjectRow): AnalysisFormState {
     external_project_id: row.external_project_id,
     sample_type: row.sample_type,
     run_id: row.run_id,
-    status_of_analysis: row.status_of_analysis,
     status_of_completion: row.status_of_completion,
     status_of_submission: row.status_of_submission,
     service_report_link: row.report_link,
@@ -162,7 +167,6 @@ function analysisToRow(
     external_project_id: a.external_project_id ?? "",
     sample_type: a.sample_type ?? "",
     run_id: a.run_id ?? "",
-    status_of_analysis: a.status_of_analysis ?? "",
     status_of_completion: a.status_of_completion ?? "",
     status_of_submission: a.status_of_submission ?? "",
     report_link: a.service_report_link ?? "",
@@ -185,15 +189,18 @@ function analysisToRow(
 }
 
 export default function ServiceReportTrackerPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const yearParam = searchParams.get("year")?.trim() ?? "";
   const pipelineParam = searchParams.get("pipeline")?.trim() ?? "";
+  const runIdParam = searchParams.get("run_id")?.trim() ?? "";
 
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(runIdParam);
   const [activeFilter, setActiveFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState(yearParam || "all");
   const [pipelineFilter, setPipelineFilter] = useState(pipelineParam);
+  const [runIdFilter, setRunIdFilter] = useState(runIdParam);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [availableProjects, setAvailableProjects] = useState<
@@ -201,6 +208,10 @@ export default function ServiceReportTrackerPage() {
   >([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  /** run_id (normalized) → repository URL from Repositories module */
+  const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
+    () => new Map(),
+  );
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -222,7 +233,11 @@ export default function ServiceReportTrackerPage() {
   useEffect(() => {
     setYearFilter(yearParam || "all");
     setPipelineFilter(pipelineParam);
-  }, [yearParam, pipelineParam]);
+    setRunIdFilter(runIdParam);
+    if (runIdParam) {
+      setSearchQuery(runIdParam);
+    }
+  }, [yearParam, pipelineParam, runIdParam]);
 
   useEffect(() => {
     toggleSidebar(isSidebarOpen);
@@ -233,15 +248,27 @@ export default function ServiceReportTrackerPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [analyses, projects, clients, services, users, user] = await Promise.all([
-          getRowsFromDB<Analysis>("analysis"),
-          getRowsFromDB<Project>("project"),
-          getNameIdFromDB("client"),
-          getRowsFromDB<Service>("service"),
-          getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
-          getCurrentUser(),
-        ]);
+        const [analyses, projects, clients, services, users, user, repositories] =
+          await Promise.all([
+            getRowsFromDB<Analysis>("analysis"),
+            getRowsFromDB<Project>("project"),
+            getNameIdFromDB("client"),
+            getRowsFromDB<Service>("service"),
+            getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
+            getCurrentUser(),
+            getRowsFromDB<Repository>("repository"),
+          ]);
         setCurrentUserId(user?.id ?? null);
+
+        const repoByRunId = new Map<string, string>();
+        for (const repo of repositories) {
+          const key = normalizeRunId(repo.run_id);
+          const url = repo.url?.trim();
+          if (key && url && !repoByRunId.has(key)) {
+            repoByRunId.set(key, url);
+          }
+        }
+        setRunIdRepoLinks(repoByRunId);
 
         const serviceMap = new Map<string, { name: string; category: ServiceCategory }>();
         for (const s of services as Service[]) {
@@ -318,66 +345,21 @@ export default function ServiceReportTrackerPage() {
     }
   }, [activeFilter]);
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    const status = newStatus as AnalysisStatus;
-    const completedAt = status === "completed" ? new Date().toISOString() : null;
-    const completionLabel = labelFromAnalysisStatus(status);
-    try {
-      const updated = await saveDataToDB("analysis", id, {
-        status,
-        status_of_completion: completionLabel,
-        completed_at: completedAt,
-      });
-      setServicesList((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                status: updated.status as AnalysisStatus,
-                status_of_completion: updated.status_of_completion ?? completionLabel,
-                completed: updated.completed_at
-                  ? (updated.completed_at.split("T")[0] ?? "—")
-                  : "—",
-              }
-            : item,
-        ),
-      );
-      const row = servicesList.find((s) => s.id === id);
-      await syncAnalysisToTaskSafe({
-        id: updated.id,
-        project_id: updated.project_id,
-        pipeline: updated.pipeline,
-        pipeline_version: updated.pipeline_version,
-        status: updated.status as AnalysisStatus,
-        assignee_id: updated.assignee_id,
-        started_at: updated.started_at,
-        completed_at: updated.completed_at,
-        projectName: row?.project_name,
-        serviceReportNumber: updated.service_report_number,
-        application: updated.application,
-      });
-      showToast("Analysis status updated.", "success");
-    } catch {
-      showToast("Failed to update analysis status.", "error");
-    }
-  };
-
   const handleTrackerStatusChange = async (
     id: string,
-    field: "status_of_analysis" | "status_of_submission",
+    field: "status_of_completion" | "status_of_submission",
     label: string,
   ) => {
     const row = servicesList.find((s) => s.id === id);
     if (!row) return;
 
-    const nextAnalysis =
-      field === "status_of_analysis" ? label : row.status_of_analysis;
+    const nextCompletion =
+      field === "status_of_completion" ? label : row.status_of_completion;
     const nextSubmission =
       field === "status_of_submission" ? label : row.status_of_submission;
     const legacyStatus = deriveLegacyStatus({
-      status_of_completion: row.status_of_completion,
+      status_of_completion: nextCompletion,
       status_of_submission: nextSubmission,
-      status_of_analysis: nextAnalysis,
     });
     const completedAt =
       legacyStatus === "completed" ? new Date().toISOString() : null;
@@ -402,7 +384,7 @@ export default function ServiceReportTrackerPage() {
             : item,
         ),
       );
-      await syncAnalysisToTaskSafe({
+      const syncResult = await syncAnalysisToTaskSafe({
         id: updated.id,
         project_id: updated.project_id,
         pipeline: updated.pipeline,
@@ -415,7 +397,16 @@ export default function ServiceReportTrackerPage() {
         serviceReportNumber: updated.service_report_number,
         application: updated.application,
       });
-      showToast("Status updated.", "success");
+      if (syncResult === "created") {
+        showToast("Status updated. Added to Tasks as Sequence Analysis.", "success");
+      } else if (syncResult === "skipped_no_assignee") {
+        showToast(
+          "Status updated. Assign someone to add this to the task list.",
+          "success",
+        );
+      } else {
+        showToast("Status updated.", "success");
+      }
     } catch {
       showToast("Failed to update status.", "error");
     }
@@ -483,7 +474,6 @@ export default function ServiceReportTrackerPage() {
         const legacyStatus = deriveLegacyStatus({
           status_of_completion: formState.status_of_completion,
           status_of_submission: formState.status_of_submission,
-          status_of_analysis: formState.status_of_analysis,
         });
         const nowIso = new Date().toISOString();
         const completedAt = legacyStatus === "completed" ? nowIso : null;
@@ -504,7 +494,6 @@ export default function ServiceReportTrackerPage() {
           external_project_id: emptyToNull(formState.external_project_id),
           sample_type: emptyToNull(formState.sample_type),
           run_id: emptyToNull(formState.run_id),
-          status_of_analysis: emptyToNull(formState.status_of_analysis),
           status_of_completion: emptyToNull(formState.status_of_completion),
           status_of_submission: emptyToNull(formState.status_of_submission),
           service_report_link: emptyToNull(formState.service_report_link),
@@ -519,7 +508,7 @@ export default function ServiceReportTrackerPage() {
         const saved = await saveDataToDB("analysis", targetId, payload);
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
 
-        await syncAnalysisToTaskSafe({
+        const syncResult = await syncAnalysisToTaskSafe({
           id: saved.id,
           project_id: saved.project_id,
           pipeline: saved.pipeline,
@@ -545,10 +534,31 @@ export default function ServiceReportTrackerPage() {
           setServicesList((prev) =>
             prev.map((item) => (item.id === row.id ? row : item)),
           );
-          showToast("Analysis updated successfully.", "success");
         } else {
           setServicesList((prev) => [row, ...prev]);
-          showToast("Analysis created successfully.", "success");
+        }
+
+        if (syncResult === "created") {
+          showToast(
+            isEditing
+              ? "Analysis updated and added to Tasks as Sequence Analysis."
+              : "Analysis created and added to Tasks as Sequence Analysis.",
+            "success",
+          );
+        } else if (syncResult === "skipped_no_assignee") {
+          showToast(
+            isEditing
+              ? "Analysis updated. Assign someone to add this to the task list."
+              : "Analysis created. Assign someone to add this to the task list.",
+            "success",
+          );
+        } else {
+          showToast(
+            isEditing
+              ? "Analysis updated successfully."
+              : "Analysis created successfully.",
+            "success",
+          );
         }
         closeSidebar();
       } catch {
@@ -652,12 +662,25 @@ export default function ServiceReportTrackerPage() {
       );
     }
 
+    if (runIdFilter) {
+      const needle = runIdFilter.toLowerCase();
+      records = records.filter(
+        (item) => item.run_id.trim().toLowerCase() === needle,
+      );
+    }
+
     if (activeFilter !== "All") {
       records = records.filter((item) => item.status === activeFilter);
     }
 
     const query = searchQuery.toLowerCase().trim();
     if (!query) return records;
+
+    // When a run-ID deep-link filter is active and the search box still holds
+    // that same value, skip substring search — exact match already applied.
+    if (runIdFilter && query === runIdFilter.toLowerCase()) {
+      return records;
+    }
 
     return records.filter(
       (item) =>
@@ -674,7 +697,7 @@ export default function ServiceReportTrackerPage() {
         item.assignee.toLowerCase().includes(query) ||
         item.notes.toLowerCase().includes(query),
     );
-  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter]);
+  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter, runIdFilter]);
 
   const {
     displayed: displayedServices,
@@ -685,7 +708,7 @@ export default function ServiceReportTrackerPage() {
   } = useTableState<ServiceProjectRow>({
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
-    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}-${runIdFilter}`,
     initialSort: { key: "service_report_number", direction: "desc" },
     customSorters: {
       service_report_number: (a, b) => {
@@ -724,42 +747,17 @@ export default function ServiceReportTrackerPage() {
     } else if (key === "submitted") {
       colorClasses = "bg-[#f3e8ff] text-[#6b21a8] border-[#6b21a8]/20";
       chevronClass = "text-[#6b21a8]";
+    } else if (key === "cancelled" || key === "canceled") {
+      colorClasses = "bg-rose-50 text-rose-700 border-rose-200";
+      chevronClass = "text-rose-600";
     }
 
     return { colorClasses, chevronClass };
   };
 
-  const renderStatusDropdown = (id: string, currentStatus: string) => {
-    const { colorClasses, chevronClass } = statusChipColors(currentStatus);
-
-    return (
-      <div className="relative inline-flex items-center max-w-full">
-        <select
-          value={currentStatus}
-          onChange={(e) => handleStatusChange(id, e.target.value)}
-          aria-label="Status of Completion"
-          className={`pl-2.5 pr-6 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 appearance-none whitespace-nowrap max-w-full transition-all ${colorClasses}`}
-        >
-          {ANALYSIS_STATUS_OPTIONS.map((opt) => (
-            <option
-              key={opt.value}
-              value={opt.value}
-              className="bg-white text-slate-800 normal-case text-xs"
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${chevronClass}`}
-        />
-      </div>
-    );
-  };
-
   const renderTrackerStatusDropdown = (
     id: string,
-    field: "status_of_analysis" | "status_of_submission",
+    field: "status_of_completion" | "status_of_submission",
     currentLabel: string,
     options: readonly string[],
     ariaLabel: string,
@@ -898,26 +896,31 @@ export default function ServiceReportTrackerPage() {
       label: "RUN ID",
       width: "6%",
       sortable: true,
-      render: (s) => (
-        <span className="font-mono text-[11px]" title={s.run_id || undefined}>
-          {dash(s.run_id)}
-        </span>
-      ),
-    },
-    {
-      key: "status_of_analysis",
-      label: "Status of Analysis",
-      shortLabel: "Analysis Status",
-      width: "8%",
-      sortable: true,
-      render: (s) =>
-        renderTrackerStatusDropdown(
-          s.id,
-          "status_of_analysis",
-          s.status_of_analysis,
-          STATUS_OF_ANALYSIS_OPTIONS,
-          "Status of Analysis",
-        ),
+      render: (s) => {
+        if (!s.run_id) {
+          return <span className="font-mono text-[11px]">—</span>;
+        }
+        const repoUrl = runIdRepoLinks.get(normalizeRunId(s.run_id));
+        if (repoUrl) {
+          return (
+            <a
+              href={repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
+              title={repoUrl}
+            >
+              {s.run_id}
+              <ExternalLink className="w-3 h-3 shrink-0" />
+            </a>
+          );
+        }
+        return (
+          <span className="font-mono text-[11px]" title={s.run_id}>
+            {s.run_id}
+          </span>
+        );
+      },
     },
     {
       key: "status_of_completion",
@@ -925,7 +928,14 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Completion Status",
       width: "8%",
       sortable: true,
-      render: (s) => renderStatusDropdown(s.id, s.status),
+      render: (s) =>
+        renderTrackerStatusDropdown(
+          s.id,
+          "status_of_completion",
+          s.status_of_completion || labelFromAnalysisStatus(s.status),
+          STATUS_OF_COMPLETION_OPTIONS,
+          "Status of Completion",
+        ),
     },
     {
       key: "status_of_submission",
@@ -1047,6 +1057,25 @@ export default function ServiceReportTrackerPage() {
                 title="Clear analysis type filter"
               >
                 Type: {pipelineFilter} ×
+              </button>
+            ) : null}
+            {runIdFilter ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setRunIdFilter("");
+                  setSearchQuery("");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete("run_id");
+                  const qs = params.toString();
+                  router.replace(
+                    qs ? `${routes.services.tracker}?${qs}` : routes.services.tracker,
+                  );
+                }}
+                className="h-10 px-3 rounded-full border border-[#92298d]/30 bg-[#f8eef7] text-[11px] font-bold text-[#92298d] hover:bg-[#f1e0ef] transition-colors font-mono"
+                title="Clear run ID filter"
+              >
+                Run ID: {runIdFilter} ×
               </button>
             ) : null}
             <div className="relative w-full min-[480px]:w-64">

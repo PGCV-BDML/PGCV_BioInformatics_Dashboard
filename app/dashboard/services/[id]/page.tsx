@@ -10,6 +10,7 @@ import {
   Building,
   Activity,
   Plus,
+  ExternalLink,
 } from "lucide-react";
 import AddSampleSidebar, {
   SampleFormState,
@@ -26,8 +27,10 @@ import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
+  mapLabelToAnalysisStatus,
+  STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
-import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User } from "../../../../types/database";
+import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User, Repository } from "../../../../types/database";
 
 interface SampleRow {
   sample_id: string;
@@ -46,7 +49,6 @@ interface ServiceProjectRow {
   status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   status_of_completion: string;
   status_of_submission: string;
-  status_of_analysis: string;
   sample_type: string;
   run_id: string;
   external_client_id: string;
@@ -60,13 +62,10 @@ interface ServiceProjectRow {
   samples?: SampleRow[];
 }
 
-const STATUS_OPTIONS = [
-  { value: "for_approval", label: "For Approval" },
-  { value: "ongoing", label: "On-going" },
-  { value: "on_hold", label: "On Hold" },
-  { value: "submitted", label: "Submitted" },
-  { value: "completed", label: "Completed" },
-];
+const STATUS_OPTIONS = STATUS_OF_COMPLETION_OPTIONS.map((label) => ({
+  value: mapLabelToAnalysisStatus(label)!,
+  label,
+}));
 
 export default function AnalysisDetailPage({
   params,
@@ -82,6 +81,7 @@ export default function AnalysisDetailPage({
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [runIdRepoUrl, setRunIdRepoUrl] = useState<string | null>(null);
 
   // Synchronized state object structure matching Collaboration sidebar architecture
   const [formState, setFormState] = useState<SampleFormState>({
@@ -96,7 +96,7 @@ export default function AnalysisDetailPage({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [analyses, projects, clients, services, samples, serviceReports, users] =
+        const [analyses, projects, clients, services, samples, serviceReports, users, repositories] =
           await Promise.all([
             getRowsFromDB<Analysis>("analysis"),
             getRowsFromDB<Project>("project"),
@@ -105,6 +105,7 @@ export default function AnalysisDetailPage({
             getRowsFromDB<Sample>("sample"),
             getRowsFromDB<ServiceReport>("service_report"),
             getUsersFromDB(["team_lead", "team_member"]),
+            getRowsFromDB<Repository>("repository"),
           ]);
 
         // Build a user id → name map for resolving delivered_by
@@ -119,8 +120,17 @@ export default function AnalysisDetailPage({
         );
         if (!analysis) {
           setRecord(null);
+          setRunIdRepoUrl(null);
           return;
         }
+
+        const runKey = (analysis.run_id ?? "").trim().toLowerCase();
+        const matchedRepo = runKey
+          ? repositories.find(
+              (r) => (r.run_id ?? "").trim().toLowerCase() === runKey && r.url?.trim(),
+            )
+          : undefined;
+        setRunIdRepoUrl(matchedRepo?.url?.trim() || null);
         const project = analysis.project_id
           ? projects.find((p) => p.id === analysis.project_id)
           : undefined;
@@ -156,7 +166,6 @@ export default function AnalysisDetailPage({
           status: analysis.status as ServiceProjectRow["status"],
           status_of_completion: analysis.status_of_completion ?? "",
           status_of_submission: analysis.status_of_submission ?? "",
-          status_of_analysis: analysis.status_of_analysis ?? "",
           sample_type: analysis.sample_type ?? "",
           run_id: analysis.run_id ?? "",
           external_client_id: analysis.external_client_id ?? "",
@@ -397,6 +406,11 @@ export default function AnalysisDetailPage({
                 Move to: {opt.label}
               </option>
             ))}
+            {!STATUS_OPTIONS.some((opt) => opt.value === record.status) ? (
+              <option value={record.status}>
+                Move to: {labelFromAnalysisStatus(record.status)}
+              </option>
+            ) : null}
           </select>
         </div>
       </div>
@@ -432,9 +446,22 @@ export default function AnalysisDetailPage({
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
                 RUN ID
               </span>
-              <span className="text-xs font-semibold text-slate-700 font-mono">
-                {record.run_id || "—"}
-              </span>
+              {record.run_id && runIdRepoUrl ? (
+                <a
+                  href={runIdRepoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#2a7797] hover:text-[#1f5c76] font-mono underline decoration-dotted"
+                  title={runIdRepoUrl}
+                >
+                  {record.run_id}
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                </a>
+              ) : (
+                <span className="text-xs font-semibold text-slate-700 font-mono">
+                  {record.run_id || "—"}
+                </span>
+              )}
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
@@ -451,14 +478,6 @@ export default function AnalysisDetailPage({
               </span>
               <span className="text-xs font-semibold text-slate-700">
                 {record.status_of_submission || "—"}
-              </span>
-            </div>
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Status of Analysis
-              </span>
-              <span className="text-xs font-semibold text-slate-700">
-                {record.status_of_analysis || "—"}
               </span>
             </div>
           </div>

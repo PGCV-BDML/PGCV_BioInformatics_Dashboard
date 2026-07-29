@@ -140,7 +140,6 @@ export interface Analysis {
   external_project_id: string | null;
   sample_type: string | null;
   run_id: string | null;
-  status_of_analysis: string | null;
   status_of_completion: string | null;
   status_of_submission: string | null;
   service_report_link: string | null;
@@ -201,6 +200,7 @@ export interface TrainingProgram {
   end_date: string | null;
   instructor_id: string;
   description: string | null;
+  requesting_institution: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -209,6 +209,7 @@ export interface TrainingProgram {
 export type TrainingProgramFormData = {
   title: string;
   description: string;
+  requesting_institution: string;
   instructor_id: string;
   start_date: string;
   end_date: string;
@@ -303,6 +304,19 @@ export interface TrainingSession {
   updated_at?: string;
 }
 
+export type EnrollmentStatus = "enrolled" | "completed" | "dropped";
+
+export interface ProgramEnrollment {
+  id: string;
+  program_id: string;
+  user_id: string;
+  status: EnrollmentStatus;
+  enrolled_at: string;
+  enrolled_by: string | null;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
 // ============================================================
 // 3.5 Core table types (Client, Service, User, AuditLog)
 // ============================================================
@@ -373,3 +387,55 @@ export interface AuditLog {
   target_id: string;
   details: Record<string, unknown> | null;
 }
+
+// ============================================================
+// Repository (standalone source links)
+// ============================================================
+
+export type RepositoryKind = "github" | "drive" | "other";
+export type RepositoryCategory =
+  | "pipelines"
+  | "datasets"
+  | "client_sequences"
+  | "other";
+
+export const REPOSITORY_KIND_OPTIONS: {
+  value: RepositoryKind;
+  label: string;
+}[] = [
+  { value: "github", label: "GitHub" },
+  { value: "drive", label: "Google Drive" },
+  { value: "other", label: "Other" },
+];
+
+export const REPOSITORY_CATEGORY_OPTIONS: {
+  value: RepositoryCategory;
+  label: string;
+}[] = [
+  { value: "pipelines", label: "Pipelines" },
+  { value: "datasets", label: "Datasets" },
+  { value: "client_sequences", label: "Client Sequences" },
+  { value: "other", label: "Other" },
+];
+
+export type Repository = {
+  id: string;
+  kind: RepositoryKind;
+  title: string;
+  url: string;
+  description: string | null;
+  category: RepositoryCategory;
+  /** Sequencer run ID; deep-links to Service Report Tracker RUN ID. */
+  run_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type RepositoryFormData = {
+  kind: RepositoryKind;
+  title: string;
+  url: string;
+  description: string;
+  category: RepositoryCategory;
+  run_id: string;
+};

@@ -9,13 +9,13 @@ import ProgramSearchGrid, {
 import ProgramModal from "@/app/components/program-modal";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { useDashboardUI } from "@/app/components/dashboard-ui-context";
+import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
+import { STAFF_ROLES } from "@/lib/portal";
 import {
-  getCurrentUser,
   getRowsFromDB,
   getUsersFromDB,
   saveDataToDB,
-  supabase,
 } from "@/lib/supabase";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
@@ -25,10 +25,7 @@ import type {
   TrainingType,
   User as UserType,
   UserOption,
-  UserRole,
 } from "@/types/database";
-
-const STAFF_ROLES: UserRole[] = ["team_lead", "team_member"];
 
 function mapProgramCard(
   program: TrainingProgram,
@@ -39,9 +36,9 @@ function mapProgramCard(
     title: program.title,
     description: program.description ?? "",
     instructor_name: userMap.get(program.instructor_id)?.name ?? "Unassigned",
+    requesting_institution: program.requesting_institution ?? "",
     start_date: program.start_date ?? "",
     end_date: program.end_date ?? "",
-    duration: "",
     participant_count: 0,
     status: program.status ?? "ongoing",
   };
@@ -66,7 +63,6 @@ export default function ProgramDirectory({
   const [rawPrograms, setRawPrograms] = useState<TrainingProgram[]>([]);
   const [instructors, setInstructors] = useState<UserOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [canManage, setCanManage] = useState(false);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -78,8 +74,16 @@ export default function ProgramDirectory({
   const [isArchiving, setIsArchiving] = useState(false);
 
   const { toggleSidebar } = useDashboardUI();
+  const { isLearnerView, isStaff } = usePortal();
   const { showToast } = useToast();
   const isPanelOpen = isAdding || isEditing;
+  const canManage = isStaff && !isLearnerView;
+  const directoryTitle = isLearnerView ? `My ${title} Courses` : title;
+  const directorySubtitle = isLearnerView
+    ? programsList.length === 0
+      ? "You are not enrolled in a program yet. Contact a team lead if you believe this is an error."
+      : "Select a course to continue."
+    : subtitle;
 
   useEffect(() => {
     toggleSidebar(isPanelOpen);
@@ -89,7 +93,7 @@ export default function ProgramDirectory({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [programs, users, authUser] = await Promise.all([
+        const [programs, users] = await Promise.all([
           getRowsFromDB<TrainingProgram>("training_program"),
           getUsersFromDB<UserType>([
             "team_lead",
@@ -97,19 +101,7 @@ export default function ProgramDirectory({
             "intern",
             "trainee",
           ]),
-          getCurrentUser(),
         ]);
-
-        let role: UserRole | null = null;
-        if (authUser?.id) {
-          const { data: profile } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", authUser.id)
-            .maybeSingle();
-          role = (profile?.role as UserRole | undefined) ?? null;
-        }
-        setCanManage(role !== null && STAFF_ROLES.includes(role));
 
         const userMap = new Map<string, UserType>();
         for (const u of users) userMap.set(u.id, u);
@@ -142,6 +134,7 @@ export default function ProgramDirectory({
     return {
       title: selectedRaw.title,
       description: selectedRaw.description ?? "",
+      requesting_institution: selectedRaw.requesting_institution ?? "",
       instructor_id: selectedRaw.instructor_id,
       start_date: selectedRaw.start_date ?? "",
       end_date: selectedRaw.end_date ?? "",
@@ -203,6 +196,8 @@ export default function ProgramDirectory({
         status: formData.status,
         instructor_id: formData.instructor_id,
         description: formData.description.trim() || null,
+        requesting_institution:
+          formData.requesting_institution.trim() || null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };
@@ -224,9 +219,9 @@ export default function ProgramDirectory({
             title: saved.title,
             description: saved.description ?? "",
             instructor_name: instructorName,
+            requesting_institution: saved.requesting_institution ?? "",
             start_date: saved.start_date ?? "",
             end_date: saved.end_date ?? "",
-            duration: "",
             participant_count: 0,
             status: saved.status ?? "ongoing",
           },
@@ -252,6 +247,8 @@ export default function ProgramDirectory({
         status: formData.status,
         instructor_id: formData.instructor_id,
         description: formData.description.trim() || null,
+        requesting_institution:
+          formData.requesting_institution.trim() || null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };
@@ -277,6 +274,7 @@ export default function ProgramDirectory({
                   title: saved.title,
                   description: saved.description ?? "",
                   instructor_name: instructorName,
+                  requesting_institution: saved.requesting_institution ?? "",
                   start_date: saved.start_date ?? "",
                   end_date: saved.end_date ?? "",
                   status: saved.status ?? p.status,
@@ -318,8 +316,8 @@ export default function ProgramDirectory({
     <div className="space-y-8 mx-auto font-aileron w-full max-w-[1240px]">
       <PageHeader
         breadcrumbTrail={breadcrumbTrail}
-        title={title}
-        subtitle={subtitle}
+        title={directoryTitle}
+        subtitle={directorySubtitle}
         actions={
           canManage ? (
             <button
@@ -343,6 +341,17 @@ export default function ProgramDirectory({
           <div className="flex items-center gap-2 p-4">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-600">{loadError}</p>
+          </div>
+        ) : isLearnerView && programsList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center px-4">
+            <AlertCircle className="h-10 w-10 text-slate-300" />
+            <p className="text-sm font-bold text-slate-700">
+              No enrolled courses yet
+            </p>
+            <p className="text-xs text-slate-500 max-w-md">
+              Ask a team lead to enroll you in a {programType} program. Once
+              assigned, your course will appear here automatically.
+            </p>
           </div>
         ) : (
           <ProgramSearchGrid

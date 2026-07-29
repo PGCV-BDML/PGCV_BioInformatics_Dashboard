@@ -58,7 +58,7 @@ export function AnalysisClientTypeChart({
             No analyses for {yearLabel}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center my-auto py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start py-2">
             <div className="w-full h-48 relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -102,7 +102,7 @@ export function AnalysisClientTypeChart({
               </div>
             </div>
 
-            <div className="space-y-2.5 font-aileron max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-2.5 font-aileron">
               {data.map((entry, idx) => (
                 <div
                   key={entry.name}

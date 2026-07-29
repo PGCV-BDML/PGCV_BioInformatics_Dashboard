@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   CheckSquare,
   ExternalLink,
-  FolderGit2,
   Calendar,
   CheckCircle2,
   Circle,
@@ -15,7 +14,6 @@ export interface WeeklyTask {
   id: string;
   title: string;
   description: string;
-  linkedProject: string;
   dueDate: Date | null;
   status: "pending" | "completed";
   priority: "high" | "medium" | "low";
@@ -145,16 +143,6 @@ export function WeeklyTaskList({
                     >
                       {task.title}
                     </span>
-
-                    <div
-                      className={`flex items-center gap-1.5 text-xs font-bold font-aileron ${isCompleted
-                        ? "text-slate-400"
-                        : "text-[#2a7797] hover:underline"
-                        }`}
-                    >
-                      <FolderGit2 className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{task.linkedProject}</span>
-                    </div>
                   </div>
                 </div>
 

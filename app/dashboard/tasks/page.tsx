@@ -85,7 +85,7 @@ function TasksPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState("pending");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -115,7 +115,7 @@ function TasksPageContent() {
     due_date: "",
     status: "pending",
     priority: "medium",
-    linked_project_id: availableProjects[0]?.id ?? "",
+    linked_project_id: null,
     linked_analysis_id: null,
     categories: [],
   };
@@ -331,7 +331,11 @@ function TasksPageContent() {
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const { name, value } = e.target;
-      setFormState((prev) => ({ ...prev, [name]: value }));
+      setFormState((prev) => ({
+        ...prev,
+        [name]:
+          name === "linked_project_id" ? value || null : value,
+      }));
     },
     [],
   );
@@ -342,7 +346,10 @@ function TasksPageContent() {
 
   const persistTaskPayload = (form: Omit<Task, "id">) => {
     const { categories: _categories, ...record } = form;
-    return record;
+    return {
+      ...record,
+      linked_project_id: record.linked_project_id || null,
+    };
   };
 
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
@@ -465,24 +472,6 @@ function TasksPageContent() {
       label: "Categories",
       width: "16%",
       render: (t) => <CategoryChips categories={t.categories ?? []} maxVisible={2} />,
-    },
-    {
-      key: "linked_project_id",
-      label: "Linked Project",
-      width: "14%",
-      render: (t) => {
-        const project = availableProjects.find(
-          (p) => p.id === t.linked_project_id,
-        );
-        return (
-          <span
-            className="text-slate-600 text-xs font-medium block truncate max-w-full"
-            title={project ? project.name : "Unlinked"}
-          >
-            {project ? project.name : "Unlinked"}
-          </span>
-        );
-      },
     },
     {
       key: "assignee_id",

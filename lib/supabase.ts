@@ -66,8 +66,10 @@ export type TableNames =
   | "assessment"
   | "assessment_response"
   | "certificate"
+  | "program_enrollment"
   | "task"
   | "task_tag"
+  | "repository"
   | "users";
 
 export async function getNameIdFromDB<T = { id: string; name: string }>(
