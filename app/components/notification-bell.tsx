@@ -77,7 +77,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-11 right-0 w-80 bg-surface border border-[rgba(23,33,38,0.1)] rounded-2xl shadow-[0px_16px_40px_rgba(23,33,38,0.12)] z-50 overflow-hidden">
+        <div className="absolute top-11 right-0 w-80 max-w-[calc(100vw-2rem)] bg-surface border border-[rgba(23,33,38,0.1)] rounded-2xl shadow-[0px_16px_40px_rgba(23,33,38,0.12)] z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <span className="text-[12px] font-extrabold text-[#1e293b] uppercase tracking-wider font-quicksand">
