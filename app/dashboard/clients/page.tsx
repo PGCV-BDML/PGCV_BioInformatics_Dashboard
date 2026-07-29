@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   Inbox,
 } from "lucide-react";
-import { PageHeader } from "../../components/pageheader";
 import {
   LoadingState,
   ErrorState,
@@ -24,6 +23,8 @@ import {
 } from "../../components/state-views";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
+import DataTable, { Column } from "../../components/datatable";
+import Pagination from "../../components/pagination";
 import {
   buildClientPayload,
   createEmptyClientForm,
@@ -33,6 +34,7 @@ import {
   type SupabaseClientRow,
 } from "@/lib/clients";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
+import { useTableState } from "@/hooks/useTableState";
 import SlideOverModal, {
   renderSectionLabel,
 } from "../../components/slidemodal";
@@ -87,6 +89,11 @@ const FIELD_CONFIG: Array<{
     icon: Briefcase,
   },
 ];
+
+function dash(value: string | null | undefined): string {
+  const t = (value ?? "").trim();
+  return t || "—";
+}
 
 export default function ClientsPage() {
   const searchParams = useSearchParams();
@@ -156,10 +163,75 @@ export default function ClientsPage() {
     );
   }, [clients, searchQuery]);
 
-  const visibleClients = useMemo(() => {
-    const start = 0;
-    return filteredClients.slice(start, start + itemsPerPage);
-  }, [filteredClients, itemsPerPage]);
+  const {
+    displayed: visibleClients,
+    currentPage,
+    setCurrentPage,
+    sortConfig,
+    handleSort,
+    totalItems,
+  } = useTableState<ClientRecord>({
+    items: filteredClients,
+    itemsPerPage,
+    resetKey: searchQuery,
+    initialSort: { key: "clientId", direction: "asc" },
+  });
+
+  const columns: Column<ClientRecord>[] = useMemo(
+    () => [
+      {
+        key: "clientId",
+        label: "Client ID",
+        width: "14%",
+        sortable: true,
+        render: (c) => (
+          <span className="font-mono text-[11px]">{dash(c.clientId)}</span>
+        ),
+      },
+      {
+        key: "clientName",
+        label: "Client Name",
+        width: "20%",
+        sortable: true,
+        render: (c) => (
+          <span className="font-semibold text-slate-800">
+            {dash(c.clientName)}
+          </span>
+        ),
+      },
+      {
+        key: "projectId",
+        label: "Project ID",
+        width: "14%",
+        sortable: true,
+        render: (c) => (
+          <span className="font-mono text-[11px]">{dash(c.projectId)}</span>
+        ),
+      },
+      {
+        key: "emailAddress",
+        label: "Email",
+        width: "18%",
+        sortable: true,
+        render: (c) => dash(c.emailAddress),
+      },
+      {
+        key: "affiliation",
+        label: "Affiliation",
+        width: "18%",
+        sortable: true,
+        render: (c) => dash(c.affiliation),
+      },
+      {
+        key: "designation",
+        label: "Designation",
+        width: "16%",
+        sortable: true,
+        render: (c) => dash(c.designation),
+      },
+    ],
+    [],
+  );
 
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,67 +372,33 @@ export default function ClientsPage() {
           <LoadingState variant="skeleton" message="Loading clients…" />
         ) : loadError ? (
           <ErrorState message={loadError} />
-        ) : filteredClients.length === 0 ? (
+        ) : clients.length === 0 ? (
           <EmptyState
             icon={Inbox}
             title="No clients yet"
             description="Create your first client to get started."
           />
-        ) : visibleClients.length === 0 ? (
+        ) : filteredClients.length === 0 ? (
           <EmptyState
             icon={Inbox}
             title="No matching clients"
             description="Try adjusting your search or filter criteria."
           />
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[960px]">
-            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-surface shadow-sm">
-              <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-gray-200 text-[13px] font-semibold text-[#55656e] select-none">
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Client ID</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Client Name</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Project ID</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Email</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Affiliation</th>
-                    <th className="px-4 py-3.5 bg-[#2A7797]/10">Designation</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[12px] text-[#2c3a42]">
-                  {visibleClients.map((client) => (
-                    <tr
-                      key={client.id}
-                      className="odd:bg-surface even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
-                    >
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.clientId || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle">
-                        <div className="font-semibold text-slate-800">
-                          {client.clientName || "—"}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {client.affiliation || "—"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.projectId || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.emailAddress || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.affiliation || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                        {client.designation || "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <>
+            <DataTable
+              columns={columns}
+              data={visibleClients}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+            <Pagination
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </>
         )}
       </div>
 
