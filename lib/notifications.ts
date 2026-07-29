@@ -15,13 +15,20 @@ export type AppNotification = {
   created_at: string;
 };
 
-/** Fetch all unread notifications for the currently authenticated user. */
-export async function getMyNotifications(): Promise<AppNotification[]> {
-  const { data, error } = await supabase
+/** Fetch notifications for the currently authenticated user. */
+export async function getMyNotifications(
+  options?: { unreadOnly?: boolean },
+): Promise<AppNotification[]> {
+  let query = supabase
     .from("notifications")
     .select("*")
-    .eq("is_read", false)
     .order("created_at", { ascending: false });
+
+  if (options?.unreadOnly ?? true) {
+    query = query.eq("is_read", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Failed to fetch notifications:", error);

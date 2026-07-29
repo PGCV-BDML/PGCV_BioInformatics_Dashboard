@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Bell, ExternalLink, CheckCheck, FileCheck2 } from "lucide-react";
 import {
   getMyNotifications,
@@ -24,7 +25,7 @@ export function NotificationBell() {
 
   // Initial fetch
   useEffect(() => {
-    getMyNotifications().then(setNotifications);
+    getMyNotifications({ unreadOnly: true }).then(setNotifications);
   }, []);
 
   // Realtime subscription — only when we have a userId
@@ -141,6 +142,16 @@ export function NotificationBell() {
                 </div>
               ))
             )}
+          </div>
+
+          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/60">
+            <Link
+              href="/dashboard/notifications"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
+            >
+              View all notifications
+            </Link>
           </div>
         </div>
       )}
