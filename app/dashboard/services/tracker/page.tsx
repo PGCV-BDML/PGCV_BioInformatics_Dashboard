@@ -44,6 +44,7 @@ import { useToast } from "../../../components/toast";
 import DeleteModal from "../../../components/deletemodal";
 import Pagination from "../../../components/pagination";
 import DataTable, { Column } from "../../../components/datatable";
+import { TruncatedText } from "../../../components/cell-tooltip";
 import AnalysisSidebar, {
   AnalysisFormState,
   EMPTY_ANALYSIS_FORM,
@@ -857,11 +858,10 @@ export default function ServiceReportTrackerPage() {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-[#2a7797] hover:text-[#4ec2bb] font-semibold underline decoration-dotted"
-        title={url}
+        className="inline-flex items-center gap-1 max-w-full min-w-0 text-[#2a7797] hover:text-[#4ec2bb] font-semibold underline decoration-dotted"
       >
         <ExternalLink className="w-3 h-3 shrink-0" />
-        {label}
+        <TruncatedText text={url} display={label} force className="text-[#2a7797]" />
       </a>
     );
   };
@@ -876,10 +876,13 @@ export default function ServiceReportTrackerPage() {
       render: (s) => (
         <Link
           href={`/dashboard/services/${s.id}`}
-          className="font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-colors"
-          title={s.service_report_number || s.project_name}
+          className="block min-w-0 font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-colors"
         >
-          {dash(s.service_report_number)}
+          <TruncatedText
+            text={s.service_report_number || s.project_name}
+            display={dash(s.service_report_number)}
+            className="font-bold text-[#2a7797]"
+          />
         </Link>
       ),
     },
@@ -889,7 +892,7 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Date",
       width: "6%",
       sortable: true,
-      render: (s) => dash(s.service_report_date),
+      render: (s) => <TruncatedText text={dash(s.service_report_date)} />,
     },
     {
       key: "analysis_classification",
@@ -898,7 +901,10 @@ export default function ServiceReportTrackerPage() {
       width: "8%",
       sortable: true,
       render: (s) => (
-        <span title={s.analysis_pipeline}>{dash(s.analysis_classification)}</span>
+        <TruncatedText
+          text={s.analysis_pipeline || s.analysis_classification}
+          display={dash(s.analysis_classification)}
+        />
       ),
     },
     {
@@ -906,7 +912,7 @@ export default function ServiceReportTrackerPage() {
       label: "Client",
       width: "8%",
       sortable: true,
-      render: (s) => <span title={s.client || undefined}>{dash(s.client)}</span>,
+      render: (s) => <TruncatedText text={dash(s.client)} />,
     },
     {
       key: "client_type",
@@ -914,7 +920,7 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Type",
       width: "5%",
       sortable: true,
-      render: (s) => dash(s.client_type),
+      render: (s) => <TruncatedText text={dash(s.client_type)} />,
     },
     {
       key: "external_client_id",
@@ -930,25 +936,27 @@ export default function ServiceReportTrackerPage() {
             <Link
               href={routes.clients.byQuery(id)}
               onClick={(e) => e.stopPropagation()}
-              title={
-                s.matched_client_name
-                  ? `Linked to ${s.matched_client_name}`
-                  : "Open in Clients"
-              }
-              className="font-mono text-[11px] text-[#1b5e20] hover:underline"
+              className="block min-w-0 font-mono text-[11px] text-[#1b5e20] hover:underline"
             >
-              {id}
+              <TruncatedText
+                text={
+                  s.matched_client_name
+                    ? `${id} · Linked to ${s.matched_client_name}`
+                    : id
+                }
+                display={id}
+                className="font-mono text-[11px] text-[#1b5e20]"
+              />
             </Link>
           );
         }
 
         return (
-          <span
+          <TruncatedText
+            text={`${id} · No matching client in Clients module`}
+            display={id}
             className="font-mono text-[11px] text-amber-800/80"
-            title="No matching client in Clients module"
-          >
-            {id}
-          </span>
+          />
         );
       },
     },
@@ -958,7 +966,10 @@ export default function ServiceReportTrackerPage() {
       width: "6%",
       sortable: true,
       render: (s) => (
-        <span className="font-mono text-[11px]">{dash(s.external_project_id)}</span>
+        <TruncatedText
+          text={dash(s.external_project_id)}
+          className="font-mono text-[11px]"
+        />
       ),
     },
     {
@@ -967,7 +978,7 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Sample",
       width: "6%",
       sortable: true,
-      render: (s) => dash(s.sample_type),
+      render: (s) => <TruncatedText text={dash(s.sample_type)} />,
     },
     {
       key: "run_id",
@@ -985,18 +996,23 @@ export default function ServiceReportTrackerPage() {
               href={repoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
-              title={repoUrl}
+              className="inline-flex items-center gap-1 max-w-full min-w-0 font-mono text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold underline decoration-dotted"
             >
-              {s.run_id}
+              <TruncatedText
+                text={repoUrl}
+                display={s.run_id}
+                force
+                className="font-mono text-[11px] text-[#2a7797]"
+              />
               <ExternalLink className="w-3 h-3 shrink-0" />
             </a>
           );
         }
         return (
-          <span className="font-mono text-[11px]" title={s.run_id}>
-            {s.run_id}
-          </span>
+          <TruncatedText
+            text={s.run_id}
+            className="font-mono text-[11px]"
+          />
         );
       },
     },
@@ -1064,7 +1080,12 @@ export default function ServiceReportTrackerPage() {
       width: "6%",
       sortable: true,
       render: (s) => (
-        <span title={s.notes || undefined}>{dash(s.notes)}</span>
+        <TruncatedText
+          text={s.notes}
+          display={dash(s.notes)}
+          multiline
+          force={Boolean(s.notes?.trim())}
+        />
       ),
     },
     {
