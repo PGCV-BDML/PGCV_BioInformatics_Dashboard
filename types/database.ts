@@ -201,6 +201,7 @@ export interface TrainingProgram {
   end_date: string | null;
   instructor_id: string;
   description: string | null;
+  requesting_institution: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -209,6 +210,7 @@ export interface TrainingProgram {
 export type TrainingProgramFormData = {
   title: string;
   description: string;
+  requesting_institution: string;
   instructor_id: string;
   start_date: string;
   end_date: string;
