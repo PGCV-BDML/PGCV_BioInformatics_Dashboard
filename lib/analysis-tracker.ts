@@ -53,6 +53,7 @@ export const STATUS_OF_COMPLETION_OPTIONS = [
   "On-going",
   "On hold (for payment)",
   "Completed",
+  "Cancelled",
 ] as const;
 
 export const STATUS_OF_SUBMISSION_OPTIONS = [
