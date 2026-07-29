@@ -7,6 +7,7 @@ import {
   Calendar,
   User,
   Users,
+  Building2,
   ArrowRight,
   MoreHorizontal,
   Pencil,
@@ -26,6 +27,7 @@ export interface ProgramCard {
   title: string;
   description: string;
   instructor_name: string;
+  requesting_institution: string;
   start_date: string;
   end_date: string;
   participant_count: number;
@@ -202,7 +204,8 @@ export default function ProgramSearchGrid({
       (prog) =>
         prog.title.toLowerCase().includes(q) ||
         prog.description.toLowerCase().includes(q) ||
-        prog.instructor_name.toLowerCase().includes(q),
+        prog.instructor_name.toLowerCase().includes(q) ||
+        prog.requesting_institution.toLowerCase().includes(q),
     );
   }, [programs, searchQuery, statusFilter]);
 
@@ -319,6 +322,17 @@ export default function ProgramSearchGrid({
                       </strong>
                     </span>
                   </div>
+                  {prog.requesting_institution && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        Requesting Institution:{" "}
+                        <strong className="text-slate-700 font-bold">
+                          {prog.requesting_institution}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>
