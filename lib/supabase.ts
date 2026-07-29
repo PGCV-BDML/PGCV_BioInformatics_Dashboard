@@ -125,7 +125,9 @@ export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   }
 
   if (table === "project" && (!rows || rows.length === 0)) {
-    console.warn("No rows returned for project table; using fallback demo data.");
+    console.warn(
+      "No rows returned for project table; using fallback demo data.",
+    );
     return DEFAULT_PROJECT_FALLBACK as T[];
   }
 

@@ -152,9 +152,7 @@ describe("getUsersFromDB", () => {
   });
 
   it("Returns users on success with valid roles", async () => {
-    const testData = [
-      { id: "1", name: "Charlie", role: "team_member" },
-    ];
+    const testData = [{ id: "1", name: "Charlie", role: "team_member" }];
     mockFrom.mockReturnValue(createChain(testData) as any);
 
     const result = await getUsersFromDB(["team_member", "intern"]);
@@ -166,7 +164,9 @@ describe("getUsersFromDB", () => {
     const testError = new Error("Users fetch error");
     mockFrom.mockReturnValue(createChain(null, testError) as any);
 
-    await expect(getUsersFromDB(["team_lead"])).rejects.toThrow("Users fetch error");
+    await expect(getUsersFromDB(["team_lead"])).rejects.toThrow(
+      "Users fetch error",
+    );
   });
 });
 
@@ -215,17 +215,17 @@ describe("saveDataToDB", () => {
     // even though the data will be rejected afterwards
     mockFrom.mockReturnValue(createChain(null) as any);
 
-    await expect(
-      saveDataToDB("project", "123", [] as any),
-    ).rejects.toThrow("must be a plain object");
+    await expect(saveDataToDB("project", "123", [] as any)).rejects.toThrow(
+      "must be a plain object",
+    );
   });
 
   it("Throws when data is null", async () => {
     mockFrom.mockReturnValue(createChain(null) as any);
 
-    await expect(
-      saveDataToDB("project", "123", null as any),
-    ).rejects.toThrow("must be a plain object");
+    await expect(saveDataToDB("project", "123", null as any)).rejects.toThrow(
+      "must be a plain object",
+    );
   });
 
   it("Calls update when row exists", async () => {
@@ -240,7 +240,9 @@ describe("saveDataToDB", () => {
     const chain2 = createChain(null);
     chain2.single = vi.fn(() => ({ data: updatedRow, error: null }));
 
-    mockFrom.mockReturnValueOnce(chain1 as any).mockReturnValueOnce(chain2 as any);
+    mockFrom
+      .mockReturnValueOnce(chain1 as any)
+      .mockReturnValueOnce(chain2 as any);
 
     const result = await saveDataToDB("project", "123", { name: "new" });
     expect(result).toEqual(updatedRow);
@@ -259,7 +261,9 @@ describe("saveDataToDB", () => {
     const chain2 = createChain(null);
     chain2.single = vi.fn(() => ({ data: insertedRow, error: null }));
 
-    mockFrom.mockReturnValueOnce(chain1 as any).mockReturnValueOnce(chain2 as any);
+    mockFrom
+      .mockReturnValueOnce(chain1 as any)
+      .mockReturnValueOnce(chain2 as any);
 
     const result = await saveDataToDB("project", "123", { name: "new" });
     expect(result).toEqual(insertedRow);
@@ -270,9 +274,9 @@ describe("saveDataToDB", () => {
     const fetchError = new Error("Fetch check failed");
     mockFrom.mockReturnValue(createChain(null, fetchError) as any);
 
-    await expect(
-      saveDataToDB("project", "123", { name: "x" }),
-    ).rejects.toThrow("Fetch check failed");
+    await expect(saveDataToDB("project", "123", { name: "x" })).rejects.toThrow(
+      "Fetch check failed",
+    );
   });
   // ponytail: saveDataToDB test coverage limited by mock complexity
   // Coverage: data validation, update path, upsert path, fetch error path.
@@ -298,6 +302,8 @@ describe("deleteDataFromDB", () => {
     const deleteError = new Error("Delete failed");
     mockFrom.mockReturnValue(createChain(null, deleteError) as any);
 
-    await expect(deleteDataFromDB("task", "t-42")).rejects.toThrow("Delete failed");
+    await expect(deleteDataFromDB("task", "t-42")).rejects.toThrow(
+      "Delete failed",
+    );
   });
 });

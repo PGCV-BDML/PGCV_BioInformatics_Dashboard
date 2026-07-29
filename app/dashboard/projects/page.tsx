@@ -5,9 +5,19 @@ import DataTable, { Column } from "../../components/datatable";
 import Pagination from "../../components/pagination";
 import DeleteModal from "../../components/deletemodal";
 import ProjectModal from "../../components/projectmodal";
-import { UserOption, Project, ProjectFormData, ProjectStatus, STATUS_OPTIONS } from "../../../types/database";
+import {
+  UserOption,
+  Project,
+  ProjectFormData,
+  ProjectStatus,
+  STATUS_OPTIONS,
+} from "../../../types/database";
 import { PageHeader } from "../../components/pageheader";
-import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
+import {
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from "../../components/state-views";
 import {
   Search,
   Network,
@@ -42,7 +52,6 @@ const FILTER_OPTIONS: { value: ProjectStatus | "All"; label: string }[] = [
   ...STATUS_OPTIONS,
 ];
 
-
 export default function ProjectsPage() {
   const [projectsList, setProjectsList] = useState<Project[]>([]);
   const [availableClients, setAvailableClients] = useState<UserOption[]>([]);
@@ -51,7 +60,9 @@ export default function ProjectsPage() {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<ProjectStatus | "All">("All");
+  const [activeFilter, setActiveFilter] = useState<ProjectStatus | "All">(
+    "All",
+  );
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -75,26 +86,39 @@ export default function ProjectsPage() {
       setOptionsLoading(true);
       setOptionsError(null);
       try {
-        const [clientsResult, servicesResult, usersResult, rowsResult] = await Promise.allSettled([
-          getNameIdFromDB("client"),
-          getNameIdFromDB("service"),
-          getUsersFromDB(["team_lead", "team_member"]),
-          getRowsFromDB("project"),
-        ]);
+        const [clientsResult, servicesResult, usersResult, rowsResult] =
+          await Promise.allSettled([
+            getNameIdFromDB("client"),
+            getNameIdFromDB("service"),
+            getUsersFromDB(["team_lead", "team_member"]),
+            getRowsFromDB("project"),
+          ]);
 
         if (cancelled) return;
 
-        const clients = clientsResult.status === "fulfilled" ? (clientsResult.value as UserOption[]) : [];
-        const services = servicesResult.status === "fulfilled" ? (servicesResult.value as UserOption[]) : [];
-        const users = usersResult.status === "fulfilled" ? (usersResult.value as UserOption[]) : [];
-        const rows = rowsResult.status === "fulfilled"
-          ? (rowsResult.value as Project[])
-          : DEFAULT_PROJECT_FALLBACK as Project[];
+        const clients =
+          clientsResult.status === "fulfilled"
+            ? (clientsResult.value as UserOption[])
+            : [];
+        const services =
+          servicesResult.status === "fulfilled"
+            ? (servicesResult.value as UserOption[])
+            : [];
+        const users =
+          usersResult.status === "fulfilled"
+            ? (usersResult.value as UserOption[])
+            : [];
+        const rows =
+          rowsResult.status === "fulfilled"
+            ? (rowsResult.value as Project[])
+            : (DEFAULT_PROJECT_FALLBACK as Project[]);
 
         setAvailableClients(clients);
         setAvailableServices(services);
         setAvailableUsers(users);
-        setProjectsList(rows.length > 0 ? rows : (DEFAULT_PROJECT_FALLBACK as Project[]));
+        setProjectsList(
+          rows.length > 0 ? rows : (DEFAULT_PROJECT_FALLBACK as Project[]),
+        );
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
         if (!cancelled) {
@@ -133,7 +157,10 @@ export default function ProjectsPage() {
     toggleSidebar(isPanelOpen);
   }, [isPanelOpen, toggleSidebar]);
 
-  const updateProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
+  const updateProjectStatus = async (
+    projectId: string,
+    newStatus: ProjectStatus,
+  ) => {
     const previous = projectsList.find((p) => p.id === projectId)?.status;
 
     // Update the frontend immediately
@@ -158,7 +185,10 @@ export default function ProjectsPage() {
     }
   };
 
-  const updateProjectService = async (projectId: string, newServiceId: string) => {
+  const updateProjectService = async (
+    projectId: string,
+    newServiceId: string,
+  ) => {
     const previous = projectsList.find((p) => p.id === projectId)?.service_id;
     setProjectsList((prev) =>
       prev.map((proj) =>
@@ -181,62 +211,76 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleAddSubmit = useCallback(async (formData: ProjectFormData) => {
-    const newId = crypto.randomUUID();
-    const payload = {
-      id: newId,
-      name: formData.name,
-      client_id: formData.client_id,
-      service_id: formData.service_id,
-      status: formData.status,
-      lead_user_id: formData.lead_user_id,
-      start_date: formData.start_date,
-      target_delivery_date: formData.target_delivery_date || null,
-      repository_link: formData.repository_link || null,
-    };
+  const handleAddSubmit = useCallback(
+    async (formData: ProjectFormData) => {
+      const newId = crypto.randomUUID();
+      const payload = {
+        id: newId,
+        name: formData.name,
+        client_id: formData.client_id,
+        service_id: formData.service_id,
+        status: formData.status,
+        lead_user_id: formData.lead_user_id,
+        start_date: formData.start_date,
+        target_delivery_date: formData.target_delivery_date || null,
+        repository_link: formData.repository_link || null,
+      };
 
-    setIsSaving(true);
+      setIsSaving(true);
 
-    try {
-      const saved = await saveDataToDB("project", newId, payload);
-      setProjectsList((prev) => [saved, ...prev]);
-      setIsAdding(false);
-      showToast("Project created successfully.", "success");
-    } catch (error) {
-      showToast("Failed to save project. Please try again.", "error");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [showToast]);
+      try {
+        const saved = await saveDataToDB("project", newId, payload);
+        setProjectsList((prev) => [saved, ...prev]);
+        setIsAdding(false);
+        showToast("Project created successfully.", "success");
+      } catch (error) {
+        showToast("Failed to save project. Please try again.", "error");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [showToast],
+  );
 
-  const handleEditSubmit = useCallback(async (formData: ProjectFormData) => {
-    if (!selectedProject) return;
+  const handleEditSubmit = useCallback(
+    async (formData: ProjectFormData) => {
+      if (!selectedProject) return;
 
-    const payload = {
-      name: formData.name,
-      client_id: formData.client_id,
-      service_id: formData.service_id,
-      status: formData.status,
-      lead_user_id: formData.lead_user_id,
-      start_date: formData.start_date,
-      target_delivery_date: formData.target_delivery_date || null,
-      repository_link: formData.repository_link || null,
-    };
+      const payload = {
+        name: formData.name,
+        client_id: formData.client_id,
+        service_id: formData.service_id,
+        status: formData.status,
+        lead_user_id: formData.lead_user_id,
+        start_date: formData.start_date,
+        target_delivery_date: formData.target_delivery_date || null,
+        repository_link: formData.repository_link || null,
+      };
 
-    setIsSaving(true);
-    try {
-      const saved = await saveDataToDB("project", selectedProject.id, payload);
-      setProjectsList((prev) =>
-        prev.map((item) => (item.id === selectedProject.id ? { ...item, ...(saved as Project) } : item)),
-      );
-      setIsEditing(false);
-      showToast("Project updated successfully.", "success");
-    } catch (error) {
-      showToast("Failed to update project.", "error");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [selectedProject, showToast]);
+      setIsSaving(true);
+      try {
+        const saved = await saveDataToDB(
+          "project",
+          selectedProject.id,
+          payload,
+        );
+        setProjectsList((prev) =>
+          prev.map((item) =>
+            item.id === selectedProject.id
+              ? { ...item, ...(saved as Project) }
+              : item,
+          ),
+        );
+        setIsEditing(false);
+        showToast("Project updated successfully.", "success");
+      } catch (error) {
+        showToast("Failed to update project.", "error");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [selectedProject, showToast],
+  );
 
   const handleCloseModal = useCallback(() => {
     setIsAdding(false);
@@ -257,8 +301,10 @@ export default function ProjectsPage() {
     };
   }, [selectedProject]);
 
-  const deleteRecord = useDeleteRecord<Project>("project", setProjectsList, (err) =>
-    showToast("Failed to delete project.", "error"),
+  const deleteRecord = useDeleteRecord<Project>(
+    "project",
+    setProjectsList,
+    (err) => showToast("Failed to delete project.", "error"),
   );
   const handleDeleteRecord = useCallback(async () => {
     if (!selectedProject) return;
@@ -291,7 +337,9 @@ export default function ProjectsPage() {
         lead_name: userMap[project.lead_user_id] ?? "",
       };
       return Object.values(searchable).some((v) =>
-        String(v ?? "").toLowerCase().includes(cleansedQuery),
+        String(v ?? "")
+          .toLowerCase()
+          .includes(cleansedQuery),
       );
     });
   }, [searchQuery, projectsList, activeFilter, clientMap, serviceMap, userMap]);
@@ -346,7 +394,9 @@ export default function ProjectsPage() {
       label: "Client",
       width: "13%",
       sortable: true,
-      render: (p) => <span className="block">{clientMap[p.client_id] ?? "Unknown"}</span>,
+      render: (p) => (
+        <span className="block">{clientMap[p.client_id] ?? "Unknown"}</span>
+      ),
     },
     {
       key: "service_id",
@@ -382,7 +432,9 @@ export default function ProjectsPage() {
         <div className="relative inline-block w-full min-w-[95px]">
           <select
             value={p.status}
-            onChange={(e) => updateProjectStatus(p.id, e.target.value as ProjectStatus)}
+            onChange={(e) =>
+              updateProjectStatus(p.id, e.target.value as ProjectStatus)
+            }
             className={getStatusClass(p.status)}
           >
             {STATUS_OPTIONS.map((opt) => (
@@ -484,8 +536,9 @@ export default function ProjectsPage() {
 
   return (
     <div
-      className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
-        }`}
+      className={`space-y-8 mx-auto font-aileron transition-all duration-300 ease-in-out max-w-full w-full ${
+        isPanelOpen ? "xl:pr-[448px]" : "max-w-[1240px]"
+      }`}
     >
       <PageHeader
         breadcrumbTrail={projectsBreadcrumbs}
@@ -557,10 +610,11 @@ export default function ProjectsPage() {
                   key={filter.value}
                   type="button"
                   onClick={() => setActiveFilter(filter.value)}
-                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${isActive
-                    ? "text-[#2a7797] font-semibold"
-                    : "text-slate-500 hover:text-slate-800 font-medium"
-                    }`}
+                  className={`relative z-10 w-28 py-1.5 rounded-full text-xs text-center transition-colors duration-300 whitespace-nowrap select-none ${
+                    isActive
+                      ? "text-[#2a7797] font-semibold"
+                      : "text-slate-500 hover:text-slate-800 font-medium"
+                  }`}
                 >
                   {filter.label}
                 </button>
