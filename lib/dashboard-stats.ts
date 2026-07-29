@@ -54,39 +54,81 @@ function matchesYear(dateVal: string | Date | null | undefined, year: string): b
 // getDashboardStats – real Supabase aggregations replacing yearlyMockDB
 // ===========================================================================
 
+type ProjectStatRow = {
+  status: string | null;
+  /** Present when schema is in sync; live DB has historically drifted without it. */
+  start_date?: string | null;
+  created_at?: string | null;
+};
+
+type CollabStatRow = {
+  status: string | null;
+  start_date?: string | null;
+  created_at?: string | null;
+};
+
+type ProgramStatRow = {
+  type: string | null;
+  status: string | null;
+  start_date?: string | null;
+  created_at?: string | null;
+};
+
+async function loadRows<T>(
+  label: string,
+  query: PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const { data, error } = await query;
+  if (error) {
+    console.error(`Dashboard stats: ${label} query failed:`, error.message);
+    throw new Error(`${label} query: ${error.message}`);
+  }
+  return data ?? [];
+}
+
 /**
  * Fetch dashboard KPI numbers for a given year.
  *
  * Service-report KPIs come from `analysis` (SR number / link / date) — the same
  * source as Sequence Analysis — not the sparse `service_report` delivery table.
+ *
+ * Project year filtering uses `start_date` when present, otherwise `created_at`
+ * (live DB has drifted without `project.start_date` in some environments).
  */
 export async function getDashboardStats(selectedYear: string): Promise<DashboardStats> {
-  const [projResult, collabResult, analysisResult, programResult] = await Promise.all([
-    supabase.from("project").select("status, start_date"),
-    supabase.from("collaboration").select("status, start_date, created_at"),
-    supabase
-      .from("analysis")
-      .select(
-        "service_report_number, service_report_date, service_report_link, started_at",
-      ),
-    supabase.from("training_program").select("type, status, start_date, created_at"),
+  const [projects, collabs, analyses, programs] = await Promise.all([
+    loadRows<ProjectStatRow>(
+      "Project",
+      // Prefer created_at — start_date is missing on some live DBs (schema drift).
+      supabase.from("project").select("status, created_at"),
+    ),
+    loadRows<CollabStatRow>(
+      "Collaboration",
+      supabase.from("collaboration").select("status, start_date, created_at"),
+    ),
+    loadRows<AnalysisDashboardRow>(
+      "Analysis",
+      supabase
+        .from("analysis")
+        .select(
+          "service_report_number, service_report_date, service_report_link, started_at",
+        ),
+    ),
+    loadRows<ProgramStatRow>(
+      "Training program",
+      supabase.from("training_program").select("type, status, start_date, created_at"),
+    ),
   ]);
-
-  if (projResult.error) throw new Error(`Project query: ${projResult.error.message}`);
-  if (collabResult.error) throw new Error(`Collaboration query: ${collabResult.error.message}`);
-  if (analysisResult.error) throw new Error(`Analysis query: ${analysisResult.error.message}`);
-  if (programResult.error) throw new Error(`Training program query: ${programResult.error.message}`);
-
-  const projects = projResult.data ?? [];
-  const collabs = collabResult.data ?? [];
-  const analyses = (analysisResult.data ?? []) as AnalysisDashboardRow[];
-  const programs = programResult.data ?? [];
 
   // -- Projects --
   // project_status enum (live DB): 'ongoing' | 'for_approval' | 'submitted' | 'on_hold' | 'completed'
   // NOTE: migration 19_initial_schema.sql only defines the first 3; 'on_hold'
   // and 'completed' were added to the live DB via direct SQL (schema drift).
-  const projectsInYear = projects.filter((p) => matchesYear(p.start_date, selectedYear));
+  const projectsInYear = projects.filter(
+    (p) =>
+      matchesYear(p.start_date, selectedYear) ||
+      matchesYear(p.created_at, selectedYear),
+  );
   const activeProjects = projectsInYear.filter((p) => p.status === "ongoing").length;
   const completedProjects = projectsInYear.filter((p) => p.status === "completed").length;
   const backlogProjects = projectsInYear.filter((p) => p.status === "on_hold").length;
