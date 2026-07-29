@@ -7,16 +7,20 @@ import {
   ExternalLink,
   FileCheck2,
   BadgeCheck,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
 import {
   approveAnalysis,
   getMyNotifications,
+  getReviewStatusLabel,
+  getReviewUiState,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForReview,
   type AppNotification,
+  type ReviewUiState,
 } from "@/lib/notifications";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
 
@@ -26,6 +30,31 @@ function formatTimestamp(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function reviewBadgeClasses(state: ReviewUiState): string {
+  switch (state) {
+    case "approved":
+      return "bg-emerald-100 text-emerald-800";
+    case "submitted":
+      return "bg-purple-100 text-purple-800";
+    case "under_review":
+      return "bg-amber-100 text-amber-900";
+    default:
+      return "bg-emerald-100 text-emerald-700";
+  }
+}
+
+function reviewIcon(state: ReviewUiState) {
+  switch (state) {
+    case "approved":
+    case "submitted":
+      return BadgeCheck;
+    case "under_review":
+      return Eye;
+    default:
+      return FileCheck2;
+  }
 }
 
 export default function NotificationsPage() {
@@ -76,6 +105,20 @@ export default function NotificationsPage() {
     );
   }
 
+  function patchLocal(
+    id: string,
+    patch: Partial<AppNotification>,
+    options?: { removeIfUnreadFilter?: boolean },
+  ) {
+    if (options?.removeIfUnreadFilter && filter === "unread" && patch.is_read) {
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+      return;
+    }
+    setNotifications((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+  }
+
   async function handleMarkRead(id: string) {
     setActionError(null);
     setBusyId(id);
@@ -115,6 +158,9 @@ export default function NotificationsPage() {
     setBusyId(notification.id);
     try {
       await openReportForReview(notification);
+      patchLocal(notification.id, {
+        submission_status: "Under review",
+      });
       window.open(link, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error(error);
@@ -137,7 +183,14 @@ export default function NotificationsPage() {
     try {
       await approveAnalysis(analysisId);
       await markNotificationRead(notification.id);
-      dismissLocally(notification.id);
+      patchLocal(
+        notification.id,
+        {
+          is_read: true,
+          submission_status: "Approved",
+        },
+        { removeIfUnreadFilter: true },
+      );
     } catch (error) {
       console.error(error);
       setActionError("Couldn't approve this report.");
@@ -212,25 +265,49 @@ export default function NotificationsPage() {
         <div className="grid grid-cols-1 gap-4">
           {notifications.map((notification) => {
             const isBusy = busyId === notification.id;
+            const reviewState = getReviewUiState(notification.submission_status);
+            const StatusIcon = reviewIcon(reviewState);
+            const canApprove =
+              Boolean(notification.payload.analysis_id) &&
+              (reviewState === "ready" || reviewState === "under_review");
+
             return (
               <div
                 key={notification.id}
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                  notification.is_read
-                    ? "border-slate-200 bg-slate-50/70"
-                    : "border-emerald-200 bg-white"
+                  reviewState === "approved" || reviewState === "submitted"
+                    ? "border-emerald-200 bg-emerald-50/40"
+                    : notification.is_read
+                      ? "border-slate-200 bg-slate-50/70"
+                      : "border-emerald-200 bg-white"
                 }`}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                      <FileCheck2 className="h-4 w-4 text-emerald-700" />
+                    <div
+                      className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+                        reviewState === "approved" || reviewState === "submitted"
+                          ? "bg-emerald-200/70"
+                          : reviewState === "under_review"
+                            ? "bg-amber-100"
+                            : "bg-emerald-100"
+                      }`}
+                    >
+                      <StatusIcon
+                        className={`h-4 w-4 ${
+                          reviewState === "under_review"
+                            ? "text-amber-800"
+                            : "text-emerald-700"
+                        }`}
+                      />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 font-quicksand">
-                        Ready for review
+                      <p
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wider font-quicksand ${reviewBadgeClasses(reviewState)}`}
+                      >
+                        {getReviewStatusLabel(reviewState)}
                       </p>
-                      <h2 className="mt-1 text-lg font-bold text-slate-900 truncate">
+                      <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
                         {notification.payload.client_name || "Unnamed analysis"}
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
@@ -256,7 +333,7 @@ export default function NotificationsPage() {
                         Open Report
                       </button>
                     )}
-                    {notification.payload.analysis_id && (
+                    {canApprove ? (
                       <button
                         type="button"
                         disabled={isBusy}
@@ -264,8 +341,13 @@ export default function NotificationsPage() {
                         className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
                       >
                         <BadgeCheck className="w-3.5 h-3.5" />
-                        Approved
+                        Approve
                       </button>
+                    ) : (
+                      <span className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full whitespace-nowrap">
+                        <BadgeCheck className="w-3.5 h-3.5" />
+                        {getReviewStatusLabel(reviewState)}
+                      </span>
                     )}
                     {!notification.is_read && (
                       <button
