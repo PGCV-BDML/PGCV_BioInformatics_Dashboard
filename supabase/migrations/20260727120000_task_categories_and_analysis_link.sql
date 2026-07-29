@@ -15,7 +15,8 @@ DO $$ BEGIN
     'projects',
     'professional_development',
     'future_planning',
-    'skill_development'
+    'skill_development',
+    'events'
   );
 EXCEPTION
   WHEN duplicate_object THEN NULL;

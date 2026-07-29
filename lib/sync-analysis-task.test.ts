@@ -112,11 +112,12 @@ describe("buildAnalysisTaskTitle", () => {
 });
 
 describe("TASK_CATEGORIES", () => {
-  it("includes the twelve planned category tags", () => {
-    expect(TASK_CATEGORIES).toHaveLength(12);
+  it("includes the planned category tags", () => {
+    expect(TASK_CATEGORIES).toHaveLength(13);
     expect(TASK_CATEGORY_LABELS.sequence_analysis).toBe("Sequence Analysis");
     expect(TASK_CATEGORY_LABELS.client_communication).toBe(
       "Client Communication",
     );
+    expect(TASK_CATEGORY_LABELS.events).toBe("Events");
   });
 });
