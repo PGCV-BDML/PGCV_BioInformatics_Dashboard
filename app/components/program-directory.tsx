@@ -133,6 +133,7 @@ export default function ProgramDirectory({
     return {
       title: selectedRaw.title,
       description: selectedRaw.description ?? "",
+      requesting_institution: selectedRaw.requesting_institution ?? "",
       instructor_id: selectedRaw.instructor_id,
       start_date: selectedRaw.start_date ?? "",
       end_date: selectedRaw.end_date ?? "",
@@ -194,6 +195,8 @@ export default function ProgramDirectory({
         status: formData.status,
         instructor_id: formData.instructor_id,
         description: formData.description.trim() || null,
+        requesting_institution:
+          formData.requesting_institution.trim() || null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };
@@ -242,6 +245,8 @@ export default function ProgramDirectory({
         status: formData.status,
         instructor_id: formData.instructor_id,
         description: formData.description.trim() || null,
+        requesting_institution:
+          formData.requesting_institution.trim() || null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };

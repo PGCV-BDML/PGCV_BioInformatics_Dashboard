@@ -14,6 +14,7 @@ import { BookOpen, Calendar, FlaskConical } from "lucide-react";
 const EMPTY_FORM: TrainingProgramFormData = {
   title: "",
   description: "",
+  requesting_institution: "",
   instructor_id: "",
   start_date: "",
   end_date: "",
@@ -166,6 +167,25 @@ export default function ProgramModal({
             onChange={(e) => handleInputChange("description", e.target.value)}
             placeholder="Brief overview of the cohort syllabus and goals."
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-medium text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-y min-h-[96px]"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="program-requesting-institution"
+            className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+          >
+            Requesting Institution
+          </label>
+          <input
+            id="program-requesting-institution"
+            type="text"
+            value={formState.requesting_institution}
+            onChange={(e) =>
+              handleInputChange("requesting_institution", e.target.value)
+            }
+            placeholder="e.g., University of the Philippines Diliman"
+            className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
         </div>
       </div>
