@@ -367,6 +367,8 @@ export interface User {
   track_assignment: string | null;
   updated_at: string | null;
   institution: string | null;
+  avatar_url: string | null;
+  designation: string | null;
 }
 
 export type AuditLogAction =
@@ -480,4 +482,6 @@ export type UserPresenceFormData = {
   status: PresenceStatus;
   note: string;
   until_date: string;
+  avatar_url: string;
+  designation: string;
 };
