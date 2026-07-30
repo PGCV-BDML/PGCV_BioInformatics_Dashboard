@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClientIdLookup,
+  extractEmailAddress,
+  mapClientRowToRecord,
   matchClientByExternalId,
   normalizeClientIdKey,
   parseExternalClientIds,
@@ -20,6 +22,58 @@ function makeClient(overrides: Partial<ClientRecord> = {}): ClientRecord {
     ...overrides,
   };
 }
+
+describe("extractEmailAddress", () => {
+  it("pulls the address out of a packed contact_info value", () => {
+    expect(extractEmailAddress("ada@example.org | PGCV")).toBe(
+      "ada@example.org",
+    );
+  });
+
+  it("returns empty for values that hold no address", () => {
+    expect(extractEmailAddress("Ada Lovelace")).toBe("");
+    expect(extractEmailAddress("PGC Visayas")).toBe("");
+    expect(extractEmailAddress(null)).toBe("");
+  });
+});
+
+describe("mapClientRowToRecord", () => {
+  it("prefers email_address", () => {
+    const record = mapClientRowToRecord({
+      id: "uuid-1",
+      email_address: "ada@example.org",
+      contact_info: "someone.else@example.org | PGCV",
+    });
+    expect(record.emailAddress).toBe("ada@example.org");
+  });
+
+  it("recovers a legacy address from contact_info", () => {
+    const record = mapClientRowToRecord({
+      id: "uuid-1",
+      contact_info: "ada@example.org | PGCV",
+    });
+    expect(record.emailAddress).toBe("ada@example.org");
+  });
+
+  it("never shows a name or affiliation under Email", () => {
+    // buildClientPayload falls back to the client's name for contact_info,
+    // which previously surfaced in the Email column.
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-1",
+        name: "Ada Lovelace",
+        contact_info: "Ada Lovelace",
+      }).emailAddress,
+    ).toBe("");
+
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-2",
+        contact_info: "PGC Visayas",
+      }).emailAddress,
+    ).toBe("");
+  });
+});
 
 describe("normalizeClientIdKey", () => {
   it("normalizes standard and prefixed IDs", () => {
