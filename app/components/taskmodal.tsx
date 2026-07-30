@@ -252,9 +252,10 @@ export default function TaskModal({
               id="task-status"
               name="status"
               required
+              disabled={!!linkedAnalysisId}
               value={formState.status}
               onChange={onInputChange}
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
               {statusOptions.map((status) => (
                 <option
@@ -266,6 +267,11 @@ export default function TaskModal({
                 </option>
               ))}
             </select>
+            {linkedAnalysisId && (
+              <p className="text-[10px] text-slate-500 ml-1 font-aileron">
+                Managed on the linked sequence analysis.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

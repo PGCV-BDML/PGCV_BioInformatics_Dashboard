@@ -182,6 +182,33 @@ export function displayAnalysisLabel(
   return "—";
 }
 
+/**
+ * "Cancelled" has no `analysis_status` enum value, so it only ever lives in
+ * `status_of_completion`. Callers that need to react to it must check the label.
+ */
+export function isCancelledCompletionLabel(
+  label: string | null | undefined,
+): boolean {
+  return String(label ?? "").trim().toLowerCase() === "cancelled";
+}
+
+/**
+ * Status text for an analysis shown outside the tracker (e.g. on a linked task).
+ * Prefers the tracker's own labels so the granularity the legacy enum drops
+ * ("Under review" vs "Approved") stays visible.
+ */
+export function analysisStatusLabel(input: {
+  status_of_completion?: string | null;
+  status_of_submission?: string | null;
+  status?: AnalysisStatus | null;
+}): string {
+  const completion = input.status_of_completion?.trim();
+  if (completion) return completion;
+  const submission = input.status_of_submission?.trim();
+  if (submission) return submission;
+  return input.status ? labelFromAnalysisStatus(input.status) : "—";
+}
+
 export function labelFromAnalysisStatus(status: AnalysisStatus): string {
   switch (status) {
     case "completed":
