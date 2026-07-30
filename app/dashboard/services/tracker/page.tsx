@@ -437,13 +437,21 @@ export default function ServiceReportTrackerPage() {
         projectName: row.project_name,
         serviceReportNumber: updated.service_report_number,
         application: updated.application,
+        statusOfCompletion: updated.status_of_completion,
       });
       if (syncResult === "created") {
         showToast("Status updated. Added to Tasks as Sequence Analysis.", "success");
+      } else if (syncResult === "deleted") {
+        showToast("Status updated. Removed from the task list.", "success");
       } else if (syncResult === "skipped_no_assignee") {
         showToast(
           "Status updated. Assign someone to add this to the task list.",
           "success",
+        );
+      } else if (syncResult === "error") {
+        showToast(
+          "Status updated, but the linked task could not be synced.",
+          "error",
         );
       } else {
         showToast("Status updated.", "success");
@@ -479,6 +487,8 @@ export default function ServiceReportTrackerPage() {
         today,
       ),
       service_report_date: dateKey,
+      // New analyses start on-going so they land on Tasks straight away.
+      status_of_completion: "On-going",
     });
     setIsSidebarOpen(true);
   }, [servicesList]);
@@ -562,6 +572,7 @@ export default function ServiceReportTrackerPage() {
           projectName: targetProject?.name ?? saved.client_name,
           serviceReportNumber: saved.service_report_number,
           application: saved.application,
+          statusOfCompletion: saved.status_of_completion,
         });
 
         const row = analysisToRow(saved as Analysis, {
@@ -591,12 +602,21 @@ export default function ServiceReportTrackerPage() {
               : "Analysis created and added to Tasks as Sequence Analysis.",
             "success",
           );
+        } else if (syncResult === "deleted") {
+          showToast("Analysis cancelled. Removed from the task list.", "success");
         } else if (syncResult === "skipped_no_assignee") {
           showToast(
             isEditing
               ? "Analysis updated. Assign someone to add this to the task list."
               : "Analysis created. Assign someone to add this to the task list.",
             "success",
+          );
+        } else if (syncResult === "error") {
+          showToast(
+            isEditing
+              ? "Analysis updated, but the linked task could not be synced."
+              : "Analysis created, but the linked task could not be synced.",
+            "error",
           );
         } else {
           showToast(

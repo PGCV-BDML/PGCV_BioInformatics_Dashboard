@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  analysisStatusLabel,
   deriveLegacyStatus,
   displayAnalysisLabel,
   formatServiceReportNumber,
+  isCancelledCompletionLabel,
   mapLabelToAnalysisStatus,
   nextServiceReportNumber,
   normalizeClassification,
@@ -128,6 +130,59 @@ describe("buildAnalysisTaskTitle", () => {
         serviceReportNumber: "PGCV-BIOINFO-SR-2026-230",
       }),
     ).toBe("ITS2 metagenomics analysis — PGCV-BIOINFO-SR-2026-230");
+  });
+});
+
+describe("isCancelledCompletionLabel", () => {
+  it("detects the Cancelled completion label", () => {
+    expect(isCancelledCompletionLabel("Cancelled")).toBe(true);
+    expect(isCancelledCompletionLabel(" cancelled ")).toBe(true);
+  });
+
+  it("is false for every other completion option", () => {
+    expect(isCancelledCompletionLabel("On-going")).toBe(false);
+    expect(isCancelledCompletionLabel("Completed")).toBe(false);
+    expect(isCancelledCompletionLabel(null)).toBe(false);
+    expect(isCancelledCompletionLabel("")).toBe(false);
+  });
+});
+
+describe("analysisStatusLabel", () => {
+  it("prefers the completion label", () => {
+    expect(
+      analysisStatusLabel({
+        status_of_completion: "On-going",
+        status_of_submission: "Under review",
+        status: "ongoing",
+      }),
+    ).toBe("On-going");
+  });
+
+  it("falls back to the submission label", () => {
+    expect(
+      analysisStatusLabel({
+        status_of_completion: null,
+        status_of_submission: "Under review",
+        status: "for_approval",
+      }),
+    ).toBe("Under review");
+  });
+
+  it("keeps detail the task status enum would drop", () => {
+    // Under review / Approved / Submitted all roll up to `in_progress`.
+    expect(
+      analysisStatusLabel({ status_of_submission: "Approved" }),
+    ).toBe("Approved");
+    expect(
+      analysisStatusLabel({ status_of_submission: "Submitted" }),
+    ).toBe("Submitted");
+  });
+
+  it("falls back to the legacy enum when no labels are set", () => {
+    expect(analysisStatusLabel({ status: "on_hold" })).toBe(
+      "On hold (for payment)",
+    );
+    expect(analysisStatusLabel({})).toBe("—");
   });
 });
 

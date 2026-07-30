@@ -26,6 +26,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
 
 import {
@@ -35,7 +36,10 @@ import {
   getNameIdFromDB,
   getTaskCategoriesByTaskId,
   replaceTaskCategories,
+  supabase,
 } from "@/lib/supabase";
+import { analysisStatusLabel } from "@/lib/analysis-tracker";
+import { AnalysisStatus } from "../../../types/database";
 import { formatDate } from "@/lib/utils";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
 import {
@@ -82,6 +86,10 @@ function TasksPageContent() {
   const [tasksList, setTasksList] = useState<Task[]>([]);
   const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]);
   const [availableUsers, setAvailableUsers] = useState<{ id: string; name: string }[]>([]);
+  /** Tracker status label per analysis id — the source of truth for linked tasks. */
+  const [analysisStatusById, setAnalysisStatusById] = useState<Map<string, string>>(
+    new Map(),
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
@@ -127,11 +135,14 @@ function TasksPageContent() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [tasks, projects, users, categoriesByTask] = await Promise.all([
+        const [tasks, projects, users, categoriesByTask, analyses] = await Promise.all([
           getRowsFromDB("task"),
           getNameIdFromDB("project"),
           getUsersFromDB(["team_lead", "team_member"]),
           getTaskCategoriesByTaskId(),
+          supabase
+            .from("analysis")
+            .select("id, status, status_of_completion, status_of_submission"),
         ]);
 
         const enriched = (tasks as Task[]).map((t) => ({
@@ -139,7 +150,20 @@ function TasksPageContent() {
           categories: categoriesByTask.get(t.id) ?? [],
         }));
 
+        const statusById = new Map<string, string>();
+        for (const row of analyses.data ?? []) {
+          statusById.set(
+            row.id as string,
+            analysisStatusLabel({
+              status_of_completion: row.status_of_completion as string | null,
+              status_of_submission: row.status_of_submission as string | null,
+              status: row.status as AnalysisStatus | null,
+            }),
+          );
+        }
+
         setTasksList(enriched);
+        setAnalysisStatusById(statusById);
         setAvailableProjects(projects ?? []);
         setAvailableUsers((users ?? []).map((u: User) => ({ id: u.id, name: u.name })));
       } catch (err) {
@@ -522,28 +546,52 @@ function TasksPageContent() {
       label: "Status",
       width: "11%",
       sortable: true,
-      render: (t) => (
-        <div className="flex items-center justify-center w-full py-1">
-          <div className="relative min-w-[115px] max-w-[140px] w-full">
-            <select
-              value={t.status}
-              onChange={(e) => updateTaskStatus(t.id, e.target.value as TaskStatus)}
-              className={getStatusClass(t.status)}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option
-                  key={opt.value}
-                  value={opt.value}
-                  className="bg-white text-slate-900 normal-case"
-                >
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+      render: (t) => {
+        // A linked task's status is owned by the tracker. Show the analysis's own
+        // label — it is more specific than the four task statuses — and send edits
+        // there rather than letting the two records drift apart.
+        if (t.linked_analysis_id) {
+          const label =
+            analysisStatusById.get(t.linked_analysis_id) ??
+            STATUS_OPTIONS.find((o) => o.value === t.status)?.label ??
+            t.status;
+          return (
+            <div className="flex items-center justify-center w-full py-1">
+              <Link
+                href={`/dashboard/services/${t.linked_analysis_id}`}
+                title="Status is managed on the sequence analysis — click to open it"
+                className={`${getStatusClass(t.status)} !w-auto !inline-flex items-center justify-center gap-1 !pl-3 !pr-2.5 no-underline hover:brightness-95 transition`}
+              >
+                <span className="truncate">{label}</span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+              </Link>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center justify-center w-full py-1">
+            <div className="relative min-w-[115px] max-w-[140px] w-full">
+              <select
+                value={t.status}
+                onChange={(e) => updateTaskStatus(t.id, e.target.value as TaskStatus)}
+                className={getStatusClass(t.status)}
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    className="bg-white text-slate-900 normal-case"
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60 text-current" />
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "due_date",
