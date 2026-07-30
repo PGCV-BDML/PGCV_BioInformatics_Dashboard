@@ -24,6 +24,7 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
+import { useToast } from "../../../components/toast";
 import {
   displayAnalysisLabel,
   labelFromAnalysisStatus,
@@ -84,6 +85,7 @@ export default function AnalysisDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
+  const { showToast } = useToast();
   const [record, setRecord] = useState<ServiceProjectRow | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -257,7 +259,7 @@ export default function AnalysisDetailPage({
             }
           : null,
       );
-      await syncAnalysisToTaskSafe({
+      const syncResult = await syncAnalysisToTaskSafe({
         id: updated.id,
         project_id: updated.project_id,
         pipeline: updated.pipeline,
@@ -269,7 +271,11 @@ export default function AnalysisDetailPage({
         projectName: record.project_name,
         serviceReportNumber: updated.service_report_number,
         application: updated.application,
+        statusOfCompletion: updated.status_of_completion ?? completionLabel,
       });
+      if (syncResult === "error") {
+        showToast("Status updated, but the linked task could not be synced.", "error");
+      }
     } catch (err) {
       console.error("Error updating analysis status:", err);
     } finally {

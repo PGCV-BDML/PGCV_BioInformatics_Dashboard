@@ -4,7 +4,10 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { toDateKey } from "@/lib/calendar-tasks";
-import { displayAnalysisLabel } from "@/lib/analysis-tracker";
+import {
+  displayAnalysisLabel,
+  isCancelledCompletionLabel,
+} from "@/lib/analysis-tracker";
 import type {
   Analysis,
   AnalysisStatus,
@@ -28,8 +31,21 @@ export type AnalysisSyncInput = {
   projectName?: string | null;
   serviceReportNumber?: string | null;
   application?: string | null;
+  /**
+   * Raw tracker completion label. Needed because "Cancelled" has no
+   * `analysis_status` enum value and so cannot be read off `status`.
+   */
+  statusOfCompletion?: string | null;
 };
 
+/**
+ * Roll the analysis status up to the coarse task status used by filters, the
+ * calendar, and dashboard counts. The tracker label remains the thing users
+ * read on a linked task — see `analysisStatusLabel`.
+ *
+ * Note `pending` is intentionally unreachable: an analysis that has not started
+ * does not get a task at all.
+ */
 function mapAnalysisStatusToTask(status: AnalysisStatus): TaskStatus {
   switch (status) {
     case "on_hold":
@@ -40,8 +56,24 @@ function mapAnalysisStatusToTask(status: AnalysisStatus): TaskStatus {
     case "submitted":
     case "for_approval":
       return "in_progress";
-    default:
-      return "pending";
+  }
+}
+
+/** Remove a linked task and its tags (no ON DELETE CASCADE on task_tag → task). */
+async function deleteLinkedTask(taskId: string): Promise<void> {
+  const { error: tagError } = await supabase
+    .from("task_tag")
+    .delete()
+    .eq("task_id", taskId);
+  if (tagError) {
+    console.error("Error clearing tags for linked task:", tagError);
+    throw tagError;
+  }
+
+  const { error } = await supabase.from("task").delete().eq("id", taskId);
+  if (error) {
+    console.error("Error deleting linked task:", error);
+    throw error;
   }
 }
 
@@ -83,26 +115,46 @@ async function findTaskByAnalysisId(analysisId: string): Promise<Task | null> {
   return (data as Task | null) ?? null;
 }
 
+export type AnalysisSyncOutcome =
+  | "created"
+  | "updated"
+  | "deleted"
+  | "skipped_no_assignee"
+  | "skipped";
+
 /**
  * Upsert a task linked to a sequence analysis so it appears on Tasks + Calendar.
  * Skips when assignee is blank (task.assignee_id is required).
  * Creates a new task only when analysis status is `ongoing`; existing linked
  * tasks are still updated on later status changes (e.g. completed / on hold).
+ * A cancelled analysis has its linked task removed.
  * Always tags with `sequence_analysis`; preserves any extra categories on update.
  */
-export async function syncAnalysisToTask(
+async function runAnalysisSync(
   analysis: AnalysisSyncInput,
   options?: { priority?: TaskPriority },
-): Promise<Task | null> {
+): Promise<{ outcome: AnalysisSyncOutcome; task: Task | null }> {
+  // Cancelled work carries no task. Checked before the assignee guard so that
+  // cancelling always cleans up, even if the assignee was cleared in the same edit.
+  if (isCancelledCompletionLabel(analysis.statusOfCompletion)) {
+    const existing = await findTaskByAnalysisId(analysis.id);
+    if (!existing) return { outcome: "skipped", task: null };
+    await deleteLinkedTask(existing.id);
+    return { outcome: "deleted", task: null };
+  }
+
   if (!analysis.assignee_id) {
-    return null;
+    return {
+      outcome: analysis.status === "ongoing" ? "skipped_no_assignee" : "skipped",
+      task: null,
+    };
   }
 
   const existing = await findTaskByAnalysisId(analysis.id);
 
   // New tasks are only created for on-going sequence analyses.
   if (!existing && analysis.status !== "ongoing") {
-    return null;
+    return { outcome: "skipped", task: null };
   }
 
   const payload: Omit<TaskRecord, "id"> = {
@@ -119,39 +171,44 @@ export async function syncAnalysisToTask(
   const taskId = existing?.id ?? crypto.randomUUID();
   await saveDataToDB("task", taskId, payload);
 
-  const existingCategories = existing?.categories;
+  let categories: TaskCategory[] = ["sequence_analysis"];
   if (existing) {
-    const { data: tags } = await supabase
+    const { data: tags, error: tagError } = await supabase
       .from("task_tag")
       .select("category")
       .eq("task_id", taskId);
+    if (tagError) {
+      console.error("Error reading tags for linked task:", tagError);
+      throw tagError;
+    }
     const current = (tags ?? []).map((t) => t.category as TaskCategory);
-    const next = current.includes("sequence_analysis")
+    categories = current.includes("sequence_analysis")
       ? current
-      : [...current, "sequence_analysis" as const];
-    await replaceTaskCategories(taskId, next.length ? next : ["sequence_analysis"]);
-  } else {
-    await replaceTaskCategories(taskId, ["sequence_analysis"]);
+      : [...current, "sequence_analysis"];
   }
+  await replaceTaskCategories(taskId, categories);
 
-  return { id: taskId, ...payload, categories: existingCategories ?? ["sequence_analysis"] };
+  return {
+    outcome: existing ? "updated" : "created",
+    task: { id: taskId, ...payload, categories },
+  };
+}
+
+export async function syncAnalysisToTask(
+  analysis: AnalysisSyncInput,
+  options?: { priority?: TaskPriority },
+): Promise<Task | null> {
+  const { task } = await runAnalysisSync(analysis, options);
+  return task;
 }
 
 /** Best-effort sync used from UI write paths; logs but does not rethrow by default. */
 export async function syncAnalysisToTaskSafe(
   analysis: AnalysisSyncInput,
-): Promise<"created" | "updated" | "skipped_no_assignee" | "skipped" | "error"> {
+): Promise<AnalysisSyncOutcome | "error"> {
   try {
-    if (!analysis.assignee_id) {
-      return analysis.status === "ongoing" ? "skipped_no_assignee" : "skipped";
-    }
-    const existing = await findTaskByAnalysisId(analysis.id);
-    if (!existing && analysis.status !== "ongoing") {
-      return "skipped";
-    }
-    const result = await syncAnalysisToTask(analysis);
-    if (!result) return "skipped";
-    return existing ? "updated" : "created";
+    const { outcome } = await runAnalysisSync(analysis);
+    return outcome;
   } catch (err) {
     console.error("Failed to sync analysis → task:", err);
     return "error";
@@ -176,6 +233,7 @@ export async function backfillAnalysisTasks(
         : (analysis.client_name ?? null),
       serviceReportNumber: analysis.service_report_number,
       application: analysis.application,
+      statusOfCompletion: analysis.status_of_completion,
     });
     if (result) created += 1;
   }
