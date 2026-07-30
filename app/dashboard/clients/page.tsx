@@ -24,6 +24,7 @@ import {
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
 import DataTable, { Column } from "../../components/datatable";
+import { TruncatedText } from "../../components/cell-tooltip";
 import Pagination from "../../components/pagination";
 import {
   buildClientPayload,
@@ -89,11 +90,6 @@ const FIELD_CONFIG: Array<{
     icon: Briefcase,
   },
 ];
-
-function dash(value: string | null | undefined): string {
-  const t = (value ?? "").trim();
-  return t || "—";
-}
 
 export default function ClientsPage() {
   const searchParams = useSearchParams();
@@ -179,13 +175,16 @@ export default function ClientsPage() {
 
   const columns: Column<ClientRecord>[] = useMemo(
     () => [
+      // Every column supplies `render`, and DataTable only auto-wraps cells
+      // that don't — so each one opts into TruncatedText explicitly to get the
+      // full value on hover. The columns are narrow and most values clip.
       {
         key: "clientId",
         label: "Client ID",
         width: "14%",
         sortable: true,
         render: (c) => (
-          <span className="font-mono text-[11px]">{dash(c.clientId)}</span>
+          <TruncatedText text={c.clientId} className="font-mono text-[11px]" />
         ),
       },
       {
@@ -194,9 +193,10 @@ export default function ClientsPage() {
         width: "20%",
         sortable: true,
         render: (c) => (
-          <span className="font-semibold text-slate-800">
-            {dash(c.clientName)}
-          </span>
+          <TruncatedText
+            text={c.clientName}
+            className="font-semibold text-slate-800"
+          />
         ),
       },
       {
@@ -205,7 +205,7 @@ export default function ClientsPage() {
         width: "14%",
         sortable: true,
         render: (c) => (
-          <span className="font-mono text-[11px]">{dash(c.projectId)}</span>
+          <TruncatedText text={c.projectId} className="font-mono text-[11px]" />
         ),
       },
       {
@@ -213,21 +213,21 @@ export default function ClientsPage() {
         label: "Email",
         width: "18%",
         sortable: true,
-        render: (c) => dash(c.emailAddress),
+        render: (c) => <TruncatedText text={c.emailAddress} />,
       },
       {
         key: "affiliation",
         label: "Affiliation",
         width: "18%",
         sortable: true,
-        render: (c) => dash(c.affiliation),
+        render: (c) => <TruncatedText text={c.affiliation} multiline />,
       },
       {
         key: "designation",
         label: "Designation",
         width: "16%",
         sortable: true,
-        render: (c) => dash(c.designation),
+        render: (c) => <TruncatedText text={c.designation} multiline />,
       },
     ],
     [],

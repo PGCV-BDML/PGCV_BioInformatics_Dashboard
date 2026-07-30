@@ -47,6 +47,20 @@ export function createClientRecord(form: ClientFormState): ClientRecord {
   };
 }
 
+/**
+ * `contact_info` is a legacy NOT NULL column that predates `email_address`.
+ * `buildClientPayload` packs "email | affiliation" into it and falls back to
+ * the client's name when both are blank, so using it verbatim as the email
+ * puts names and institutions under the Email column. Recover an address if
+ * one is in there; otherwise show nothing rather than the wrong field.
+ */
+const EMAIL_IN_TEXT = /[^\s|,;<>()]+@[^\s|,;<>()]+\.[a-z]{2,}/i;
+
+export function extractEmailAddress(value: string | null | undefined): string {
+  const match = (value ?? "").match(EMAIL_IN_TEXT);
+  return match ? match[0] : "";
+}
+
 export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
   const email = row.email_address?.trim() ?? "";
 
@@ -56,7 +70,7 @@ export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
     clientId: row.client_id ?? "",
     clientName: row.name ?? "",
     projectId: row.project_id ?? "",
-    emailAddress: email || row.contact_info || "",
+    emailAddress: email || extractEmailAddress(row.contact_info),
     affiliation: row.affiliation ?? "",
     designation: row.designation ?? "",
   };
