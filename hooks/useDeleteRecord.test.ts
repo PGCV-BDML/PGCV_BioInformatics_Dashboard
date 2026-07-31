@@ -111,7 +111,29 @@ describe("useDeleteRecord", () => {
     });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError).toHaveBeenCalledWith(testError);
+    expect(onError).toHaveBeenCalledWith(testError, expect.any(String));
+  });
+
+  it("passes a user-facing reason naming the blocking records", async () => {
+    // What PostgREST returns when a project still has analyses.
+    mockDeleteDataFromDB.mockRejectedValue({
+      code: "23503",
+      details: 'Key (id)=(abc) is still referenced from table "analysis".',
+    });
+    const onError = vi.fn();
+
+    const { result } = renderHook(() => {
+      const [items, setItems] = useState<TestItem[]>(testItems);
+      const deleteRecord = useDeleteRecord<TestItem>("project", setItems, onError);
+      return { items, deleteRecord };
+    });
+
+    await act(async () => {
+      await result.current.deleteRecord({ id: "1", name: "Alice", age: 25 });
+    });
+
+    const message = onError.mock.calls[0]?.[1] as string;
+    expect(message).toContain("sequence analyses");
   });
 
   it("Does NOT call onSuccess when deleteDataFromDB throws", async () => {

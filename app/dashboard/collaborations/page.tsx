@@ -253,7 +253,7 @@ export default function CollaborationsPage() {
   const deleteRecord = useDeleteRecord<CollaborationRow>(
     "collaboration",
     setCollaborationsList,
-    (err) => showToast("Failed to delete collaboration.", "error"),
+    (_err, message) => showToast(message, "error"),
   );
   const handleDeleteRecord = useCallback(async () => {
     if (!selectedCollaboration) return;

@@ -242,8 +242,10 @@ export default function ProjectsPage() {
     };
   }, [selectedProject]);
 
-  const deleteRecord = useDeleteRecord<Project>("project", setProjectsList, (err) =>
-    showToast("Failed to delete project.", "error"),
+  const deleteRecord = useDeleteRecord<Project>(
+    "project",
+    setProjectsList,
+    (_err, message) => showToast(message, "error"),
   );
   const handleDeleteRecord = useCallback(async () => {
     if (!selectedProject) return;

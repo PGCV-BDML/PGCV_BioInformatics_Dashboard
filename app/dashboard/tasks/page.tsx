@@ -113,8 +113,10 @@ function TasksPageContent() {
 
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
-  const deleteRecord = useDeleteRecord<Task>("task", setTasksList, (err) =>
-    showToast("Failed to delete task.", "error"),
+  const deleteRecord = useDeleteRecord<Task>(
+    "task",
+    setTasksList,
+    (_err, message) => showToast(message, "error"),
   );
 
   const emptyForm: Omit<Task, "id"> = {

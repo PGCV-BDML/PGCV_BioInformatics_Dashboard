@@ -231,7 +231,7 @@ export default function RepositoriesPage() {
   const deleteRecord = useDeleteRecord<Repository>(
     "repository",
     setRepositories,
-    () => showToast("Failed to delete repository link.", "error"),
+    (_err, message) => showToast(message, "error"),
   );
 
   const handleDeleteRecord = useCallback(async () => {
