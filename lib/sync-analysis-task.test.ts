@@ -187,8 +187,9 @@ describe("analysisStatusLabel", () => {
 });
 
 describe("TASK_CATEGORIES", () => {
-  it("includes the twelve planned category tags", () => {
-    expect(TASK_CATEGORIES).toHaveLength(12);
+  it("includes every category tag defined on public.task_category", () => {
+    expect(TASK_CATEGORIES).toHaveLength(13);
+    expect(TASK_CATEGORY_LABELS.events).toBe("Events");
     expect(TASK_CATEGORY_LABELS.sequence_analysis).toBe("Sequence Analysis");
     expect(TASK_CATEGORY_LABELS.client_communication).toBe(
       "Client Communication",

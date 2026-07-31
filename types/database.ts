@@ -74,7 +74,8 @@ export type TaskCategory =
   | "projects"
   | "professional_development"
   | "future_planning"
-  | "skill_development";
+  | "skill_development"
+  | "events";
 
 export type Task = {
   id: string;

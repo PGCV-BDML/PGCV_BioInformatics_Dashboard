@@ -13,6 +13,7 @@ export const TASK_CATEGORIES: TaskCategory[] = [
   "professional_development",
   "future_planning",
   "skill_development",
+  "events",
 ];
 
 export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
@@ -28,6 +29,7 @@ export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
   professional_development: "Professional Development",
   future_planning: "Future Planning",
   skill_development: "Skill Development",
+  events: "Events",
 };
 
 export const TASK_CATEGORY_OPTIONS = TASK_CATEGORIES.map((value) => ({
@@ -49,6 +51,7 @@ export const TASK_CATEGORY_STYLES: Record<TaskCategory, string> = {
   professional_development: "bg-amber-50 text-amber-900 border-amber-200/70",
   future_planning: "bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200/70",
   skill_development: "bg-emerald-50 text-emerald-800 border-emerald-200/70",
+  events: "bg-purple-50 text-purple-800 border-purple-200/70",
 };
 
 export function isTaskCategory(value: string): value is TaskCategory {
