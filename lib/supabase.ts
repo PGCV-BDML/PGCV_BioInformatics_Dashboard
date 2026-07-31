@@ -71,6 +71,9 @@ export type TableNames =
   | "task_tag"
   | "repository"
   | "user_presence"
+  | "conversation"
+  | "conversation_member"
+  | "message"
   | "users";
 
 export async function getNameIdFromDB<T = { id: string; name: string }>(

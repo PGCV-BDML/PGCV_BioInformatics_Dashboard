@@ -16,6 +16,7 @@ import {
   usePortal,
 } from "../components/portal-context";
 import PortalPreviewBanner from "../components/portal-preview-banner";
+import { ChatPanel } from "../components/chat-panel";
 
 export default function DashboardLayout({
   children,
@@ -141,6 +142,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         )}
         <div className="flex-1 p-4 md:p-8">{children}</div>
       </main>
+
+      {!hideChrome && <ChatPanel />}
     </div>
   );
 }

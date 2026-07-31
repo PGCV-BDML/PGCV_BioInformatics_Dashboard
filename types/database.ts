@@ -486,3 +486,34 @@ export type UserPresenceFormData = {
   avatar_url: string;
   designation: string;
 };
+
+//For Chat ============================================================================
+export type ConversationKind = "channel" | "direct";
+
+export type Conversation = {
+  id: string;
+  kind: ConversationKind;
+  name: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConversationMember = {
+  conversation_id: string;
+  user_id: string;
+  last_read_at: string;
+  joined_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
+  /** Client-enriched from users; not a column on message. */
+  sender_name?: string | null;
+};
