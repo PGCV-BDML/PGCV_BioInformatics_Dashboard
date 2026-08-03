@@ -43,6 +43,30 @@ describe("mapAbsencesForCalendar", () => {
     );
     expect(mapped[0]?.user_name).toBe("Alex Rivera");
   });
+
+  it("drops absences for users outside the team directory", () => {
+    const rows: UserAbsence[] = [
+      {
+        id: "a1",
+        user_id: "u1",
+        absence_date: "2026-08-05",
+        status: "on_leave",
+        note: null,
+        created_by: null,
+      },
+      {
+        id: "a2",
+        user_id: "u2",
+        absence_date: "2026-08-06",
+        status: "on_travel",
+        note: null,
+        created_by: null,
+      },
+    ];
+    const mapped = mapAbsencesForCalendar(rows, new Map([["u1", "Alex Rivera"]]));
+    expect(mapped).toHaveLength(1);
+    expect(mapped[0]?.user_id).toBe("u1");
+  });
 });
 
 describe("filterAbsencesByStatus", () => {

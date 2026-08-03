@@ -25,7 +25,7 @@ export async function getCurrentUser() {
 }
 
 export type GetUsersOptions = {
-  /** When true, only users on the bioinformatics Team roster. */
+  /** When set, restrict to bioinformatics Team roster inclusion. */
   inTeamDirectory?: boolean;
 };
 
@@ -46,8 +46,10 @@ export async function getUsersFromDB<T = any>(
 
   let query = supabase.from("users").select("*").in("role", chosenRoles);
 
-  if (options?.inTeamDirectory) {
+  if (options?.inTeamDirectory === true) {
     query = query.eq("in_team_directory", true);
+  } else if (options?.inTeamDirectory === false) {
+    query = query.eq("in_team_directory", false);
   }
 
   const { data: users, error: fetchError } = await query;

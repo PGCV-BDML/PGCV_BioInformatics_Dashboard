@@ -119,6 +119,7 @@ export default function TeamPage() {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isOpeningEdit, setIsOpeningEdit] = useState(false);
+  const [showExcludedStaff, setShowExcludedStaff] = useState(false);
 
   const { toggleSidebar } = useDashboardUI();
   const { profile, realRole } = usePortal();
@@ -191,10 +192,11 @@ export default function TeamPage() {
   );
 
   const filtered = useMemo(() => {
-    let records = members;
-    if (!isTeamLead) {
-      records = records.filter((m) => m.in_team_directory);
-    }
+    let records = members.filter((m) =>
+      showExcludedStaff && isTeamLead
+        ? m.in_team_directory !== true
+        : m.in_team_directory === true,
+    );
     if (activeFilter !== "All") {
       records = records.filter(
         (m) => (m.presence?.status ?? "in_office") === activeFilter,
@@ -214,12 +216,10 @@ export default function TeamPage() {
           .includes(q) ||
         (m.presence?.note ?? "").toLowerCase().includes(q),
     );
-  }, [members, activeFilter, searchQuery, isTeamLead]);
+  }, [members, activeFilter, searchQuery, isTeamLead, showExcludedStaff]);
 
   const statusCounts = useMemo(() => {
-    const roster = isTeamLead
-      ? members.filter((m) => m.in_team_directory)
-      : members;
+    const roster = members.filter((m) => m.in_team_directory === true);
     const counts = new Map<PresenceStatus | "All", number>();
     counts.set("All", roster.length);
     for (const opt of PRESENCE_STATUS_OPTIONS) {
@@ -230,7 +230,11 @@ export default function TeamPage() {
       counts.set(status, (counts.get(status) ?? 0) + 1);
     }
     return counts;
-  }, [members, isTeamLead]);
+  }, [members]);
+
+  useEffect(() => {
+    if (!isTeamLead) setShowExcludedStaff(false);
+  }, [isTeamLead]);
 
   const initialData = editFormData;
 
@@ -328,8 +332,7 @@ export default function TeamPage() {
                 }
               : m,
           );
-          if (isTeamLead) return updated;
-          return updated.filter((m) => m.in_team_directory);
+          return updated;
         });
         setIsEditing(false);
         setSelected(null);
@@ -364,6 +367,18 @@ export default function TeamPage() {
         }
       />
 
+      {isTeamLead ? (
+        <label className="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
+          <input
+            type="checkbox"
+            checked={showExcludedStaff}
+            onChange={(e) => setShowExcludedStaff(e.target.checked)}
+            className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+          />
+          Show staff not in bioinformatics directory
+        </label>
+      ) : null}
+
       <div className="relative flex flex-wrap gap-2">
         {FILTER_OPTIONS.map((opt) => {
           const isActive = activeFilter === opt.value;
@@ -394,7 +409,7 @@ export default function TeamPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading team…" />
+        <LoadingState message="Loading team" />
       ) : loadError ? (
         <ErrorState message={loadError} />
       ) : filtered.length === 0 ? (
@@ -404,7 +419,9 @@ export default function TeamPage() {
           description={
             searchQuery || activeFilter !== "All"
               ? "Try a different search or status filter."
-              : "Bioinformatics team members appear here. Team leads can include other staff via Update."
+              : showExcludedStaff
+                ? "No excluded staff accounts match your filters."
+                : "Bioinformatics team members appear here. Team leads can manage excluded staff with the checkbox above."
           }
         />
       ) : (
@@ -416,15 +433,13 @@ export default function TeamPage() {
             const editable = canEditMember(member);
             const isSelf = member.id === currentUserId;
 
-            const isDirectoryMember = member.in_team_directory;
-
             return (
               <li
                 key={member.id}
                 className={`group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border px-5 py-4 shadow-sm ${
-                  isDirectoryMember
-                    ? "border-slate-200/80 bg-white/80 shadow-slate-200/40"
-                    : "border-dashed border-slate-200/60 bg-slate-50/50 shadow-none opacity-80"
+                  showExcludedStaff
+                    ? "border-dashed border-slate-200/60 bg-slate-50/50 shadow-none"
+                    : "border-slate-200/80 bg-white/80 shadow-slate-200/40"
                 }`}
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -460,7 +475,7 @@ export default function TeamPage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-quicksand">
                         {roleLabel(member.role)}
                       </span>
-                      {isTeamLead && !isDirectoryMember ? (
+                      {showExcludedStaff ? (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 font-quicksand">
                           Not in directory
                         </span>

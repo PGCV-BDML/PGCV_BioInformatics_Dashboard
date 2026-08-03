@@ -64,14 +64,16 @@ export function mapAbsencesForCalendar(
   rows: UserAbsence[],
   userNameById: Map<string, string>,
 ): CalendarAbsence[] {
-  return rows.map((row) => ({
-    id: row.id,
-    user_id: row.user_id,
-    user_name: userNameById.get(row.user_id) ?? "Team member",
-    absence_date: row.absence_date,
-    status: row.status,
-    note: row.note,
-  }));
+  return rows
+    .filter((row) => userNameById.has(row.user_id))
+    .map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      user_name: userNameById.get(row.user_id) ?? "Team member",
+      absence_date: row.absence_date,
+      status: row.status,
+      note: row.note,
+    }));
 }
 
 export function filterAbsencesByStatus(
