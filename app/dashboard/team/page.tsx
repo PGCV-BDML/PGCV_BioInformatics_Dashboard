@@ -359,7 +359,7 @@ export default function TeamPage() {
       <PageHeader
         breadcrumbTrail={teamBreadcrumbs}
         title="Team"
-        subtitle="Bioinformatics team presence  office, lab, leave, travel, and more."
+        subtitle="Bioinformatics team presence â€” office, lab, leave, travel, and more."
         actions={
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -367,7 +367,7 @@ export default function TeamPage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search team…"
+              placeholder="Search teamâ€¦"
               className="w-full rounded-xl border border-slate-200 bg-white/80 pl-9 pr-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#2a7797]/40 focus:ring-2 focus:ring-[#2a7797]/10"
             />
           </div>
@@ -435,7 +435,7 @@ export default function TeamPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading team" />
+        <LoadingState message="Loading teamâ€¦" />
       ) : loadError ? (
         <ErrorState message={loadError} />
       ) : filtered.length === 0 ? (
