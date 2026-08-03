@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, UsersRound } from "lucide-react";
 import type { User } from "@/types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
@@ -39,6 +39,13 @@ export default function TeamRosterModal({
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Callers pass inline callbacks, so keep them out of the loader's deps:
+  // re-running the loader would overwrite in-progress checkbox edits.
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -70,7 +77,7 @@ export default function TeamRosterModal({
       } catch (err) {
         console.error("Failed to load staff roster:", err);
         if (!cancelled) {
-          onError("Couldn't load staff list. Please try again.");
+          onErrorRef.current("Couldn't load staff list. Please try again.");
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -80,7 +87,7 @@ export default function TeamRosterModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, onError]);
+  }, [isOpen]);
 
   const filteredStaff = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
