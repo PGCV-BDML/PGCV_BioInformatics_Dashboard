@@ -32,6 +32,7 @@ const TABLE_LABELS: Partial<
   message: { one: "message", many: "messages" },
   task_tag: { one: "task tag", many: "task tags" },
   user_presence: { one: "presence record", many: "presence records" },
+  user_absence: { one: "absence day", many: "absence days" },
   users: { one: "user", many: "users" },
 };
 

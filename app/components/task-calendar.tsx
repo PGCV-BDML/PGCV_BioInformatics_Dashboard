@@ -10,9 +10,21 @@ import {
   ExternalLink,
   FolderGit2,
   User,
+  UserRound,
 } from "lucide-react";
-import { getRowsFromDB, getUsersFromDB, getNameIdFromDB, getTaskCategoriesByTaskId } from "@/lib/supabase";
-import type { Task, TaskCategory, User as DbUser } from "@/types/database";
+import {
+  getRowsFromDB,
+  getUsersFromDB,
+  getNameIdFromDB,
+  getTaskCategoriesByTaskId,
+} from "@/lib/supabase";
+import type {
+  Task,
+  TaskCategory,
+  User as DbUser,
+  UserAbsence,
+  PresenceStatus,
+} from "@/types/database";
 import {
   type CalendarTask,
   addMonths,
@@ -25,6 +37,15 @@ import {
   taskHref,
   toDateKey,
 } from "@/lib/calendar-tasks";
+import {
+  type CalendarAbsence,
+  ABSENCE_STATUS_STYLES,
+  absenceStatusLabel,
+  absencesByDateKey,
+  filterAbsencesByStatus,
+  mapAbsencesForCalendar,
+} from "@/lib/calendar-absences";
+import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import { formatDate } from "@/lib/utils";
 import { ErrorState, LoadingState } from "./state-views";
@@ -38,10 +59,13 @@ export default function TaskCalendar() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
+  const [absences, setAbsences] = useState<CalendarAbsence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showTeamAbsences, setShowTeamAbsences] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
+  const [absenceFilter, setAbsenceFilter] = useState<PresenceStatus | "All">("All");
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
 
   useEffect(() => {
@@ -51,11 +75,13 @@ export default function TaskCalendar() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [taskRows, projects, users, categoriesByTask] = await Promise.all([
+        const [taskRows, projects, users, categoriesByTask, absenceRows] =
+          await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
           getUsersFromDB(["team_lead", "team_member"]),
           getTaskCategoriesByTaskId(),
+          getRowsFromDB<UserAbsence>("user_absence"),
         ]);
 
         if (cancelled) return;
@@ -73,6 +99,9 @@ export default function TaskCalendar() {
         }));
 
         setTasks(mapTasksForCalendar(enriched, projectNameById, assigneeNameById));
+        setAbsences(
+          mapAbsencesForCalendar(absenceRows, assigneeNameById),
+        );
       } catch (err) {
         console.error("Failed to load calendar tasks:", err);
         if (!cancelled) {
@@ -100,6 +129,11 @@ export default function TaskCalendar() {
     return list;
   }, [tasks, showCompleted, categoryFilter]);
 
+  const visibleAbsences = useMemo(() => {
+    if (!showTeamAbsences) return [];
+    return filterAbsencesByStatus(absences, absenceFilter);
+  }, [absences, showTeamAbsences, absenceFilter]);
+
   const tasksByDate = useMemo(() => {
     const map = new Map<string, CalendarTask[]>();
     for (const task of visibleTasks) {
@@ -110,8 +144,21 @@ export default function TaskCalendar() {
     return map;
   }, [visibleTasks]);
 
+  const absencesByDate = useMemo(
+    () => absencesByDateKey(visibleAbsences),
+    [visibleAbsences],
+  );
+
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedTasks = selectedKey ? (tasksByDate.get(selectedKey) ?? []) : [];
+  const selectedAbsences = selectedKey
+    ? (absencesByDate.get(selectedKey) ?? [])
+    : [];
+
+  const monthAbsenceCount = useMemo(() => {
+    const prefix = `${viewMonth.getFullYear()}-${String(viewMonth.getMonth() + 1).padStart(2, "0")}`;
+    return visibleAbsences.filter((a) => a.absence_date.startsWith(prefix)).length;
+  }, [visibleAbsences, viewMonth]);
 
   const monthLabel = viewMonth.toLocaleDateString("en-US", {
     month: "long",
@@ -196,6 +243,40 @@ export default function TaskCalendar() {
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
               <input
                 type="checkbox"
+                checked={showTeamAbsences}
+                onChange={(e) => setShowTeamAbsences(e.target.checked)}
+                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+              />
+              Show team absences
+            </label>
+            {showTeamAbsences ? (
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 font-aileron">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+                  Absence
+                </span>
+                <select
+                  value={absenceFilter}
+                  onChange={(e) =>
+                    setAbsenceFilter(e.target.value as PresenceStatus | "All")
+                  }
+                  className="h-8 px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 max-w-[140px]"
+                >
+                  <option value="All">All</option>
+                  {PRESENCE_STATUS_OPTIONS.filter((opt) =>
+                    ["on_leave", "on_travel", "unavailable", "in_meeting"].includes(
+                      opt.value,
+                    ),
+                  ).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
+              <input
+                type="checkbox"
                 checked={showCompleted}
                 onChange={(e) => setShowCompleted(e.target.checked)}
                 className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
@@ -206,8 +287,9 @@ export default function TaskCalendar() {
         </div>
 
         <p className="text-xs text-slate-500 mb-4 font-aileron">
-          {monthTaskCount} task{monthTaskCount === 1 ? "" : "s"} with due dates this
-          month. Click a day to inspect, or open a task to edit it on the Tasks page.
+          {monthTaskCount} task{monthTaskCount === 1 ? "" : "s"} and{" "}
+          {monthAbsenceCount} team absence{monthAbsenceCount === 1 ? "" : "s"} this
+          month. Click a day to inspect tasks and who is out.
         </p>
 
         <div className="grid grid-cols-7 gap-1 mb-1">
@@ -225,6 +307,8 @@ export default function TaskCalendar() {
           {grid.map((day) => {
             const key = toDateKey(day);
             const dayTasks = tasksByDate.get(key) ?? [];
+            const dayAbsences = absencesByDate.get(key) ?? [];
+            const dayCount = dayTasks.length + dayAbsences.length;
             const inMonth = day.getMonth() === viewMonth.getMonth();
             const isToday = isSameDay(day, today);
             const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
@@ -254,14 +338,28 @@ export default function TaskCalendar() {
                   >
                     {day.getDate()}
                   </span>
-                  {dayTasks.length > 0 && (
+                  {dayCount > 0 && (
                     <span className="text-[9px] font-extrabold text-slate-400 font-quicksand">
-                      {dayTasks.length}
+                      {dayCount}
                     </span>
                   )}
                 </div>
                 <div className="space-y-0.5 hidden sm:block">
-                  {dayTasks.slice(0, 2).map((task) => (
+                  {dayAbsences.slice(0, 1).map((absence) => (
+                    <div
+                      key={absence.id}
+                      className="flex items-center gap-1 truncate"
+                      title={`${absence.user_name} — ${absenceStatusLabel(absence.status)}`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${ABSENCE_STATUS_STYLES[absence.status].dot}`}
+                      />
+                      <span className="text-[10px] font-semibold truncate text-amber-800">
+                        {absence.user_name.split(" ")[0]}
+                      </span>
+                    </div>
+                  ))}
+                  {dayTasks.slice(0, dayAbsences.length > 0 ? 1 : 2).map((task) => (
                     <div
                       key={task.id}
                       className="flex items-center gap-1 truncate"
@@ -281,14 +379,20 @@ export default function TaskCalendar() {
                       </span>
                     </div>
                   ))}
-                  {dayTasks.length > 2 && (
+                  {(dayTasks.length + dayAbsences.length) > 2 && (
                     <span className="text-[9px] font-bold text-slate-400 pl-2.5">
-                      +{dayTasks.length - 2} more
+                      +{dayTasks.length + dayAbsences.length - 2} more
                     </span>
                   )}
                 </div>
                 {/* Mobile: dots only */}
                 <div className="flex gap-0.5 mt-1 sm:hidden">
+                  {dayAbsences.slice(0, 1).map((absence) => (
+                    <span
+                      key={absence.id}
+                      className={`w-1.5 h-1.5 rounded-full ${ABSENCE_STATUS_STYLES[absence.status].dot}`}
+                    />
+                  ))}
                   {dayTasks.slice(0, 3).map((task) => (
                     <span
                       key={task.id}
@@ -318,34 +422,69 @@ export default function TaskCalendar() {
             </h3>
           </div>
           <Link
-            href="/dashboard/tasks"
+            href="/dashboard/team"
             className="flex items-center gap-1 text-[11px] font-bold text-[#2a7797] hover:underline font-quicksand"
           >
-            All tasks
+            Team
             <ExternalLink className="w-3 h-3" />
           </Link>
         </div>
 
-        {selectedTasks.length === 0 ? (
+        {selectedTasks.length === 0 && selectedAbsences.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <CheckSquare className="w-8 h-8 text-slate-300 mb-3" />
             <p className="text-sm font-semibold text-slate-500 font-aileron">
-              No tasks due this day
+              Nothing scheduled this day
             </p>
             <p className="text-xs text-slate-400 mt-1 max-w-[220px] font-aileron">
-              Tasks with a due date appear here. Add or edit due dates on the Tasks
-              page.
+              Tasks with due dates and team leave/travel days appear here.
             </p>
-            <Link
-              href="/dashboard/tasks"
-              className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] rounded-xl border border-[rgba(42,119,151,0.25)] transition-colors font-quicksand"
-            >
-              Open Tasks
-              <ExternalLink className="w-3 h-3" />
-            </Link>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href="/dashboard/tasks"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] rounded-xl border border-[rgba(42,119,151,0.25)] transition-colors font-quicksand"
+              >
+                Open Tasks
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+              <Link
+                href="/dashboard/team"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors font-quicksand"
+              >
+                Open Team
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         ) : (
           <ul className="space-y-2.5 flex-1 overflow-y-auto">
+            {selectedAbsences.map((absence) => {
+              const style = ABSENCE_STATUS_STYLES[absence.status];
+              return (
+                <li key={absence.id}>
+                  <div className="border rounded-2xl p-3.5 bg-amber-50/40 border-amber-100">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <UserRound className="w-4 h-4 text-amber-700 shrink-0" />
+                        <span className="text-sm font-bold text-slate-800 font-aileron truncate">
+                          {absence.user_name}
+                        </span>
+                      </div>
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand ${style.chip}`}
+                      >
+                        {absenceStatusLabel(absence.status)}
+                      </span>
+                    </div>
+                    {absence.note ? (
+                      <p className="text-[11px] text-slate-500 font-aileron line-clamp-2">
+                        {absence.note}
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
             {selectedTasks.map((task) => {
               const priority = PRIORITY_STYLES[task.priority];
               return (

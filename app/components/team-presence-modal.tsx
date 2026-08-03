@@ -5,6 +5,7 @@ import {
   PresenceStatus,
   UserPresenceFormData,
   PRESENCE_STATUS_OPTIONS,
+  SCHEDULED_ABSENCE_STATUSES,
 } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import {
@@ -14,7 +15,10 @@ import {
   Briefcase,
   ImageIcon,
   UserRound,
+  Plus,
+  X,
 } from "lucide-react";
+import { normalizeAbsenceDates } from "@/lib/calendar-absences";
 
 export const EMPTY_PRESENCE_FORM: UserPresenceFormData = {
   status: "in_office",
@@ -22,6 +26,7 @@ export const EMPTY_PRESENCE_FORM: UserPresenceFormData = {
   until_date: "",
   avatar_url: "",
   designation: "",
+  absence_dates: [],
 };
 
 interface TeamPresenceModalProps {
@@ -31,6 +36,10 @@ interface TeamPresenceModalProps {
   initialData: UserPresenceFormData | null;
   onClose: () => void;
   onSubmit: (data: UserPresenceFormData) => void;
+}
+
+function usesScheduledDates(status: PresenceStatus): boolean {
+  return SCHEDULED_ABSENCE_STATUSES.includes(status);
 }
 
 export default function TeamPresenceModal({
@@ -45,12 +54,14 @@ export default function TeamPresenceModal({
     useState<UserPresenceFormData>(EMPTY_PRESENCE_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [avatarBroken, setAvatarBroken] = useState(false);
+  const [pendingDate, setPendingDate] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setFormState(initialData || EMPTY_PRESENCE_FORM);
       setErrors({});
       setAvatarBroken(false);
+      setPendingDate("");
     }
   }, [isOpen, initialData]);
 
@@ -66,6 +77,23 @@ export default function TeamPresenceModal({
       delete next[key];
       return next;
     });
+  };
+
+  const addAbsenceDate = () => {
+    const trimmed = pendingDate.trim();
+    if (!trimmed) return;
+    setFormState((prev) => ({
+      ...prev,
+      absence_dates: normalizeAbsenceDates([...prev.absence_dates, trimmed]),
+    }));
+    setPendingDate("");
+  };
+
+  const removeAbsenceDate = (date: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      absence_dates: prev.absence_dates.filter((d) => d !== date),
+    }));
   };
 
   const validate = (): Record<string, string> => {
@@ -84,11 +112,17 @@ export default function TeamPresenceModal({
       setErrors(validationErrors);
       return;
     }
-    onSubmit(formState);
+    onSubmit({
+      ...formState,
+      absence_dates: usesScheduledDates(formState.status)
+        ? normalizeAbsenceDates(formState.absence_dates)
+        : [],
+    });
   };
 
   const previewUrl = formState.avatar_url.trim();
   const showPreview = previewUrl.length > 0 && !avatarBroken;
+  const showAbsenceDates = usesScheduledDates(formState.status);
 
   return (
     <SlideOverModal
@@ -200,29 +234,98 @@ export default function TeamPresenceModal({
             </select>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="presence-until"
-              className="text-[11px] font-semibold text-slate-500 font-quicksand"
-            >
-              Until (optional)
-            </label>
-            <div className="relative">
-              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                id="presence-until"
-                type="date"
-                value={formState.until_date}
-                onChange={(e) =>
-                  handleInputChange("until_date", e.target.value)
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
-              />
+          {showAbsenceDates ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-amber-100 bg-amber-50/50 p-3">
+              <label
+                htmlFor="presence-absence-date"
+                className="text-[11px] font-semibold text-amber-900 font-quicksand"
+              >
+                Absence dates
+              </label>
+              <p className="text-[11px] text-amber-800/80 font-quicksand leading-relaxed">
+                Add each day you will be{" "}
+                {formState.status === "on_leave" ? "on leave" : "on travel"}.
+                These appear on the lab calendar for the team.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <div className="relative flex-1 min-w-[140px]">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="presence-absence-date"
+                    type="date"
+                    value={pendingDate}
+                    onChange={(e) => setPendingDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addAbsenceDate();
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addAbsenceDate}
+                  disabled={!pendingDate.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-50 disabled:opacity-40 transition-colors font-quicksand"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add date
+                </button>
+              </div>
+              {formState.absence_dates.length > 0 ? (
+                <ul className="flex flex-wrap gap-2 pt-1">
+                  {formState.absence_dates.map((date) => (
+                    <li key={date}>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white pl-2.5 pr-1 py-1 text-[11px] font-bold text-amber-900 font-quicksand">
+                        {new Date(`${date}T00:00:00`).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeAbsenceDate(date)}
+                          aria-label={`Remove ${date}`}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-amber-700 hover:bg-amber-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11px] text-amber-800/70 font-aileron">
+                  No dates selected yet.
+                </p>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 font-quicksand">
-              Useful for leave or travel end dates.
-            </p>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="presence-until"
+                className="text-[11px] font-semibold text-slate-500 font-quicksand"
+              >
+                Until (optional)
+              </label>
+              <div className="relative">
+                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="presence-until"
+                  type="date"
+                  value={formState.until_date}
+                  onChange={(e) =>
+                    handleInputChange("until_date", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 font-quicksand">
+                Optional end date for this status.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2.5">

@@ -18,13 +18,17 @@ import {
   UserPresenceFormData,
   PresenceStatus,
   PRESENCE_STATUS_OPTIONS,
+  SCHEDULED_ABSENCE_STATUSES,
 } from "../../../types/database";
 import {
   getUsersFromDB,
   getRowsFromDB,
   upsertUserPresence,
   saveDataToDB,
+  getUserAbsences,
+  replaceUserAbsences,
 } from "@/lib/supabase";
+import { maxAbsenceDate } from "@/lib/calendar-absences";
 import { teamBreadcrumbs } from "@/lib/breadcrumbs";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { usePortal } from "../../components/portal-context";
@@ -109,7 +113,11 @@ export default function TeamPage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [selected, setSelected] = useState<TeamMemberRow | null>(null);
+  const [editFormData, setEditFormData] = useState<UserPresenceFormData | null>(
+    null,
+  );
   const [isSaving, setIsSaving] = useState(false);
+  const [isOpeningEdit, setIsOpeningEdit] = useState(false);
 
   const { toggleSidebar } = useDashboardUI();
   const { profile, realRole } = usePortal();
@@ -214,26 +222,42 @@ export default function TeamPage() {
     return counts;
   }, [members]);
 
-  const initialData = useMemo((): UserPresenceFormData | null => {
-    if (!selected) return null;
-    return {
-      status: selected.presence?.status ?? "in_office",
-      note: selected.presence?.note || "",
-      until_date: selected.presence?.until_date || "",
-      avatar_url: selected.avatar_url || "",
-      designation: selected.designation || "",
-    };
-  }, [selected]);
+  const initialData = editFormData;
 
   const handleCloseModal = useCallback(() => {
     setIsEditing(false);
     setSelected(null);
+    setEditFormData(null);
   }, []);
 
-  const handleOpenEdit = useCallback((member: TeamMemberRow) => {
-    setSelected(member);
-    setIsEditing(true);
-  }, []);
+  const handleOpenEdit = useCallback(
+    async (member: TeamMemberRow) => {
+      setSelected(member);
+      setIsOpeningEdit(true);
+      try {
+        const absences = await getUserAbsences(member.id);
+        const status = member.presence?.status ?? "in_office";
+        setEditFormData({
+          status,
+          note: member.presence?.note || "",
+          until_date: member.presence?.until_date || "",
+          avatar_url: member.avatar_url || "",
+          designation: member.designation || "",
+          absence_dates: absences
+            .filter((row) => row.status === status)
+            .map((row) => row.absence_date),
+        });
+        setIsEditing(true);
+      } catch (err) {
+        console.error("Failed to load absence dates:", err);
+        showToast("Couldn't load absence dates. Please try again.", "error");
+        setSelected(null);
+      } finally {
+        setIsOpeningEdit(false);
+      }
+    },
+    [showToast],
+  );
 
   const handleSubmit = useCallback(
     async (formData: UserPresenceFormData) => {
@@ -241,6 +265,18 @@ export default function TeamPage() {
 
       const avatarUrl = formData.avatar_url.trim() || null;
       const designation = formData.designation.trim() || null;
+      const isScheduled = SCHEDULED_ABSENCE_STATUSES.includes(formData.status);
+      const untilDate = isScheduled
+        ? maxAbsenceDate(formData.absence_dates)
+        : formData.until_date.trim() || null;
+      const note = formData.note.trim() || null;
+      const absenceRows = isScheduled
+        ? formData.absence_dates.map((absence_date) => ({
+            absence_date,
+            status: formData.status,
+            note,
+          }))
+        : [];
 
       setIsSaving(true);
       try {
@@ -251,10 +287,11 @@ export default function TeamPage() {
           }),
           upsertUserPresence(selected.id, {
             status: formData.status,
-            note: formData.note.trim() || null,
-            until_date: formData.until_date.trim() || null,
+            note,
+            until_date: untilDate,
             updated_by: currentUserId,
           }),
+          replaceUserAbsences(selected.id, absenceRows, currentUserId),
         ]);
 
         setMembers((prev) =>
@@ -271,6 +308,7 @@ export default function TeamPage() {
         );
         setIsEditing(false);
         setSelected(null);
+        setEditFormData(null);
         showToast("Profile updated.", "success");
       } catch {
         showToast("Failed to update profile. Please try again.", "error");
@@ -286,7 +324,7 @@ export default function TeamPage() {
       <PageHeader
         breadcrumbTrail={teamBreadcrumbs}
         title="Team"
-        subtitle="Who’s around — office, lab, leave, travel, and more."
+        subtitle="Who's around — office, lab, leave, travel, and more."
         actions={
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -331,7 +369,7 @@ export default function TeamPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading team…" />
+        <LoadingState message="Loading team" />
       ) : loadError ? (
         <ErrorState message={loadError} />
       ) : filtered.length === 0 ? (
@@ -435,7 +473,8 @@ export default function TeamPage() {
                   {editable ? (
                     <button
                       type="button"
-                      onClick={() => handleOpenEdit(member)}
+                      onClick={() => void handleOpenEdit(member)}
+                      disabled={isOpeningEdit}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:border-[#2a7797]/30 hover:text-[#2a7797] transition-colors font-quicksand"
                     >
                       <Edit3 className="h-3.5 w-3.5" />

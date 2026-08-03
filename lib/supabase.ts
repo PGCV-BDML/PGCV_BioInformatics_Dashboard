@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { TaskCategory, UserPresence } from "@/types/database";
+import type { TaskCategory, UserPresence, UserAbsence, PresenceStatus } from "@/types/database";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -71,6 +71,7 @@ export type TableNames =
   | "task_tag"
   | "repository"
   | "user_presence"
+  | "user_absence"
   | "conversation"
   | "conversation_member"
   | "message"
@@ -283,5 +284,59 @@ export async function upsertUserPresence(
   }
 
   return saved as UserPresence;
+}
+
+export async function getUserAbsences(userId: string): Promise<UserAbsence[]> {
+  const { data, error } = await supabase
+    .from("user_absence")
+    .select("*")
+    .eq("user_id", userId)
+    .order("absence_date", { ascending: true });
+
+  if (error) {
+    console.error("Error loading user absences:", error);
+    throw error;
+  }
+
+  return (data ?? []) as UserAbsence[];
+}
+
+/** Replace all absence rows for a user (full sync from Team modal). */
+export async function replaceUserAbsences(
+  userId: string,
+  absences: Pick<UserAbsence, "absence_date" | "status" | "note">[],
+  createdBy: string | null,
+): Promise<UserAbsence[]> {
+  const { error: deleteError } = await supabase
+    .from("user_absence")
+    .delete()
+    .eq("user_id", userId);
+
+  if (deleteError) {
+    console.error("Error clearing user absences:", deleteError);
+    throw deleteError;
+  }
+
+  if (absences.length === 0) return [];
+
+  const rows = absences.map((row) => ({
+    user_id: userId,
+    absence_date: row.absence_date,
+    status: row.status,
+    note: row.note,
+    created_by: createdBy,
+  }));
+
+  const { data, error: insertError } = await supabase
+    .from("user_absence")
+    .insert(rows)
+    .select();
+
+  if (insertError) {
+    console.error("Error inserting user absences:", insertError);
+    throw insertError;
+  }
+
+  return (data ?? []) as UserAbsence[];
 }
 

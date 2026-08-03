@@ -485,7 +485,27 @@ export type UserPresenceFormData = {
   until_date: string;
   avatar_url: string;
   designation: string;
+  /** Explicit absence days (on leave / on travel). */
+  absence_dates: string[];
 };
+
+/** Per-day scheduled absence for Team + Calendar. */
+export type UserAbsence = {
+  id: string;
+  user_id: string;
+  absence_date: string;
+  status: PresenceStatus;
+  note: string | null;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** Statuses that support picking multiple calendar dates. */
+export const SCHEDULED_ABSENCE_STATUSES: PresenceStatus[] = [
+  "on_leave",
+  "on_travel",
+];
 
 //For Chat ============================================================================
 export type ConversationKind = "channel" | "direct";
