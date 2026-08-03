@@ -69,6 +69,13 @@ export async function getTeamDirectoryUsers<T = unknown>(): Promise<T[]> {
   });
 }
 
+/** Staff with dashboard access but excluded from Team + calendar. */
+export async function getExcludedTeamDirectoryUsers<T = unknown>(): Promise<T[]> {
+  return getUsersFromDB<T>(["team_lead", "team_member"], {
+    inTeamDirectory: false,
+  });
+}
+
 export type TableNames =
   | "collaboration"
   | "project"

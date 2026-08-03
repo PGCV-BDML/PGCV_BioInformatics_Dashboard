@@ -21,8 +21,8 @@ import {
   SCHEDULED_ABSENCE_STATUSES,
 } from "../../../types/database";
 import {
-  getUsersFromDB,
   getTeamDirectoryUsers,
+  getExcludedTeamDirectoryUsers,
   getRowsFromDB,
   upsertUserPresence,
   saveDataToDB,
@@ -103,8 +103,30 @@ function formatUntil(date: string | null | undefined): string | null {
   }
 }
 
+function sortTeamMembers(rows: TeamMemberRow[]): TeamMemberRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.role !== b.role) {
+      return a.role === "team_lead" ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
+function attachPresence(
+  users: User[],
+  presenceByUser: Map<string, UserPresence>,
+): TeamMemberRow[] {
+  return sortTeamMembers(
+    users.map((user) => ({
+      ...user,
+      presence: presenceByUser.get(user.id) ?? null,
+    })),
+  );
+}
+
 export default function TeamPage() {
-  const [members, setMembers] = useState<TeamMemberRow[]>([]);
+  const [directoryMembers, setDirectoryMembers] = useState<TeamMemberRow[]>([]);
+  const [excludedMembers, setExcludedMembers] = useState<TeamMemberRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,38 +161,30 @@ export default function TeamPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const usersPromise = isTeamLead
-          ? getUsersFromDB<User>(["team_lead", "team_member"])
-          : getTeamDirectoryUsers<User>();
-        const [users, presenceRows] = await Promise.all([
-          usersPromise,
-          getRowsFromDB<UserPresence>("user_presence"),
-        ]);
+        const presenceRows = await getRowsFromDB<UserPresence>("user_presence");
         if (cancelled) return;
 
         const presenceByUser = new Map(
           presenceRows.map((row) => [row.user_id, row]),
         );
 
-        const rows: TeamMemberRow[] = users
-          .map((user) => ({
-            ...user,
-            presence: presenceByUser.get(user.id) ?? null,
-          }))
-          .sort((a, b) => {
-            if (a.role !== b.role) {
-              return a.role === "team_lead" ? -1 : 1;
-            }
-            return a.name.localeCompare(b.name, undefined, {
-              sensitivity: "base",
-            });
-          });
+        const directoryUsers = await getTeamDirectoryUsers<User>();
+        if (cancelled) return;
+        setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
 
-        setMembers(rows);
+        if (isTeamLead && showExcludedStaff) {
+          const excludedUsers = await getExcludedTeamDirectoryUsers<User>();
+          if (cancelled) return;
+          setExcludedMembers(attachPresence(excludedUsers, presenceByUser));
+        } else {
+          setExcludedMembers([]);
+        }
       } catch (err) {
         console.error("Failed to load team:", err);
         if (!cancelled) {
-          setLoadError("Couldn't load team members. Please refresh the page.");
+          setLoadError(
+            "Couldn't load team members. If you recently added roster filtering, apply migration 20260803140000_user_team_directory.sql in Supabase, then refresh.",
+          );
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -180,7 +194,11 @@ export default function TeamPage() {
     return () => {
       cancelled = true;
     };
-  }, [isTeamLead]);
+  }, [isTeamLead, showExcludedStaff]);
+
+  const members = showExcludedStaff && isTeamLead
+    ? excludedMembers
+    : directoryMembers;
 
   const canEditMember = useCallback(
     (member: TeamMemberRow) => {
@@ -192,11 +210,7 @@ export default function TeamPage() {
   );
 
   const filtered = useMemo(() => {
-    let records = members.filter((m) =>
-      showExcludedStaff && isTeamLead
-        ? m.in_team_directory !== true
-        : m.in_team_directory === true,
-    );
+    let records = members;
     if (activeFilter !== "All") {
       records = records.filter(
         (m) => (m.presence?.status ?? "in_office") === activeFilter,
@@ -216,10 +230,10 @@ export default function TeamPage() {
           .includes(q) ||
         (m.presence?.note ?? "").toLowerCase().includes(q),
     );
-  }, [members, activeFilter, searchQuery, isTeamLead, showExcludedStaff]);
+  }, [members, activeFilter, searchQuery]);
 
   const statusCounts = useMemo(() => {
-    const roster = members.filter((m) => m.in_team_directory === true);
+    const roster = directoryMembers;
     const counts = new Map<PresenceStatus | "All", number>();
     counts.set("All", roster.length);
     for (const opt of PRESENCE_STATUS_OPTIONS) {
@@ -230,7 +244,7 @@ export default function TeamPage() {
       counts.set(status, (counts.get(status) ?? 0) + 1);
     }
     return counts;
-  }, [members]);
+  }, [directoryMembers]);
 
   useEffect(() => {
     if (!isTeamLead) setShowExcludedStaff(false);
@@ -307,7 +321,7 @@ export default function TeamPage() {
           userPatch.in_team_directory = formData.in_team_directory;
         }
 
-        const [, savedPresence] = await Promise.all([
+        await Promise.all([
           saveDataToDB("users", selected.id, userPatch),
           upsertUserPresence(selected.id, {
             status: formData.status,
@@ -318,22 +332,23 @@ export default function TeamPage() {
           replaceUserAbsences(selected.id, absenceRows, currentUserId),
         ]);
 
-        setMembers((prev) => {
-          const updated = prev.map((m) =>
-            m.id === selected.id
-              ? {
-                  ...m,
-                  avatar_url: avatarUrl,
-                  designation,
-                  in_team_directory: isTeamLead
-                    ? formData.in_team_directory
-                    : m.in_team_directory,
-                  presence: savedPresence,
-                }
-              : m,
-          );
-          return updated;
-        });
+        const presenceRows = await getRowsFromDB<UserPresence>("user_presence");
+        const presenceByUser = new Map(
+          presenceRows.map((row) => [row.user_id, row]),
+        );
+        const [directoryUsers, excludedUsers] = await Promise.all([
+          getTeamDirectoryUsers<User>(),
+          isTeamLead
+            ? getExcludedTeamDirectoryUsers<User>()
+            : Promise.resolve([] as User[]),
+        ]);
+        setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
+        setExcludedMembers(
+          isTeamLead
+            ? attachPresence(excludedUsers, presenceByUser)
+            : [],
+        );
+
         setIsEditing(false);
         setSelected(null);
         setEditFormData(null);
