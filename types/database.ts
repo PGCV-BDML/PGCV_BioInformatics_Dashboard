@@ -370,6 +370,8 @@ export interface User {
   institution: string | null;
   avatar_url: string | null;
   designation: string | null;
+  /** Bioinformatics Team page + calendar absences roster. */
+  in_team_directory: boolean;
 }
 
 export type AuditLogAction =
@@ -487,6 +489,8 @@ export type UserPresenceFormData = {
   designation: string;
   /** Explicit absence days (on leave / on travel). */
   absence_dates: string[];
+  /** Team lead only: include on bioinformatics Team + calendar. */
+  in_team_directory: boolean;
 };
 
 /** Per-day scheduled absence for Team + Calendar. */

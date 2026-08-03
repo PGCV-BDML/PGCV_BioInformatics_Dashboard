@@ -27,6 +27,7 @@ export const EMPTY_PRESENCE_FORM: UserPresenceFormData = {
   avatar_url: "",
   designation: "",
   absence_dates: [],
+  in_team_directory: true,
 };
 
 interface TeamPresenceModalProps {
@@ -34,6 +35,7 @@ interface TeamPresenceModalProps {
   isSaving: boolean;
   memberName: string;
   initialData: UserPresenceFormData | null;
+  canManageDirectory: boolean;
   onClose: () => void;
   onSubmit: (data: UserPresenceFormData) => void;
 }
@@ -47,6 +49,7 @@ export default function TeamPresenceModal({
   isSaving,
   memberName,
   initialData,
+  canManageDirectory,
   onClose,
   onSubmit,
 }: TeamPresenceModalProps) {
@@ -206,6 +209,27 @@ export default function TeamPresenceModal({
               />
             </div>
           </div>
+
+          {canManageDirectory ? (
+            <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formState.in_team_directory}
+                onChange={(e) =>
+                  handleInputChange("in_team_directory", e.target.checked)
+                }
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+              />
+              <span className="text-[11px] text-slate-600 font-quicksand leading-relaxed">
+                <span className="font-semibold text-slate-700">
+                  Bioinformatics team member
+                </span>
+                <br />
+                Include on the Team page and calendar absences. Turn off for staff
+                who use the dashboard but are not part of the BDML roster.
+              </span>
+            </label>
+          ) : null}
         </div>
 
         <div className="space-y-2.5">

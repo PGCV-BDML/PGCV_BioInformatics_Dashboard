@@ -22,6 +22,7 @@ import {
 } from "../../../types/database";
 import {
   getUsersFromDB,
+  getTeamDirectoryUsers,
   getRowsFromDB,
   upsertUserPresence,
   saveDataToDB,
@@ -137,8 +138,11 @@ export default function TeamPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
+        const usersPromise = isTeamLead
+          ? getUsersFromDB<User>(["team_lead", "team_member"])
+          : getTeamDirectoryUsers<User>();
         const [users, presenceRows] = await Promise.all([
-          getUsersFromDB<User>(["team_lead", "team_member"]),
+          usersPromise,
           getRowsFromDB<UserPresence>("user_presence"),
         ]);
         if (cancelled) return;
@@ -175,7 +179,7 @@ export default function TeamPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isTeamLead]);
 
   const canEditMember = useCallback(
     (member: TeamMemberRow) => {
@@ -188,6 +192,9 @@ export default function TeamPage() {
 
   const filtered = useMemo(() => {
     let records = members;
+    if (!isTeamLead) {
+      records = records.filter((m) => m.in_team_directory);
+    }
     if (activeFilter !== "All") {
       records = records.filter(
         (m) => (m.presence?.status ?? "in_office") === activeFilter,
@@ -207,20 +214,23 @@ export default function TeamPage() {
           .includes(q) ||
         (m.presence?.note ?? "").toLowerCase().includes(q),
     );
-  }, [members, activeFilter, searchQuery]);
+  }, [members, activeFilter, searchQuery, isTeamLead]);
 
   const statusCounts = useMemo(() => {
+    const roster = isTeamLead
+      ? members.filter((m) => m.in_team_directory)
+      : members;
     const counts = new Map<PresenceStatus | "All", number>();
-    counts.set("All", members.length);
+    counts.set("All", roster.length);
     for (const opt of PRESENCE_STATUS_OPTIONS) {
       counts.set(opt.value, 0);
     }
-    for (const m of members) {
+    for (const m of roster) {
       const status = m.presence?.status ?? "in_office";
       counts.set(status, (counts.get(status) ?? 0) + 1);
     }
     return counts;
-  }, [members]);
+  }, [members, isTeamLead]);
 
   const initialData = editFormData;
 
@@ -243,6 +253,7 @@ export default function TeamPage() {
           until_date: member.presence?.until_date || "",
           avatar_url: member.avatar_url || "",
           designation: member.designation || "",
+          in_team_directory: member.in_team_directory,
           absence_dates: absences
             .filter((row) => row.status === status)
             .map((row) => row.absence_date),
@@ -280,11 +291,20 @@ export default function TeamPage() {
 
       setIsSaving(true);
       try {
+        const userPatch: {
+          avatar_url: string | null;
+          designation: string | null;
+          in_team_directory?: boolean;
+        } = {
+          avatar_url: avatarUrl,
+          designation,
+        };
+        if (isTeamLead) {
+          userPatch.in_team_directory = formData.in_team_directory;
+        }
+
         const [, savedPresence] = await Promise.all([
-          saveDataToDB("users", selected.id, {
-            avatar_url: avatarUrl,
-            designation,
-          }),
+          saveDataToDB("users", selected.id, userPatch),
           upsertUserPresence(selected.id, {
             status: formData.status,
             note,
@@ -294,18 +314,23 @@ export default function TeamPage() {
           replaceUserAbsences(selected.id, absenceRows, currentUserId),
         ]);
 
-        setMembers((prev) =>
-          prev.map((m) =>
+        setMembers((prev) => {
+          const updated = prev.map((m) =>
             m.id === selected.id
               ? {
                   ...m,
                   avatar_url: avatarUrl,
                   designation,
+                  in_team_directory: isTeamLead
+                    ? formData.in_team_directory
+                    : m.in_team_directory,
                   presence: savedPresence,
                 }
               : m,
-          ),
-        );
+          );
+          if (isTeamLead) return updated;
+          return updated.filter((m) => m.in_team_directory);
+        });
         setIsEditing(false);
         setSelected(null);
         setEditFormData(null);
@@ -316,7 +341,7 @@ export default function TeamPage() {
         setIsSaving(false);
       }
     },
-    [selected, currentUserId, showToast],
+    [selected, currentUserId, isTeamLead, showToast],
   );
 
   return (
@@ -324,7 +349,7 @@ export default function TeamPage() {
       <PageHeader
         breadcrumbTrail={teamBreadcrumbs}
         title="Team"
-        subtitle="Who's around â€” office, lab, leave, travel, and more."
+        subtitle="Bioinformatics team presence  office, lab, leave, travel, and more."
         actions={
           <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -332,7 +357,7 @@ export default function TeamPage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search teamâ€¦"
+              placeholder="Search team"
               className="w-full rounded-xl border border-slate-200 bg-white/80 pl-9 pr-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#2a7797]/40 focus:ring-2 focus:ring-[#2a7797]/10"
             />
           </div>
@@ -369,7 +394,7 @@ export default function TeamPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading teamÂ…" />
+        <LoadingState message="Loading team…" />
       ) : loadError ? (
         <ErrorState message={loadError} />
       ) : filtered.length === 0 ? (
@@ -379,7 +404,7 @@ export default function TeamPage() {
           description={
             searchQuery || activeFilter !== "All"
               ? "Try a different search or status filter."
-              : "Staff accounts with team lead or team member roles will appear here."
+              : "Bioinformatics team members appear here. Team leads can include other staff via Update."
           }
         />
       ) : (
@@ -391,10 +416,16 @@ export default function TeamPage() {
             const editable = canEditMember(member);
             const isSelf = member.id === currentUserId;
 
+            const isDirectoryMember = member.in_team_directory;
+
             return (
               <li
                 key={member.id}
-                className="group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/80 px-5 py-4 shadow-sm shadow-slate-200/40"
+                className={`group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border px-5 py-4 shadow-sm ${
+                  isDirectoryMember
+                    ? "border-slate-200/80 bg-white/80 shadow-slate-200/40"
+                    : "border-dashed border-slate-200/60 bg-slate-50/50 shadow-none opacity-80"
+                }`}
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <div className="relative shrink-0">
@@ -429,6 +460,11 @@ export default function TeamPage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-quicksand">
                         {roleLabel(member.role)}
                       </span>
+                      {isTeamLead && !isDirectoryMember ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 font-quicksand">
+                          Not in directory
+                        </span>
+                      ) : null}
                     </div>
 
                     {member.designation ? (
@@ -493,6 +529,7 @@ export default function TeamPage() {
         isSaving={isSaving}
         memberName={selected?.name ?? ""}
         initialData={initialData}
+        canManageDirectory={isTeamLead}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
       />

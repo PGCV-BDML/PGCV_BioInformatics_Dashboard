@@ -24,10 +24,16 @@ export async function getCurrentUser() {
   return data.session?.user ?? null;
 }
 
+export type GetUsersOptions = {
+  /** When true, only users on the bioinformatics Team roster. */
+  inTeamDirectory?: boolean;
+};
+
 //Get all user rows from database
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getUsersFromDB<T = any>(
   chosenRoles: string[],
+  options?: GetUsersOptions,
 ): Promise<T[]> {
   const roleValues = ["team_lead", "team_member", "intern", "trainee"];
 
@@ -38,10 +44,13 @@ export async function getUsersFromDB<T = any>(
     return [];
   }
 
-  const { data: users, error: fetchError } = await supabase
-    .from("users")
-    .select("*")
-    .in("role", chosenRoles);
+  let query = supabase.from("users").select("*").in("role", chosenRoles);
+
+  if (options?.inTeamDirectory) {
+    query = query.eq("in_team_directory", true);
+  }
+
+  const { data: users, error: fetchError } = await query;
 
   if (fetchError) {
     console.error("Error retrieving data:", fetchError);
@@ -49,6 +58,13 @@ export async function getUsersFromDB<T = any>(
   }
 
   return (users ?? []) as T[];
+}
+
+/** Staff on the bioinformatics Team page and calendar absences. */
+export async function getTeamDirectoryUsers<T = unknown>(): Promise<T[]> {
+  return getUsersFromDB<T>(["team_lead", "team_member"], {
+    inTeamDirectory: true,
+  });
 }
 
 export type TableNames =

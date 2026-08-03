@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import {
   getRowsFromDB,
-  getUsersFromDB,
+  getTeamDirectoryUsers,
   getNameIdFromDB,
   getTaskCategoriesByTaskId,
 } from "@/lib/supabase";
@@ -79,7 +79,7 @@ export default function TaskCalendar() {
           await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
-          getUsersFromDB(["team_lead", "team_member"]),
+          getTeamDirectoryUsers<DbUser>(),
           getTaskCategoriesByTaskId(),
           getRowsFromDB<UserAbsence>("user_absence"),
         ]);
@@ -220,38 +220,37 @@ export default function TaskCalendar() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 font-aileron">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
-                Category
-              </span>
-              <select
-                value={categoryFilter}
-                onChange={(e) =>
-                  setCategoryFilter(e.target.value as TaskCategory | "All")
-                }
-                className="h-8 px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 max-w-[180px]"
-              >
-                <option value="All">All</option>
-                {TASK_CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
+          <div className="grid grid-cols-[auto_minmax(8rem,11rem)_auto] gap-x-3 gap-y-2.5 items-center">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand w-16 shrink-0">
+              Category
+            </span>
+            <select
+              value={categoryFilter}
+              onChange={(e) =>
+                setCategoryFilter(e.target.value as TaskCategory | "All")
+              }
+              className="h-8 w-full px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30"
+            >
+              <option value="All">All</option>
+              {TASK_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={showTeamAbsences}
                 onChange={(e) => setShowTeamAbsences(e.target.checked)}
-                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
               />
               Show team absences
             </label>
+
             {showTeamAbsences ? (
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 font-aileron">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+              <>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand w-16 shrink-0">
                   Absence
                 </span>
                 <select
@@ -259,7 +258,7 @@ export default function TaskCalendar() {
                   onChange={(e) =>
                     setAbsenceFilter(e.target.value as PresenceStatus | "All")
                   }
-                  className="h-8 px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30 max-w-[140px]"
+                  className="h-8 w-full px-2 rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-[#4ec2bb]/30"
                 >
                   <option value="All">All</option>
                   {PRESENCE_STATUS_OPTIONS.filter((opt) =>
@@ -272,14 +271,21 @@ export default function TaskCalendar() {
                     </option>
                   ))}
                 </select>
-              </label>
-            ) : null}
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
+              </>
+            ) : (
+              <>
+                <span className="invisible w-16 shrink-0" aria-hidden>
+                  Absence
+                </span>
+                <span aria-hidden />
+              </>
+            )}
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={showCompleted}
                 onChange={(e) => setShowCompleted(e.target.checked)}
-                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
               />
               Show completed
             </label>

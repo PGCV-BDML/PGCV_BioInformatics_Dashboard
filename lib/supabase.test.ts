@@ -173,6 +173,17 @@ describe("getUsersFromDB", () => {
     expect(mockFrom).toHaveBeenCalledWith("users");
   });
 
+  it("Filters to team directory when requested", async () => {
+    const chain = createChain([]) as { eq: ReturnType<typeof vi.fn> };
+    mockFrom.mockReturnValue(chain as any);
+
+    await getUsersFromDB(["team_lead", "team_member"], {
+      inTeamDirectory: true,
+    });
+
+    expect(chain.eq).toHaveBeenCalledWith("in_team_directory", true);
+  });
+
   it("Throws error on fetch error", async () => {
     const testError = new Error("Users fetch error");
     mockFrom.mockReturnValue(createChain(null, testError) as any);
