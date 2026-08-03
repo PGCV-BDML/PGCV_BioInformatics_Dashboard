@@ -8,10 +8,12 @@ import {
   UserRound,
   Mail,
   Building2,
+  UsersRound,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import TeamPresenceModal from "../../components/team-presence-modal";
+import TeamRosterModal from "../../components/team-roster-modal";
 import {
   User,
   UserPresence,
@@ -22,7 +24,6 @@ import {
 } from "../../../types/database";
 import {
   getTeamDirectoryUsers,
-  getExcludedTeamDirectoryUsers,
   getRowsFromDB,
   upsertUserPresence,
   saveDataToDB,
@@ -126,7 +127,6 @@ function attachPresence(
 
 export default function TeamPage() {
   const [directoryMembers, setDirectoryMembers] = useState<TeamMemberRow[]>([]);
-  const [excludedMembers, setExcludedMembers] = useState<TeamMemberRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,13 +135,14 @@ export default function TeamPage() {
   );
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isManagingRoster, setIsManagingRoster] = useState(false);
   const [selected, setSelected] = useState<TeamMemberRow | null>(null);
   const [editFormData, setEditFormData] = useState<UserPresenceFormData | null>(
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingRoster, setIsSavingRoster] = useState(false);
   const [isOpeningEdit, setIsOpeningEdit] = useState(false);
-  const [showExcludedStaff, setShowExcludedStaff] = useState(false);
 
   const { toggleSidebar } = useDashboardUI();
   const { profile, realRole } = usePortal();
@@ -150,9 +151,20 @@ export default function TeamPage() {
   const currentUserId = profile?.id ?? null;
   const isTeamLead = realRole === "team_lead";
 
+  const reloadDirectoryMembers = useCallback(async () => {
+    const [directoryUsers, presenceRows] = await Promise.all([
+      getTeamDirectoryUsers<User>(),
+      getRowsFromDB<UserPresence>("user_presence"),
+    ]);
+    const presenceByUser = new Map(
+      presenceRows.map((row) => [row.user_id, row]),
+    );
+    setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
+  }, []);
+
   useEffect(() => {
-    toggleSidebar(isEditing);
-  }, [isEditing, toggleSidebar]);
+    toggleSidebar(isEditing || isManagingRoster);
+  }, [isEditing, isManagingRoster, toggleSidebar]);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,14 +183,6 @@ export default function TeamPage() {
         const directoryUsers = await getTeamDirectoryUsers<User>();
         if (cancelled) return;
         setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
-
-        if (isTeamLead && showExcludedStaff) {
-          const excludedUsers = await getExcludedTeamDirectoryUsers<User>();
-          if (cancelled) return;
-          setExcludedMembers(attachPresence(excludedUsers, presenceByUser));
-        } else {
-          setExcludedMembers([]);
-        }
       } catch (err) {
         console.error("Failed to load team:", err);
         if (!cancelled) {
@@ -194,11 +198,9 @@ export default function TeamPage() {
     return () => {
       cancelled = true;
     };
-  }, [isTeamLead, showExcludedStaff]);
+  }, []);
 
-  const members = showExcludedStaff && isTeamLead
-    ? excludedMembers
-    : directoryMembers;
+  const members = directoryMembers;
 
   const canEditMember = useCallback(
     (member: TeamMemberRow) => {
@@ -247,7 +249,7 @@ export default function TeamPage() {
   }, [directoryMembers]);
 
   useEffect(() => {
-    if (!isTeamLead) setShowExcludedStaff(false);
+    if (!isTeamLead) setIsManagingRoster(false);
   }, [isTeamLead]);
 
   const initialData = editFormData;
@@ -332,22 +334,7 @@ export default function TeamPage() {
           replaceUserAbsences(selected.id, absenceRows, currentUserId),
         ]);
 
-        const presenceRows = await getRowsFromDB<UserPresence>("user_presence");
-        const presenceByUser = new Map(
-          presenceRows.map((row) => [row.user_id, row]),
-        );
-        const [directoryUsers, excludedUsers] = await Promise.all([
-          getTeamDirectoryUsers<User>(),
-          isTeamLead
-            ? getExcludedTeamDirectoryUsers<User>()
-            : Promise.resolve([] as User[]),
-        ]);
-        setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
-        setExcludedMembers(
-          isTeamLead
-            ? attachPresence(excludedUsers, presenceByUser)
-            : [],
-        );
+        await reloadDirectoryMembers();
 
         setIsEditing(false);
         setSelected(null);
@@ -359,8 +346,13 @@ export default function TeamPage() {
         setIsSaving(false);
       }
     },
-    [selected, currentUserId, isTeamLead, showToast],
+    [selected, currentUserId, isTeamLead, showToast, reloadDirectoryMembers],
   );
+
+  const handleRosterSaved = useCallback(async () => {
+    await reloadDirectoryMembers();
+    showToast("Bioinformatics roster updated.", "success");
+  }, [reloadDirectoryMembers, showToast]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-10">
@@ -369,30 +361,40 @@ export default function TeamPage() {
         title="Team"
         subtitle="Bioinformatics team presence ù office, lab, leave, travel, and more."
         actions={
-          <div className="relative w-full min-[480px]:w-64">
+          <div className="flex w-full flex-col gap-2 min-[480px]:w-auto min-[480px]:flex-row min-[480px]:items-center">
+            {isTeamLead ? (
+              <button
+                type="button"
+                onClick={() => setIsManagingRoster(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(42,119,151,0.25)] bg-[#e6f4f8] px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#2a7797] hover:bg-[#d5eff6] transition-colors font-quicksand"
+              >
+                <UsersRound className="h-4 w-4" />
+                Manage roster
+              </button>
+            ) : null}
+            <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search teamù"
+              placeholder="Search teamÖ"
               className="w-full rounded-xl border border-slate-200 bg-white/80 pl-9 pr-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#2a7797]/40 focus:ring-2 focus:ring-[#2a7797]/10"
             />
+            </div>
           </div>
         }
       />
 
-      {isTeamLead ? (
-        <label className="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron">
-          <input
-            type="checkbox"
-            checked={showExcludedStaff}
-            onChange={(e) => setShowExcludedStaff(e.target.checked)}
-            className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
-          />
-          Show staff not in bioinformatics directory
-        </label>
-      ) : null}
+      <TeamRosterModal
+        isOpen={isManagingRoster}
+        isSaving={isSavingRoster}
+        onClose={() => setIsManagingRoster(false)}
+        onSaveStart={() => setIsSavingRoster(true)}
+        onSaveEnd={() => setIsSavingRoster(false)}
+        onSaved={() => void handleRosterSaved()}
+        onError={(message) => showToast(message, "error")}
+      />
 
       <div className="relative flex flex-wrap gap-2">
         {FILTER_OPTIONS.map((opt) => {
@@ -434,9 +436,9 @@ export default function TeamPage() {
           description={
             searchQuery || activeFilter !== "All"
               ? "Try a different search or status filter."
-              : showExcludedStaff
-                ? "No excluded staff accounts match your filters."
-                : "Bioinformatics team members appear here. Team leads can manage excluded staff with the checkbox above."
+              : isTeamLead
+                ? "No bioinformatics team members yet. Use Manage roster to select who appears here."
+                : "Bioinformatics team members appear here."
           }
         />
       ) : (
@@ -451,11 +453,7 @@ export default function TeamPage() {
             return (
               <li
                 key={member.id}
-                className={`group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border px-5 py-4 shadow-sm ${
-                  showExcludedStaff
-                    ? "border-dashed border-slate-200/60 bg-slate-50/50 shadow-none"
-                    : "border-slate-200/80 bg-white/80 shadow-slate-200/40"
-                }`}
+                className="group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/80 px-5 py-4 shadow-sm shadow-slate-200/40"
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <div className="relative shrink-0">
@@ -490,11 +488,6 @@ export default function TeamPage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-quicksand">
                         {roleLabel(member.role)}
                       </span>
-                      {showExcludedStaff ? (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 font-quicksand">
-                          Not in directory
-                        </span>
-                      ) : null}
                     </div>
 
                     {member.designation ? (
