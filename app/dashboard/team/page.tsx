@@ -361,18 +361,7 @@ export default function TeamPage() {
         title="Team"
         subtitle="Bioinformatics team presence ù office, lab, leave, travel, and more."
         actions={
-          <div className="flex w-full flex-col gap-2 min-[480px]:w-auto min-[480px]:flex-row min-[480px]:items-center">
-            {isTeamLead ? (
-              <button
-                type="button"
-                onClick={() => setIsManagingRoster(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(42,119,151,0.25)] bg-[#e6f4f8] px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#2a7797] hover:bg-[#d5eff6] transition-colors font-quicksand"
-              >
-                <UsersRound className="h-4 w-4" />
-                Manage roster
-              </button>
-            ) : null}
-            <div className="relative w-full min-[480px]:w-64">
+          <div className="relative w-full min-[480px]:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="search"
@@ -381,10 +370,30 @@ export default function TeamPage() {
               placeholder="Search teamÖ"
               className="w-full rounded-xl border border-slate-200 bg-white/80 pl-9 pr-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#2a7797]/40 focus:ring-2 focus:ring-[#2a7797]/10"
             />
-            </div>
           </div>
         }
       />
+
+      {isTeamLead ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-[rgba(42,119,151,0.2)] bg-[#e6f4f8]/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#2a7797] font-aileron">
+              Bioinformatics roster
+            </p>
+            <p className="text-xs text-slate-600 font-quicksand mt-0.5">
+              Choose which staff appear on Team presence and calendar absences.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsManagingRoster(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[rgba(42,119,151,0.25)] bg-white px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#2a7797] hover:bg-[#f8fcfe] transition-colors font-quicksand shadow-sm"
+          >
+            <UsersRound className="h-4 w-4" />
+            Manage roster
+          </button>
+        </div>
+      ) : null}
 
       <TeamRosterModal
         isOpen={isManagingRoster}
