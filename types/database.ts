@@ -69,6 +69,7 @@ export type TaskCategory =
   | "tour"
   | "meeting"
   | "internship"
+  | "training"
   | "collaboration"
   | "engagements"
   | "projects"
