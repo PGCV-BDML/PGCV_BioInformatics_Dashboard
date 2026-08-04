@@ -254,31 +254,52 @@ export async function getTaskCategoriesByTaskId(): Promise<
   return map;
 }
 
-/** Replace all categories for a task (delete + insert). */
+/** Replace all categories for a task (insert new tags, then remove stale ones). */
 export async function replaceTaskCategories(
   taskId: string,
   categories: TaskCategory[],
 ) {
-  const { error: deleteError } = await supabase
+  const unique = Array.from(new Set(categories));
+
+  const { data: currentRows, error: fetchError } = await supabase
     .from("task_tag")
-    .delete()
+    .select("category")
     .eq("task_id", taskId);
 
-  if (deleteError) {
-    console.error("Error clearing task tags:", deleteError);
-    throw deleteError;
+  if (fetchError) {
+    console.error("Error reading task tags:", fetchError);
+    throw fetchError;
   }
 
-  const unique = Array.from(new Set(categories));
-  if (unique.length === 0) return;
-
-  const { error: insertError } = await supabase.from("task_tag").insert(
-    unique.map((category) => ({ task_id: taskId, category })),
+  const current = new Set(
+    (currentRows ?? []).map((row) => row.category as TaskCategory),
   );
+  const next = new Set(unique);
+  const toAdd = unique.filter((category) => !current.has(category));
+  const toRemove = [...current].filter((category) => !next.has(category));
 
-  if (insertError) {
-    console.error("Error inserting task tags:", insertError);
-    throw insertError;
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase.from("task_tag").insert(
+      toAdd.map((category) => ({ task_id: taskId, category })),
+    );
+
+    if (insertError) {
+      console.error("Error inserting task tags:", insertError);
+      throw insertError;
+    }
+  }
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("task_tag")
+      .delete()
+      .eq("task_id", taskId)
+      .in("category", toRemove);
+
+    if (deleteError) {
+      console.error("Error clearing task tags:", deleteError);
+      throw deleteError;
+    }
   }
 }
 

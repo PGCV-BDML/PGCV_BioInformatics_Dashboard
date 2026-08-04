@@ -103,3 +103,29 @@ export function describeDeleteError(error: unknown, table: TableNames): string {
 
   return `Failed to delete this ${subject}.`;
 }
+
+/**
+ * A save/upsert error a user can act on.
+ */
+export function describeSaveError(error: unknown, table: TableNames): string {
+  const subject = singular(table);
+  const pgError = asPostgrestError(error);
+  const message = pgError?.message ?? "";
+
+  if (
+    message.includes("task_category") ||
+    message.includes("invalid input value for enum")
+  ) {
+    return `Failed to save ${subject}: a selected category is not available in the database yet. Apply the latest Supabase migration, then try again.`;
+  }
+
+  if (message.includes("invalid input syntax for type date")) {
+    return `Failed to save ${subject}: the due date is invalid. Please re-select the due date.`;
+  }
+
+  if (message) {
+    return `Failed to save ${subject}: ${message}`;
+  }
+
+  return `Failed to save ${subject}.`;
+}

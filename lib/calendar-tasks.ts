@@ -28,6 +28,15 @@ export function toDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Normalize a due date to YYYY-MM-DD for date inputs and Postgres `date` columns. */
+export function normalizeDueDate(value: string | null | undefined): string | null {
+  if (value == null || !String(value).trim()) return null;
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const datePart = raw.includes("T") ? raw.split("T")[0]! : raw.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : null;
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&

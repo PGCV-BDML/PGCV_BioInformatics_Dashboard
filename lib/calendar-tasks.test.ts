@@ -4,6 +4,7 @@ import {
   filterByCategory,
   getMonthGrid,
   mapTasksForCalendar,
+  normalizeDueDate,
   taskHref,
   toDateKey,
   upcomingTasks,
@@ -12,6 +13,21 @@ import {
 describe("toDateKey", () => {
   it("formats local dates as YYYY-MM-DD", () => {
     expect(toDateKey(new Date(2026, 6, 27))).toBe("2026-07-27");
+  });
+});
+
+describe("normalizeDueDate", () => {
+  it("keeps YYYY-MM-DD values", () => {
+    expect(normalizeDueDate("2026-08-04")).toBe("2026-08-04");
+  });
+
+  it("strips time from ISO timestamps", () => {
+    expect(normalizeDueDate("2026-08-04T00:00:00.000Z")).toBe("2026-08-04");
+  });
+
+  it("returns null for empty values", () => {
+    expect(normalizeDueDate("")).toBeNull();
+    expect(normalizeDueDate(null)).toBeNull();
   });
 });
 

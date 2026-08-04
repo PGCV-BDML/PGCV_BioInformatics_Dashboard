@@ -39,6 +39,9 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { analysisStatusLabel } from "@/lib/analysis-tracker";
+import { normalizeDueDate } from "@/lib/calendar-tasks";
+import { describeSaveError } from "@/lib/db-errors";
+import { buildTaskRecordPayload } from "@/lib/task-payload";
 import { AnalysisStatus } from "../../../types/database";
 import { formatDate } from "@/lib/utils";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
@@ -198,7 +201,7 @@ function TasksPageContent() {
     setFormState({
       title: match.title,
       assignee_id: match.assignee_id,
-      due_date: match.due_date,
+      due_date: normalizeDueDate(match.due_date) ?? "",
       status: match.status,
       priority: match.priority,
       linked_project_id: match.linked_project_id,
@@ -370,14 +373,6 @@ function TasksPageContent() {
     setFormState((prev) => ({ ...prev, categories }));
   }, []);
 
-  const persistTaskPayload = (form: Omit<Task, "id">) => {
-    const { categories: _categories, ...record } = form;
-    return {
-      ...record,
-      linked_project_id: record.linked_project_id || null,
-    };
-  };
-
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; // prevent double-submit
@@ -388,12 +383,13 @@ function TasksPageContent() {
     const newTask: Task = { id: generatedId, ...formState, categories };
 
     try {
-      await saveDataToDB("task", generatedId, persistTaskPayload(formState));
+      await saveDataToDB("task", generatedId, buildTaskRecordPayload(formState));
       await replaceTaskCategories(generatedId, categories);
       setTasksList((prev) => [newTask, ...prev]);
       showToast("Task created successfully.", "success");
     } catch (error) {
-      showToast("Failed to save task. Please try again.", "error");
+      console.error("Failed to save task:", error);
+      showToast(describeSaveError(error, "task"), "error");
       return;
     } finally {
       setIsSubmitting(false);
@@ -412,8 +408,8 @@ function TasksPageContent() {
     const categories = formState.categories ?? [];
 
     try {
-      await saveDataToDB("task", selectedTask.id, persistTaskPayload(formState));
       await replaceTaskCategories(selectedTask.id, categories);
+      await saveDataToDB("task", selectedTask.id, buildTaskRecordPayload(formState));
       setTasksList((prev) =>
         prev.map((item) =>
           item.id === selectedTask.id
@@ -423,7 +419,8 @@ function TasksPageContent() {
       );
       showToast("Task updated successfully.", "success");
     } catch (error) {
-      showToast("Failed to update task.", "error");
+      console.error("Failed to update task:", error);
+      showToast(describeSaveError(error, "task"), "error");
       return;
     } finally {
       setIsSubmitting(false);
@@ -619,7 +616,7 @@ function TasksPageContent() {
               setFormState({
                 title: t.title,
                 assignee_id: t.assignee_id,
-                due_date: t.due_date,
+                due_date: normalizeDueDate(t.due_date) ?? "",
                 status: t.status,
                 priority: t.priority,
                 linked_project_id: t.linked_project_id,
