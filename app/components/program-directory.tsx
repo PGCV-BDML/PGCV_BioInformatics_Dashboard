@@ -17,6 +17,7 @@ import {
   getUsersFromDB,
   saveDataToDB,
 } from "@/lib/supabase";
+import { describeSaveError } from "@/lib/db-errors";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
   TrainingProgram,
@@ -231,7 +232,7 @@ export default function ProgramDirectory({
         showToast(`${title} program created.`, "success");
       } catch (error) {
         console.error("Failed to create program:", error);
-        showToast("Failed to save program. Please try again.", "error");
+        showToast(describeSaveError(error, "training_program"), "error");
       } finally {
         setIsSaving(false);
       }
@@ -287,7 +288,7 @@ export default function ProgramDirectory({
         showToast("Program updated.", "success");
       } catch (error) {
         console.error("Failed to update program:", error);
-        showToast("Failed to update program.", "error");
+        showToast(describeSaveError(error, "training_program"), "error");
       } finally {
         setIsSaving(false);
       }

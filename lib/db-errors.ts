@@ -123,6 +123,10 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     return `Failed to save ${subject}: the due date is invalid. Please re-select the due date.`;
   }
 
+  if (message.includes("training_program_date_range_chk")) {
+    return `Failed to save ${subject}: end date cannot be before start date.`;
+  }
+
   if (message) {
     return `Failed to save ${subject}: ${message}`;
   }
