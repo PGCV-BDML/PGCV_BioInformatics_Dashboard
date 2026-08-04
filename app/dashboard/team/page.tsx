@@ -16,6 +16,7 @@ import TeamPresenceModal from "../../components/team-presence-modal";
 import TeamRosterModal from "../../components/team-roster-modal";
 import {
   User,
+  UserAbsence,
   UserPresence,
   UserPresenceFormData,
   PresenceStatus,
@@ -30,7 +31,12 @@ import {
   getUserAbsences,
   replaceUserAbsences,
 } from "@/lib/supabase";
-import { maxAbsenceDate } from "@/lib/calendar-absences";
+import {
+  maxAbsenceDate,
+  presenceStatusForSave,
+  resolveEffectivePresenceStatus,
+  scheduledAbsenceStatusFromRows,
+} from "@/lib/calendar-absences";
 import { teamBreadcrumbs } from "@/lib/breadcrumbs";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { usePortal } from "../../components/portal-context";
@@ -38,6 +44,7 @@ import { useToast } from "../../components/toast";
 
 type TeamMemberRow = User & {
   presence: UserPresence | null;
+  absences: UserAbsence[];
 };
 
 const FILTER_OPTIONS: { value: PresenceStatus | "All"; label: string }[] = [
@@ -116,13 +123,43 @@ function sortTeamMembers(rows: TeamMemberRow[]): TeamMemberRow[] {
 function attachPresence(
   users: User[],
   presenceByUser: Map<string, UserPresence>,
+  absencesByUser: Map<string, UserAbsence[]>,
 ): TeamMemberRow[] {
   return sortTeamMembers(
-    users.map((user) => ({
-      ...user,
-      presence: presenceByUser.get(user.id) ?? null,
-    })),
+    users.map((user) => {
+      const rawPresence = presenceByUser.get(user.id) ?? null;
+      const absences = absencesByUser.get(user.id) ?? [];
+      const effective = resolveEffectivePresenceStatus(rawPresence, absences);
+
+      if (!rawPresence && effective.status === "in_office") {
+        return { ...user, absences, presence: null };
+      }
+
+      return {
+        ...user,
+        absences,
+        presence: {
+          ...(rawPresence ?? {
+            user_id: user.id,
+            note: null,
+            updated_by: null,
+          }),
+          status: effective.status,
+          until_date: effective.until_date,
+        },
+      };
+    }),
   );
+}
+
+function groupAbsencesByUser(rows: UserAbsence[]): Map<string, UserAbsence[]> {
+  const map = new Map<string, UserAbsence[]>();
+  for (const row of rows) {
+    const list = map.get(row.user_id) ?? [];
+    list.push(row);
+    map.set(row.user_id, list);
+  }
+  return map;
 }
 
 export default function TeamPage() {
@@ -152,14 +189,17 @@ export default function TeamPage() {
   const isTeamLead = realRole === "team_lead";
 
   const reloadDirectoryMembers = useCallback(async () => {
-    const [directoryUsers, presenceRows] = await Promise.all([
+    const [directoryUsers, presenceRows, absenceRows] = await Promise.all([
       getTeamDirectoryUsers<User>(),
       getRowsFromDB<UserPresence>("user_presence"),
+      getRowsFromDB<UserAbsence>("user_absence"),
     ]);
     const presenceByUser = new Map(
       presenceRows.map((row) => [row.user_id, row]),
     );
-    setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
+    setDirectoryMembers(
+      attachPresence(directoryUsers, presenceByUser, groupAbsencesByUser(absenceRows)),
+    );
   }, []);
 
   useEffect(() => {
@@ -173,7 +213,10 @@ export default function TeamPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const presenceRows = await getRowsFromDB<UserPresence>("user_presence");
+        const [presenceRows, absenceRows] = await Promise.all([
+          getRowsFromDB<UserPresence>("user_presence"),
+          getRowsFromDB<UserAbsence>("user_absence"),
+        ]);
         if (cancelled) return;
 
         const presenceByUser = new Map(
@@ -182,7 +225,13 @@ export default function TeamPage() {
 
         const directoryUsers = await getTeamDirectoryUsers<User>();
         if (cancelled) return;
-        setDirectoryMembers(attachPresence(directoryUsers, presenceByUser));
+        setDirectoryMembers(
+          attachPresence(
+            directoryUsers,
+            presenceByUser,
+            groupAbsencesByUser(absenceRows),
+          ),
+        );
       } catch (err) {
         console.error("Failed to load team:", err);
         if (!cancelled) {
@@ -266,7 +315,9 @@ export default function TeamPage() {
       setIsOpeningEdit(true);
       try {
         const absences = await getUserAbsences(member.id);
-        const status = member.presence?.status ?? "in_office";
+        const scheduledStatus = scheduledAbsenceStatusFromRows(absences);
+        const status =
+          scheduledStatus ?? member.presence?.status ?? "in_office";
         setEditFormData({
           status,
           note: member.presence?.note || "",
@@ -274,9 +325,11 @@ export default function TeamPage() {
           avatar_url: member.avatar_url || "",
           designation: member.designation || "",
           in_team_directory: member.in_team_directory,
-          absence_dates: absences
-            .filter((row) => row.status === status)
-            .map((row) => row.absence_date),
+          absence_dates: scheduledStatus
+            ? absences
+                .filter((row) => row.status === scheduledStatus)
+                .map((row) => row.absence_date)
+            : [],
         });
         setIsEditing(true);
       } catch (err) {
@@ -297,6 +350,10 @@ export default function TeamPage() {
       const avatarUrl = formData.avatar_url.trim() || null;
       const designation = formData.designation.trim() || null;
       const isScheduled = SCHEDULED_ABSENCE_STATUSES.includes(formData.status);
+      const storedStatus = presenceStatusForSave(
+        formData.status,
+        formData.absence_dates,
+      );
       const untilDate = isScheduled
         ? maxAbsenceDate(formData.absence_dates)
         : formData.until_date.trim() || null;
@@ -326,7 +383,7 @@ export default function TeamPage() {
         await Promise.all([
           saveDataToDB("users", selected.id, userPatch),
           upsertUserPresence(selected.id, {
-            status: formData.status,
+            status: storedStatus,
             note,
             until_date: untilDate,
             updated_by: currentUserId,

@@ -1,5 +1,8 @@
-import type { PresenceStatus, UserAbsence } from "@/types/database";
-import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
+import type { PresenceStatus, UserAbsence, UserPresence } from "@/types/database";
+import {
+  PRESENCE_STATUS_OPTIONS,
+  SCHEDULED_ABSENCE_STATUSES,
+} from "@/types/database";
 import { toDateKey } from "@/lib/calendar-tasks";
 
 export type CalendarAbsence = {
@@ -112,4 +115,58 @@ export function absencesByDateKey(
 
 export function todayDateKey(): string {
   return toDateKey(new Date());
+}
+
+function isScheduledAbsenceStatus(status: PresenceStatus): boolean {
+  return SCHEDULED_ABSENCE_STATUSES.includes(status);
+}
+
+/** Scheduled leave/travel type stored in absence rows, if any. */
+export function scheduledAbsenceStatusFromRows(
+  absences: Pick<UserAbsence, "status">[],
+): PresenceStatus | null {
+  for (const status of SCHEDULED_ABSENCE_STATUSES) {
+    if (absences.some((row) => row.status === status)) return status;
+  }
+  return null;
+}
+
+/** Status to persist in user_presence when saving scheduled absences. */
+export function presenceStatusForSave(
+  formStatus: PresenceStatus,
+  absenceDates: string[],
+  todayKey: string = todayDateKey(),
+): PresenceStatus {
+  if (!isScheduledAbsenceStatus(formStatus)) return formStatus;
+  const normalized = normalizeAbsenceDates(absenceDates);
+  return normalized.includes(todayKey) ? formStatus : "in_office";
+}
+
+/** Today's displayed status — only on leave/travel when today is an absence day. */
+export function resolveEffectivePresenceStatus(
+  presence: UserPresence | null,
+  absences: Pick<UserAbsence, "absence_date" | "status">[],
+  todayKey: string = todayDateKey(),
+): { status: PresenceStatus; until_date: string | null } {
+  const storedStatus = presence?.status ?? "in_office";
+  const todayAbsence = absences.find((row) => row.absence_date === todayKey);
+
+  if (todayAbsence) {
+    const activeDates = absences
+      .filter((row) => row.absence_date >= todayKey)
+      .map((row) => row.absence_date);
+    return {
+      status: todayAbsence.status,
+      until_date: maxAbsenceDate(activeDates),
+    };
+  }
+
+  if (isScheduledAbsenceStatus(storedStatus)) {
+    return { status: "in_office", until_date: null };
+  }
+
+  return {
+    status: storedStatus,
+    until_date: presence?.until_date ?? null,
+  };
 }

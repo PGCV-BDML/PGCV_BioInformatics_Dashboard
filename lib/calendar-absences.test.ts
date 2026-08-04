@@ -6,6 +6,9 @@ import {
   mapAbsencesForCalendar,
   maxAbsenceDate,
   normalizeAbsenceDates,
+  presenceStatusForSave,
+  resolveEffectivePresenceStatus,
+  scheduledAbsenceStatusFromRows,
 } from "./calendar-absences";
 
 describe("normalizeAbsenceDates", () => {
@@ -127,5 +130,84 @@ describe("absencesByDateKey", () => {
     );
     const grouped = absencesByDateKey(rows);
     expect(grouped.get("2026-08-05")).toHaveLength(2);
+  });
+});
+
+describe("resolveEffectivePresenceStatus", () => {
+  it("shows in_office when leave is scheduled for a future date", () => {
+    const result = resolveEffectivePresenceStatus(
+      {
+        user_id: "u1",
+        status: "on_leave",
+        note: "Annual leave",
+        until_date: "2026-08-15",
+        updated_by: null,
+      },
+      [{ absence_date: "2026-08-10", status: "on_leave" }],
+      "2026-08-04",
+    );
+    expect(result.status).toBe("in_office");
+    expect(result.until_date).toBeNull();
+  });
+
+  it("shows on_leave when today is an absence day", () => {
+    const result = resolveEffectivePresenceStatus(
+      {
+        user_id: "u1",
+        status: "on_leave",
+        note: null,
+        until_date: "2026-08-15",
+        updated_by: null,
+      },
+      [
+        { absence_date: "2026-08-04", status: "on_leave" },
+        { absence_date: "2026-08-05", status: "on_leave" },
+      ],
+      "2026-08-04",
+    );
+    expect(result.status).toBe("on_leave");
+    expect(result.until_date).toBe("2026-08-05");
+  });
+
+  it("reverts to in_office after leave ends", () => {
+    const result = resolveEffectivePresenceStatus(
+      {
+        user_id: "u1",
+        status: "on_leave",
+        note: null,
+        until_date: "2026-08-03",
+        updated_by: null,
+      },
+      [{ absence_date: "2026-08-01", status: "on_leave" }],
+      "2026-08-04",
+    );
+    expect(result.status).toBe("in_office");
+    expect(result.until_date).toBeNull();
+  });
+});
+
+describe("presenceStatusForSave", () => {
+  it("stores in_office when all absence dates are in the future", () => {
+    expect(
+      presenceStatusForSave("on_leave", ["2026-08-10", "2026-08-11"], "2026-08-04"),
+    ).toBe("in_office");
+  });
+
+  it("stores on_leave when today is included", () => {
+    expect(
+      presenceStatusForSave("on_leave", ["2026-08-04", "2026-08-05"], "2026-08-04"),
+    ).toBe("on_leave");
+  });
+});
+
+describe("scheduledAbsenceStatusFromRows", () => {
+  it("returns on_leave when leave rows exist", () => {
+    expect(
+      scheduledAbsenceStatusFromRows([{ status: "on_leave" }]),
+    ).toBe("on_leave");
+  });
+
+  it("returns null when no scheduled absences exist", () => {
+    expect(scheduledAbsenceStatusFromRows([])).toBeNull();
   });
 });
