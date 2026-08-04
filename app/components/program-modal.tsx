@@ -59,9 +59,9 @@ export default function ProgramModal({
     if (
       formState.start_date &&
       formState.end_date &&
-      formState.end_date <= formState.start_date
+      formState.end_date < formState.start_date
     ) {
-      errs.end_date = "End date must be after start date";
+      errs.end_date = "End date cannot be before start date";
     }
     return errs;
   };
