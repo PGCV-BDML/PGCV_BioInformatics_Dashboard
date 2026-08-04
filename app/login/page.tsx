@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { DataPrivacyNotice } from "../components/data-privacy-notice";
 
 export default function SignInPage() {
   const [currentYear, setCurrentYear] = useState<string>("2026");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [privacyOpen, setPrivacyOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear().toString());
@@ -237,79 +236,7 @@ export default function SignInPage() {
             className="mt-5 pt-5 relative"
             style={{ borderTop: "0.8px solid rgba(23,33,38,0.12)" }}
           >
-            <button
-              type="button"
-              onClick={() => setPrivacyOpen((v) => !v)}
-              aria-expanded={privacyOpen}
-              aria-controls="privacy-notice-content"
-              className="flex items-center justify-between w-full cursor-pointer text-[12px] leading-5 font-quicksand font-bold text-[#172126]"
-            >
-              Data Privacy Notice
-              <ChevronDown
-                className="w-4 h-4 text-[#172126] transition-transform duration-300"
-                style={{ transform: privacyOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-                aria-hidden="true"
-              />
-            </button>
-            <div
-              id="privacy-notice-content"
-              className="grid transition-[grid-template-rows] duration-300 ease-out overflow-hidden"
-              style={{ gridTemplateRows: privacyOpen ? "1fr" : "0fr" }}
-            >
-              <div className="overflow-hidden">
-            <div className="mt-2 space-y-1 text-[12px] leading-5 font-quicksand max-h-[30vh] overflow-y-auto">
-              <p>
-                <span className="font-bold text-[#172126]">
-                  Data collected:{" "}
-                </span>
-                <span className="text-[#65706f]">
-                  Internal lab operations records; training and internship
-                  participant data (name, email, assessment answers); and
-                  activity logs for accountability.
-                </span>
-              </p>
-              <p>
-                <span className="font-bold text-[#172126]">Purpose: </span>
-                <span className="text-[#65706f]">
-                  Internal workflow management, training administration, and
-                  compliance with the Philippine Data Privacy Act (RA 10173).
-                </span>
-              </p>
-              <p>
-                <span className="font-bold text-[#172126]">Retention: </span>
-                <span className="text-[#65706f]">
-                  Operations records retained per lab-defined policy; participant
-                  data deleted upon request or automatically at end of
-                  internship. {/* ponytail: "lab-defined" kept intentionally vague — check with supervisor */}
-                </span>
-              </p>
-              <p>
-                <span className="font-bold text-[#172126]">Access: </span>
-                <span className="text-[#65706f]">
-                  PGCV-BDML team members only, with role-based access controls.
-                  All access is logged.
-                </span>
-              </p>
-              <p>
-                <span className="font-bold text-[#172126]">
-                  Deletion requests:{" "}
-                </span>
-                <span className="text-[#65706f]">
-                  Contact your supervisor or email{" "}
-                </span>
-                <a
-                  href="mailto:bioinfo.pgc.upvisayas@gmail.com"
-                  className="text-[#65706f] underline underline-offset-2 decoration-dotted hover:text-[#2a7797] transition-colors"
-                >
-                  bioinfo.pgc.upvisayas@gmail.com
-                </a>
-                <span className="text-[#65706f]">
-                  . Data will be anonymized or deleted within 30 days.
-                </span>
-              </p>
-            </div>
-              </div>
-            </div>
+            <DataPrivacyNotice className="max-h-[30vh] overflow-y-auto" />
           </div>
         </div>
       </div>

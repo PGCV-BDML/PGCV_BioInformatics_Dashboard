@@ -56,3 +56,8 @@ export const internshipBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Internship" },
 ];
+
+export const aboutBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "About" },
+];

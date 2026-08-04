@@ -1,6 +1,7 @@
 export type ProgramType = "training" | "internship";
 
 export const routes = {
+  about: "/dashboard/about",
   team: {
     list: "/dashboard/team",
   },
