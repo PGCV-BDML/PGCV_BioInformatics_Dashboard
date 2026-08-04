@@ -10,6 +10,11 @@ import {
 } from "@/types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { BookOpen, Calendar, FlaskConical } from "lucide-react";
+import { normalizeDueDate } from "@/lib/calendar-tasks";
+
+function toDateInputValue(value: string | null | undefined): string {
+  return normalizeDueDate(value) ?? "";
+}
 
 const EMPTY_FORM: TrainingProgramFormData = {
   title: "",
@@ -56,11 +61,9 @@ export default function ProgramModal({
       errs.instructor_id = `Please select a ${leaderLabel.toLowerCase()}`;
     }
     if (!formState.start_date) errs.start_date = "Start date is required";
-    if (
-      formState.start_date &&
-      formState.end_date &&
-      formState.end_date < formState.start_date
-    ) {
+    const startDate = toDateInputValue(formState.start_date);
+    const endDate = toDateInputValue(formState.end_date);
+    if (startDate && endDate && endDate < startDate) {
       errs.end_date = "End date cannot be before start date";
     }
     return errs;
@@ -69,10 +72,16 @@ export default function ProgramModal({
   useEffect(() => {
     if (isOpen) {
       setFormState(
-        initialData || {
-          ...EMPTY_FORM,
-          instructor_id: availableInstructors[0]?.id || "",
-        },
+        initialData
+          ? {
+              ...initialData,
+              start_date: toDateInputValue(initialData.start_date),
+              end_date: toDateInputValue(initialData.end_date),
+            }
+          : {
+              ...EMPTY_FORM,
+              instructor_id: availableInstructors[0]?.id || "",
+            },
       );
       setErrors({});
     }
@@ -86,7 +95,13 @@ export default function ProgramModal({
       ...prev,
       [key]: value as TrainingProgramFormData[typeof key],
     }));
-    setErrors((prev) => ({ ...prev, [key]: "" }));
+    setErrors((prev) => {
+      const next = { ...prev, [key]: "" };
+      if (key === "start_date" || key === "end_date") {
+        next.end_date = "";
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,7 +112,11 @@ export default function ProgramModal({
       return;
     }
     setErrors({});
-    onSubmit(formState);
+    onSubmit({
+      ...formState,
+      start_date: toDateInputValue(formState.start_date),
+      end_date: toDateInputValue(formState.end_date),
+    });
   };
 
   const statusChoices = TRAINING_PROGRAM_STATUS_OPTIONS.filter(
