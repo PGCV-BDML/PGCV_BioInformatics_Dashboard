@@ -45,6 +45,13 @@ export const MODULE_LIBRARY: ModuleLibraryItem[] = [
     group: "Core methods",
   },
   {
+    id: "primer-design-training-module",
+    title: "Primer Design Module",
+    htmlPath: "/assets/Training/primer-design-training-module.html",
+    tags: ["training", "internship"],
+    group: "Core methods",
+  },
+  {
     id: "transcriptome-module",
     title: "Transcriptome Module",
     htmlPath: "/assets/Training/transcriptome-module.html",
