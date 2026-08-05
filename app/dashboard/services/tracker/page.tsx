@@ -27,8 +27,8 @@ import {
   labelFromAnalysisStatus,
   nextServiceReportNumber,
   parseServiceReportNumber,
+  MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
-  STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
   Analysis,
@@ -811,6 +811,9 @@ export default function ServiceReportTrackerPage() {
     } else if (key === "under review" || key === "under_review") {
       colorClasses = "bg-amber-50 text-amber-800 border-amber-200";
       chevronClass = "text-amber-700";
+    } else if (key === "changes requested" || key === "changes_requested") {
+      colorClasses = "bg-orange-50 text-orange-800 border-orange-300";
+      chevronClass = "text-orange-700";
     } else if (key === "approved") {
       colorClasses = "bg-emerald-50 text-emerald-800 border-emerald-200";
       chevronClass = "text-emerald-700";
@@ -1063,7 +1066,7 @@ export default function ServiceReportTrackerPage() {
           s.id,
           "status_of_submission",
           s.status_of_submission,
-          STATUS_OF_SUBMISSION_OPTIONS,
+          MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
           "Status of Submission",
         ),
     },

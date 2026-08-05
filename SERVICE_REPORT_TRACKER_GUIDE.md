@@ -12,8 +12,8 @@ service report approved by the assigned approving officer.
 
 | You are… | You do |
 |---|---|
-| Bioinformatician / analyst | Create the record, run the analysis, update statuses, attach the report link |
-| Approving officer (role `team_lead`) | Review the report from the notification bell, approve it |
+| Bioinformatician / analyst | Create the record, run the analysis, update statuses, attach the report link, address any review comments and resubmit |
+| Approving officer (role `team_lead`) | Review the report from the notification bell, then approve it or send it back with comments |
 | Either | Mark the report **Submitted** once it has gone out to the client |
 
 Two things to know up front, because they decide whether the approval step works at all:
@@ -175,7 +175,8 @@ The officer works from either the **bell icon** in the top bar or the full
    - appends a line to the record's Notes reading
      `System: Approved by <officer name> on <YYYY-MM-DD>`,
    - marks the notification read and clears it from the unread list.
-5. If the officer wants to set it aside without acting, **Mark read** (or **Dismiss** in the bell
+5. **Or click "Request changes"** if the report isn't ready. See section 4.4.
+6. If the officer wants to set it aside without acting, **Mark read** (or **Dismiss** in the bell
    dropdown) hides the notification without changing any status.
 
 Two safeguards worth knowing:
@@ -183,22 +184,49 @@ Two safeguards worth knowing:
 - **Approvals never move backwards.** The statuses are ranked
   For approval (1) → Under review (2) → Approved (3) → Submitted (4), and an action is ignored
   if it would lower the rank. Clicking "Open Report" on an already-approved record will not
-  demote it to Under review.
+  demote it to Under review. **Request changes** is the one deliberate exception — it sits
+  outside the ladder precisely so it can hand a report back.
 - **Only the assigned officer sees the notification.** Row-level security scopes the
   notifications table to the target user, so no one else — including admins in the UI — will see
   it in their bell.
 
-### 4.4 Requesting a re-review after changes
+### 4.4 Sending a report back with comments
 
-If you revise a report that was already approved, the officer is **not** automatically
-re-notified. To request a fresh review:
+When the report needs work before it can be signed off, the officer clicks **Request changes**
+instead of Approve. A box opens asking what needs to be addressed; the comment is required.
 
-1. Open the edit panel and clear the **Approving Officer** (`— Assign later —`). Save.
-2. Set the Approving Officer again. Save.
+Submitting it does four things in one go:
 
-That not-ready → ready round trip re-fires the trigger. One caveat: while an **unread**
-notification for the same record still exists, a duplicate will not be created. If the officer
-hasn't opened the first one yet, they already have it — just ping them.
+- records the comment against the record,
+- sets Status of Submission to **Changes requested** (the pill turns orange),
+- appends `System: Changes requested by <officer name> on <YYYY-MM-DD>` to the Notes,
+- sends a notification to the record's **Assignee**, with the comment in it.
+
+**Changes requested** is the one status you cannot pick from a dropdown. It is only reachable
+through this action, because a report parked there without an explanation and without anyone
+notified is just a stuck record.
+
+If the record has **no Assignee**, the comment is still saved and the status still changes — the
+officer is told that nobody was notified. Set an assignee and tell them directly.
+
+### 4.5 Addressing comments and getting a re-review
+
+The assignee sees the change request in their bell and on the record's detail page, under
+**Review Comments**. After fixing what was raised:
+
+1. Open the record's detail page (click the SR number in the tracker).
+2. Click **Resubmit for approval** in the Review Comments panel.
+
+That sets Status of Submission back to **For approval**, marks the open comments resolved, and
+**re-notifies the approving officer automatically** — no clear-and-reset needed. The comment
+history stays on the record so you can see what was asked for in each round.
+
+**The one case that still needs the manual workaround:** if a report was already **Approved** and
+you revise it afterwards, nothing re-notifies the officer, because no change was ever requested.
+To force a fresh review, open the edit panel and clear the **Approving Officer**
+(`— Assign later —`), save, then set the officer again and save. That not-ready → ready round trip
+re-fires the trigger. While an **unread** notification for the same record still exists, a
+duplicate will not be created — if the officer hasn't opened the first one yet, just ping them.
 
 ---
 
@@ -231,6 +259,16 @@ empty. If a link already exists, the cell shows the link instead — use the edi
 **A second notification wasn't created after I re-triggered it.**
 An unread notification for that record still exists. Duplicates are suppressed until the officer
 reads or acts on the first one.
+
+**"Changes requested" isn't in the Status of Submission dropdown.**
+It isn't meant to be. Only the assigned approving officer can put a report there, using
+**Request changes** on the notification, so that a comment and an alert always go with it.
+A record already sitting in that status will still show it in the dropdown — opening the edit
+panel won't silently reset it.
+
+**The Resubmit for approval button isn't showing.**
+It only appears on the record's detail page while Status of Submission is **Changes requested**.
+Reach it by clicking the SR number in the tracker, or "Open record" on the notification.
 
 **The record isn't on the Tasks board.**
 It needs an **Assignee** and a Status of Completion of On-going. Cancelled records are removed

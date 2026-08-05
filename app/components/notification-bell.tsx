@@ -9,25 +9,33 @@ import {
   FileCheck2,
   BadgeCheck,
   Eye,
+  MessageSquareWarning,
 } from "lucide-react";
 import {
   approveAnalysis,
   getMyNotifications,
   getReviewStatusLabel,
   getReviewUiState,
+  isChangeRequestNotification,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForReview,
+  requestAnalysisChanges,
   subscribeToNotifications,
   type AppNotification,
 } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/supabase";
+import { routes } from "@/lib/routes";
+import RequestChangesModal from "./request-changes-modal";
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [changesTarget, setChangesTarget] = useState<AppNotification | null>(
+    null,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,6 +117,16 @@ export function NotificationBell() {
     }
   }
 
+  async function handleRequestChanges(body: string) {
+    const target = changesTarget;
+    const analysisId = target?.payload.analysis_id;
+    if (!target || !analysisId) return;
+
+    await requestAnalysisChanges(analysisId, body);
+    // The RPC marks the officer's own alert read as part of the transaction.
+    setNotifications((prev) => prev.filter((item) => item.id !== target.id));
+  }
+
   return (
     <div className="relative flex-shrink-0" ref={dropdownRef}>
       <button
@@ -151,12 +169,16 @@ export function NotificationBell() {
             ) : (
               notifications.map((n) => {
                 const isBusy = busyId === n.id;
+                const isChangeRequest = isChangeRequestNotification(n);
                 const reviewState = getReviewUiState(n.submission_status);
+                // Only the approving officer's own alerts carry review actions.
                 const canApprove =
+                  !isChangeRequest &&
                   Boolean(n.payload.analysis_id) &&
                   (reviewState === "ready" || reviewState === "under_review");
-                const StatusIcon =
-                  reviewState === "under_review"
+                const StatusIcon = isChangeRequest
+                  ? MessageSquareWarning
+                  : reviewState === "under_review"
                     ? Eye
                     : reviewState === "approved" || reviewState === "submitted"
                       ? BadgeCheck
@@ -165,12 +187,24 @@ export function NotificationBell() {
                 return (
                   <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <StatusIcon className="w-3.5 h-3.5 text-emerald-700" />
+                      <div
+                        className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
+                          isChangeRequest ? "bg-amber-100" : "bg-emerald-100"
+                        }`}
+                      >
+                        <StatusIcon
+                          className={`w-3.5 h-3.5 ${
+                            isChangeRequest
+                              ? "text-amber-700"
+                              : "text-emerald-700"
+                          }`}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
-                          {getReviewStatusLabel(reviewState)}
+                          {isChangeRequest
+                            ? "Changes requested"
+                            : getReviewStatusLabel(reviewState)}
                         </p>
                         <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
                           {n.payload.client_name ?? "—"}
@@ -178,31 +212,63 @@ export function NotificationBell() {
                             ? ` · ${n.payload.service_report_number}`
                             : ""}
                         </p>
+                        {isChangeRequest && n.payload.comment && (
+                          <p className="mt-1.5 rounded-lg bg-amber-50 border border-amber-100 px-2 py-1.5 text-[11px] text-amber-900 font-aileron leading-relaxed line-clamp-3">
+                            {n.payload.comment}
+                          </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          {n.payload.service_report_link && (
-                            <button
-                              type="button"
-                              disabled={isBusy}
-                              onClick={() => void handleOpenReport(n)}
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] disabled:opacity-60 transition-colors font-aileron"
-                            >
-                              <ExternalLink className="w-3 h-3" /> Open Report
-                            </button>
-                          )}
-                          {canApprove ? (
-                            <button
-                              type="button"
-                              disabled={isBusy}
-                              onClick={() => void handleApprove(n)}
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
-                            >
-                              <BadgeCheck className="w-3 h-3" /> Approve
-                            </button>
+                          {isChangeRequest ? (
+                            n.payload.analysis_id && (
+                              <Link
+                                href={routes.services.detail(
+                                  n.payload.analysis_id,
+                                )}
+                                onClick={() => setIsOpen(false)}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 transition-colors font-aileron"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Open record
+                              </Link>
+                            )
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 font-aileron">
-                              <BadgeCheck className="w-3 h-3" />{" "}
-                              {getReviewStatusLabel(reviewState)}
-                            </span>
+                            <>
+                              {n.payload.service_report_link && (
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => void handleOpenReport(n)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] disabled:opacity-60 transition-colors font-aileron"
+                                >
+                                  <ExternalLink className="w-3 h-3" /> Open Report
+                                </button>
+                              )}
+                              {canApprove ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => void handleApprove(n)}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
+                                  >
+                                    <BadgeCheck className="w-3 h-3" /> Approve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => setChangesTarget(n)}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 disabled:opacity-60 transition-colors font-aileron"
+                                  >
+                                    <MessageSquareWarning className="w-3 h-3" />{" "}
+                                    Request changes
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 font-aileron">
+                                  <BadgeCheck className="w-3 h-3" />{" "}
+                                  {getReviewStatusLabel(reviewState)}
+                                </span>
+                              )}
+                            </>
                           )}
                           <button
                             type="button"
@@ -232,6 +298,19 @@ export function NotificationBell() {
           </div>
         </div>
       )}
+
+      {/* Kept inside the ref'd container so clicks in the modal don't
+          register as an outside click and collapse the dropdown behind it. */}
+      <RequestChangesModal
+        isOpen={changesTarget !== null}
+        onClose={() => setChangesTarget(null)}
+        reportLabel={
+          changesTarget?.payload.service_report_number ||
+          changesTarget?.payload.client_name ||
+          "Service report"
+        }
+        onSubmit={handleRequestChanges}
+      />
     </div>
   );
 }

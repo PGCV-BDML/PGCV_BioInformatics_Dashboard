@@ -82,6 +82,7 @@ export type TableNames =
   | "client"
   | "service"
   | "analysis"
+  | "analysis_review_comment"
   | "sample"
   | "service_report"
   | "training_program"

@@ -15,6 +15,7 @@ import {
 import AddSampleSidebar, {
   SampleFormState,
 } from "../../../components/samplemodal";
+import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import {
   getRowsFromDB,
   getNameIdFromDB,
@@ -604,6 +605,16 @@ export default function AnalysisDetailPage({
 
         {/* Deliverables Right Block */}
         <div className="space-y-6">
+          <ReviewCommentsPanel
+            analysisId={record.id}
+            statusOfSubmission={record.status_of_submission}
+            onResubmitted={() =>
+              setRecord((prev) =>
+                prev ? { ...prev, status_of_submission: "For approval" } : prev,
+              )
+            }
+          />
+
           <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
             <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
               Client & Lead Ownership

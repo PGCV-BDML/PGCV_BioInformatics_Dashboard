@@ -7,8 +7,8 @@ import {
   ANALYSIS_OPTIONS,
   ANALYSIS_OTHER,
   CLIENT_TYPE_OPTIONS,
+  MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
-  STATUS_OF_SUBMISSION_OPTIONS,
 } from "@/lib/analysis-tracker";
 
 export { ANALYSIS_OPTIONS, ANALYSIS_OTHER };
@@ -400,11 +400,21 @@ export default function AnalysisSidebar({
               className={inputClass}
             >
               <option value="">—</option>
-              {STATUS_OF_SUBMISSION_OPTIONS.map((s) => (
+              {MANUAL_STATUS_OF_SUBMISSION_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
+              {/* "Changes requested" is not manually selectable, but a record
+                  sitting in it must not be silently reset by opening this panel. */}
+              {formState.status_of_submission &&
+              !MANUAL_STATUS_OF_SUBMISSION_OPTIONS.includes(
+                formState.status_of_submission,
+              ) ? (
+                <option value={formState.status_of_submission}>
+                  {formState.status_of_submission}
+                </option>
+              ) : null}
             </select>
           </div>
         </div>

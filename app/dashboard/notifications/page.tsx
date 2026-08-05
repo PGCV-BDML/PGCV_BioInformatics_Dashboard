@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bell,
   CheckCheck,
@@ -8,21 +9,26 @@ import {
   FileCheck2,
   BadgeCheck,
   Eye,
+  MessageSquareWarning,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
+import RequestChangesModal from "../../components/request-changes-modal";
 import {
   approveAnalysis,
   getMyNotifications,
   getReviewStatusLabel,
   getReviewUiState,
+  isChangeRequestNotification,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForReview,
+  requestAnalysisChanges,
   type AppNotification,
   type ReviewUiState,
 } from "@/lib/notifications";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
+import { routes } from "@/lib/routes";
 
 type FilterMode = "unread" | "all";
 
@@ -40,6 +46,8 @@ function reviewBadgeClasses(state: ReviewUiState): string {
       return "bg-purple-100 text-purple-800";
     case "under_review":
       return "bg-amber-100 text-amber-900";
+    case "changes_requested":
+      return "bg-amber-100 text-amber-900";
     default:
       return "bg-emerald-100 text-emerald-700";
   }
@@ -52,6 +60,8 @@ function reviewIcon(state: ReviewUiState) {
       return BadgeCheck;
     case "under_review":
       return Eye;
+    case "changes_requested":
+      return MessageSquareWarning;
     default:
       return FileCheck2;
   }
@@ -64,6 +74,10 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<FilterMode>("unread");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [changesTarget, setChangesTarget] = useState<AppNotification | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -199,6 +213,32 @@ export default function NotificationsPage() {
     }
   }
 
+  async function handleRequestChanges(body: string) {
+    const target = changesTarget;
+    const analysisId = target?.payload.analysis_id;
+    if (!target || !analysisId) return;
+
+    setActionError(null);
+    setActionNotice(null);
+    const { notifiedAssignee } = await requestAnalysisChanges(
+      analysisId,
+      body,
+    );
+
+    // The RPC marks the officer's own alert read inside the same transaction.
+    patchLocal(
+      target.id,
+      { is_read: true, submission_status: "Changes requested" },
+      { removeIfUnreadFilter: true },
+    );
+
+    setActionNotice(
+      notifiedAssignee
+        ? "Sent back to the assignee."
+        : "Comment saved, but this record has no assignee to notify.",
+    );
+  }
+
   return (
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
       <PageHeader
@@ -251,6 +291,12 @@ export default function NotificationsPage() {
         </p>
       )}
 
+      {actionNotice && (
+        <p className="text-sm text-amber-800 font-aileron" role="status">
+          {actionNotice}
+        </p>
+      )}
+
       {loadError ? (
         <ErrorState message={loadError} />
       ) : isLoading ? (
@@ -265,21 +311,32 @@ export default function NotificationsPage() {
         <div className="grid grid-cols-1 gap-4">
           {notifications.map((notification) => {
             const isBusy = busyId === notification.id;
-            const reviewState = getReviewUiState(notification.submission_status);
+            const isChangeRequest = isChangeRequestNotification(notification);
+            const reviewState = isChangeRequest
+              ? "changes_requested"
+              : getReviewUiState(notification.submission_status);
             const StatusIcon = reviewIcon(reviewState);
+            // A change request is the analyst's to act on — never show the
+            // officer's review controls on it.
             const canApprove =
+              !isChangeRequest &&
               Boolean(notification.payload.analysis_id) &&
               (reviewState === "ready" || reviewState === "under_review");
+            const isAmber =
+              reviewState === "under_review" ||
+              reviewState === "changes_requested";
 
             return (
               <div
                 key={notification.id}
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                  reviewState === "approved" || reviewState === "submitted"
-                    ? "border-emerald-200 bg-emerald-50/40"
-                    : notification.is_read
-                      ? "border-slate-200 bg-slate-50/70"
-                      : "border-emerald-200 bg-white"
+                  isChangeRequest
+                    ? "border-amber-200 bg-amber-50/40"
+                    : reviewState === "approved" || reviewState === "submitted"
+                      ? "border-emerald-200 bg-emerald-50/40"
+                      : notification.is_read
+                        ? "border-slate-200 bg-slate-50/70"
+                        : "border-emerald-200 bg-white"
                 }`}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -288,16 +345,14 @@ export default function NotificationsPage() {
                       className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
                         reviewState === "approved" || reviewState === "submitted"
                           ? "bg-emerald-200/70"
-                          : reviewState === "under_review"
+                          : isAmber
                             ? "bg-amber-100"
                             : "bg-emerald-100"
                       }`}
                     >
                       <StatusIcon
                         className={`h-4 w-4 ${
-                          reviewState === "under_review"
-                            ? "text-amber-800"
-                            : "text-emerald-700"
+                          isAmber ? "text-amber-800" : "text-emerald-700"
                         }`}
                       />
                     </div>
@@ -315,6 +370,18 @@ export default function NotificationsPage() {
                           ? `Service report ${notification.payload.service_report_number}`
                           : "Service report link available"}
                       </p>
+                      {isChangeRequest && notification.payload.comment && (
+                        <blockquote className="mt-3 rounded-xl border border-amber-200 bg-white/70 px-3 py-2.5">
+                          <p className="text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">
+                            {notification.payload.comment}
+                          </p>
+                          {notification.payload.comment_author && (
+                            <footer className="mt-1.5 text-[11px] font-bold text-amber-700">
+                              — {notification.payload.comment_author}
+                            </footer>
+                          )}
+                        </blockquote>
+                      )}
                       <p className="mt-2 text-xs text-slate-400">
                         Notified {formatTimestamp(notification.created_at)}
                       </p>
@@ -322,32 +389,59 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {notification.payload.service_report_link && (
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => void handleOpenReport(notification)}
-                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Open Report
-                      </button>
-                    )}
-                    {canApprove ? (
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => void handleApprove(notification)}
-                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
-                      >
-                        <BadgeCheck className="w-3.5 h-3.5" />
-                        Approve
-                      </button>
+                    {isChangeRequest ? (
+                      notification.payload.analysis_id && (
+                        <Link
+                          href={routes.services.detail(
+                            notification.payload.analysis_id,
+                          )}
+                          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open record
+                        </Link>
+                      )
                     ) : (
-                      <span className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full whitespace-nowrap">
-                        <BadgeCheck className="w-3.5 h-3.5" />
-                        {getReviewStatusLabel(reviewState)}
-                      </span>
+                      <>
+                        {notification.payload.service_report_link && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleOpenReport(notification)}
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open Report
+                          </button>
+                        )}
+                        {canApprove ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleApprove(notification)}
+                              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                            >
+                              <BadgeCheck className="w-3.5 h-3.5" />
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => setChangesTarget(notification)}
+                              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-60 text-amber-800 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+                            >
+                              <MessageSquareWarning className="w-3.5 h-3.5" />
+                              Request changes
+                            </button>
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full whitespace-nowrap">
+                            <BadgeCheck className="w-3.5 h-3.5" />
+                            {getReviewStatusLabel(reviewState)}
+                          </span>
+                        )}
+                      </>
                     )}
                     {!notification.is_read && (
                       <button
@@ -367,6 +461,17 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      <RequestChangesModal
+        isOpen={changesTarget !== null}
+        onClose={() => setChangesTarget(null)}
+        reportLabel={
+          changesTarget?.payload.service_report_number ||
+          changesTarget?.payload.client_name ||
+          "Service report"
+        }
+        onSubmit={handleRequestChanges}
+      />
     </div>
   );
 }

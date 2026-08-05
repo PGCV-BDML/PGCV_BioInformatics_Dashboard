@@ -147,6 +147,8 @@ export interface Analysis {
   service_report_link: string | null;
   client_sequences_link: string | null;
   notes: string | null;
+  /** Team lead who signs off on the service report. */
+  approver_user_id: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -169,6 +171,17 @@ export interface ServiceReport {
   client_acknowledged_at: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+/** A change request left by the approving officer during report review. */
+export interface AnalysisReviewComment {
+  id: string;
+  analysis_id: string;
+  author_id: string;
+  body: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  created_at: string;
 }
 
 // ============================================================

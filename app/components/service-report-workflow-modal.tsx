@@ -41,10 +41,16 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
       "Open the edit panel and pick the officer under Personnel. Saving this sends the notification. Only team leads appear in the list.",
   },
   {
-    title: "Review and approve",
+    title: "Review, approve or send back",
     actor: "Approving officer",
     detail:
-      "The officer opens the bell icon or the Notifications page. Open Report sets the record to Under review; Approve sets it to Approved and stamps a note on the record.",
+      "The officer opens the bell icon or the Notifications page. Open Report sets the record to Under review. Approve sets it to Approved; Request changes asks for a comment and sends the report back to the assignee instead.",
+  },
+  {
+    title: "Address the comments",
+    actor: "Analyst",
+    detail:
+      "A change request lands in the assignee's bell and on the record's detail page. Fix what was raised, then click Resubmit for approval — that puts it back in the officer's queue automatically.",
   },
   {
     title: "Submit and close out",

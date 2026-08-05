@@ -56,14 +56,33 @@ export const STATUS_OF_COMPLETION_OPTIONS = [
   "Cancelled",
 ] as const;
 
+export const CHANGES_REQUESTED = "Changes requested" as const;
+
 export const STATUS_OF_SUBMISSION_OPTIONS = [
   "For approval",
   "Under review",
+  CHANGES_REQUESTED,
   "Approved",
   "Submitted",
 ] as const;
 
-/** Rank used so review actions never move a report backwards. */
+/**
+ * What a user may pick by hand. "Changes requested" is omitted deliberately:
+ * it is only ever reached through `request_analysis_changes`, which also
+ * records the comment and notifies the assignee. Choosing it from a dropdown
+ * would leave the report blocked with nothing explaining why.
+ */
+export const MANUAL_STATUS_OF_SUBMISSION_OPTIONS: readonly string[] =
+  STATUS_OF_SUBMISSION_OPTIONS.filter((s) => s !== CHANGES_REQUESTED);
+
+/**
+ * Rank used so review actions never move a report backwards.
+ *
+ * "Changes requested" sits at 0, outside the ladder, because it is the one
+ * transition that legitimately goes backwards — it hands the report back to the
+ * analyst. It is set explicitly by `request_analysis_changes`, never by an
+ * auto-advance, and resubmitting to "For approval" climbs the ladder normally.
+ */
 export function submissionStatusRank(label: string | null | undefined): number {
   const t = String(label ?? "")
     .trim()
@@ -73,6 +92,15 @@ export function submissionStatusRank(label: string | null | undefined): number {
   if (t === "under review" || t === "under_review") return 2;
   if (t === "for approval" || t === "for_approval") return 1;
   return 0;
+}
+
+export function isChangesRequestedLabel(
+  label: string | null | undefined,
+): boolean {
+  const t = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  return t === "changes requested" || t === "changes_requested";
 }
 
 export function shouldAdvanceSubmissionStatus(
@@ -107,6 +135,8 @@ export function mapLabelToAnalysisStatus(
   if (t === "approved") return "submitted";
   if (t === "under review" || t === "under_review") return "for_approval";
   if (t === "for approval" || t === "for_approval") return "for_approval";
+  if (t === "changes requested" || t === "changes_requested")
+    return "for_approval";
   if (t.includes("on hold") || t === "on_hold") return "on_hold";
   return null;
 }
