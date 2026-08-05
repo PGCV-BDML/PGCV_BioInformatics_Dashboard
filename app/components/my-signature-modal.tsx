@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PenLine, Trash2, X } from "lucide-react";
 import {
   getMySignaturePath,
@@ -157,9 +158,11 @@ export default function MySignatureModal({
     }
   }
 
-  return (
+  // Portal out of the sidebar: the aside uses overflow-hidden + transform,
+  // which would clip a fixed overlay rendered as a child.
+  return createPortal(
     <div
-      className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+      className="fixed inset-0 w-screen h-screen z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
       onClick={() => {
         if (!isSaving) onClose();
       }}
@@ -289,6 +292,7 @@ export default function MySignatureModal({
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
