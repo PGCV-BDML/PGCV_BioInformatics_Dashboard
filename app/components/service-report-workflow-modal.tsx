@@ -44,7 +44,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Peer review",
     actor: "Reviewing officer",
     detail:
-      "From the bell or Notifications page, Open Report marks it In review. Complete review signs it off; Request revision sends it back to the assignee with comments.",
+      "From the bell or Notifications page, Open Report marks it In review. Complete review stamps your e-signature under Reviewed by and signs the report off; Request revision sends it back to the assignee with comments. Upload your signature first under the profile menu → My signature.",
   },
   {
     title: "Assign the Approving Officer",
@@ -56,7 +56,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Approve or request changes",
     actor: "Approving officer",
     detail:
-      "Open Report sets Status of Submission to Under review. Approve finishes sign-off; Request changes sends comments back to the assignee.",
+      "Open Report sets Status of Submission to Under review. Approve stamps your e-signature under Approved for Release; Request changes sends comments back to the assignee.",
   },
   {
     title: "Address comments and resubmit",

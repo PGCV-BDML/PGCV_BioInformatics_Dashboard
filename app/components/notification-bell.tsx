@@ -32,9 +32,11 @@ import {
   type NotificationKind,
 } from "@/lib/notifications";
 import { resolveReportUrl } from "@/lib/service-report-file";
+import { isMissingSignatureError } from "@/lib/user-signature";
 import { getCurrentUser } from "@/lib/supabase";
 import { routes } from "@/lib/routes";
 import RequestChangesModal from "./request-changes-modal";
+import MySignatureModal from "./my-signature-modal";
 
 function kindTitle(kind: NotificationKind, n: AppNotification): string {
   switch (kind) {
@@ -57,6 +59,10 @@ export function NotificationBell() {
   const [sendBackTarget, setSendBackTarget] = useState<AppNotification | null>(
     null,
   );
+  const [signaturePrompt, setSignaturePrompt] = useState<{
+    analysisId: string;
+    action: "review" | "approve";
+  } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,6 +159,9 @@ export function NotificationBell() {
       setNotifications((prev) => prev.filter((item) => item.id !== n.id));
     } catch (error) {
       console.error(error);
+      if (isMissingSignatureError(error)) {
+        setSignaturePrompt({ analysisId, action: "review" });
+      }
     } finally {
       setBusyId(null);
     }
@@ -168,8 +177,26 @@ export function NotificationBell() {
       setNotifications((prev) => prev.filter((item) => item.id !== n.id));
     } catch (error) {
       console.error(error);
+      if (isMissingSignatureError(error)) {
+        setSignaturePrompt({ analysisId, action: "approve" });
+      }
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function retryAfterSignatureUpload() {
+    const prompt = signaturePrompt;
+    if (!prompt) return;
+    setSignaturePrompt(null);
+    const n = notifications.find(
+      (item) => item.payload.analysis_id === prompt.analysisId,
+    );
+    if (!n) return;
+    if (prompt.action === "review") {
+      await handleCompleteReview(n);
+    } else {
+      await handleApprove(n);
     }
   }
 
@@ -398,6 +425,15 @@ export function NotificationBell() {
           "Service report"
         }
         onSubmit={handleSendBack}
+      />
+
+      <MySignatureModal
+        isOpen={signaturePrompt !== null}
+        onClose={() => setSignaturePrompt(null)}
+        requiredForAction
+        onUploaded={() => {
+          void retryAfterSignatureUpload();
+        }}
       />
     </div>
   );

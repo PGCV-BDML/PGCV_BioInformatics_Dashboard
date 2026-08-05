@@ -378,6 +378,13 @@ export async function completeAnalysisReview(
 ): Promise<CompleteReviewResult> {
   const trimmed = body?.trim() ?? "";
 
+  // Stamp before flipping status so a Reviewed report always carries the
+  // reviewing officer's e-sig when a PDF is on file.
+  const { stampServiceReportSignature } = await import(
+    "@/lib/service-report-signature"
+  );
+  await stampServiceReportSignature(analysisId, "reviewed_by");
+
   const { data, error } = await supabase.rpc("complete_analysis_review", {
     p_analysis_id: analysisId,
     p_body: trimmed || null,
@@ -530,6 +537,10 @@ export async function markAnalysisUnderReview(
 
 /** Set submission status to Approved + append a system note (no backwards move). */
 export async function approveAnalysis(analysisId: string): Promise<void> {
+  const { stampServiceReportSignature } = await import(
+    "@/lib/service-report-signature"
+  );
+  await stampServiceReportSignature(analysisId, "approved_by");
   await applyApprovalAction(analysisId, "Approved");
 }
 

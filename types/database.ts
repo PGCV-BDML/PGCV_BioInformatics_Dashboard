@@ -399,6 +399,9 @@ export interface User {
   institution: string | null;
   avatar_url: string | null;
   designation: string | null;
+  /** Object key in user-signatures bucket for this user's e-signature PNG. */
+  signature_path: string | null;
+  signature_uploaded_at: string | null;
   /** Bioinformatics Team page + calendar absences roster. */
   in_team_directory: boolean;
 }

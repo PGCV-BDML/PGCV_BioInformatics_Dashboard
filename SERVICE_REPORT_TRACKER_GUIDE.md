@@ -178,6 +178,19 @@ Assignee response to changes: fix, then **Resubmit for approval** on the detail 
 
 ---
 
+## Electronic signatures
+
+Reviewing and approving officers must upload a PNG of their handwritten signature
+before they can complete review or approve a report.
+
+- **Where:** sidebar profile menu → **My signature** (any logged-in staff user)
+- **On Complete review:** the reviewer’s signature is stamped under **Reviewed by**
+- **On Approve:** the approving officer’s signature is stamped under **Approved for Release**
+- Printed names on the PDF are not changed — only the signature image is added
+- If no signature is on file, the action is blocked and an upload prompt appears
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -185,5 +198,7 @@ Assignee response to changes: fix, then **Resubmit for approval** on the detail 
 | Reviewer never notified | Record not Completed, no PDF/link, or no Reviewing Officer |
 | Approving officer never notified | Status of Review is not Reviewed yet |
 | Can't pick someone as reviewer | They are the assignee, or they are already the approving officer |
+| Can't complete review / approve | No e-signature uploaded yet (profile menu → My signature) |
+| Signature looks misplaced | Template margins differ — adjust `SIGNATURE_SLOTS` in `lib/service-report-signature.ts` |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |

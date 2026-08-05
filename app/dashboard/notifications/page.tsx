@@ -38,8 +38,10 @@ import {
   type NotificationKind,
 } from "@/lib/notifications";
 import { resolveReportUrl } from "@/lib/service-report-file";
+import { isMissingSignatureError } from "@/lib/user-signature";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
+import MySignatureModal from "../../components/my-signature-modal";
 
 type FilterMode = "unread" | "all";
 
@@ -99,6 +101,10 @@ export default function NotificationsPage() {
   const [sendBackTarget, setSendBackTarget] = useState<AppNotification | null>(
     null,
   );
+  const [signaturePrompt, setSignaturePrompt] = useState<{
+    analysisId: string;
+    action: "review" | "approve";
+  } | null>(null);
   const [isClearPromptOpen, setIsClearPromptOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -281,12 +287,21 @@ export default function NotificationsPage() {
       );
       setActionNotice(
         result.approverAssigned
-          ? "Review complete. The approving officer has been notified."
-          : "Review complete. Assign an approving officer to continue.",
+          ? "Review complete. Signature applied and the approving officer has been notified."
+          : "Review complete. Signature applied. Assign an approving officer to continue.",
       );
     } catch (error) {
       console.error(error);
-      setActionError("Couldn't complete this review.");
+      if (isMissingSignatureError(error)) {
+        setSignaturePrompt({ analysisId, action: "review" });
+        setActionError("Upload your electronic signature to complete this review.");
+      } else {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Couldn't complete this review.",
+        );
+      }
     } finally {
       setBusyId(null);
     }
@@ -312,11 +327,37 @@ export default function NotificationsPage() {
         },
         { removeIfUnreadFilter: true },
       );
+      setActionNotice("Approved. Your signature was applied to the PDF.");
     } catch (error) {
       console.error(error);
-      setActionError("Couldn't approve this report.");
+      if (isMissingSignatureError(error)) {
+        setSignaturePrompt({ analysisId, action: "approve" });
+        setActionError("Upload your electronic signature to approve this report.");
+      } else {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Couldn't approve this report.",
+        );
+      }
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function retryAfterSignatureUpload() {
+    const prompt = signaturePrompt;
+    if (!prompt) return;
+    setSignaturePrompt(null);
+    setActionError(null);
+    const notification = notifications.find(
+      (item) => item.payload.analysis_id === prompt.analysisId,
+    );
+    if (!notification) return;
+    if (prompt.action === "review") {
+      await handleCompleteReview(notification);
+    } else {
+      await handleApprove(notification);
     }
   }
 
@@ -649,6 +690,15 @@ export default function NotificationsPage() {
           "Service report"
         }
         onSubmit={handleSendBack}
+      />
+
+      <MySignatureModal
+        isOpen={signaturePrompt !== null}
+        onClose={() => setSignaturePrompt(null)}
+        requiredForAction
+        onUploaded={() => {
+          void retryAfterSignatureUpload();
+        }}
       />
     </div>
   );

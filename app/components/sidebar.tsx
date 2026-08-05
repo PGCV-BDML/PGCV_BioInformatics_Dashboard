@@ -25,9 +25,11 @@ import {
   LayoutDashboard,
   ClipboardList,
   PanelLeftClose,
+  PenLine,
   Eye,
   Bell,
 } from "lucide-react";
+import MySignatureModal from "./my-signature-modal";
 
 type NavChild = {
   name: string;
@@ -161,6 +163,7 @@ export default function Sidebar({
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
   const { effectiveRole, isStaff, previewMode, setPreviewMode } = usePortal();
   const [showProfileCard, setShowProfileCard] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(
     {},
   );
@@ -407,6 +410,17 @@ export default function Sidebar({
                 : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             }`}
           >
+            <button
+              type="button"
+              onClick={() => {
+                setShowProfileCard(false);
+                setShowSignatureModal(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#1e293b] hover:bg-[#f5f5f4] rounded-xl font-bold text-[13px] font-aileron transition-colors"
+            >
+              <PenLine className="w-4 h-4 text-[#64748b] stroke-[2.5]" />
+              <span>My signature</span>
+            </button>
             {isStaff && (
               <>
                 <button
@@ -515,6 +529,11 @@ export default function Sidebar({
           </button>
         </div>
       </div>
+
+      <MySignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+      />
     </aside>
   );
 }
