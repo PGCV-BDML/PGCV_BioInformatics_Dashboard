@@ -10,12 +10,16 @@ import {
   BadgeCheck,
   Eye,
   MessageSquareWarning,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
 import RequestChangesModal from "../../components/request-changes-modal";
+import ConfirmModal from "../../components/confirm-modal";
 import {
   approveAnalysis,
+  deleteNotification,
+  deleteReadNotifications,
   getMyNotifications,
   getReviewStatusLabel,
   getReviewUiState,
@@ -78,6 +82,8 @@ export default function NotificationsPage() {
   const [changesTarget, setChangesTarget] = useState<AppNotification | null>(
     null,
   );
+  const [isClearPromptOpen, setIsClearPromptOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +112,11 @@ export default function NotificationsPage() {
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.is_read).length,
+    [notifications],
+  );
+
+  const readCount = useMemo(
+    () => notifications.filter((item) => item.is_read).length,
     [notifications],
   );
 
@@ -144,6 +155,42 @@ export default function NotificationsPage() {
       setActionError("Couldn't mark notification as read.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setActionError(null);
+    setActionNotice(null);
+    setBusyId(id);
+    try {
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't delete this notification.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleClearRead() {
+    setActionError(null);
+    setActionNotice(null);
+    setIsClearing(true);
+    try {
+      const removed = await deleteReadNotifications();
+      setNotifications((prev) => prev.filter((item) => !item.is_read));
+      setIsClearPromptOpen(false);
+      setActionNotice(
+        removed === 1
+          ? "Deleted 1 read notification."
+          : `Deleted ${removed} read notifications.`,
+      );
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't clear read notifications.");
+    } finally {
+      setIsClearing(false);
     }
   }
 
@@ -281,6 +328,18 @@ export default function NotificationsPage() {
               <CheckCheck className="w-3.5 h-3.5" />
               Mark all read
             </button>
+
+            {filter === "all" && (
+              <button
+                type="button"
+                onClick={() => setIsClearPromptOpen(true)}
+                disabled={readCount === 0}
+                className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-700 disabled:hover:border-slate-200 text-slate-700 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear read
+              </button>
+            )}
           </>
         }
       />
@@ -443,7 +502,20 @@ export default function NotificationsPage() {
                         )}
                       </>
                     )}
-                    {!notification.is_read && (
+                    {notification.is_read ? (
+                      // Deleting is gated on is_read by RLS as well as here, so
+                      // an approval request can't vanish before anyone sees it.
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void handleDelete(notification.id)}
+                        aria-label="Delete this notification"
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 disabled:opacity-60 text-slate-600 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    ) : (
                       <button
                         type="button"
                         disabled={isBusy}
@@ -461,6 +533,20 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isClearPromptOpen}
+        title="Clear read notifications"
+        message={
+          readCount === 1
+            ? "This deletes 1 read notification. The service reports themselves are untouched."
+            : `This deletes ${readCount} read notifications. The service reports themselves are untouched.`
+        }
+        confirmLabel="Delete them"
+        isConfirming={isClearing}
+        onClose={() => setIsClearPromptOpen(false)}
+        onConfirm={() => void handleClearRead()}
+      />
 
       <RequestChangesModal
         isOpen={changesTarget !== null}

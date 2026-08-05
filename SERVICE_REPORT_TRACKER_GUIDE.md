@@ -178,6 +178,10 @@ The officer works from either the **bell icon** in the top bar or the full
 5. **Or click "Request changes"** if the report isn't ready. See section 4.4.
 6. If the officer wants to set it aside without acting, **Mark read** (or **Dismiss** in the bell
    dropdown) hides the notification without changing any status.
+7. To tidy up afterwards, switch the Notifications page to the **All** filter. Every read
+   notification gets a **Delete** button, and **Clear read** in the header removes them in one
+   go. Unread notifications cannot be deleted — the database rejects it — so nothing can be
+   thrown away before it has been seen. Deleting a notification never touches the service report.
 
 Two safeguards worth knowing:
 

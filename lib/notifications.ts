@@ -159,6 +159,35 @@ export async function markAllNotificationsRead(): Promise<void> {
 }
 
 /**
+ * Permanently remove a notification. RLS only permits this once the row is
+ * read, so an approval request can't be discarded before it has been seen.
+ */
+export async function deleteNotification(id: string): Promise<void> {
+  const { error } = await supabase.from("notifications").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete notification:", error);
+    throw error;
+  }
+}
+
+/** Clear every read notification for the current user. Returns how many went. */
+export async function deleteReadNotifications(): Promise<number> {
+  const { data, error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("is_read", true)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to clear read notifications:", error);
+    throw error;
+  }
+
+  return (data ?? []).length;
+}
+
+/**
  * Subscribe to real-time inserts into the notifications table for the current user.
  * Returns an unsubscribe function — call it on component unmount.
  */
