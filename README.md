@@ -219,6 +219,7 @@ PGCV_BioInformatics_Dashboard/
 
 ## Documentation
 
+- **Service Report Tracker how-to:** [`SERVICE_REPORT_TRACKER_GUIDE.md`](./SERVICE_REPORT_TRACKER_GUIDE.md) — end-user walkthrough for recording an analysis, attaching the report link, and getting sign-off from the approving officer.
 - **Architecture overview:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system diagram, auth flow, data model, RLS summary, deployment architecture.
 - **Security + privacy:** [`SECURITY.md`](./SECURITY.md) — RLS policies, audit logging, RA 10173 compliance, known issues.
 - **Intern / team handoff workbook:** [`WORKBOOK.md`](./WORKBOOK.md) — team contacts, full data model, sprint plan, training/internship question banks, service catalog, gap tracker. Built from the "Bioinformatics Activity Sheets" Google Doc.
