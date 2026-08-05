@@ -48,7 +48,7 @@ export function DashboardFooter() {
 
   return (
     <footer className="mt-auto shrink-0 border-t border-[rgba(23,33,38,0.06)] bg-[#F6F4EE] px-4 md:px-8 py-4 md:py-5">
-      <div className="max-w-[1240px] mx-auto space-y-2 font-quicksand">
+      <div className="max-w-[1240px] mx-auto space-y-2 font-quicksand text-center">
         <p className="text-[11px] leading-5 text-[#65706f]">
           © {year} {LAB_SHORT} · University of the Philippines
           <span className="hidden sm:inline">
@@ -61,7 +61,7 @@ export function DashboardFooter() {
         </p>
         <nav
           aria-label="Footer links"
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium"
+          className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-medium"
         >
           <FooterLink href={SITE_LINKS.labWebsite.href} external>
             {SITE_LINKS.labWebsite.label}
