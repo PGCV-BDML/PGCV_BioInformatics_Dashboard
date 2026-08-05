@@ -31,22 +31,25 @@ type SlotPlacement = {
 };
 
 /**
- * Approximate layout for the sample signatory page:
- * Reviewed by sits mid-page; Approved for Release sits lower.
- * Left-aligned with the printed name block (~1" margin).
+ * Calibrated against the standard PGCV service-report signatory page
+ * (Prepared by / Reviewed by / Approved for Release on the last page).
+ *
+ * Each stamp sits in the blank band between the role label and the
+ * printed name — the same spot the analyst's Prepared-by signature uses.
+ * pdf-lib y is the bottom edge of the image (origin = page bottom-left).
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   reviewed_by: {
     x: 72,
-    y: 368,
-    maxWidth: 170,
-    maxHeight: 48,
+    y: 498,
+    maxWidth: 160,
+    maxHeight: 44,
   },
   approved_by: {
     x: 72,
-    y: 188,
-    maxWidth: 170,
-    maxHeight: 48,
+    y: 298,
+    maxWidth: 160,
+    maxHeight: 44,
   },
 };
 
