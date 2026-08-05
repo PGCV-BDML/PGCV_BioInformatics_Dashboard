@@ -51,6 +51,7 @@ import AnalysisSidebar, {
   type ApproverOption,
 } from "../../../components/analysismodal";
 import ServiceReportModal from "../../../components/service-report-modal";
+import { ServiceReportWorkflowInfoButton } from "../../../components/service-report-workflow-modal";
 import { PageHeader } from "../../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../../components/state-views";
 import { useTableState } from "@/hooks/useTableState";
@@ -1224,6 +1225,7 @@ export default function ServiceReportTrackerPage() {
           <div className="flex items-center gap-2">
             <Dna className="w-5 h-5 text-[#333333]" />
             <h2 className="text-2xl font-bold text-[#333333]">Service Report Tracker</h2>
+            <ServiceReportWorkflowInfoButton />
           </div>
 
           <div
