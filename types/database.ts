@@ -143,10 +143,21 @@ export interface Analysis {
   sample_type: string | null;
   run_id: string | null;
   status_of_completion: string | null;
+  /** Peer review stage, ahead of submission. See STATUS_OF_REVIEW_OPTIONS. */
+  status_of_review: string | null;
   status_of_submission: string | null;
+  /** Kept for records that predate PDF uploads, and for externally hosted reports. */
   service_report_link: string | null;
+  /** Object key in the private `service-reports` storage bucket. */
+  service_report_file_path: string | null;
+  service_report_file_name: string | null;
+  service_report_file_size: number | null;
+  service_report_uploaded_at: string | null;
+  service_report_uploaded_by: string | null;
   client_sequences_link: string | null;
   notes: string | null;
+  /** Lab peer who reviews the report before it reaches the approving officer. */
+  reviewer_user_id: string | null;
   /** Team lead who signs off on the service report. */
   approver_user_id: string | null;
   created_at?: string;
@@ -173,12 +184,16 @@ export interface ServiceReport {
   updated_at?: string;
 }
 
-/** A change request left by the approving officer during report review. */
+/** Which pass of the workflow a comment belongs to. */
+export type ReviewCommentStage = "review" | "approval";
+
+/** A comment left while a service report was being reviewed or approved. */
 export interface AnalysisReviewComment {
   id: string;
   analysis_id: string;
   author_id: string;
   body: string;
+  stage: ReviewCommentStage;
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;

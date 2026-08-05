@@ -18,19 +18,26 @@ import RequestChangesModal from "../../components/request-changes-modal";
 import ConfirmModal from "../../components/confirm-modal";
 import {
   approveAnalysis,
+  completeAnalysisReview,
   deleteNotification,
   deleteReadNotifications,
+  getApprovalStatusLabel,
+  getApprovalUiState,
   getMyNotifications,
-  getReviewStatusLabel,
-  getReviewUiState,
-  isChangeRequestNotification,
+  getNotificationKind,
+  getReviewStageLabel,
+  getReviewStageUiState,
+  isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
+  openReportForApproval,
   openReportForReview,
   requestAnalysisChanges,
+  requestAnalysisRevision,
   type AppNotification,
-  type ReviewUiState,
+  type NotificationKind,
 } from "@/lib/notifications";
+import { resolveReportUrl } from "@/lib/service-report-file";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
 
@@ -42,33 +49,43 @@ function formatTimestamp(value: string): string {
   return date.toLocaleString();
 }
 
-function reviewBadgeClasses(state: ReviewUiState): string {
-  switch (state) {
-    case "approved":
-      return "bg-emerald-100 text-emerald-800";
-    case "submitted":
-      return "bg-purple-100 text-purple-800";
-    case "under_review":
-      return "bg-amber-100 text-amber-900";
-    case "changes_requested":
-      return "bg-amber-100 text-amber-900";
-    default:
-      return "bg-emerald-100 text-emerald-700";
+function kindTitle(kind: NotificationKind, n: AppNotification): string {
+  switch (kind) {
+    case "revision_request":
+      return "Revision requested";
+    case "change_request":
+      return "Changes requested";
+    case "review_request":
+      return getReviewStageLabel(getReviewStageUiState(n.review_status));
+    case "approval_request":
+      return getApprovalStatusLabel(getApprovalUiState(n.submission_status));
   }
 }
 
-function reviewIcon(state: ReviewUiState) {
-  switch (state) {
-    case "approved":
-    case "submitted":
-      return BadgeCheck;
-    case "under_review":
-      return Eye;
-    case "changes_requested":
-      return MessageSquareWarning;
-    default:
-      return FileCheck2;
+function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
+  if (isSentBackNotification(n)) return "bg-amber-100 text-amber-900";
+  if (kind === "review_request") {
+    const state = getReviewStageUiState(n.review_status);
+    if (state === "reviewed") return "bg-teal-100 text-teal-800";
+    if (state === "in_review") return "bg-indigo-100 text-indigo-900";
+    return "bg-sky-100 text-sky-800";
   }
+  const state = getApprovalUiState(n.submission_status);
+  if (state === "approved") return "bg-emerald-100 text-emerald-800";
+  if (state === "submitted") return "bg-purple-100 text-purple-800";
+  if (state === "under_review") return "bg-amber-100 text-amber-900";
+  return "bg-emerald-100 text-emerald-700";
+}
+
+function kindIcon(kind: NotificationKind, n: AppNotification) {
+  if (isSentBackNotification(n)) return MessageSquareWarning;
+  if (kind === "review_request") {
+    return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
+  }
+  const state = getApprovalUiState(n.submission_status);
+  if (state === "approved" || state === "submitted") return BadgeCheck;
+  if (state === "under_review") return Eye;
+  return FileCheck2;
 }
 
 export default function NotificationsPage() {
@@ -79,7 +96,7 @@ export default function NotificationsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [changesTarget, setChangesTarget] = useState<AppNotification | null>(
+  const [sendBackTarget, setSendBackTarget] = useState<AppNotification | null>(
     null,
   );
   const [isClearPromptOpen, setIsClearPromptOpen] = useState(false);
@@ -119,6 +136,10 @@ export default function NotificationsPage() {
     () => notifications.filter((item) => item.is_read).length,
     [notifications],
   );
+
+  const sendBackKind = sendBackTarget
+    ? getNotificationKind(sendBackTarget)
+    : null;
 
   function dismissLocally(id: string) {
     if (filter === "unread") {
@@ -212,21 +233,60 @@ export default function NotificationsPage() {
   }
 
   async function handleOpenReport(notification: AppNotification) {
-    const link = notification.payload.service_report_link?.trim();
-    if (!link) return;
+    const kind = getNotificationKind(notification);
+    setActionError(null);
+    setBusyId(notification.id);
+    try {
+      if (kind === "review_request") {
+        await openReportForReview(notification);
+        patchLocal(notification.id, { review_status: "In review" });
+      } else if (kind === "approval_request") {
+        await openReportForApproval(notification);
+        patchLocal(notification.id, { submission_status: "Under review" });
+      }
+
+      const url = await resolveReportUrl(
+        notification.payload.service_report_file_path,
+        notification.payload.service_report_link,
+      );
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        setActionError("Couldn't open the report file.");
+      }
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't open this report.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleCompleteReview(notification: AppNotification) {
+    const analysisId = notification.payload.analysis_id;
+    if (!analysisId) {
+      setActionError("Missing analysis reference for this notification.");
+      return;
+    }
 
     setActionError(null);
     setBusyId(notification.id);
     try {
-      await openReportForReview(notification);
-      patchLocal(notification.id, {
-        submission_status: "Under review",
-      });
-      window.open(link, "_blank", "noopener,noreferrer");
+      const result = await completeAnalysisReview(analysisId);
+      await markNotificationRead(notification.id);
+      patchLocal(
+        notification.id,
+        { is_read: true, review_status: "Reviewed" },
+        { removeIfUnreadFilter: true },
+      );
+      setActionNotice(
+        result.approverAssigned
+          ? "Review complete. The approving officer has been notified."
+          : "Review complete. Assign an approving officer to continue.",
+      );
     } catch (error) {
       console.error(error);
-      setActionError("Couldn't mark report as under review.");
-      window.open(link, "_blank", "noopener,noreferrer");
+      setActionError("Couldn't complete this review.");
     } finally {
       setBusyId(null);
     }
@@ -260,22 +320,27 @@ export default function NotificationsPage() {
     }
   }
 
-  async function handleRequestChanges(body: string) {
-    const target = changesTarget;
+  async function handleSendBack(body: string) {
+    const target = sendBackTarget;
     const analysisId = target?.payload.analysis_id;
     if (!target || !analysisId) return;
 
     setActionError(null);
     setActionNotice(null);
-    const { notifiedAssignee } = await requestAnalysisChanges(
-      analysisId,
-      body,
-    );
+    const kind = getNotificationKind(target);
+    const { notifiedAssignee } =
+      kind === "review_request"
+        ? await requestAnalysisRevision(analysisId, body)
+        : await requestAnalysisChanges(analysisId, body);
 
-    // The RPC marks the officer's own alert read inside the same transaction.
     patchLocal(
       target.id,
-      { is_read: true, submission_status: "Changes requested" },
+      {
+        is_read: true,
+        ...(kind === "review_request"
+          ? { review_status: "Revision requested" }
+          : { submission_status: "Changes requested" }),
+      },
       { removeIfUnreadFilter: true },
     );
 
@@ -291,7 +356,7 @@ export default function NotificationsPage() {
       <PageHeader
         breadcrumbTrail={notificationsBreadcrumbs}
         title="Notifications"
-        subtitle="Review-ready reports and other alerts for approving officers"
+        subtitle="Peer review, approval alerts, and revision comments for service reports"
         actions={
           <>
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-surface p-1 shadow-sm">
@@ -364,34 +429,45 @@ export default function NotificationsPage() {
         <EmptyState
           icon={Bell}
           title={filter === "unread" ? "No unread notifications" : "No notifications yet"}
-          description="Completed analyses with a report link and assigned approving officer will appear here."
+          description="Completed analyses with an uploaded PDF and assigned reviewing officer will appear here first; the approving officer is notified after review."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {notifications.map((notification) => {
             const isBusy = busyId === notification.id;
-            const isChangeRequest = isChangeRequestNotification(notification);
-            const reviewState = isChangeRequest
-              ? "changes_requested"
-              : getReviewUiState(notification.submission_status);
-            const StatusIcon = reviewIcon(reviewState);
-            // A change request is the analyst's to act on — never show the
-            // officer's review controls on it.
-            const canApprove =
-              !isChangeRequest &&
+            const kind = getNotificationKind(notification);
+            const sentBack = isSentBackNotification(notification);
+            const reviewState = getReviewStageUiState(notification.review_status);
+            const approvalState = getApprovalUiState(
+              notification.submission_status,
+            );
+            const StatusIcon = kindIcon(kind, notification);
+            const hasReport = Boolean(
+              notification.payload.service_report_file_path?.trim() ||
+                notification.payload.service_report_link?.trim(),
+            );
+            const canActOnReview =
+              kind === "review_request" &&
               Boolean(notification.payload.analysis_id) &&
-              (reviewState === "ready" || reviewState === "under_review");
+              (reviewState === "ready" || reviewState === "in_review");
+            const canActOnApproval =
+              kind === "approval_request" &&
+              Boolean(notification.payload.analysis_id) &&
+              (approvalState === "ready" || approvalState === "under_review");
             const isAmber =
-              reviewState === "under_review" ||
-              reviewState === "changes_requested";
+              sentBack ||
+              reviewState === "in_review" ||
+              approvalState === "under_review";
 
             return (
               <div
                 key={notification.id}
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                  isChangeRequest
+                  sentBack
                     ? "border-amber-200 bg-amber-50/40"
-                    : reviewState === "approved" || reviewState === "submitted"
+                    : kind === "approval_request" &&
+                        (approvalState === "approved" ||
+                          approvalState === "submitted")
                       ? "border-emerald-200 bg-emerald-50/40"
                       : notification.is_read
                         ? "border-slate-200 bg-slate-50/70"
@@ -402,11 +478,7 @@ export default function NotificationsPage() {
                   <div className="flex items-start gap-3 min-w-0">
                     <div
                       className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-                        reviewState === "approved" || reviewState === "submitted"
-                          ? "bg-emerald-200/70"
-                          : isAmber
-                            ? "bg-amber-100"
-                            : "bg-emerald-100"
+                        isAmber ? "bg-amber-100" : "bg-emerald-100"
                       }`}
                     >
                       <StatusIcon
@@ -417,9 +489,9 @@ export default function NotificationsPage() {
                     </div>
                     <div className="min-w-0">
                       <p
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wider font-quicksand ${reviewBadgeClasses(reviewState)}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wider font-quicksand ${kindBadgeClasses(kind, notification)}`}
                       >
-                        {getReviewStatusLabel(reviewState)}
+                        {kindTitle(kind, notification)}
                       </p>
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
                         {notification.payload.client_name || "Unnamed analysis"}
@@ -427,9 +499,11 @@ export default function NotificationsPage() {
                       <p className="mt-1 text-sm text-slate-500">
                         {notification.payload.service_report_number
                           ? `Service report ${notification.payload.service_report_number}`
-                          : "Service report link available"}
+                          : notification.payload.service_report_file_name
+                            ? notification.payload.service_report_file_name
+                            : "Service report ready"}
                       </p>
-                      {isChangeRequest && notification.payload.comment && (
+                      {sentBack && notification.payload.comment && (
                         <blockquote className="mt-3 rounded-xl border border-amber-200 bg-white/70 px-3 py-2.5">
                           <p className="text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">
                             {notification.payload.comment}
@@ -448,7 +522,7 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {isChangeRequest ? (
+                    {sentBack ? (
                       notification.payload.analysis_id && (
                         <Link
                           href={routes.services.detail(
@@ -462,7 +536,7 @@ export default function NotificationsPage() {
                       )
                     ) : (
                       <>
-                        {notification.payload.service_report_link && (
+                        {hasReport && (
                           <button
                             type="button"
                             disabled={isBusy}
@@ -473,7 +547,31 @@ export default function NotificationsPage() {
                             Open Report
                           </button>
                         )}
-                        {canApprove ? (
+                        {canActOnReview ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() =>
+                                void handleCompleteReview(notification)
+                              }
+                              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                            >
+                              <BadgeCheck className="w-3.5 h-3.5" />
+                              Complete review
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => setSendBackTarget(notification)}
+                              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-60 text-amber-800 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+                            >
+                              <MessageSquareWarning className="w-3.5 h-3.5" />
+                              Request revision
+                            </button>
+                          </>
+                        ) : null}
+                        {canActOnApproval ? (
                           <>
                             <button
                               type="button"
@@ -487,24 +585,17 @@ export default function NotificationsPage() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => setChangesTarget(notification)}
+                              onClick={() => setSendBackTarget(notification)}
                               className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-60 text-amber-800 text-xs font-bold rounded-full transition-all whitespace-nowrap"
                             >
                               <MessageSquareWarning className="w-3.5 h-3.5" />
                               Request changes
                             </button>
                           </>
-                        ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full whitespace-nowrap">
-                            <BadgeCheck className="w-3.5 h-3.5" />
-                            {getReviewStatusLabel(reviewState)}
-                          </span>
-                        )}
+                        ) : null}
                       </>
                     )}
                     {notification.is_read ? (
-                      // Deleting is gated on is_read by RLS as well as here, so
-                      // an approval request can't vanish before anyone sees it.
                       <button
                         type="button"
                         disabled={isBusy}
@@ -549,14 +640,15 @@ export default function NotificationsPage() {
       />
 
       <RequestChangesModal
-        isOpen={changesTarget !== null}
-        onClose={() => setChangesTarget(null)}
+        isOpen={sendBackTarget !== null}
+        onClose={() => setSendBackTarget(null)}
+        mode={sendBackKind === "review_request" ? "revision" : "changes"}
         reportLabel={
-          changesTarget?.payload.service_report_number ||
-          changesTarget?.payload.client_name ||
+          sendBackTarget?.payload.service_report_number ||
+          sendBackTarget?.payload.client_name ||
           "Service report"
         }
-        onSubmit={handleRequestChanges}
+        onSubmit={handleSendBack}
       />
     </div>
   );

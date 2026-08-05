@@ -13,27 +13,48 @@ import {
 } from "lucide-react";
 import {
   approveAnalysis,
+  completeAnalysisReview,
+  getApprovalStatusLabel,
+  getApprovalUiState,
   getMyNotifications,
-  getReviewStatusLabel,
-  getReviewUiState,
-  isChangeRequestNotification,
+  getNotificationKind,
+  getReviewStageLabel,
+  getReviewStageUiState,
+  isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
+  openReportForApproval,
   openReportForReview,
   requestAnalysisChanges,
+  requestAnalysisRevision,
   subscribeToNotifications,
   type AppNotification,
+  type NotificationKind,
 } from "@/lib/notifications";
+import { resolveReportUrl } from "@/lib/service-report-file";
 import { getCurrentUser } from "@/lib/supabase";
 import { routes } from "@/lib/routes";
 import RequestChangesModal from "./request-changes-modal";
+
+function kindTitle(kind: NotificationKind, n: AppNotification): string {
+  switch (kind) {
+    case "revision_request":
+      return "Revision requested";
+    case "change_request":
+      return "Changes requested";
+    case "review_request":
+      return getReviewStageLabel(getReviewStageUiState(n.review_status));
+    case "approval_request":
+      return getApprovalStatusLabel(getApprovalUiState(n.submission_status));
+  }
+}
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [changesTarget, setChangesTarget] = useState<AppNotification | null>(
+  const [sendBackTarget, setSendBackTarget] = useState<AppNotification | null>(
     null,
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,6 +86,9 @@ export function NotificationBell() {
   }, []);
 
   const unreadCount = notifications.length;
+  const sendBackKind = sendBackTarget
+    ? getNotificationKind(sendBackTarget)
+    : null;
 
   async function handleMarkRead(id: string) {
     setBusyId(id);
@@ -82,23 +106,55 @@ export function NotificationBell() {
   }
 
   async function handleOpenReport(n: AppNotification) {
-    const link = n.payload.service_report_link?.trim();
-    if (!link) return;
+    const kind = getNotificationKind(n);
     setBusyId(n.id);
     try {
-      await openReportForReview(n);
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item.id === n.id
-            ? { ...item, submission_status: "Under review" }
-            : item,
-        ),
+      if (kind === "review_request") {
+        await openReportForReview(n);
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === n.id
+              ? { ...item, review_status: "In review" }
+              : item,
+          ),
+        );
+      } else if (kind === "approval_request") {
+        await openReportForApproval(n);
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === n.id
+              ? { ...item, submission_status: "Under review" }
+              : item,
+          ),
+        );
+      }
+
+      const url = await resolveReportUrl(
+        n.payload.service_report_file_path,
+        n.payload.service_report_link,
       );
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
     } catch (error) {
       console.error(error);
     } finally {
       setBusyId(null);
-      window.open(link, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  async function handleCompleteReview(n: AppNotification) {
+    const analysisId = n.payload.analysis_id;
+    if (!analysisId) return;
+    setBusyId(n.id);
+    try {
+      await completeAnalysisReview(analysisId);
+      await markNotificationRead(n.id);
+      setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -117,13 +173,17 @@ export function NotificationBell() {
     }
   }
 
-  async function handleRequestChanges(body: string) {
-    const target = changesTarget;
+  async function handleSendBack(body: string) {
+    const target = sendBackTarget;
     const analysisId = target?.payload.analysis_id;
     if (!target || !analysisId) return;
 
-    await requestAnalysisChanges(analysisId, body);
-    // The RPC marks the officer's own alert read as part of the transaction.
+    const kind = getNotificationKind(target);
+    if (kind === "review_request") {
+      await requestAnalysisRevision(analysisId, body);
+    } else {
+      await requestAnalysisChanges(analysisId, body);
+    }
     setNotifications((prev) => prev.filter((item) => item.id !== target.id));
   }
 
@@ -169,42 +229,52 @@ export function NotificationBell() {
             ) : (
               notifications.map((n) => {
                 const isBusy = busyId === n.id;
-                const isChangeRequest = isChangeRequestNotification(n);
-                const reviewState = getReviewUiState(n.submission_status);
-                // Only the approving officer's own alerts carry review actions.
-                const canApprove =
-                  !isChangeRequest &&
+                const kind = getNotificationKind(n);
+                const sentBack = isSentBackNotification(n);
+                const reviewState = getReviewStageUiState(n.review_status);
+                const approvalState = getApprovalUiState(n.submission_status);
+                const hasReport = Boolean(
+                  n.payload.service_report_file_path?.trim() ||
+                    n.payload.service_report_link?.trim(),
+                );
+                const canActOnReview =
+                  kind === "review_request" &&
                   Boolean(n.payload.analysis_id) &&
-                  (reviewState === "ready" || reviewState === "under_review");
-                const StatusIcon = isChangeRequest
+                  (reviewState === "ready" || reviewState === "in_review");
+                const canActOnApproval =
+                  kind === "approval_request" &&
+                  Boolean(n.payload.analysis_id) &&
+                  (approvalState === "ready" || approvalState === "under_review");
+
+                const StatusIcon = sentBack
                   ? MessageSquareWarning
-                  : reviewState === "under_review"
-                    ? Eye
-                    : reviewState === "approved" || reviewState === "submitted"
-                      ? BadgeCheck
-                      : FileCheck2;
+                  : kind === "review_request"
+                    ? reviewState === "in_review"
+                      ? Eye
+                      : FileCheck2
+                    : approvalState === "under_review"
+                      ? Eye
+                      : approvalState === "approved" || approvalState === "submitted"
+                        ? BadgeCheck
+                        : FileCheck2;
 
                 return (
                   <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div
                         className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
-                          isChangeRequest ? "bg-amber-100" : "bg-emerald-100"
+                          sentBack ? "bg-amber-100" : "bg-emerald-100"
                         }`}
                       >
                         <StatusIcon
                           className={`w-3.5 h-3.5 ${
-                            isChangeRequest
-                              ? "text-amber-700"
-                              : "text-emerald-700"
+                            sentBack ? "text-amber-700" : "text-emerald-700"
                           }`}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
-                          {isChangeRequest
-                            ? "Changes requested"
-                            : getReviewStatusLabel(reviewState)}
+                          {kindTitle(kind, n)}
                         </p>
                         <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
                           {n.payload.client_name ?? "—"}
@@ -212,13 +282,16 @@ export function NotificationBell() {
                             ? ` · ${n.payload.service_report_number}`
                             : ""}
                         </p>
-                        {isChangeRequest && n.payload.comment && (
+                        {sentBack && n.payload.comment && (
                           <p className="mt-1.5 rounded-lg bg-amber-50 border border-amber-100 px-2 py-1.5 text-[11px] text-amber-900 font-aileron leading-relaxed line-clamp-3">
+                            {n.payload.comment_author
+                              ? `${n.payload.comment_author}: `
+                              : ""}
                             {n.payload.comment}
                           </p>
                         )}
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          {isChangeRequest ? (
+                          {sentBack ? (
                             n.payload.analysis_id && (
                               <Link
                                 href={routes.services.detail(
@@ -232,7 +305,7 @@ export function NotificationBell() {
                             )
                           ) : (
                             <>
-                              {n.payload.service_report_link && (
+                              {hasReport && (
                                 <button
                                   type="button"
                                   disabled={isBusy}
@@ -242,7 +315,28 @@ export function NotificationBell() {
                                   <ExternalLink className="w-3 h-3" /> Open Report
                                 </button>
                               )}
-                              {canApprove ? (
+                              {canActOnReview ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => void handleCompleteReview(n)}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
+                                  >
+                                    <BadgeCheck className="w-3 h-3" /> Complete review
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => setSendBackTarget(n)}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 disabled:opacity-60 transition-colors font-aileron"
+                                  >
+                                    <MessageSquareWarning className="w-3 h-3" />{" "}
+                                    Request revision
+                                  </button>
+                                </>
+                              ) : null}
+                              {canActOnApproval ? (
                                 <>
                                   <button
                                     type="button"
@@ -255,19 +349,14 @@ export function NotificationBell() {
                                   <button
                                     type="button"
                                     disabled={isBusy}
-                                    onClick={() => setChangesTarget(n)}
+                                    onClick={() => setSendBackTarget(n)}
                                     className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 disabled:opacity-60 transition-colors font-aileron"
                                   >
                                     <MessageSquareWarning className="w-3 h-3" />{" "}
                                     Request changes
                                   </button>
                                 </>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 font-aileron">
-                                  <BadgeCheck className="w-3 h-3" />{" "}
-                                  {getReviewStatusLabel(reviewState)}
-                                </span>
-                              )}
+                              ) : null}
                             </>
                           )}
                           <button
@@ -299,17 +388,16 @@ export function NotificationBell() {
         </div>
       )}
 
-      {/* Kept inside the ref'd container so clicks in the modal don't
-          register as an outside click and collapse the dropdown behind it. */}
       <RequestChangesModal
-        isOpen={changesTarget !== null}
-        onClose={() => setChangesTarget(null)}
+        isOpen={sendBackTarget !== null}
+        onClose={() => setSendBackTarget(null)}
+        mode={sendBackKind === "review_request" ? "revision" : "changes"}
         reportLabel={
-          changesTarget?.payload.service_report_number ||
-          changesTarget?.payload.client_name ||
+          sendBackTarget?.payload.service_report_number ||
+          sendBackTarget?.payload.client_name ||
           "Service report"
         }
-        onSubmit={handleRequestChanges}
+        onSubmit={handleSendBack}
       />
     </div>
   );

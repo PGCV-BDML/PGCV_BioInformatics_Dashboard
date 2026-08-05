@@ -5,15 +5,20 @@ import { CheckCircle2, MessageSquareWarning, Send } from "lucide-react";
 import {
   getReviewComments,
   resubmitForApproval,
+  resubmitForReview,
   type ReviewCommentWithAuthor,
 } from "@/lib/notifications";
-import { isChangesRequestedLabel } from "@/lib/analysis-tracker";
+import {
+  isChangesRequestedLabel,
+  isRevisionRequestedLabel,
+} from "@/lib/analysis-tracker";
 
 interface ReviewCommentsPanelProps {
   analysisId: string;
+  statusOfReview: string | null;
   statusOfSubmission: string | null;
   /** Called after a successful resubmission so the parent can refresh status. */
-  onResubmitted?: () => void;
+  onResubmitted?: (stage: "review" | "approval") => void;
 }
 
 function formatDate(value: string): string {
@@ -24,6 +29,7 @@ function formatDate(value: string): string {
 
 export default function ReviewCommentsPanel({
   analysisId,
+  statusOfReview,
   statusOfSubmission,
   onResubmitted,
 }: ReviewCommentsPanelProps) {
@@ -54,16 +60,24 @@ export default function ReviewCommentsPanel({
     };
   }, [analysisId]);
 
+  const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
+  const awaitingSendBack = awaitingRevision || awaitingChanges;
 
   async function handleResubmit() {
     if (isResubmitting) return;
     setIsResubmitting(true);
     setError(null);
     try {
-      await resubmitForApproval(analysisId);
-      await load();
-      onResubmitted?.();
+      if (awaitingRevision) {
+        await resubmitForReview(analysisId);
+        await load();
+        onResubmitted?.("review");
+      } else {
+        await resubmitForApproval(analysisId);
+        await load();
+        onResubmitted?.("approval");
+      }
     } catch (err) {
       console.error(err);
       setError(
@@ -77,18 +91,18 @@ export default function ReviewCommentsPanel({
   }
 
   // Nothing has ever been sent back — don't take up space on the record.
-  if (!isLoading && comments.length === 0 && !awaitingChanges) return null;
+  if (!isLoading && comments.length === 0 && !awaitingSendBack) return null;
 
   return (
     <div
       className={`bg-surface border rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4 ${
-        awaitingChanges ? "border-amber-300" : "border-slate-300/70"
+        awaitingSendBack ? "border-amber-300" : "border-slate-300/70"
       }`}
     >
       <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
         <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
           <MessageSquareWarning
-            className={`w-4 h-4 ${awaitingChanges ? "text-amber-600" : "text-slate-400"}`}
+            className={`w-4 h-4 ${awaitingSendBack ? "text-amber-600" : "text-slate-400"}`}
             aria-hidden="true"
           />
           Review Comments
@@ -100,7 +114,13 @@ export default function ReviewCommentsPanel({
         )}
       </div>
 
-      {awaitingChanges && (
+      {awaitingRevision && (
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
+          The reviewing officer sent this back. Address the comment below, then
+          resubmit to notify them for another peer review.
+        </p>
+      )}
+      {awaitingChanges && !awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           The approving officer sent this back. Address the comment below, then
           resubmit to notify them for another review.
@@ -123,9 +143,14 @@ export default function ReviewCommentsPanel({
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-slate-700 truncate">
-                  {comment.author_name ?? "Unknown user"}
-                </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-700 truncate">
+                    {comment.author_name ?? "Unknown user"}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                    {comment.stage === "review" ? "Review" : "Approval"}
+                  </span>
+                </div>
                 {comment.resolved_at ? (
                   <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-700 shrink-0">
                     <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
@@ -154,7 +179,7 @@ export default function ReviewCommentsPanel({
         </p>
       )}
 
-      {awaitingChanges && (
+      {awaitingSendBack && (
         <button
           type="button"
           onClick={() => void handleResubmit()}
@@ -162,7 +187,11 @@ export default function ReviewCommentsPanel({
           className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-[#2a7797] hover:bg-[#1f5c76] disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-sm"
         >
           <Send className="w-3.5 h-3.5" aria-hidden="true" />
-          {isResubmitting ? "Resubmitting…" : "Resubmit for approval"}
+          {isResubmitting
+            ? "Resubmitting…"
+            : awaitingRevision
+              ? "Resubmit for review"
+              : "Resubmit for approval"}
         </button>
       )}
     </div>

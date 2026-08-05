@@ -10,6 +10,8 @@ interface RequestChangesModalProps {
   reportLabel: string;
   /** Rejects to surface an error without closing the modal. */
   onSubmit: (body: string) => Promise<void>;
+  /** Defaults to approving-officer "Request changes" copy. */
+  mode?: "changes" | "revision";
 }
 
 const MAX_LENGTH = 2000;
@@ -19,11 +21,23 @@ export default function RequestChangesModal({
   onClose,
   reportLabel,
   onSubmit,
+  mode = "changes",
 }: RequestChangesModalProps) {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isRevision = mode === "revision";
+  const title = isRevision ? "Request revision" : "Request changes";
+  const submitLabel = isRevision
+    ? "Send back for revision"
+    : "Send back for changes";
+  const helpText = isRevision
+    ? "The assignee is notified and the report moves to Revision requested."
+    : "The assignee is notified and the report moves to Changes requested.";
+  const emptyError = isRevision
+    ? "Write what needs revising before sending this back."
+    : "Write what needs to change before sending this back.";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -49,7 +63,7 @@ export default function RequestChangesModal({
     e.preventDefault();
     if (isSubmitting) return;
     if (!trimmed) {
-      setError("Write what needs to change before sending this back.");
+      setError(emptyError);
       textareaRef.current?.focus();
       return;
     }
@@ -97,7 +111,7 @@ export default function RequestChangesModal({
                 id="request-changes-title"
                 className="text-lg font-bold text-[#2a7797] tracking-tight"
               >
-                Request changes
+                {title}
               </h3>
               <p className="text-[11px] text-slate-500 font-semibold mt-0.5 truncate">
                 {reportLabel}
@@ -141,8 +155,7 @@ export default function RequestChangesModal({
             />
             <div className="flex items-center justify-between gap-3 mt-1.5">
               <p className="text-[11px] text-slate-400">
-                The assignee is notified and the report moves to Changes
-                requested.
+                {helpText}
               </p>
               <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
                 {body.length}/{MAX_LENGTH}
@@ -174,7 +187,7 @@ export default function RequestChangesModal({
               disabled={isSubmitting || !trimmed}
               className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Sending…" : "Send back for changes"}
+              {isSubmitting ? "Sending…" : submitLabel}
             </button>
           </div>
         </form>

@@ -2,7 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
-import { User, Activity, Layers, Dna, FileText } from "lucide-react";
+import {
+  User,
+  Activity,
+  Layers,
+  Dna,
+  FileText,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
 import {
   ANALYSIS_OPTIONS,
   ANALYSIS_OTHER,
@@ -10,6 +18,11 @@ import {
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
+import {
+  formatFileSize,
+  getServiceReportSignedUrl,
+} from "@/lib/service-report-file";
+import PdfDropzone from "./pdf-dropzone";
 
 export { ANALYSIS_OPTIONS, ANALYSIS_OTHER };
 
@@ -25,12 +38,20 @@ export type AnalysisFormState = {
   sample_type: string;
   run_id: string;
   status_of_completion: string;
+  /** Read-only here; only the reviewing officer's actions move it. */
+  status_of_review: string;
   status_of_submission: string;
   service_report_link: string;
+  /** Object key of the PDF already stored for this record, if any. */
+  service_report_file_path: string;
+  service_report_file_name: string;
+  service_report_file_size: string;
   client_sequences_link: string;
   notes: string;
   project_id: string;
   assignee: string;
+  /** UUID of the lab peer who reviews the report. Empty string = unassigned. */
+  reviewer_user_id: string;
   /** UUID of the team lead assigned as approving officer. Empty string = unassigned. */
   approver_user_id: string;
 };
@@ -47,12 +68,17 @@ export const EMPTY_ANALYSIS_FORM: AnalysisFormState = {
   sample_type: "",
   run_id: "",
   status_of_completion: "",
+  status_of_review: "",
   status_of_submission: "",
   service_report_link: "",
+  service_report_file_path: "",
+  service_report_file_name: "",
+  service_report_file_size: "",
   client_sequences_link: "",
   notes: "",
   project_id: "",
   assignee: "",
+  reviewer_user_id: "",
   approver_user_id: "",
 };
 
@@ -74,7 +100,12 @@ interface AnalysisSidebarProps {
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availableAssignees: string[];
+  /** Any staff member can review; leads only can approve. */
+  availableReviewers: ApproverOption[];
   availableApprovers: ApproverOption[];
+  /** PDF staged for upload on save. The parent performs the upload. */
+  pendingFile: File | null;
+  onPendingFileChange: (file: File | null) => void;
   onClose: () => void;
   onChange: (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -90,7 +121,10 @@ export default function AnalysisSidebar({
   formState,
   availableProjects,
   availableAssignees,
+  availableReviewers,
   availableApprovers,
+  pendingFile,
+  onPendingFileChange,
   onClose,
   onChange,
   onSubmit,
@@ -98,12 +132,15 @@ export default function AnalysisSidebar({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [analysisSelection, setAnalysisSelection] = useState("");
   const [otherSpecify, setOtherSpecify] = useState("");
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isOpeningFile, setIsOpeningFile] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setAnalysisSelection("");
       setOtherSpecify("");
       setErrors({});
+      setFileError(null);
       return;
     }
     const pipe = formState.pipeline;
@@ -126,6 +163,14 @@ export default function AnalysisSidebar({
     const errs: Record<string, string> = {};
     if (analysisSelection === ANALYSIS_OTHER && !otherSpecify.trim()) {
       errs.pipeline = "Please specify the analysis type";
+    }
+    if (
+      formState.reviewer_user_id &&
+      formState.approver_user_id &&
+      formState.reviewer_user_id === formState.approver_user_id
+    ) {
+      errs.reviewer_user_id =
+        "Reviewing and approving officers must be different people.";
     }
     return errs;
   };
@@ -159,6 +204,37 @@ export default function AnalysisSidebar({
       onChange("application", "");
     }
   };
+
+  const storedFilePath = formState.service_report_file_path.trim();
+  const storedFileSize = Number(formState.service_report_file_size);
+
+  const handleOpenStoredFile = async () => {
+    if (!storedFilePath || isOpeningFile) return;
+    setIsOpeningFile(true);
+    setFileError(null);
+    try {
+      const url = await getServiceReportSignedUrl(storedFilePath);
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        setFileError("Couldn't open that PDF. Try again in a moment.");
+      }
+    } finally {
+      setIsOpeningFile(false);
+    }
+  };
+
+  // Clearing the path is all the sidebar does; the parent removes the stored
+  // object on save, so cancelling out of the panel leaves the file untouched.
+  const handleRemoveStoredFile = () => {
+    onChange("service_report_file_path", "");
+    onChange("service_report_file_name", "");
+    onChange("service_report_file_size", "");
+  };
+
+  const samePersonBothRoles =
+    Boolean(formState.reviewer_user_id) &&
+    formState.reviewer_user_id === formState.approver_user_id;
 
   return (
     <SlideOverModal
@@ -390,6 +466,19 @@ export default function AnalysisSidebar({
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Status of Review
+            </span>
+            {/* Read-only: this column only moves through the reviewing
+                officer's actions, each of which records who did it and why. */}
+            <p className="flex h-10 items-center rounded-xl border border-slate-200 bg-slate-100/70 px-3.5 text-xs font-bold text-slate-600">
+              {formState.status_of_review.trim() || "Not started"}
+            </p>
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              Set by the reviewing officer from their notifications.
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5">
             <label htmlFor="analysis-status-submission" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Status of Submission
             </label>
@@ -420,12 +509,74 @@ export default function AnalysisSidebar({
         </div>
       </div>
 
-      {/* Links & notes */}
+      {/* Report file, links & notes */}
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
-        {renderSectionLabel(<FileText className="w-3.5 h-3.5" />, "Links & Notes")}
+        {renderSectionLabel(<FileText className="w-3.5 h-3.5" />, "Report, Links & Notes")}
+
+        {storedFilePath && !pendingFile ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Service Report PDF
+            </span>
+            <div className="flex items-center gap-3 rounded-xl border border-slate-300/80 bg-slate-50 px-3.5 py-2.5">
+              <FileText className="w-4 h-4 shrink-0 text-[#2a7797]" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-slate-800">
+                  {formState.service_report_file_name || "Service report.pdf"}
+                </p>
+                {Number.isFinite(storedFileSize) && storedFileSize > 0 && (
+                  <p className="text-[10px] text-slate-500">
+                    {formatFileSize(storedFileSize)}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleOpenStoredFile()}
+                disabled={isOpeningFile}
+                className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-[#2a7797] disabled:opacity-50"
+                title="Open the PDF"
+                aria-label="Open the PDF"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveStoredFile}
+                className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                title="Remove this PDF"
+                aria-label="Remove this PDF"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {fileError && (
+              <p className="ml-1 text-xs font-semibold text-red-600" role="alert">
+                {fileError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleRemoveStoredFile}
+              className="ml-1 self-start text-[10px] font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
+            >
+              Replace with a new PDF
+            </button>
+          </div>
+        ) : (
+          <PdfDropzone
+            file={pendingFile}
+            onFileChange={onPendingFileChange}
+            error={fileError}
+            onError={setFileError}
+            disabled={isSaving}
+          />
+        )}
+
         <div className="flex flex-col gap-1.5">
           <label htmlFor="analysis-report-link" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-            Service Report Link
+            Service Report Link{" "}
+            <span className="font-semibold text-slate-400">(optional)</span>
           </label>
           <input
             id="analysis-report-link"
@@ -435,6 +586,9 @@ export default function AnalysisSidebar({
             placeholder="https://..."
             className={inputClass}
           />
+          <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+            Optional Drive or share URL alongside the PDF.
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="analysis-sequences-link" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
@@ -464,7 +618,7 @@ export default function AnalysisSidebar({
         </div>
       </div>
 
-      {/* Assignee + Approving Officer (optional) */}
+      {/* Assignee + Reviewing Officer + Approving Officer */}
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Personnel (optional)")}
         <div className="flex flex-col gap-1.5">
@@ -474,7 +628,20 @@ export default function AnalysisSidebar({
           <select
             id="analysis-assignee"
             value={formState.assignee}
-            onChange={(e) => handleChange("assignee", e.target.value)}
+            onChange={(e) => {
+              handleChange("assignee", e.target.value);
+              // Drop a reviewer who would become the assignee under the
+              // "any staff except assignee" rule.
+              const nextAssignee = e.target.value.trim();
+              if (
+                nextAssignee &&
+                formState.reviewer_user_id &&
+                availableReviewers.find((u) => u.id === formState.reviewer_user_id)
+                  ?.name === nextAssignee
+              ) {
+                handleChange("reviewer_user_id", "");
+              }
+            }}
             className={inputClass}
           >
             <option value="">Unassigned</option>
@@ -484,6 +651,37 @@ export default function AnalysisSidebar({
               </option>
             ))}
           </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="analysis-reviewer" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+            Reviewing Officer
+          </label>
+          <select
+            id="analysis-reviewer"
+            aria-invalid={!!errors.reviewer_user_id}
+            value={formState.reviewer_user_id}
+            onChange={(e) => handleChange("reviewer_user_id", e.target.value)}
+            className={inputClass}
+          >
+            <option value="">— Assign later —</option>
+            {availableReviewers
+              .filter((u) => u.name !== formState.assignee.trim())
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+          </select>
+          {errors.reviewer_user_id ? (
+            <p className="ml-1 text-xs font-semibold text-red-600" role="alert">
+              {errors.reviewer_user_id}
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              Lab peer who reviews the PDF before the approving officer is notified.
+              Cannot be the assignee.
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="analysis-approver" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
@@ -496,15 +694,23 @@ export default function AnalysisSidebar({
             className={inputClass}
           >
             <option value="">— Assign later —</option>
-            {availableApprovers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
+            {availableApprovers
+              .filter((u) => u.id !== formState.reviewer_user_id)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
           </select>
-          <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-            When assigned, this officer will be notified once the analysis is completed and the report link is added.
-          </p>
+          {samePersonBothRoles ? (
+            <p className="ml-1 text-xs font-semibold text-red-600" role="alert">
+              Approving officer must be different from the reviewing officer.
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              Notified only after the reviewing officer signs the report off.
+            </p>
+          )}
         </div>
       </div>
     </SlideOverModal>

@@ -2,14 +2,23 @@ import { supabase, getCurrentUser, saveDataToDB } from "@/lib/supabase";
 import {
   deriveLegacyStatus,
   isChangesRequestedLabel,
+  isRevisionRequestedLabel,
   shouldAdvanceSubmissionStatus,
   submissionStatusRank,
 } from "@/lib/analysis-tracker";
-import type { AnalysisReviewComment } from "@/types/database";
+import type { AnalysisReviewComment, ReviewCommentStage } from "@/types/database";
 
-/** Sent to the approving officer when a report is ready to sign off. */
+/* ------------------------------------------------------------------ */
+/*  Notification types                                                */
+/* ------------------------------------------------------------------ */
+
+/** Sent to the reviewing officer when a report needs a peer read. */
 export const NOTIFICATION_READY_FOR_REVIEW = "analysis_ready_for_review";
-/** Sent to the assignee when the officer sends a report back with a comment. */
+/** Sent to the assignee when the reviewing officer asks for a revision. */
+export const NOTIFICATION_REVISION_REQUESTED = "analysis_revision_requested";
+/** Sent to the approving officer once the review is signed off. */
+export const NOTIFICATION_READY_FOR_APPROVAL = "analysis_ready_for_approval";
+/** Sent to the assignee when the approving officer sends a report back. */
 export const NOTIFICATION_CHANGES_REQUESTED = "analysis_changes_requested";
 
 export type AppNotification = {
@@ -20,7 +29,9 @@ export type AppNotification = {
     client_name?: string | null;
     service_report_number?: string | null;
     service_report_link?: string | null;
-    /** Present on `analysis_changes_requested` only. */
+    service_report_file_path?: string | null;
+    service_report_file_name?: string | null;
+    /** Present on the two "sent back" types only. */
     comment?: string | null;
     comment_author?: string | null;
   };
@@ -28,27 +39,58 @@ export type AppNotification = {
   is_read: boolean;
   email_sent_at: string | null;
   created_at: string;
+  /** Enriched from analysis.status_of_review when available. */
+  review_status?: string | null;
   /** Enriched from analysis.status_of_submission when available. */
   submission_status?: string | null;
 };
 
+/**
+ * Which of the four cards to render. Each notification belongs to exactly
+ * one stage and one audience, and the actions differ across all four.
+ */
+export type NotificationKind =
+  | "review_request"
+  | "revision_request"
+  | "approval_request"
+  | "change_request";
+
+export function getNotificationKind(n: AppNotification): NotificationKind {
+  switch (n.type) {
+    case NOTIFICATION_REVISION_REQUESTED:
+      return "revision_request";
+    case NOTIFICATION_READY_FOR_APPROVAL:
+      return "approval_request";
+    case NOTIFICATION_CHANGES_REQUESTED:
+      return "change_request";
+    default:
+      return "review_request";
+  }
+}
+
+/** True for notifications the analyst acts on rather than an officer. */
+export function isSentBackNotification(n: AppNotification): boolean {
+  const kind = getNotificationKind(n);
+  return kind === "revision_request" || kind === "change_request";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stage UI state                                                    */
+/* ------------------------------------------------------------------ */
+
 export type ReviewAction = "Under review" | "Approved";
 
-export type ReviewUiState =
+/** Approval stage, driven by analysis.status_of_submission. */
+export type ApprovalUiState =
   | "ready"
   | "under_review"
   | "changes_requested"
   | "approved"
   | "submitted";
 
-/** True for notifications the analyst acts on rather than the approving officer. */
-export function isChangeRequestNotification(n: AppNotification): boolean {
-  return n.type === NOTIFICATION_CHANGES_REQUESTED;
-}
-
-export function getReviewUiState(
+export function getApprovalUiState(
   submissionStatus: string | null | undefined,
-): ReviewUiState {
+): ApprovalUiState {
   // Checked by label first: "Changes requested" sits outside the rank ladder,
   // so the rank maths below would otherwise read it as "ready".
   if (isChangesRequestedLabel(submissionStatus)) return "changes_requested";
@@ -59,7 +101,7 @@ export function getReviewUiState(
   return "ready";
 }
 
-export function getReviewStatusLabel(state: ReviewUiState): string {
+export function getApprovalStatusLabel(state: ApprovalUiState): string {
   switch (state) {
     case "submitted":
       return "Submitted";
@@ -70,11 +112,45 @@ export function getReviewStatusLabel(state: ReviewUiState): string {
     case "changes_requested":
       return "Changes requested";
     default:
+      return "Ready for approval";
+  }
+}
+
+/** Review stage, driven by analysis.status_of_review. */
+export type ReviewStageUiState =
+  | "ready"
+  | "in_review"
+  | "revision_requested"
+  | "reviewed";
+
+export function getReviewStageUiState(
+  reviewStatus: string | null | undefined,
+): ReviewStageUiState {
+  if (isRevisionRequestedLabel(reviewStatus)) return "revision_requested";
+  const t = String(reviewStatus ?? "").trim().toLowerCase();
+  if (t === "reviewed") return "reviewed";
+  if (t === "in review" || t === "in_review") return "in_review";
+  return "ready";
+}
+
+export function getReviewStageLabel(state: ReviewStageUiState): string {
+  switch (state) {
+    case "reviewed":
+      return "Reviewed";
+    case "in_review":
+      return "In review";
+    case "revision_requested":
+      return "Revision requested";
+    default:
       return "Ready for review";
   }
 }
 
-async function enrichWithSubmissionStatus(
+/* ------------------------------------------------------------------ */
+/*  Fetching                                                          */
+/* ------------------------------------------------------------------ */
+
+async function enrichWithStageStatus(
   notifications: AppNotification[],
 ): Promise<AppNotification[]> {
   const analysisIds = Array.from(
@@ -89,24 +165,32 @@ async function enrichWithSubmissionStatus(
 
   const { data, error } = await supabase
     .from("analysis")
-    .select("id, status_of_submission")
+    .select("id, status_of_review, status_of_submission")
     .in("id", analysisIds);
 
   if (error) {
-    console.error("Failed to enrich notifications with submission status:", error);
+    console.error("Failed to enrich notifications with stage status:", error);
     return notifications;
   }
 
   const byId = new Map(
-    (data ?? []).map((row) => [row.id as string, row.status_of_submission as string | null]),
+    (data ?? []).map((row) => [
+      row.id as string,
+      {
+        review: row.status_of_review as string | null,
+        submission: row.status_of_submission as string | null,
+      },
+    ]),
   );
 
-  return notifications.map((n) => ({
-    ...n,
-    submission_status: n.payload.analysis_id
-      ? (byId.get(n.payload.analysis_id) ?? n.submission_status ?? null)
-      : (n.submission_status ?? null),
-  }));
+  return notifications.map((n) => {
+    const found = n.payload.analysis_id ? byId.get(n.payload.analysis_id) : undefined;
+    return {
+      ...n,
+      review_status: found ? found.review : (n.review_status ?? null),
+      submission_status: found ? found.submission : (n.submission_status ?? null),
+    };
+  });
 }
 
 /** Fetch notifications for the currently authenticated user. */
@@ -129,7 +213,7 @@ export async function getMyNotifications(
     return [];
   }
 
-  return enrichWithSubmissionStatus((data ?? []) as AppNotification[]);
+  return enrichWithStageStatus((data ?? []) as AppNotification[]);
 }
 
 /** Mark a single notification as read. */
@@ -160,7 +244,8 @@ export async function markAllNotificationsRead(): Promise<void> {
 
 /**
  * Permanently remove a notification. RLS only permits this once the row is
- * read, so an approval request can't be discarded before it has been seen.
+ * read, so a review or approval request can't be discarded before it has
+ * been seen.
  */
 export async function deleteNotification(id: string): Promise<void> {
   const { error } = await supabase.from("notifications").delete().eq("id", id);
@@ -216,6 +301,10 @@ export function subscribeToNotifications(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Shared helpers                                                    */
+/* ------------------------------------------------------------------ */
+
 async function getActorDisplayName(
   fallback = "Approving officer",
 ): Promise<string> {
@@ -239,7 +328,7 @@ async function getActorDisplayName(
   );
 }
 
-function buildSystemNote(action: ReviewAction, actor: string): string {
+function buildSystemNote(action: string, actor: string): string {
   const date = new Date().toISOString().slice(0, 10);
   return `System: ${action} by ${actor} on ${date}`;
 }
@@ -256,7 +345,130 @@ function appendSystemNote(
   return current ? `${current}\n${line}` : line;
 }
 
-async function applyReviewAction(
+/* ------------------------------------------------------------------ */
+/*  Review stage — the reviewing officer                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Mark the report as being read. Goes through an RPC rather than a direct
+ * update so the reviewer assignment is checked server side; every other
+ * staff member can write to `analysis` under RLS.
+ */
+export async function markAnalysisInReview(analysisId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_analysis_in_review", {
+    p_analysis_id: analysisId,
+  });
+
+  if (error) {
+    console.error("Failed to mark analysis in review:", error);
+    throw error;
+  }
+}
+
+export type CompleteReviewResult = {
+  /** False when nobody has been named yet — the sign-off stands, no alert went out. */
+  approverAssigned: boolean;
+  alreadyReviewed: boolean;
+};
+
+/** Reviewing officer signs the report off, which opens the approval stage. */
+export async function completeAnalysisReview(
+  analysisId: string,
+  body?: string,
+): Promise<CompleteReviewResult> {
+  const trimmed = body?.trim() ?? "";
+
+  const { data, error } = await supabase.rpc("complete_analysis_review", {
+    p_analysis_id: analysisId,
+    p_body: trimmed || null,
+  });
+
+  if (error) {
+    console.error("Failed to complete review:", error);
+    throw error;
+  }
+
+  const result = (data ?? {}) as {
+    approver_assigned?: boolean;
+    already_reviewed?: boolean;
+  };
+  return {
+    approverAssigned: Boolean(result.approver_assigned),
+    alreadyReviewed: Boolean(result.already_reviewed),
+  };
+}
+
+export type SendBackResult = {
+  /** False when the record has no assignee — the comment saved, nobody was pinged. */
+  notifiedAssignee: boolean;
+};
+
+/** Reviewing officer sends the report back to its assignee with a comment. */
+export async function requestAnalysisRevision(
+  analysisId: string,
+  body: string,
+): Promise<SendBackResult> {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    throw new Error("A comment is required when requesting a revision.");
+  }
+
+  const { data, error } = await supabase.rpc("request_analysis_revision", {
+    p_analysis_id: analysisId,
+    p_body: trimmed,
+  });
+
+  if (error) {
+    console.error("Failed to request revision:", error);
+    throw error;
+  }
+
+  const result = (data ?? {}) as { notified_assignee?: boolean };
+  return { notifiedAssignee: Boolean(result.notified_assignee) };
+}
+
+/**
+ * Analyst side of a revision request: put the report back in front of the
+ * reviewing officer. The database trigger re-notifies them off this change.
+ */
+export async function resubmitForReview(analysisId: string): Promise<void> {
+  const { data: analysis, error } = await supabase
+    .from("analysis")
+    .select("id, status_of_review, notes")
+    .eq("id", analysisId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load analysis for re-review:", error);
+    throw error;
+  }
+  if (!analysis) {
+    throw new Error("Analysis not found for re-review.");
+  }
+  if (!isRevisionRequestedLabel(analysis.status_of_review)) {
+    throw new Error("This report has no outstanding revision request.");
+  }
+
+  const actor = await getActorDisplayName("Assignee");
+  const nextNotes = appendSystemNote(
+    analysis.notes,
+    buildSystemNote("Resubmitted for review", actor),
+  );
+
+  await saveDataToDB("analysis", analysisId, {
+    status_of_review: "For review",
+    notes: nextNotes || null,
+  });
+
+  const user = await getCurrentUser();
+  await resolveOpenReviewComments(analysisId, user?.id ?? null, "review");
+}
+
+/* ------------------------------------------------------------------ */
+/*  Approval stage — the approving officer                            */
+/* ------------------------------------------------------------------ */
+
+async function applyApprovalAction(
   analysisId: string,
   action: ReviewAction,
 ): Promise<void> {
@@ -305,7 +517,7 @@ async function applyReviewAction(
   // Approving settles anything the officer had previously asked for.
   if (action === "Approved" && canAdvance) {
     const user = await getCurrentUser();
-    await resolveOpenReviewComments(analysisId, user?.id ?? null);
+    await resolveOpenReviewComments(analysisId, user?.id ?? null, "approval");
   }
 }
 
@@ -313,19 +525,16 @@ async function applyReviewAction(
 export async function markAnalysisUnderReview(
   analysisId: string,
 ): Promise<void> {
-  await applyReviewAction(analysisId, "Under review");
+  await applyApprovalAction(analysisId, "Under review");
 }
 
 /** Set submission status to Approved + append a system note (no backwards move). */
 export async function approveAnalysis(analysisId: string): Promise<void> {
-  await applyReviewAction(analysisId, "Approved");
+  await applyApprovalAction(analysisId, "Approved");
 }
 
-/**
- * Open-report flow: mark under review when the officer actually opens the report.
- * Safe to call repeatedly.
- */
-export async function openReportForReview(
+/** Officer opens the report: mark it as being looked at. Safe to repeat. */
+export async function openReportForApproval(
   notification: AppNotification,
 ): Promise<void> {
   const analysisId = notification.payload.analysis_id;
@@ -334,71 +543,21 @@ export async function openReportForReview(
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Review comments                                                   */
-/* ------------------------------------------------------------------ */
-
-export type ReviewCommentWithAuthor = AnalysisReviewComment & {
-  author_name: string | null;
-};
-
-/** Review comments for one analysis, newest first. */
-export async function getReviewComments(
-  analysisId: string,
-): Promise<ReviewCommentWithAuthor[]> {
-  const { data, error } = await supabase
-    .from("analysis_review_comment")
-    .select("*, author:users!analysis_review_comment_author_id_fkey (name)")
-    .eq("analysis_id", analysisId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Failed to load review comments:", error);
-    return [];
-  }
-
-  return (data ?? []).map((row) => {
-    const { author, ...rest } = row as AnalysisReviewComment & {
-      author?: { name?: string | null } | null;
-    };
-    return {
-      ...rest,
-      author_name: author?.name?.trim() || null,
-    };
-  });
-}
-
-async function resolveOpenReviewComments(
-  analysisId: string,
-  userId: string | null,
+/** Reviewer opens the report: mark it as being read. Safe to repeat. */
+export async function openReportForReview(
+  notification: AppNotification,
 ): Promise<void> {
-  const { error } = await supabase
-    .from("analysis_review_comment")
-    .update({ resolved_at: new Date().toISOString(), resolved_by: userId })
-    .eq("analysis_id", analysisId)
-    .is("resolved_at", null);
-
-  if (error) {
-    // Non-fatal: the status change is what drives the workflow.
-    console.error("Failed to resolve review comments:", error);
+  const analysisId = notification.payload.analysis_id;
+  if (analysisId) {
+    await markAnalysisInReview(analysisId);
   }
 }
 
-export type RequestChangesResult = {
-  /** False when the record has no assignee — the comment saved, nobody was pinged. */
-  notifiedAssignee: boolean;
-};
-
-/**
- * Send a report back to its assignee with a comment.
- *
- * Goes through an RPC because `notifications` rejects client inserts, and
- * because the comment, the status change and the alert have to land together.
- */
+/** Officer sends the report back to its assignee with a comment. */
 export async function requestAnalysisChanges(
   analysisId: string,
   body: string,
-): Promise<RequestChangesResult> {
+): Promise<SendBackResult> {
   const trimmed = body.trim();
   if (!trimmed) {
     throw new Error("A comment is required when requesting changes.");
@@ -441,10 +600,9 @@ export async function resubmitForApproval(analysisId: string): Promise<void> {
   }
 
   const actor = await getActorDisplayName("Assignee");
-  const date = new Date().toISOString().slice(0, 10);
   const nextNotes = appendSystemNote(
     analysis.notes,
-    `System: Resubmitted for approval by ${actor} on ${date}`,
+    buildSystemNote("Resubmitted for approval", actor),
   );
 
   await saveDataToDB("analysis", analysisId, {
@@ -457,5 +615,58 @@ export async function resubmitForApproval(analysisId: string): Promise<void> {
   });
 
   const user = await getCurrentUser();
-  await resolveOpenReviewComments(analysisId, user?.id ?? null);
+  await resolveOpenReviewComments(analysisId, user?.id ?? null, "approval");
+}
+
+/* ------------------------------------------------------------------ */
+/*  Review comments                                                   */
+/* ------------------------------------------------------------------ */
+
+export type ReviewCommentWithAuthor = AnalysisReviewComment & {
+  author_name: string | null;
+};
+
+/** Comments for one analysis across both stages, newest first. */
+export async function getReviewComments(
+  analysisId: string,
+): Promise<ReviewCommentWithAuthor[]> {
+  const { data, error } = await supabase
+    .from("analysis_review_comment")
+    .select("*, author:users!analysis_review_comment_author_id_fkey (name)")
+    .eq("analysis_id", analysisId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load review comments:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => {
+    const { author, ...rest } = row as AnalysisReviewComment & {
+      author?: { name?: string | null } | null;
+    };
+    return {
+      ...rest,
+      stage: rest.stage ?? "approval",
+      author_name: author?.name?.trim() || null,
+    };
+  });
+}
+
+async function resolveOpenReviewComments(
+  analysisId: string,
+  userId: string | null,
+  stage: ReviewCommentStage,
+): Promise<void> {
+  const { error } = await supabase
+    .from("analysis_review_comment")
+    .update({ resolved_at: new Date().toISOString(), resolved_by: userId })
+    .eq("analysis_id", analysisId)
+    .eq("stage", stage)
+    .is("resolved_at", null);
+
+  if (error) {
+    // Non-fatal: the status change is what drives the workflow.
+    console.error("Failed to resolve review comments:", error);
+  }
 }

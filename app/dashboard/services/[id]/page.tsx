@@ -32,6 +32,7 @@ import {
   mapLabelToAnalysisStatus,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
+import { getServiceReportSignedUrl } from "@/lib/service-report-file";
 import {
   buildClientIdLookup,
   mapClientRowToRecord,
@@ -59,6 +60,7 @@ interface ServiceProjectRow {
   analysis_pipeline: string;
   status: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed";
   status_of_completion: string;
+  status_of_review: string;
   status_of_submission: string;
   sample_type: string;
   run_id: string;
@@ -70,6 +72,8 @@ interface ServiceProjectRow {
   started: string;
   completed: string;
   report_link: string;
+  service_report_file_path: string;
+  service_report_file_name: string;
   output_link?: string;
   notes: string;
   samples?: SampleRow[];
@@ -190,6 +194,7 @@ export default function AnalysisDetailPage({
           ),
           status: analysis.status as ServiceProjectRow["status"],
           status_of_completion: analysis.status_of_completion ?? "",
+          status_of_review: analysis.status_of_review ?? "",
           status_of_submission: analysis.status_of_submission ?? "",
           sample_type: analysis.sample_type ?? "",
           run_id: analysis.run_id ?? "",
@@ -210,6 +215,8 @@ export default function AnalysisDetailPage({
             : "—",
           report_link:
             analysis.service_report_link || foundReport?.report_link || "",
+          service_report_file_path: analysis.service_report_file_path ?? "",
+          service_report_file_name: analysis.service_report_file_name ?? "",
           output_link:
             analysis.client_sequences_link || analysis.output_link || "",
           notes: analysis.notes ?? "",
@@ -505,6 +512,14 @@ export default function AnalysisDetailPage({
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Status of Review
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {record.status_of_review || "—"}
+              </span>
+            </div>
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
                 Status of Submission
               </span>
               <span className="text-xs font-semibold text-slate-700">
@@ -607,10 +622,18 @@ export default function AnalysisDetailPage({
         <div className="space-y-6">
           <ReviewCommentsPanel
             analysisId={record.id}
+            statusOfReview={record.status_of_review}
             statusOfSubmission={record.status_of_submission}
-            onResubmitted={() =>
+            onResubmitted={(stage) =>
               setRecord((prev) =>
-                prev ? { ...prev, status_of_submission: "For approval" } : prev,
+                prev
+                  ? {
+                      ...prev,
+                      ...(stage === "review"
+                        ? { status_of_review: "For review" }
+                        : { status_of_submission: "For approval" }),
+                    }
+                  : prev,
               )
             }
           />
@@ -694,7 +717,9 @@ export default function AnalysisDetailPage({
             <h3 className="text-sm font-bold text-slate-700 border-b border-slate-200/60 pb-2 uppercase tracking-wide">
               Service Report Delivery
             </h3>
-            {(record.report_link || report) ? (
+            {(record.report_link ||
+            record.service_report_file_path ||
+            report) ? (
               <div className="space-y-3">
                 {report ? (
                   <>
@@ -729,6 +754,32 @@ export default function AnalysisDetailPage({
                       </p>
                     </div>
                   </>
+                ) : null}
+                {record.service_report_file_path ? (
+                  <div>
+                    <h4 className="text-[10px] text-slate-400 font-bold uppercase">
+                      Service Report PDF
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void (async () => {
+                          const url = await getServiceReportSignedUrl(
+                            record.service_report_file_path,
+                          );
+                          if (url) {
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          } else {
+                            showToast("Couldn't open that PDF.", "error");
+                          }
+                        })();
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {record.service_report_file_name || "Open PDF"}
+                    </button>
+                  </div>
                 ) : null}
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">

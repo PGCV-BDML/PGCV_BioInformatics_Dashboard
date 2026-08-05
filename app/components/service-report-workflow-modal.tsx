@@ -26,31 +26,43 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Mark it Completed",
     actor: "Analyst",
     detail:
-      "Set Status of Completion to Completed. This timestamps the record and unlocks the report step.",
+      "Set Status of Completion to Completed. This timestamps the record and unlocks the report upload.",
   },
   {
-    title: "Attach the report link",
+    title: "Upload the PDF",
     actor: "Analyst",
     detail:
-      "Click Generate in the Service Report Link column to log who delivered it and when, or paste the URL straight into the edit panel.",
+      "Click Upload in the Service Report column and attach the PDF. You can optionally add a Drive or share link alongside it. The PDF is what goes through review.",
+  },
+  {
+    title: "Assign the Reviewing Officer",
+    actor: "Analyst",
+    detail:
+      "Open the edit panel and pick a lab peer under Personnel. Anyone except the assignee can review. Saving with a completed report notifies them.",
+  },
+  {
+    title: "Peer review",
+    actor: "Reviewing officer",
+    detail:
+      "From the bell or Notifications page, Open Report marks it In review. Complete review signs it off; Request revision sends it back to the assignee with comments.",
   },
   {
     title: "Assign the Approving Officer",
     actor: "Analyst",
     detail:
-      "Open the edit panel and pick the officer under Personnel. Saving this sends the notification. Only team leads appear in the list.",
+      "Pick a team lead under Approving Officer. They are notified only after Status of Review is Reviewed — never before.",
   },
   {
-    title: "Review, approve or send back",
+    title: "Approve or request changes",
     actor: "Approving officer",
     detail:
-      "The officer opens the bell icon or the Notifications page. Open Report sets the record to Under review. Approve sets it to Approved; Request changes asks for a comment and sends the report back to the assignee instead.",
+      "Open Report sets Status of Submission to Under review. Approve finishes sign-off; Request changes sends comments back to the assignee.",
   },
   {
-    title: "Address the comments",
+    title: "Address comments and resubmit",
     actor: "Analyst",
     detail:
-      "A change request lands in the assignee's bell and on the record's detail page. Fix what was raised, then click Resubmit for approval — that puts it back in the officer's queue automatically.",
+      "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval.",
   },
   {
     title: "Submit and close out",
@@ -142,12 +154,11 @@ export function ServiceReportWorkflowModal({
             <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-900 leading-relaxed">
               <span className="font-bold">
-                The officer is notified on an edit, not on creation.
+                Approving officers are never notified before peer review is done.
               </span>{" "}
-              The alert fires the moment a saved record <em>becomes</em> Completed
-              + linked + assigned an officer. If you fill in all three while first
-              creating the record, no alert goes out — clear the Approving Officer,
-              save, then set it again and save.
+              Status of Review must be Reviewed first. The reviewing officer and
+              approving officer must also be different people, and the reviewer
+              cannot be the assignee.
             </p>
           </div>
         </div>

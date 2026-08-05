@@ -31,6 +31,13 @@ import {
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
 import {
+  deleteAllServiceReportPdfs,
+  deleteServiceReportPdf,
+  getServiceReportSignedUrl,
+  uploadServiceReportPdf,
+  type ServiceReportFileMeta,
+} from "@/lib/service-report-file";
+import {
   Analysis,
   AnalysisStatus,
   Project,
@@ -50,7 +57,9 @@ import AnalysisSidebar, {
   EMPTY_ANALYSIS_FORM,
   type ApproverOption,
 } from "../../../components/analysismodal";
-import ServiceReportModal from "../../../components/service-report-modal";
+import ServiceReportModal, {
+  type ServiceReportUploadResult,
+} from "../../../components/service-report-modal";
 import { ServiceReportWorkflowInfoButton } from "../../../components/service-report-workflow-modal";
 import { PageHeader } from "../../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../../components/state-views";
@@ -89,8 +98,12 @@ interface ServiceProjectRow {
   sample_type: string;
   run_id: string;
   status_of_completion: string;
+  status_of_review: string;
   status_of_submission: string;
   report_link: string;
+  service_report_file_path: string;
+  service_report_file_name: string;
+  service_report_file_size: number | null;
   client_sequences_link: string;
   notes: string;
   linked_project_id: string;
@@ -110,6 +123,7 @@ interface ServiceProjectRow {
   delivered_by?: string;
   delivered_at?: string;
   client_acknowledged_at?: string;
+  reviewer_user_id: string;
   approver_user_id: string;
 }
 
@@ -145,12 +159,20 @@ function rowToFormState(row: ServiceProjectRow): AnalysisFormState {
     sample_type: row.sample_type,
     run_id: row.run_id,
     status_of_completion: row.status_of_completion,
+    status_of_review: row.status_of_review,
     status_of_submission: row.status_of_submission,
     service_report_link: row.report_link,
+    service_report_file_path: row.service_report_file_path,
+    service_report_file_name: row.service_report_file_name,
+    service_report_file_size:
+      row.service_report_file_size != null
+        ? String(row.service_report_file_size)
+        : "",
     client_sequences_link: row.client_sequences_link,
     notes: row.notes,
     project_id: row.linked_project_id,
     assignee: row.assignee === "Unassigned" ? "" : row.assignee,
+    reviewer_user_id: row.reviewer_user_id ?? "",
     approver_user_id: row.approver_user_id ?? "",
   };
 }
@@ -189,8 +211,12 @@ function analysisToRow(
     sample_type: a.sample_type ?? "",
     run_id: a.run_id ?? "",
     status_of_completion: a.status_of_completion ?? "",
+    status_of_review: a.status_of_review ?? "",
     status_of_submission: a.status_of_submission ?? "",
     report_link: a.service_report_link ?? "",
+    service_report_file_path: a.service_report_file_path ?? "",
+    service_report_file_name: a.service_report_file_name ?? "",
+    service_report_file_size: a.service_report_file_size ?? null,
     client_sequences_link: a.client_sequences_link ?? "",
     notes: a.notes ?? "",
     linked_project_id: a.project_id ?? "",
@@ -209,7 +235,8 @@ function analysisToRow(
     completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
     service_name: opts.serviceName ?? null,
     service_category: opts.serviceCategory ?? null,
-    approver_user_id: (a as Analysis & { approver_user_id?: string | null }).approver_user_id ?? "",
+    reviewer_user_id: a.reviewer_user_id ?? "",
+    approver_user_id: a.approver_user_id ?? "",
   };
 }
 
@@ -232,8 +259,10 @@ export default function ServiceReportTrackerPage() {
     { id: string; name: string; client: string; service_name: string | null; service_category: ServiceCategory | null }[]
   >([]);
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
+  const [availableReviewers, setAvailableReviewers] = useState<ApproverOption[]>([]);
   const [availableApprovers, setAvailableApprovers] = useState<ApproverOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   /** run_id (normalized) → repository URL from Repositories module */
   const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
     () => new Map(),
@@ -351,6 +380,9 @@ export default function ServiceReportTrackerPage() {
           Array.from(tmpProjectMap.entries()).map(([id, v]) => ({ id, ...v })),
         );
         setAvailableAssignees(Array.from(tmpUserMap.values()));
+        setAvailableReviewers(
+          (users as User[]).map((u) => ({ id: u.id, name: u.name })),
+        );
         setAvailableApprovers(
           (users as User[])
             .filter((u) => u.role === "team_lead")
@@ -473,6 +505,7 @@ export default function ServiceReportTrackerPage() {
     setIsSidebarOpen(false);
     setIsEditing(false);
     setSelectedAnalysis(null);
+    setPendingFile(null);
     setFormState(EMPTY_ANALYSIS_FORM);
   }, []);
 
@@ -481,6 +514,7 @@ export default function ServiceReportTrackerPage() {
     const dateKey = today.toISOString().slice(0, 10);
     setIsEditing(false);
     setSelectedAnalysis(null);
+    setPendingFile(null);
     setFormState({
       ...EMPTY_ANALYSIS_FORM,
       service_report_number: nextServiceReportNumber(
@@ -497,6 +531,7 @@ export default function ServiceReportTrackerPage() {
   const openEditSidebar = useCallback((row: ServiceProjectRow) => {
     setSelectedAnalysis(row);
     setIsEditing(true);
+    setPendingFile(null);
     setFormState(rowToFormState(row));
     setIsSidebarOpen(true);
   }, []);
@@ -509,18 +544,32 @@ export default function ServiceReportTrackerPage() {
       try {
         let assigneeId: string | null = null;
         if (formState.assignee.trim()) {
-          const users = await getUsersFromDB([
-            "team_lead",
-            "team_member",
-            "intern",
-            "trainee",
-          ]);
-          const matchedUser = (users as User[]).find((u) => u.name === formState.assignee);
+          const matchedUser = availableReviewers.find(
+            (u) => u.name === formState.assignee,
+          );
           if (!matchedUser) {
             showToast("Assignee not found.", "error");
             return;
           }
           assigneeId = matchedUser.id;
+        }
+
+        const reviewerId = emptyToNull(formState.reviewer_user_id);
+        const approverId = emptyToNull(formState.approver_user_id);
+
+        if (reviewerId && assigneeId && reviewerId === assigneeId) {
+          showToast(
+            "Reviewing officer cannot be the same person as the assignee.",
+            "error",
+          );
+          return;
+        }
+        if (reviewerId && approverId && reviewerId === approverId) {
+          showToast(
+            "Reviewing and approving officers must be different people.",
+            "error",
+          );
+          return;
         }
 
         const legacyStatus = deriveLegacyStatus({
@@ -530,7 +579,28 @@ export default function ServiceReportTrackerPage() {
         const nowIso = new Date().toISOString();
         const completedAt = legacyStatus === "completed" ? nowIso : null;
 
-        const payload = {
+        const targetId =
+          isEditing && selectedAnalysis
+            ? selectedAnalysis.id
+            : crypto.randomUUID();
+
+        const previousPath =
+          isEditing && selectedAnalysis
+            ? selectedAnalysis.service_report_file_path.trim()
+            : "";
+        const pathCleared =
+          Boolean(previousPath) && !formState.service_report_file_path.trim();
+
+        let fileMeta: ServiceReportFileMeta | null = null;
+        if (pendingFile) {
+          fileMeta = await uploadServiceReportPdf({
+            analysisId: targetId,
+            file: pendingFile,
+            uploadedBy: currentUserId,
+          });
+        }
+
+        const payload: Record<string, unknown> = {
           project_id: emptyToNull(formState.project_id),
           pipeline: emptyToNull(formState.pipeline),
           pipeline_version: null,
@@ -551,14 +621,29 @@ export default function ServiceReportTrackerPage() {
           service_report_link: emptyToNull(formState.service_report_link),
           client_sequences_link: emptyToNull(formState.client_sequences_link),
           notes: emptyToNull(formState.notes),
-          approver_user_id: emptyToNull(formState.approver_user_id),
+          reviewer_user_id: reviewerId,
+          approver_user_id: approverId,
           ...(isEditing ? {} : { started_at: nowIso }),
         };
 
-        const targetId = isEditing && selectedAnalysis
-          ? selectedAnalysis.id
-          : crypto.randomUUID();
+        if (fileMeta) {
+          Object.assign(payload, fileMeta);
+        } else if (pathCleared) {
+          payload.service_report_file_path = null;
+          payload.service_report_file_name = null;
+          payload.service_report_file_size = null;
+          payload.service_report_uploaded_at = null;
+          payload.service_report_uploaded_by = null;
+        }
+
         const saved = await saveDataToDB("analysis", targetId, payload);
+
+        if (fileMeta && previousPath && previousPath !== fileMeta.service_report_file_path) {
+          await deleteServiceReportPdf(previousPath);
+        } else if (pathCleared && previousPath) {
+          await deleteServiceReportPdf(previousPath);
+        }
+
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
 
         const syncResult = await syncAnalysisToTaskSafe({
@@ -628,9 +713,14 @@ export default function ServiceReportTrackerPage() {
           );
         }
         closeSidebar();
-      } catch {
+      } catch (err) {
+        console.error(err);
         showToast(
-          isEditing ? "Failed to update analysis." : "Failed to create analysis.",
+          err instanceof Error
+            ? err.message
+            : isEditing
+              ? "Failed to update analysis."
+              : "Failed to create analysis.",
           "error",
         );
       } finally {
@@ -640,6 +730,9 @@ export default function ServiceReportTrackerPage() {
     [
       formState,
       availableProjects,
+      availableReviewers,
+      pendingFile,
+      currentUserId,
       showToast,
       isSubmitting,
       isEditing,
@@ -666,6 +759,7 @@ export default function ServiceReportTrackerPage() {
       }
       await supabase.from("service_report").delete().eq("analysis_id", analysisId);
       await deleteDataFromDB("analysis", analysisId);
+      await deleteAllServiceReportPdfs(analysisId);
 
       setServicesList((prev) => prev.filter((item) => item.id !== analysisId));
       setShowDeleteConfirm(false);
@@ -679,16 +773,33 @@ export default function ServiceReportTrackerPage() {
     }
   }, [selectedAnalysis, showToast]);
 
-  const handleReportGenerated = useCallback(
-    (analysisId: string, reportLink: string) => {
+  const handleReportUploaded = useCallback(
+    (analysisId: string, result: ServiceReportUploadResult) => {
       setServicesList((prev) =>
-        prev.map((item) =>
-          item.id === analysisId ? { ...item, report_link: reportLink } : item,
-        ),
+        prev.map((item) => {
+          if (item.id !== analysisId) return item;
+          return {
+            ...item,
+            report_link: result.link || item.report_link,
+            service_report_file_path:
+              result.file?.service_report_file_path ?? item.service_report_file_path,
+            service_report_file_name:
+              result.file?.service_report_file_name ?? item.service_report_file_name,
+            service_report_file_size:
+              result.file?.service_report_file_size ?? item.service_report_file_size,
+          };
+        }),
       );
-      void saveDataToDB("analysis", analysisId, {
-        service_report_link: reportLink,
-      }).catch((err) => console.error("Failed to save report link on analysis:", err));
+
+      const payload: Record<string, unknown> = {};
+      if (result.link) payload.service_report_link = result.link;
+      if (result.file) Object.assign(payload, result.file);
+
+      if (Object.keys(payload).length === 0) return;
+
+      void saveDataToDB("analysis", analysisId, payload).catch((err) =>
+        console.error("Failed to save report on analysis:", err),
+      );
     },
     [],
   );
@@ -808,6 +919,18 @@ export default function ServiceReportTrackerPage() {
     } else if (key === "for_approval" || key === "for approval") {
       colorClasses = "bg-blue-50 text-blue-700 border-blue-200";
       chevronClass = "text-blue-700";
+    } else if (key === "for review" || key === "for_review") {
+      colorClasses = "bg-sky-50 text-sky-800 border-sky-200";
+      chevronClass = "text-sky-700";
+    } else if (key === "in review" || key === "in_review") {
+      colorClasses = "bg-indigo-50 text-indigo-800 border-indigo-200";
+      chevronClass = "text-indigo-700";
+    } else if (key === "revision requested" || key === "revision_requested") {
+      colorClasses = "bg-orange-50 text-orange-800 border-orange-300";
+      chevronClass = "text-orange-700";
+    } else if (key === "reviewed") {
+      colorClasses = "bg-teal-50 text-teal-800 border-teal-200";
+      chevronClass = "text-teal-700";
     } else if (key === "under review" || key === "under_review") {
       colorClasses = "bg-amber-50 text-amber-800 border-amber-200";
       chevronClass = "text-amber-700";
@@ -1044,7 +1167,7 @@ export default function ServiceReportTrackerPage() {
       key: "status_of_completion",
       label: "Status of Completion",
       shortLabel: "Completion Status",
-      width: "8%",
+      width: "7%",
       sortable: true,
       render: (s) =>
         renderTrackerStatusDropdown(
@@ -1056,10 +1179,28 @@ export default function ServiceReportTrackerPage() {
         ),
     },
     {
+      key: "status_of_review",
+      label: "Status of Review",
+      shortLabel: "Review Status",
+      width: "7%",
+      sortable: true,
+      render: (s) => {
+        const value = (s.status_of_review || "").trim();
+        const { colorClasses } = statusChipColors(value || "blank");
+        return (
+          <span
+            className={`inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-sm ${colorClasses}`}
+          >
+            {value || "—"}
+          </span>
+        );
+      },
+    },
+    {
       key: "status_of_submission",
       label: "Status of Submission",
       shortLabel: "Submission Status",
-      width: "8%",
+      width: "7%",
       sortable: true,
       render: (s) =>
         renderTrackerStatusDropdown(
@@ -1072,23 +1213,56 @@ export default function ServiceReportTrackerPage() {
     },
     {
       key: "report_link",
-      label: "Service Report Link",
-      shortLabel: "Report Link",
-      width: "5%",
-      render: (s) =>
-        s.report_link ? (
-          renderLinkCell(s.report_link, "Report")
-        ) : s.status === "completed" ? (
-          <button
-            type="button"
-            onClick={() => setSelectedReportRow(s)}
-            className="inline-flex items-center gap-1 text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold"
-          >
-            <FileText className="w-3 h-3" /> Generate
-          </button>
-        ) : (
-          <span className="text-slate-400">—</span>
-        ),
+      label: "Service Report",
+      shortLabel: "Report",
+      width: "6%",
+      render: (s) => {
+        const hasPdf = Boolean(s.service_report_file_path?.trim());
+        const hasLink = Boolean(s.report_link?.trim());
+        if (hasPdf) {
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  const url = await getServiceReportSignedUrl(
+                    s.service_report_file_path,
+                  );
+                  if (url) {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  } else {
+                    showToast("Couldn't open that PDF.", "error");
+                  }
+                })();
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2a7797] hover:text-[#1f5c76]"
+            >
+              <FileText className="w-3 h-3" />
+              <TruncatedText
+                text={s.service_report_file_name || "PDF"}
+                display="PDF"
+                force
+                className="text-[#2a7797]"
+              />
+            </button>
+          );
+        }
+        if (hasLink) {
+          return renderLinkCell(s.report_link, "Link");
+        }
+        if (s.status === "completed") {
+          return (
+            <button
+              type="button"
+              onClick={() => setSelectedReportRow(s)}
+              className="inline-flex items-center gap-1 text-[11px] text-[#2a7797] hover:text-[#1f5c76] font-semibold"
+            >
+              <FileText className="w-3 h-3" /> Upload
+            </button>
+          );
+        }
+        return <span className="text-slate-400">—</span>;
+      },
     },
     {
       key: "client_sequences_link",
@@ -1280,7 +1454,7 @@ export default function ServiceReportTrackerPage() {
             description="Try adjusting your search or filter criteria."
           />
         ) : (
-          <div className="w-full space-y-4 overflow-x-auto [&&_table]:min-w-[2200px] [&&_table]:table-fixed">
+          <div className="w-full space-y-4 overflow-x-auto [&&_table]:min-w-[2400px] [&&_table]:table-fixed">
             <DataTable
               columns={columns}
               data={displayedServices}
@@ -1303,7 +1477,7 @@ export default function ServiceReportTrackerPage() {
         analysis={selectedReportRow}
         currentUserId={currentUserId}
         onClose={() => setSelectedReportRow(null)}
-        onReportGenerated={handleReportGenerated}
+        onReportUploaded={handleReportUploaded}
       />
 
       <AnalysisSidebar
@@ -1313,7 +1487,10 @@ export default function ServiceReportTrackerPage() {
         formState={formState}
         availableProjects={availableProjects}
         availableAssignees={availableAssignees}
+        availableReviewers={availableReviewers}
         availableApprovers={availableApprovers}
+        pendingFile={pendingFile}
+        onPendingFileChange={setPendingFile}
         onClose={closeSidebar}
         onChange={handleInputChange}
         onSubmit={handleSaveAnalysis}

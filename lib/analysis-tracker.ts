@@ -56,6 +56,24 @@ export const STATUS_OF_COMPLETION_OPTIONS = [
   "Cancelled",
 ] as const;
 
+export const REVISION_REQUESTED = "Revision requested" as const;
+export const REVIEWED = "Reviewed" as const;
+
+/**
+ * Peer review stage, sitting between completion and submission.
+ *
+ * The wording deliberately avoids "Under review", which
+ * `status_of_submission` already uses for the approving officer's own
+ * pass — two columns in the tracker reading the same word would be
+ * impossible to tell apart at a glance.
+ */
+export const STATUS_OF_REVIEW_OPTIONS = [
+  "For review",
+  "In review",
+  REVISION_REQUESTED,
+  REVIEWED,
+] as const;
+
 export const CHANGES_REQUESTED = "Changes requested" as const;
 
 export const STATUS_OF_SUBMISSION_OPTIONS = [
@@ -94,6 +112,22 @@ export function submissionStatusRank(label: string | null | undefined): number {
   return 0;
 }
 
+/**
+ * Review-stage counterpart to `submissionStatusRank`. "Revision requested"
+ * sits at 0 for the same reason "Changes requested" does: it is the one
+ * transition that legitimately hands the report backwards, and it is only
+ * ever set by `request_analysis_revision`.
+ */
+export function reviewStatusRank(label: string | null | undefined): number {
+  const t = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  if (t === "reviewed") return 3;
+  if (t === "in review" || t === "in_review") return 2;
+  if (t === "for review" || t === "for_review") return 1;
+  return 0;
+}
+
 export function isChangesRequestedLabel(
   label: string | null | undefined,
 ): boolean {
@@ -101,6 +135,20 @@ export function isChangesRequestedLabel(
     .trim()
     .toLowerCase();
   return t === "changes requested" || t === "changes_requested";
+}
+
+export function isRevisionRequestedLabel(
+  label: string | null | undefined,
+): boolean {
+  const t = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  return t === "revision requested" || t === "revision_requested";
+}
+
+/** True once the reviewing officer has signed off — the approval gate. */
+export function isReviewComplete(label: string | null | undefined): boolean {
+  return String(label ?? "").trim().toLowerCase() === "reviewed";
 }
 
 export function shouldAdvanceSubmissionStatus(
