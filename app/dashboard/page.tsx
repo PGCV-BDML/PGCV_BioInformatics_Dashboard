@@ -11,9 +11,11 @@ import { ProjectDistributionChart } from "../components/project-distribution-cha
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { getDashboardStats, getServiceReportsByYear, type DashboardStats } from "@/lib/dashboard-stats";
 import {
+  endOfWeek,
   formatTaskDateRange,
   resolveTaskEndDate,
   resolveTaskStartDate,
+  startOfWeek,
   taskOverlapsRange,
   toDateKey,
 } from "@/lib/calendar-tasks";
@@ -45,7 +47,9 @@ function normalizePriority(raw: string | null | undefined): WeeklyTask["priority
 }
 
 function normalizeStatus(raw: string | null | undefined): WeeklyTask["status"] {
-  return (raw ?? "").toLowerCase().trim() === "completed" ? "completed" : "pending";
+  const value = (raw ?? "").toLowerCase().trim();
+  if (value === "completed" || value === "finished") return "completed";
+  return "pending";
 }
 
 export default function DashboardLandingPage() {
@@ -144,10 +148,8 @@ export default function DashboardLandingPage() {
 
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const weekOut = new Date(now);
-        weekOut.setDate(weekOut.getDate() + 7);
-        const todayKey = toDateKey(now);
-        const weekOutKey = toDateKey(weekOut);
+        const weekStartKey = toDateKey(startOfWeek(now));
+        const weekEndKey = toDateKey(endOfWeek(now));
 
         const sortByStartDate = (
           a: { startKey: string | null },
@@ -173,7 +175,7 @@ export default function DashboardLandingPage() {
           .filter(
             (t) =>
               !t.startKey ||
-              taskOverlapsRange(t.startKey, t.endKey, todayKey, weekOutKey),
+              taskOverlapsRange(t.startKey, t.endKey, weekStartKey, weekEndKey),
           );
 
         const pendingThisWeek = thisWeekRows

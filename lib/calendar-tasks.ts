@@ -150,6 +150,22 @@ export function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+/** Sunday-start week (matches calendar month grid). */
+export function startOfWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+/** Inclusive Saturday end of the Sunday-start week. */
+export function endOfWeek(date: Date): Date {
+  const start = startOfWeek(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return end;
+}
+
 export function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }

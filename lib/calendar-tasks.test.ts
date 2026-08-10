@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { Task } from "@/types/database";
 import {
   eachDateKeyInRange,
+  endOfWeek,
   filterByCategory,
   formatTaskDateRange,
   getMonthGrid,
   mapTasksForCalendar,
   normalizeDueDate,
   normalizeTaskDateRange,
+  startOfWeek,
   taskHref,
   taskOverlapsRange,
   toDateKey,
@@ -17,6 +19,14 @@ import {
 describe("toDateKey", () => {
   it("formats local dates as YYYY-MM-DD", () => {
     expect(toDateKey(new Date(2026, 6, 27))).toBe("2026-07-27");
+  });
+});
+
+describe("startOfWeek / endOfWeek", () => {
+  it("uses Sunday through Saturday for the current week", () => {
+    const monday = new Date(2026, 7, 10); // Mon Aug 10, 2026
+    expect(toDateKey(startOfWeek(monday))).toBe("2026-08-09");
+    expect(toDateKey(endOfWeek(monday))).toBe("2026-08-15");
   });
 });
 
