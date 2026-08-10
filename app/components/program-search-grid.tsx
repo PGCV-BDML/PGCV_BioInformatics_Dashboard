@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Archive,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { programRoutes } from "@/lib/routes";
 import type {
@@ -75,6 +76,7 @@ interface ProgramSearchGridProps {
   onMarkDone?: (program: ProgramCard) => void;
   onArchive?: (program: ProgramCard) => void;
   onRestore?: (program: ProgramCard) => void;
+  onDelete?: (program: ProgramCard) => void;
 }
 
 function ProgramCardMenu({
@@ -83,12 +85,14 @@ function ProgramCardMenu({
   onMarkDone,
   onArchive,
   onRestore,
+  onDelete,
 }: {
   prog: ProgramCard;
   onEdit?: (program: ProgramCard) => void;
   onMarkDone?: (program: ProgramCard) => void;
   onArchive?: (program: ProgramCard) => void;
   onRestore?: (program: ProgramCard) => void;
+  onDelete?: (program: ProgramCard) => void;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -131,6 +135,14 @@ function ProgramCardMenu({
       show: prog.status === "archived",
       onClick: () => onRestore?.(prog),
     },
+    {
+      key: "delete",
+      label: "Delete permanently",
+      icon: Trash2,
+      show: Boolean(onDelete),
+      destructive: true,
+      onClick: () => onDelete?.(prog),
+    },
   ].filter((item) => item.show);
 
   if (items.length === 0) return null;
@@ -164,9 +176,19 @@ function ProgramCardMenu({
                   setOpen(false);
                   item.onClick();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold hover:bg-slate-50 ${
+                  "destructive" in item && item.destructive
+                    ? "text-red-600"
+                    : "text-slate-700"
+                }`}
               >
-                <Icon className="w-3.5 h-3.5 text-slate-400" />
+                <Icon
+                  className={`w-3.5 h-3.5 ${
+                    "destructive" in item && item.destructive
+                      ? "text-red-500"
+                      : "text-slate-400"
+                  }`}
+                />
                 {item.label}
               </button>
             );
@@ -185,6 +207,7 @@ export default function ProgramSearchGrid({
   onMarkDone,
   onArchive,
   onRestore,
+  onDelete,
 }: ProgramSearchGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -298,6 +321,7 @@ export default function ProgramSearchGrid({
                         onMarkDone={onMarkDone}
                         onArchive={onArchive}
                         onRestore={onRestore}
+                        onDelete={onDelete}
                       />
                     )}
                   </div>

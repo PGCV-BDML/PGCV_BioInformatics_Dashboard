@@ -8,6 +8,7 @@ import ProgramSearchGrid, {
 } from "@/app/components/program-search-grid";
 import ProgramModal from "@/app/components/program-modal";
 import ConfirmModal from "@/app/components/confirm-modal";
+import DeleteModal from "@/app/components/deletemodal";
 import { useDashboardUI } from "@/app/components/dashboard-ui-context";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
@@ -16,8 +17,9 @@ import {
   getRowsFromDB,
   getUsersFromDB,
   saveDataToDB,
+  deleteDataFromDB,
 } from "@/lib/supabase";
-import { describeSaveError } from "@/lib/db-errors";
+import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
   TrainingProgram,
@@ -72,7 +74,9 @@ export default function ProgramDirectory({
     null,
   );
   const [archiveTarget, setArchiveTarget] = useState<ProgramCard | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProgramCard | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { toggleSidebar } = useDashboardUI();
   const { isLearnerView, isStaff } = usePortal();
@@ -313,6 +317,26 @@ export default function ProgramDirectory({
     }
   }, [archiveTarget, updateProgramStatus]);
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteDataFromDB("training_program", deleteTarget.id);
+      setProgramsList((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setRawPrograms((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      if (selectedProgram?.id === deleteTarget.id) {
+        handleCloseModal();
+      }
+      setDeleteTarget(null);
+      showToast(`${title} program deleted permanently.`, "success");
+    } catch (error) {
+      console.error("Failed to delete program:", error);
+      showToast(describeDeleteError(error, "training_program"), "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteTarget, selectedProgram?.id, handleCloseModal, showToast, title]);
+
   return (
     <div className="space-y-8 mx-auto font-aileron w-full max-w-[1240px]">
       <PageHeader
@@ -367,6 +391,7 @@ export default function ProgramDirectory({
             onMarkDone={(prog) => updateProgramStatus(prog, "completed")}
             onArchive={(prog) => setArchiveTarget(prog)}
             onRestore={(prog) => updateProgramStatus(prog, "ongoing")}
+            onDelete={(prog) => setDeleteTarget(prog)}
           />
         )}
       </div>
@@ -398,6 +423,14 @@ export default function ProgramDirectory({
         isConfirming={isArchiving}
         onClose={() => setArchiveTarget(null)}
         onConfirm={handleArchiveConfirm}
+      />
+
+      <DeleteModal
+        isOpen={!!deleteTarget}
+        itemName={deleteTarget?.title ?? "this program"}
+        isDeleting={isDeleting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );
