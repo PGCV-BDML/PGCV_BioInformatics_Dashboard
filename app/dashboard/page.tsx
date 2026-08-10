@@ -74,12 +74,15 @@ export default function DashboardLandingPage() {
     const nextStatus: WeeklyTask["status"] =
       target.status === "completed" ? "pending" : "completed";
 
-    // Optimistic UI update
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
+    // Optimistic UI update — pending first, completed sink to the bottom
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((task) =>
         task.id === id ? { ...task, status: nextStatus } : task,
-      ),
-    );
+      );
+      const pending = updated.filter((t) => t.status === "pending");
+      const completed = updated.filter((t) => t.status === "completed");
+      return [...pending, ...completed];
+    });
 
     try {
       await saveDataToDB("task", id, { status: nextStatus });
@@ -146,7 +149,17 @@ export default function DashboardLandingPage() {
         const todayKey = toDateKey(now);
         const weekOutKey = toDateKey(weekOut);
 
-        const thisWeek = taskRows
+        const sortByStartDate = (
+          a: { startKey: string | null },
+          b: { startKey: string | null },
+        ) => {
+          if (!a.startKey && !b.startKey) return 0;
+          if (!a.startKey) return 1;
+          if (!b.startKey) return -1;
+          return a.startKey.localeCompare(b.startKey);
+        };
+
+        const thisWeekRows = taskRows
           .map((row) => ({
             id: row.id,
             title: row.title || "Untitled task",
@@ -157,20 +170,24 @@ export default function DashboardLandingPage() {
             startKey: resolveTaskStartDate(row),
             endKey: resolveTaskEndDate(row),
           }))
-          .filter((t) => t.status === "pending")
           .filter(
             (t) =>
               !t.startKey ||
               taskOverlapsRange(t.startKey, t.endKey, todayKey, weekOutKey),
-          )
-          .sort((a, b) => {
-            if (!a.startKey && !b.startKey) return 0;
-            if (!a.startKey) return 1;
-            if (!b.startKey) return -1;
-            return a.startKey.localeCompare(b.startKey);
-          })
-          .slice(0, 5)
-          .map(({ startKey: _s, endKey: _e, ...task }) => task);
+          );
+
+        const pendingThisWeek = thisWeekRows
+          .filter((t) => t.status === "pending")
+          .sort(sortByStartDate)
+          .slice(0, 5);
+
+        const completedThisWeek = thisWeekRows
+          .filter((t) => t.status === "completed")
+          .sort(sortByStartDate);
+
+        const thisWeek = [...pendingThisWeek, ...completedThisWeek].map(
+          ({ startKey: _s, endKey: _e, ...task }) => task,
+        );
 
         setTasks(thisWeek);
       } catch (err) {

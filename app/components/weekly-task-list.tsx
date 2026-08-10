@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import {
   CheckSquare,
@@ -47,12 +48,23 @@ const priorityConfig = {
   },
 };
 
+function sortTasksForDisplay(tasks: WeeklyTask[]): WeeklyTask[] {
+  const pending = tasks.filter((t) => t.status !== "completed");
+  const completed = tasks.filter((t) => t.status === "completed");
+  return [...pending, ...completed];
+}
+
 export function WeeklyTaskList({
   tasks,
   tasksLoading,
   tasksError,
   onToggleTask,
 }: WeeklyTaskListProps) {
+  const sortedTasks = sortTasksForDisplay(tasks);
+  const completedCount = sortedTasks.filter(
+    (t) => t.status === "completed",
+  ).length;
+
   return (
     <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
       <div className="flex items-center justify-between mb-6 font-quicksand">
@@ -99,14 +111,28 @@ export function WeeklyTaskList({
 
         {!tasksLoading &&
           !tasksError &&
-          tasks.map((task) => {
+          sortedTasks.map((task, index) => {
             const isCompleted = task.status === "completed";
             const currentPriority =
               priorityConfig[task.priority] || priorityConfig.low;
+            const showCompletedDivider =
+              completedCount > 0 &&
+              isCompleted &&
+              sortedTasks[index - 1]?.status !== "completed";
 
             return (
+              <Fragment key={task.id}>
+                {showCompletedDivider && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-quicksand">
+                      Completed
+                    </span>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+                )}
+
               <Link
-                key={task.id}
                 href={taskHref({ id: task.id, title: task.title })}
                 className={`border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 cursor-pointer select-none group font-aileron ${isCompleted
                   ? "bg-slate-100/70 border-slate-200 opacity-60 shadow-[0_4px_12px_rgba(0,0,0,0.02)]"
@@ -161,6 +187,7 @@ export function WeeklyTaskList({
                   </div>
                 </div>
               </Link>
+              </Fragment>
             );
           })}
       </div>
