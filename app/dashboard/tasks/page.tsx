@@ -39,11 +39,15 @@ import {
   supabase,
 } from "@/lib/supabase";
 import { analysisStatusLabel } from "@/lib/analysis-tracker";
-import { normalizeDueDate } from "@/lib/calendar-tasks";
+import {
+  formatTaskDateRange,
+  normalizeTaskDateRange,
+  resolveTaskStartDate,
+  taskFormDatesFromTask,
+} from "@/lib/calendar-tasks";
 import { describeSaveError } from "@/lib/db-errors";
 import { buildTaskRecordPayload } from "@/lib/task-payload";
 import { AnalysisStatus } from "../../../types/database";
-import { formatDate } from "@/lib/utils";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
 import {
   TASK_CATEGORY_LABELS,
@@ -125,7 +129,9 @@ function TasksPageContent() {
   const emptyForm: Omit<Task, "id"> = {
     title: "",
     assignee_id: availableUsers[0]?.id ?? "",
-    due_date: "",
+    start_date: "",
+    end_date: "",
+    due_date: null,
     status: "pending",
     priority: "medium",
     linked_project_id: null,
@@ -201,7 +207,8 @@ function TasksPageContent() {
     setFormState({
       title: match.title,
       assignee_id: match.assignee_id,
-      due_date: normalizeDueDate(match.due_date) ?? "",
+      ...taskFormDatesFromTask(match),
+      due_date: match.due_date,
       status: match.status,
       priority: match.priority,
       linked_project_id: match.linked_project_id,
@@ -308,6 +315,8 @@ function TasksPageContent() {
         assignee ? assignee.name : "",
         task.status,
         task.priority,
+        task.start_date,
+        task.end_date,
         task.due_date,
         project ? project.name : "",
         categoryLabels,
@@ -349,9 +358,13 @@ function TasksPageContent() {
         };
         return (statusWeights[String(a.status)] || 99) - (statusWeights[String(b.status)] || 99);
       },
-      due_date: (a, b) => {
-        const timeA = a.due_date ? new Date(a.due_date).getTime() : 0;
-        const timeB = b.due_date ? new Date(b.due_date).getTime() : 0;
+      start_date: (a, b) => {
+        const timeA = resolveTaskStartDate(a)
+          ? new Date(resolveTaskStartDate(a)!).getTime()
+          : 0;
+        const timeB = resolveTaskStartDate(b)
+          ? new Date(resolveTaskStartDate(b)!).getTime()
+          : 0;
         return timeA - timeB;
       },
     },
@@ -380,7 +393,13 @@ function TasksPageContent() {
 
     const generatedId = crypto.randomUUID();
     const categories = formState.categories ?? [];
-    const newTask: Task = { id: generatedId, ...formState, categories };
+    const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
+    const newTask: Task = {
+      id: generatedId,
+      ...formState,
+      ...dates,
+      categories,
+    };
 
     try {
       await saveDataToDB("task", generatedId, buildTaskRecordPayload(formState));
@@ -406,6 +425,7 @@ function TasksPageContent() {
     setIsSubmitting(true);
 
     const categories = formState.categories ?? [];
+    const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
 
     try {
       await replaceTaskCategories(selectedTask.id, categories);
@@ -413,7 +433,7 @@ function TasksPageContent() {
       setTasksList((prev) =>
         prev.map((item) =>
           item.id === selectedTask.id
-            ? { ...item, ...formState, categories }
+            ? { ...item, ...formState, ...dates, categories }
             : item,
         ),
       );
@@ -593,13 +613,13 @@ function TasksPageContent() {
       },
     },
     {
-      key: "due_date",
+      key: "start_date",
       label: "Date",
-      width: "10%",
+      width: "12%",
       sortable: true,
       render: (t) => (
         <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
-          {formatDate(t.due_date) || "-"}
+          {formatTaskDateRange(t) || "-"}
         </span>
       ),
     },
@@ -616,7 +636,8 @@ function TasksPageContent() {
               setFormState({
                 title: t.title,
                 assignee_id: t.assignee_id,
-                due_date: normalizeDueDate(t.due_date) ?? "",
+                ...taskFormDatesFromTask(t),
+                due_date: t.due_date,
                 status: t.status,
                 priority: t.priority,
                 linked_project_id: t.linked_project_id,

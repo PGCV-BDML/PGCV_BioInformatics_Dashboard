@@ -14,7 +14,7 @@ export interface WeeklyTask {
   id: string;
   title: string;
   description: string;
-  dueDate: Date | null;
+  dateLabel: string;
   status: "pending" | "completed";
   priority: "high" | "medium" | "low";
 }
@@ -156,13 +156,7 @@ export function WeeklyTaskList({
                   >
                     <Calendar className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      {task.dueDate
-                        ? task.dueDate.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                        : "No date"}
+                      {task.dateLabel || "No date"}
                     </span>
                   </div>
                 </div>

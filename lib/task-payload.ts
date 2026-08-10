@@ -1,4 +1,4 @@
-import { normalizeDueDate } from "@/lib/calendar-tasks";
+import { normalizeTaskDateRange } from "@/lib/calendar-tasks";
 import type { Task, TaskRecord } from "@/types/database";
 
 /** Persistable task columns from the task form (excludes tags and analysis link). */
@@ -8,10 +8,14 @@ export function buildTaskRecordPayload(
   const { categories: _categories, linked_analysis_id: _linkedAnalysis, ...record } =
     form;
 
+  const dates = normalizeTaskDateRange(record.start_date, record.end_date);
+
   return {
     title: record.title,
     assignee_id: record.assignee_id,
-    due_date: normalizeDueDate(record.due_date),
+    start_date: dates.start_date,
+    end_date: dates.end_date,
+    due_date: dates.due_date,
     status: record.status,
     priority: record.priority,
     linked_project_id: record.linked_project_id || null,

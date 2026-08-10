@@ -1,9 +1,11 @@
 import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types/database";
+import { formatDate } from "@/lib/utils";
 
 export type CalendarTask = {
   id: string;
   title: string;
-  due_date: string;
+  start_date: string;
+  end_date: string;
   status: TaskStatus;
   priority: TaskPriority;
   assignee_id: string;
@@ -12,6 +14,12 @@ export type CalendarTask = {
   categories: TaskCategory[];
   projectName: string;
   assigneeName: string;
+};
+
+type TaskDateFields = {
+  start_date?: string | null;
+  end_date?: string | null;
+  due_date?: string | null;
 };
 
 /** Parse a YYYY-MM-DD string as a local calendar date (avoids UTC shift). */
@@ -28,13 +36,109 @@ export function toDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Normalize a due date to YYYY-MM-DD for date inputs and Postgres `date` columns. */
+/** Normalize a task date to YYYY-MM-DD for date inputs and Postgres `date` columns. */
 export function normalizeDueDate(value: string | null | undefined): string | null {
   if (value == null || !String(value).trim()) return null;
   const raw = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const datePart = raw.includes("T") ? raw.split("T")[0]! : raw.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : null;
+}
+
+export function resolveTaskStartDate(task: TaskDateFields): string | null {
+  return normalizeDueDate(task.start_date) ?? normalizeDueDate(task.due_date);
+}
+
+export function resolveTaskEndDate(task: TaskDateFields): string | null {
+  const start = resolveTaskStartDate(task);
+  return normalizeDueDate(task.end_date) ?? start;
+}
+
+/** Normalize form/DB dates into a persisted range; due_date mirrors end_date. */
+export function normalizeTaskDateRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): {
+  start_date: string | null;
+  end_date: string | null;
+  due_date: string | null;
+} {
+  const start_date = normalizeDueDate(start);
+  if (!start_date) {
+    return { start_date: null, end_date: null, due_date: null };
+  }
+
+  const endRaw = normalizeDueDate(end);
+  const end_date =
+    endRaw && endRaw >= start_date ? endRaw : start_date;
+
+  return {
+    start_date,
+    end_date,
+    due_date: end_date,
+  };
+}
+
+/** Values for task modal date inputs. */
+export function taskFormDatesFromTask(task: TaskDateFields): {
+  start_date: string;
+  end_date: string;
+} {
+  const start_date = resolveTaskStartDate(task) ?? "";
+  const end = resolveTaskEndDate(task);
+  const end_date = end && end !== start_date ? end : "";
+  return { start_date, end_date };
+}
+
+export function taskOverlapsRange(
+  startKey: string | null,
+  endKey: string | null,
+  windowStart: string,
+  windowEnd: string,
+): boolean {
+  if (!startKey) return false;
+  const end = endKey ?? startKey;
+  return startKey <= windowEnd && end >= windowStart;
+}
+
+/** Inclusive list of YYYY-MM-DD keys from start through end. */
+export function eachDateKeyInRange(startKey: string, endKey: string): string[] {
+  const keys: string[] = [];
+  let cursor = parseLocalDate(startKey);
+  const end = parseLocalDate(endKey);
+
+  while (cursor <= end) {
+    keys.push(toDateKey(cursor));
+    cursor = new Date(
+      cursor.getFullYear(),
+      cursor.getMonth(),
+      cursor.getDate() + 1,
+    );
+  }
+
+  return keys;
+}
+
+export function formatTaskDateRange(task: TaskDateFields): string {
+  const start = resolveTaskStartDate(task);
+  const end = resolveTaskEndDate(task);
+  if (!start) return "";
+  if (!end || start === end) return formatDate(start);
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
+export function buildTasksByDate(
+  tasks: CalendarTask[],
+): Map<string, CalendarTask[]> {
+  const map = new Map<string, CalendarTask[]>();
+  for (const task of tasks) {
+    for (const key of eachDateKeyInRange(task.start_date, task.end_date)) {
+      const list = map.get(key) ?? [];
+      list.push(task);
+      map.set(key, list);
+    }
+  }
+  return map;
 }
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -84,26 +188,33 @@ export function mapTasksForCalendar(
   projectNameById: Map<string, string>,
   assigneeNameById: Map<string, string>,
 ): CalendarTask[] {
-  return tasks
-    .filter((t): t is Task & { due_date: string } => Boolean(t.due_date))
-    .map((t) => {
-      const projectId = t.linked_project_id ?? "";
-      return {
-        id: t.id,
-        title: t.title || "Untitled task",
-        due_date: t.due_date,
-        status: t.status,
-        priority: t.priority,
-        assignee_id: t.assignee_id,
-        linked_project_id: projectId,
-        linked_analysis_id: t.linked_analysis_id ?? null,
-        categories: t.categories ?? [],
-        projectName: projectId
-          ? (projectNameById.get(projectId) ?? "Unlinked project")
-          : "No linked project",
-        assigneeName: assigneeNameById.get(t.assignee_id) ?? "Unassigned",
-      };
+  const mapped: CalendarTask[] = [];
+
+  for (const t of tasks) {
+    const start = resolveTaskStartDate(t);
+    const end = resolveTaskEndDate(t);
+    if (!start || !end) continue;
+
+    const projectId = t.linked_project_id ?? "";
+    mapped.push({
+      id: t.id,
+      title: t.title || "Untitled task",
+      start_date: start,
+      end_date: end,
+      status: t.status,
+      priority: t.priority,
+      assignee_id: t.assignee_id,
+      linked_project_id: projectId,
+      linked_analysis_id: t.linked_analysis_id ?? null,
+      categories: t.categories ?? [],
+      projectName: projectId
+        ? (projectNameById.get(projectId) ?? "Unlinked project")
+        : "No linked project",
+      assigneeName: assigneeNameById.get(t.assignee_id) ?? "Unassigned",
     });
+  }
+
+  return mapped;
 }
 
 export function tasksInMonth(
@@ -112,17 +223,15 @@ export function tasksInMonth(
   options?: { includeCompleted?: boolean },
 ): CalendarTask[] {
   const includeCompleted = options?.includeCompleted ?? false;
-  const start = startOfMonth(viewMonth);
-  const end = endOfMonth(viewMonth);
-  const startKey = toDateKey(start);
-  const endKey = toDateKey(end);
+  const startKey = toDateKey(startOfMonth(viewMonth));
+  const endKey = toDateKey(endOfMonth(viewMonth));
 
   return tasks
     .filter((t) => {
       if (!includeCompleted && t.status === "completed") return false;
-      return t.due_date >= startKey && t.due_date <= endKey;
+      return taskOverlapsRange(t.start_date, t.end_date, startKey, endKey);
     })
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
 }
 
 export function upcomingTasks(
@@ -140,9 +249,11 @@ export function upcomingTasks(
 
   return tasks
     .filter((t) => t.status !== "completed")
-    .filter((t) => t.due_date >= todayKey && t.due_date <= endKey)
+    .filter((t) =>
+      taskOverlapsRange(t.start_date, t.end_date, todayKey, endKey),
+    )
     .sort((a, b) => {
-      const byDate = a.due_date.localeCompare(b.due_date);
+      const byDate = a.start_date.localeCompare(b.start_date);
       if (byDate !== 0) return byDate;
       const priorityWeight: Record<string, number> = {
         high: 0,

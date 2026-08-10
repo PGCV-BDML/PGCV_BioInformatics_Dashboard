@@ -10,11 +10,20 @@ import { ServiceReportsChart } from "../components/service-reports-chart";
 import { ProjectDistributionChart } from "../components/project-distribution-chart";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { getDashboardStats, getServiceReportsByYear, type DashboardStats } from "@/lib/dashboard-stats";
+import {
+  formatTaskDateRange,
+  resolveTaskEndDate,
+  resolveTaskStartDate,
+  taskOverlapsRange,
+  toDateKey,
+} from "@/lib/calendar-tasks";
 import { ErrorState } from "../components/state-views";
 interface TaskRow {
   id: string;
   title: string | null;
   due_date: string | null;
+  start_date: string | null;
+  end_date: string | null;
   status: string;
   priority: string;
 }
@@ -22,7 +31,7 @@ interface WeeklyTask {
   id: string;
   title: string;
   description: string;
-  dueDate: Date | null;
+  dateLabel: string;
   status: "pending" | "completed";
   priority: "high" | "medium" | "low";
 }
@@ -130,30 +139,38 @@ export default function DashboardLandingPage() {
 
         if (cancelled) return;
 
-        const mapped: WeeklyTask[] = taskRows.map((row) => ({
-          id: row.id,
-          title: row.title || "Untitled task",
-          description: "", // `task` table has no description column
-          dueDate: row.due_date ? new Date(row.due_date) : null,
-          status: normalizeStatus(row.status),
-          priority: normalizePriority(row.priority),
-        }));
-
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const weekOut = new Date(now);
         weekOut.setDate(weekOut.getDate() + 7);
+        const todayKey = toDateKey(now);
+        const weekOutKey = toDateKey(weekOut);
 
-        const thisWeek = mapped
+        const thisWeek = taskRows
+          .map((row) => ({
+            id: row.id,
+            title: row.title || "Untitled task",
+            description: "",
+            dateLabel: formatTaskDateRange(row),
+            status: normalizeStatus(row.status),
+            priority: normalizePriority(row.priority),
+            startKey: resolveTaskStartDate(row),
+            endKey: resolveTaskEndDate(row),
+          }))
           .filter((t) => t.status === "pending")
-          .filter((t) => !t.dueDate || t.dueDate <= weekOut)
+          .filter(
+            (t) =>
+              !t.startKey ||
+              taskOverlapsRange(t.startKey, t.endKey, todayKey, weekOutKey),
+          )
           .sort((a, b) => {
-            if (!a.dueDate && !b.dueDate) return 0;
-            if (!a.dueDate) return 1;
-            if (!b.dueDate) return -1;
-            return a.dueDate.getTime() - b.dueDate.getTime();
+            if (!a.startKey && !b.startKey) return 0;
+            if (!a.startKey) return 1;
+            if (!b.startKey) return -1;
+            return a.startKey.localeCompare(b.startKey);
           })
-          .slice(0, 5);
+          .slice(0, 5)
+          .map(({ startKey: _s, endKey: _e, ...task }) => task);
 
         setTasks(thisWeek);
       } catch (err) {

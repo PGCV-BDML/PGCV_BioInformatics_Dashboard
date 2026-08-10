@@ -17,7 +17,7 @@ import {
   taskHref,
   upcomingTasks,
 } from "@/lib/calendar-tasks";
-import { formatDate } from "@/lib/utils";
+import { formatTaskDateRange } from "@/lib/calendar-tasks";
 import { CategoryChips } from "./category-chips";
 
 export function UpcomingEvents() {
@@ -150,7 +150,7 @@ export function UpcomingEvents() {
                   </span>
                   <span className="shrink-0 flex items-center gap-1 text-slate-500 font-semibold">
                     <Calendar className="w-3 h-3" />
-                    {formatDate(task.due_date)}
+                    {formatTaskDateRange(task)}
                   </span>
                 </div>
                 <CategoryChips categories={task.categories} maxVisible={2} />

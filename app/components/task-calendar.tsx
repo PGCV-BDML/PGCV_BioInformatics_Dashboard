@@ -28,13 +28,18 @@ import type {
 import {
   type CalendarTask,
   addMonths,
+  buildTasksByDate,
+  endOfMonth,
   filterByCategory,
+  formatTaskDateRange,
   getMonthGrid,
   isSameDay,
   mapTasksForCalendar,
   PRIORITY_STYLES,
+  startOfMonth,
   STATUS_LABELS,
   taskHref,
+  taskOverlapsRange,
   toDateKey,
 } from "@/lib/calendar-tasks";
 import {
@@ -47,7 +52,6 @@ import {
 } from "@/lib/calendar-absences";
 import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
-import { formatDate } from "@/lib/utils";
 import { ErrorState, LoadingState } from "./state-views";
 import { CategoryChips } from "./category-chips";
 
@@ -134,15 +138,10 @@ export default function TaskCalendar() {
     return filterAbsencesByStatus(absences, absenceFilter);
   }, [absences, showTeamAbsences, absenceFilter]);
 
-  const tasksByDate = useMemo(() => {
-    const map = new Map<string, CalendarTask[]>();
-    for (const task of visibleTasks) {
-      const list = map.get(task.due_date) ?? [];
-      list.push(task);
-      map.set(task.due_date, list);
-    }
-    return map;
-  }, [visibleTasks]);
+  const tasksByDate = useMemo(
+    () => buildTasksByDate(visibleTasks),
+    [visibleTasks],
+  );
 
   const absencesByDate = useMemo(
     () => absencesByDateKey(visibleAbsences),
@@ -166,8 +165,11 @@ export default function TaskCalendar() {
   });
 
   const monthTaskCount = useMemo(() => {
-    const prefix = `${viewMonth.getFullYear()}-${String(viewMonth.getMonth() + 1).padStart(2, "0")}`;
-    return visibleTasks.filter((t) => t.due_date.startsWith(prefix)).length;
+    const startKey = toDateKey(startOfMonth(viewMonth));
+    const endKey = toDateKey(endOfMonth(viewMonth));
+    return visibleTasks.filter((t) =>
+      taskOverlapsRange(t.start_date, t.end_date, startKey, endKey),
+    ).length;
   }, [visibleTasks, viewMonth]);
 
   if (isLoading) {
@@ -552,7 +554,7 @@ export default function TaskCalendar() {
                           {STATUS_LABELS[task.status]}
                         </span>
                         <span className="text-slate-400">
-                          {formatDate(task.due_date)}
+                          {formatTaskDateRange(task)}
                         </span>
                       </span>
                     </div>

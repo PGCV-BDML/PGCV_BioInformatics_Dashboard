@@ -82,7 +82,10 @@ export type Task = {
   id: string;
   title: string;
   assignee_id: string;
+  /** Legacy mirror of end_date; kept for older queries and reports. */
   due_date: string | null;
+  start_date: string | null;
+  end_date: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   linked_project_id: string | null;

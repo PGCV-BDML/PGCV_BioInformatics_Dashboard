@@ -3,7 +3,7 @@ import {
   saveDataToDB,
   supabase,
 } from "@/lib/supabase";
-import { toDateKey } from "@/lib/calendar-tasks";
+import { resolveTaskStartDate, toDateKey } from "@/lib/calendar-tasks";
 import {
   displayAnalysisLabel,
   isCancelledCompletionLabel,
@@ -157,10 +157,16 @@ async function runAnalysisSync(
     return { outcome: "skipped", task: null };
   }
 
+  const day =
+    (existing ? resolveTaskStartDate(existing) : null) ??
+    dueDateFromAnalysis(analysis);
+
   const payload: Omit<TaskRecord, "id"> = {
     title: buildAnalysisTaskTitle(analysis),
     assignee_id: analysis.assignee_id,
-    due_date: existing?.due_date ?? dueDateFromAnalysis(analysis),
+    start_date: day,
+    end_date: day,
+    due_date: day,
     status: mapAnalysisStatusToTask(analysis.status),
     priority: options?.priority ?? existing?.priority ?? "medium",
     linked_project_id: analysis.project_id,

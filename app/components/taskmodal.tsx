@@ -52,7 +52,14 @@ export default function TaskModal({
     const errs: Record<string, string> = {};
     if (!formState.title.trim()) errs.title = "Task description is required";
     if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
-    if (!formState.due_date) errs.due_date = "Date is required";
+    if (!formState.start_date) errs.start_date = "Start date is required";
+    if (
+      formState.start_date &&
+      formState.end_date &&
+      formState.end_date < formState.start_date
+    ) {
+      errs.end_date = "End date cannot be before start date";
+    }
     if (!formState.categories?.length) {
       errs.categories = "Select at least one category";
     }
@@ -243,8 +250,7 @@ export default function TaskModal({
           <Calendar className="w-3.5 h-3.5" />,
           "Timeline",
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
             <label htmlFor="task-status" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
               Status
             </label>
@@ -272,24 +278,43 @@ export default function TaskModal({
                 Managed on the linked sequence analysis.
               </p>
             )}
-          </div>
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="task-due-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-              Date
+            <label htmlFor="task-start-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Start date
             </label>
             <input
-              id="task-due-date"
+              id="task-start-date"
               type="date"
-              name="due_date"
+              name="start_date"
               required
-              aria-invalid={!!errors.due_date}
-              value={formState.due_date ?? ""}
+              aria-invalid={!!errors.start_date}
+              value={formState.start_date ?? ""}
               onChange={handleFieldChange}
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
             />
-            {errors.due_date && (
-              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.due_date}</p>
+            {errors.start_date && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.start_date}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="task-end-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              End date (optional)
+            </label>
+            <input
+              id="task-end-date"
+              type="date"
+              name="end_date"
+              aria-invalid={!!errors.end_date}
+              value={formState.end_date ?? ""}
+              onChange={handleFieldChange}
+              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+            />
+            {errors.end_date && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.end_date}</p>
             )}
           </div>
         </div>
