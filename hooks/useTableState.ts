@@ -12,12 +12,15 @@ export function useTableState<T extends { id: string }>({
   resetKey,
   customSorters,
   initialSort = null,
+  pinToBottom,
 }: {
   items: T[];
   itemsPerPage: number;
   resetKey: string;
   customSorters?: Partial<Record<keyof T, (a: T, b: T) => number>>;
   initialSort?: SortConfig<T> | null;
+  /** When true, item is sorted after all non-pinned items (e.g. completed tasks). */
+  pinToBottom?: (item: T) => boolean;
 }) {
   const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(
     initialSort,
@@ -34,9 +37,21 @@ export function useTableState<T extends { id: string }>({
   }, []);
 
   const sorted = useMemo(() => {
-    if (!sortConfig) return items;
-    const customSorter = customSorters?.[sortConfig.key];
+    if (!sortConfig && !pinToBottom) return items;
+
+    const customSorter = sortConfig
+      ? customSorters?.[sortConfig.key]
+      : undefined;
+
     return [...items].sort((a, b) => {
+      if (pinToBottom) {
+        const aPinned = pinToBottom(a) ? 1 : 0;
+        const bPinned = pinToBottom(b) ? 1 : 0;
+        if (aPinned !== bPinned) return aPinned - bPinned;
+      }
+
+      if (!sortConfig) return 0;
+
       const cmp = customSorter
         ? customSorter(a, b)
         : String(a[sortConfig.key] ?? "").toLowerCase().localeCompare(
@@ -44,7 +59,7 @@ export function useTableState<T extends { id: string }>({
           );
       return sortConfig.direction === "asc" ? cmp : -cmp;
     });
-  }, [items, sortConfig, customSorters]);
+  }, [items, sortConfig, customSorters, pinToBottom]);
 
   const displayed = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;

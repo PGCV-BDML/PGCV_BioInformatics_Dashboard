@@ -104,6 +104,36 @@ describe("useTableState — sorting", () => {
     ]);
   });
 
+  it("Pins matching items to the bottom even without an active sort", () => {
+    const { result } = renderHook(() =>
+      useTableState({
+        ...defaultProps,
+        pinToBottom: (item) => item.name === "Alice",
+      }),
+    );
+    expect(result.current.sorted.map((i) => i.name)).toEqual([
+      "Charlie",
+      "Bob",
+      "Alice",
+    ]);
+  });
+
+  it("Applies column sort within non-pinned and pinned groups", () => {
+    const { result } = renderHook(() =>
+      useTableState({
+        ...defaultProps,
+        pinToBottom: (item) => item.age >= 30,
+        initialSort: { key: "name", direction: "asc" },
+      }),
+    );
+    // Active (<30): Alice; pinned (>=30) sorted by name: Bob, Charlie
+    expect(result.current.sorted.map((i) => i.name)).toEqual([
+      "Alice",
+      "Bob",
+      "Charlie",
+    ]);
+  });
+
   it("Inverts custom sorter direction when descending", () => {
     // A sorter that always returns 1 — forces "b after a"
     const customSorter = vi.fn((_a: TestItem, _b: TestItem) => 1);

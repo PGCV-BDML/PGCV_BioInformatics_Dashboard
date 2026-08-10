@@ -72,7 +72,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: "high", label: "High" },
 ];
 
-
+const isCompletedTask = (task: Task) => task.status === "completed";
 
 export default function TasksPage() {
   return (
@@ -348,6 +348,8 @@ function TasksPageContent() {
     items: filteredTasks,
     itemsPerPage,
     resetKey: `${searchQuery}-${activeFilter}-${categoryFilter}`,
+    // Keep open work visible; completed tasks always sink below active ones.
+    pinToBottom: isCompletedTask,
     customSorters: {
       priority: (a, b) => {
         const priorityWeights: Record<string, number> = {
