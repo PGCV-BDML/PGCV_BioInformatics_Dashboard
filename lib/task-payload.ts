@@ -16,6 +16,7 @@ export function buildTaskRecordPayload(
     start_date: dates.start_date,
     end_date: dates.end_date,
     due_date: dates.due_date,
+    details: record.details?.trim() || null,
     status: record.status,
     priority: record.priority,
     linked_project_id: record.linked_project_id || null,

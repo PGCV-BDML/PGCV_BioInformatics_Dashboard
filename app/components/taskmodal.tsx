@@ -25,7 +25,9 @@ interface TaskModalProps {
   statusOptions: { value: TaskStatus; label: string }[];
   priorityOptions: { value: TaskPriority; label: string }[];
   onInputChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => void;
   onCategoriesChange: (categories: TaskCategory[]) => void;
   onClose: () => void;
@@ -77,7 +79,11 @@ export default function TaskModal({
     onSubmit(e);
   };
 
-  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleFieldChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     onInputChange(e);
   };
@@ -121,10 +127,25 @@ export default function TaskModal({
             placeholder="e.g., Run downstream validation scripts against assemblies"
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
-          {errors.title && (
-            <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.title}</p>
-          )}
-        </div>
+            {errors.title && (
+              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.title}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="task-details" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Location / details (optional)
+            </label>
+            <textarea
+              id="task-details"
+              name="details"
+              rows={2}
+              value={formState.details ?? ""}
+              onChange={handleFieldChange}
+              placeholder="e.g. Conference Room B, Zoom link, lab bay 2…"
+              className="w-full resize-none px-3.5 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
+            />
+          </div>
 
         {linkedAnalysisId && (
           <div className="ml-1 mt-1 flex items-center gap-2 rounded-xl border border-teal-200/70 bg-teal-50/80 px-3 py-2">

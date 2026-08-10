@@ -86,6 +86,8 @@ export type Task = {
   due_date: string | null;
   start_date: string | null;
   end_date: string | null;
+  /** Optional location, venue, or other notes. */
+  details: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   linked_project_id: string | null;

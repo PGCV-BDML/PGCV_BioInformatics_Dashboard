@@ -6,6 +6,7 @@ export type CalendarTask = {
   title: string;
   start_date: string;
   end_date: string;
+  details: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   assignee_id: string;
@@ -201,6 +202,7 @@ export function mapTasksForCalendar(
       title: t.title || "Untitled task",
       start_date: start,
       end_date: end,
+      details: t.details?.trim() || null,
       status: t.status,
       priority: t.priority,
       assignee_id: t.assignee_id,

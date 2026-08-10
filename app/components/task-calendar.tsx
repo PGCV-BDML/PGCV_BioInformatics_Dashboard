@@ -557,6 +557,11 @@ export default function TaskCalendar() {
                           {formatTaskDateRange(task)}
                         </span>
                       </span>
+                      {task.details ? (
+                        <p className="text-[11px] text-slate-500 font-aileron line-clamp-2">
+                          {task.details}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </li>

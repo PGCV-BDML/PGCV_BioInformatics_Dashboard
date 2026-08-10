@@ -132,6 +132,7 @@ function TasksPageContent() {
     start_date: "",
     end_date: "",
     due_date: null,
+    details: null,
     status: "pending",
     priority: "medium",
     linked_project_id: null,
@@ -209,6 +210,7 @@ function TasksPageContent() {
       assignee_id: match.assignee_id,
       ...taskFormDatesFromTask(match),
       due_date: match.due_date,
+      details: match.details ?? null,
       status: match.status,
       priority: match.priority,
       linked_project_id: match.linked_project_id,
@@ -318,6 +320,7 @@ function TasksPageContent() {
         task.start_date,
         task.end_date,
         task.due_date,
+        task.details,
         project ? project.name : "",
         categoryLabels,
       ]
@@ -371,12 +374,15 @@ function TasksPageContent() {
   });
 
   const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >,
+    ) => {
       const { name, value } = e.target;
       setFormState((prev) => ({
         ...prev,
-        [name]:
-          name === "linked_project_id" ? value || null : value,
+        [name]: name === "linked_project_id" ? value || null : value,
       }));
     },
     [],
@@ -624,6 +630,19 @@ function TasksPageContent() {
       ),
     },
     {
+      key: "details",
+      label: "Details",
+      width: "14%",
+      render: (t) => (
+        <span
+          className="text-xs text-slate-500 font-medium line-clamp-2 max-w-[160px]"
+          title={t.details ?? undefined}
+        >
+          {t.details?.trim() || "—"}
+        </span>
+      ),
+    },
+    {
       key: "id",
       label: "Actions",
       width: "8%",
@@ -638,6 +657,7 @@ function TasksPageContent() {
                 assignee_id: t.assignee_id,
                 ...taskFormDatesFromTask(t),
                 due_date: t.due_date,
+                details: t.details ?? null,
                 status: t.status,
                 priority: t.priority,
                 linked_project_id: t.linked_project_id,

@@ -154,6 +154,11 @@ export function UpcomingEvents() {
                   </span>
                 </div>
                 <CategoryChips categories={task.categories} maxVisible={2} />
+                {task.details ? (
+                  <p className="text-[11px] text-slate-500 font-aileron line-clamp-2">
+                    {task.details}
+                  </p>
+                ) : null}
               </Link>
             );
           })}
