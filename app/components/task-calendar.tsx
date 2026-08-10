@@ -443,7 +443,7 @@ export default function TaskCalendar() {
               Nothing scheduled this day
             </p>
             <p className="text-xs text-slate-400 mt-1 max-w-[220px] font-aileron">
-              Tasks with due dates and team leave/travel days appear here.
+              Tasks with dates and team leave/travel days appear here.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Link
@@ -552,7 +552,7 @@ export default function TaskCalendar() {
                           {STATUS_LABELS[task.status]}
                         </span>
                         <span className="text-slate-400">
-                          Due {formatDate(task.due_date)}
+                          {formatDate(task.due_date)}
                         </span>
                       </span>
                     </div>

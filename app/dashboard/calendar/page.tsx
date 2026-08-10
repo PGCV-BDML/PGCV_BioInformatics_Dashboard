@@ -12,7 +12,7 @@ export default function CalendarPage() {
       <PageHeader
         breadcrumbTrail={calendarBreadcrumbs}
         title="Calendar"
-        subtitle="Task due dates, team leave/travel, and sequence-analysis work by category."
+        subtitle="Task dates, team leave/travel, and sequence-analysis work by category."
         actions={
           <Link
             href="/dashboard/tasks"

@@ -120,7 +120,7 @@ export function describeSaveError(error: unknown, table: TableNames): string {
   }
 
   if (message.includes("invalid input syntax for type date")) {
-    return `Failed to save ${subject}: the due date is invalid. Please re-select the due date.`;
+    return `Failed to save ${subject}: the date is invalid. Please re-select the date.`;
   }
 
   if (message.includes("training_program_date_range_chk")) {

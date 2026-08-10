@@ -594,7 +594,7 @@ function TasksPageContent() {
     },
     {
       key: "due_date",
-      label: "Due Date",
+      label: "Date",
       width: "10%",
       sortable: true,
       render: (t) => (

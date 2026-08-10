@@ -93,7 +93,7 @@ export function WeeklyTaskList({
 
         {!tasksLoading && !tasksError && tasks.length === 0 && (
           <div className="text-xs font-semibold text-slate-400 p-4">
-            No tasks due this week. 🎉
+            No tasks this week. 🎉
           </div>
         )}
 
@@ -157,12 +157,12 @@ export function WeeklyTaskList({
                     <Calendar className="w-3.5 h-3.5 shrink-0" />
                     <span>
                       {task.dueDate
-                        ? `Due: ${task.dueDate.toLocaleDateString("en-US", {
+                        ? task.dueDate.toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
-                        })}`
-                        : "No due date"}
+                        })
+                        : "No date"}
                     </span>
                   </div>
                 </div>

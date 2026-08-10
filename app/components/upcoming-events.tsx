@@ -56,7 +56,7 @@ export function UpcomingEvents() {
       } catch (err) {
         console.error("Failed to load upcoming events:", err);
         if (!cancelled) {
-          setError("Couldn't load upcoming due dates.");
+          setError("Couldn't load upcoming dates.");
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -75,7 +75,7 @@ export function UpcomingEvents() {
         <div className="flex items-center gap-2 text-[#2a7797]">
           <Calendar className="w-4 h-4" />
           <h3 className="text-xs font-extrabold uppercase tracking-wider">
-            Upcoming Due Dates
+            Upcoming Dates
           </h3>
         </div>
         <Link
@@ -109,10 +109,10 @@ export function UpcomingEvents() {
               <CheckSquare className="w-6 h-6 text-[#7a8e9b]" />
             </div>
             <p className="text-xs font-semibold text-slate-500 font-aileron">
-              No upcoming due dates
+              No upcoming dates
             </p>
             <p className="text-[11px] text-slate-400 mt-1 max-w-[220px] font-aileron">
-              Open tasks and set due dates to see them here and on the calendar.
+              Open tasks and set dates to see them here and on the calendar.
             </p>
             <Link
               href="/dashboard/tasks"

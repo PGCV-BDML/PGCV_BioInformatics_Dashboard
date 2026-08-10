@@ -52,7 +52,7 @@ export default function TaskModal({
     const errs: Record<string, string> = {};
     if (!formState.title.trim()) errs.title = "Task description is required";
     if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
-    if (!formState.due_date) errs.due_date = "Due date is required";
+    if (!formState.due_date) errs.due_date = "Date is required";
     if (!formState.categories?.length) {
       errs.categories = "Select at least one category";
     }
@@ -276,7 +276,7 @@ export default function TaskModal({
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="task-due-date" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-              Due Date
+              Date
             </label>
             <input
               id="task-due-date"
