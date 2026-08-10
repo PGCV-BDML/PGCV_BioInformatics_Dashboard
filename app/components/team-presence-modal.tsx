@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   PresenceStatus,
+  UserPresenceAvatarChanges,
   UserPresenceFormData,
   PRESENCE_STATUS_OPTIONS,
   SCHEDULED_ABSENCE_STATUSES,
@@ -13,18 +14,18 @@ import {
   StickyNote,
   CalendarDays,
   Briefcase,
-  ImageIcon,
   UserRound,
   Plus,
   X,
+  Trash2,
 } from "lucide-react";
 import { normalizeAbsenceDates } from "@/lib/calendar-absences";
+import { validateAvatarImage } from "@/lib/user-avatar";
 
 export const EMPTY_PRESENCE_FORM: UserPresenceFormData = {
   status: "in_office",
   note: "",
   until_date: "",
-  avatar_url: "",
   designation: "",
   absence_dates: [],
   in_team_directory: true,
@@ -35,9 +36,13 @@ interface TeamPresenceModalProps {
   isSaving: boolean;
   memberName: string;
   initialData: UserPresenceFormData | null;
+  initialAvatarPreviewUrl: string | null;
   canManageDirectory: boolean;
   onClose: () => void;
-  onSubmit: (data: UserPresenceFormData) => void;
+  onSubmit: (
+    data: UserPresenceFormData,
+    avatarChanges?: UserPresenceAvatarChanges,
+  ) => void;
 }
 
 function usesScheduledDates(status: PresenceStatus): boolean {
@@ -49,6 +54,7 @@ export default function TeamPresenceModal({
   isSaving,
   memberName,
   initialData,
+  initialAvatarPreviewUrl,
   canManageDirectory,
   onClose,
   onSubmit,
@@ -56,24 +62,42 @@ export default function TeamPresenceModal({
   const [formState, setFormState] =
     useState<UserPresenceFormData>(EMPTY_PRESENCE_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [avatarBroken, setAvatarBroken] = useState(false);
   const [pendingDate, setPendingDate] = useState("");
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(
+    null,
+  );
+  const [removeAvatarRequested, setRemoveAvatarRequested] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setFormState(initialData || EMPTY_PRESENCE_FORM);
       setErrors({});
-      setAvatarBroken(false);
       setPendingDate("");
+      setPendingAvatarFile(null);
+      setLocalAvatarPreview(null);
+      setRemoveAvatarRequested(false);
+      setAvatarBroken(false);
     }
   }, [isOpen, initialData]);
+
+  useEffect(() => {
+    if (!pendingAvatarFile) {
+      setLocalAvatarPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingAvatarFile);
+    setLocalAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingAvatarFile]);
 
   const handleInputChange = <K extends keyof UserPresenceFormData>(
     key: K,
     value: UserPresenceFormData[K],
   ) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
-    if (key === "avatar_url") setAvatarBroken(false);
     setErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
@@ -99,32 +123,63 @@ export default function TeamPresenceModal({
     }));
   };
 
-  const validate = (): Record<string, string> => {
-    const errs: Record<string, string> = {};
-    const url = formState.avatar_url.trim();
-    if (url && !/^https?:\/\//i.test(url)) {
-      errs.avatar_url = "Must start with http:// or https://";
+  async function handleAvatarPicked(file: File | null) {
+    setErrors((prev) => {
+      if (!prev.avatar) return prev;
+      const next = { ...prev };
+      delete next.avatar;
+      return next;
+    });
+
+    if (!file) {
+      setPendingAvatarFile(null);
+      return;
     }
-    return errs;
-  };
+
+    const validationError = validateAvatarImage(file);
+    if (validationError) {
+      setErrors((prev) => ({ ...prev, avatar: validationError }));
+      setPendingAvatarFile(null);
+      return;
+    }
+
+    setPendingAvatarFile(file);
+    setRemoveAvatarRequested(false);
+    setAvatarBroken(false);
+  }
+
+  function handleRemoveAvatar() {
+    setPendingAvatarFile(null);
+    setRemoveAvatarRequested(true);
+    setAvatarBroken(false);
+    setErrors((prev) => {
+      if (!prev.avatar) return prev;
+      const next = { ...prev };
+      delete next.avatar;
+      return next;
+    });
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-    onSubmit({
-      ...formState,
-      absence_dates: usesScheduledDates(formState.status)
-        ? normalizeAbsenceDates(formState.absence_dates)
-        : [],
-    });
+    onSubmit(
+      {
+        ...formState,
+        absence_dates: usesScheduledDates(formState.status)
+          ? normalizeAbsenceDates(formState.absence_dates)
+          : [],
+      },
+      {
+        file: pendingAvatarFile ?? undefined,
+        remove: removeAvatarRequested || undefined,
+      },
+    );
   };
 
-  const previewUrl = formState.avatar_url.trim();
-  const showPreview = previewUrl.length > 0 && !avatarBroken;
+  const hasExistingAvatar = Boolean(initialAvatarPreviewUrl);
+  const showStoredPreview =
+    !removeAvatarRequested && (localAvatarPreview || initialAvatarPreviewUrl);
+  const displayPreview = localAvatarPreview || initialAvatarPreviewUrl;
   const showAbsenceDates = usesScheduledDates(formState.status);
 
   return (
@@ -143,9 +198,9 @@ export default function TeamPresenceModal({
 
           <div className="flex items-center gap-3">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-[#2a7797]/10 text-[#2a7797]">
-              {showPreview ? (
+              {showStoredPreview && displayPreview && !avatarBroken ? (
                 <img
-                  src={previewUrl}
+                  src={displayPreview}
                   alt=""
                   className="h-full w-full object-cover"
                   onError={() => setAvatarBroken(true)}
@@ -155,38 +210,52 @@ export default function TeamPresenceModal({
               )}
             </div>
             <p className="text-[11px] text-slate-400 font-quicksand leading-relaxed">
-              Paste a public image URL for the profile photo. Preview updates as
-              you type.
+              Upload a profile photo for the team directory. JPEG, PNG, or WebP
+              under 1 MB.
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="presence-avatar"
-              className="text-[11px] font-semibold text-slate-500 font-quicksand"
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              void handleAvatarPicked(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => avatarInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-[#2a7797]/30 hover:text-[#2a7797] disabled:opacity-60 transition-colors font-quicksand"
             >
-              Profile picture URL
-            </label>
-            <div className="relative">
-              <ImageIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                id="presence-avatar"
-                type="url"
-                value={formState.avatar_url}
-                onChange={(e) =>
-                  handleInputChange("avatar_url", e.target.value)
-                }
-                placeholder="https://…"
-                aria-invalid={!!errors.avatar_url}
-                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
-              />
-            </div>
-            {errors.avatar_url ? (
-              <p className="text-red-500 text-xs font-aileron" role="alert">
-                {errors.avatar_url}
-              </p>
+              {hasExistingAvatar || pendingAvatarFile
+                ? "Replace photo"
+                : "Upload photo"}
+            </button>
+            {(hasExistingAvatar || pendingAvatarFile) &&
+            !removeAvatarRequested ? (
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleRemoveAvatar}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-60 transition-colors font-quicksand"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </button>
             ) : null}
           </div>
+
+          {errors.avatar ? (
+            <p className="text-red-500 text-xs font-aileron" role="alert">
+              {errors.avatar}
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-1.5">
             <label

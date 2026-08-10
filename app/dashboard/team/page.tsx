@@ -18,6 +18,7 @@ import {
   User,
   UserAbsence,
   UserPresence,
+  UserPresenceAvatarChanges,
   UserPresenceFormData,
   PresenceStatus,
   PRESENCE_STATUS_OPTIONS,
@@ -41,6 +42,11 @@ import { teamBreadcrumbs } from "@/lib/breadcrumbs";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { usePortal } from "../../components/portal-context";
 import { useToast } from "../../components/toast";
+import {
+  removeUserAvatar,
+  resolveAvatarDisplayUrl,
+  uploadUserAvatar,
+} from "@/lib/user-avatar";
 
 type TeamMemberRow = User & {
   presence: UserPresence | null;
@@ -177,6 +183,9 @@ export default function TeamPage() {
   const [editFormData, setEditFormData] = useState<UserPresenceFormData | null>(
     null,
   );
+  const [editAvatarPreviewUrl, setEditAvatarPreviewUrl] = useState<
+    string | null
+  >(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingRoster, setIsSavingRoster] = useState(false);
   const [isOpeningEdit, setIsOpeningEdit] = useState(false);
@@ -307,6 +316,7 @@ export default function TeamPage() {
     setIsEditing(false);
     setSelected(null);
     setEditFormData(null);
+    setEditAvatarPreviewUrl(null);
   }, []);
 
   const handleOpenEdit = useCallback(
@@ -322,7 +332,6 @@ export default function TeamPage() {
           status,
           note: member.presence?.note || "",
           until_date: member.presence?.until_date || "",
-          avatar_url: member.avatar_url || "",
           designation: member.designation || "",
           in_team_directory: member.in_team_directory,
           absence_dates: scheduledStatus
@@ -331,6 +340,7 @@ export default function TeamPage() {
                 .map((row) => row.absence_date)
             : [],
         });
+        setEditAvatarPreviewUrl(resolveAvatarDisplayUrl(member));
         setIsEditing(true);
       } catch (err) {
         console.error("Failed to load absence dates:", err);
@@ -344,10 +354,12 @@ export default function TeamPage() {
   );
 
   const handleSubmit = useCallback(
-    async (formData: UserPresenceFormData) => {
+    async (
+      formData: UserPresenceFormData,
+      avatarChanges?: UserPresenceAvatarChanges,
+    ) => {
       if (!selected || !currentUserId) return;
 
-      const avatarUrl = formData.avatar_url.trim() || null;
       const designation = formData.designation.trim() || null;
       const isScheduled = SCHEDULED_ABSENCE_STATUSES.includes(formData.status);
       const storedStatus = presenceStatusForSave(
@@ -368,12 +380,16 @@ export default function TeamPage() {
 
       setIsSaving(true);
       try {
+        if (avatarChanges?.remove) {
+          await removeUserAvatar(selected.id);
+        } else if (avatarChanges?.file) {
+          await uploadUserAvatar(selected.id, avatarChanges.file);
+        }
+
         const userPatch: {
-          avatar_url: string | null;
           designation: string | null;
           in_team_directory?: boolean;
         } = {
-          avatar_url: avatarUrl,
           designation,
         };
         if (isTeamLead) {
@@ -396,9 +412,16 @@ export default function TeamPage() {
         setIsEditing(false);
         setSelected(null);
         setEditFormData(null);
+        setEditAvatarPreviewUrl(null);
         showToast("Profile updated.", "success");
-      } catch {
-        showToast("Failed to update profile. Please try again.", "error");
+      } catch (err) {
+        console.error("Failed to update profile:", err);
+        showToast(
+          err instanceof Error
+            ? err.message
+            : "Failed to update profile. Please try again.",
+          "error",
+        );
       } finally {
         setIsSaving(false);
       }
@@ -515,6 +538,7 @@ export default function TeamPage() {
             const until = formatUntil(member.presence?.until_date);
             const editable = canEditMember(member);
             const isSelf = member.id === currentUserId;
+            const avatarUrl = resolveAvatarDisplayUrl(member);
 
             return (
               <li
@@ -524,10 +548,10 @@ export default function TeamPage() {
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <div className="relative shrink-0">
                     <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-[#2a7797]/10 text-[#2a7797]">
-                      {member.avatar_url ? (
+                      {avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={member.avatar_url}
+                          src={avatarUrl}
                           alt=""
                           className="h-full w-full object-cover"
                         />
@@ -618,6 +642,7 @@ export default function TeamPage() {
         isSaving={isSaving}
         memberName={selected?.name ?? ""}
         initialData={initialData}
+        initialAvatarPreviewUrl={editAvatarPreviewUrl}
         canManageDirectory={isTeamLead}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}

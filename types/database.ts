@@ -398,6 +398,8 @@ export interface User {
   updated_at: string | null;
   institution: string | null;
   avatar_url: string | null;
+  avatar_path: string | null;
+  avatar_uploaded_at: string | null;
   designation: string | null;
   /** Object key in user-signatures bucket for this user's e-signature PNG. */
   signature_path: string | null;
@@ -517,12 +519,16 @@ export type UserPresenceFormData = {
   status: PresenceStatus;
   note: string;
   until_date: string;
-  avatar_url: string;
   designation: string;
   /** Explicit absence days (on leave / on travel). */
   absence_dates: string[];
   /** Team lead only: include on bioinformatics Team + calendar. */
   in_team_directory: boolean;
+};
+
+export type UserPresenceAvatarChanges = {
+  file?: File;
+  remove?: boolean;
 };
 
 /** Per-day scheduled absence for Team + Calendar. */
