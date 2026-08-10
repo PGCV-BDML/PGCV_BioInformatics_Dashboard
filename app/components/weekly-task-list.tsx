@@ -48,10 +48,32 @@ const priorityConfig = {
   },
 };
 
-function sortTasksForDisplay(tasks: WeeklyTask[]): WeeklyTask[] {
+/** Pending / active tasks first; completed always sink to the bottom. */
+export function sortTasksForDisplay(tasks: WeeklyTask[]): WeeklyTask[] {
   const pending = tasks.filter((t) => t.status !== "completed");
   const completed = tasks.filter((t) => t.status === "completed");
   return [...pending, ...completed];
+}
+
+/**
+ * After a status toggle: keep pending first, and place the toggled task at the
+ * end of its new group so a newly completed item is always last in the list.
+ */
+export function arrangeAfterStatusToggle(
+  tasks: WeeklyTask[],
+  toggledId: string,
+): WeeklyTask[] {
+  const toggled = tasks.find((t) => t.id === toggledId);
+  if (!toggled) return sortTasksForDisplay(tasks);
+
+  const others = tasks.filter((t) => t.id !== toggledId);
+  const pending = others.filter((t) => t.status !== "completed");
+  const completed = others.filter((t) => t.status === "completed");
+
+  if (toggled.status === "completed") {
+    return [...pending, ...completed, toggled];
+  }
+  return [...pending, toggled, ...completed];
 }
 
 export function WeeklyTaskList({

@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { DashboardBreadcrumbs } from "../components/dashboardbreadcrumbs";
 import { DashboardStatsCards } from "../components/dashboard-stat-cards";
-import { WeeklyTaskList } from "../components/weekly-task-list";
+import {
+  arrangeAfterStatusToggle,
+  sortTasksForDisplay,
+  WeeklyTaskList,
+} from "../components/weekly-task-list";
 import { UpcomingEvents } from "../components/upcoming-events";
 import { ServiceReportsChart } from "../components/service-reports-chart";
 import { ProjectDistributionChart } from "../components/project-distribution-chart";
@@ -78,24 +82,26 @@ export default function DashboardLandingPage() {
     const nextStatus: WeeklyTask["status"] =
       target.status === "completed" ? "pending" : "completed";
 
-    // Optimistic UI update — pending first, completed sink to the bottom
-    setTasks((prevTasks) => {
-      const updated = prevTasks.map((task) =>
-        task.id === id ? { ...task, status: nextStatus } : task,
-      );
-      const pending = updated.filter((t) => t.status === "pending");
-      const completed = updated.filter((t) => t.status === "completed");
-      return [...pending, ...completed];
-    });
+    // Optimistic UI update — pending first; newly completed goes to absolute bottom
+    setTasks((prevTasks) =>
+      arrangeAfterStatusToggle(
+        prevTasks.map((task) =>
+          task.id === id ? { ...task, status: nextStatus } : task,
+        ),
+        id,
+      ),
+    );
 
     try {
       await saveDataToDB("task", id, { status: nextStatus });
     } catch (err) {
       console.error("Failed to update task status:", err);
-      // roll back on failure
+      // roll back on failure and restore pending-first order
       setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === id ? { ...task, status: target.status } : task,
+        sortTasksForDisplay(
+          prevTasks.map((task) =>
+            task.id === id ? { ...task, status: target.status } : task,
+          ),
         ),
       );
     }
@@ -187,8 +193,10 @@ export default function DashboardLandingPage() {
           .filter((t) => t.status === "completed")
           .sort(sortByStartDate);
 
-        const thisWeek = [...pendingThisWeek, ...completedThisWeek].map(
-          ({ startKey: _s, endKey: _e, ...task }) => task,
+        const thisWeek = sortTasksForDisplay(
+          [...pendingThisWeek, ...completedThisWeek].map(
+            ({ startKey: _s, endKey: _e, ...task }) => task,
+          ),
         );
 
         setTasks(thisWeek);
