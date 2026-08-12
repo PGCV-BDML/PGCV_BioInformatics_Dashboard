@@ -329,7 +329,7 @@ export default function TaskCalendar() {
                 key={key}
                 type="button"
                 onClick={() => setSelectedDate(day)}
-                className={`min-h-[96px] sm:min-h-[124px] rounded-xl border p-1.5 sm:p-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 ${
+                className={`flex flex-col items-stretch min-h-[96px] sm:min-h-[124px] rounded-xl border p-1.5 sm:p-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 ${
                   isSelected
                     ? "border-[#2a7797] bg-[#e6f4f8]/80 shadow-sm"
                     : isToday
@@ -337,9 +337,9 @@ export default function TaskCalendar() {
                       : "border-transparent hover:border-slate-200 hover:bg-slate-50"
                 } ${inMonth ? "" : "opacity-40"}`}
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1 shrink-0">
                   <span
-                    className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full font-aileron ${
+                    className={`shrink-0 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full font-aileron ${
                       isToday
                         ? "bg-[#2a7797] text-white"
                         : isSelected
