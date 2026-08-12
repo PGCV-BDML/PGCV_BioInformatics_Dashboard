@@ -517,7 +517,7 @@ export default function RunSummaryPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-slate-200/80 bg-surface px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[1px] text-slate-500">
             Runs
@@ -536,24 +536,19 @@ export default function RunSummaryPage() {
         </div>
         <div className="rounded-2xl border border-slate-200/80 bg-surface px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[1px] text-slate-500">
-            GISAID uploaded
+            % with assigned lineages
           </p>
-          <p className="text-xl font-bold text-slate-800 tabular-nums mt-0.5">
-            {stats.gisaidUploaded}
-            <span className="text-sm font-semibold text-slate-400 ml-1">
-              / {stats.totalRuns}
-            </span>
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-surface px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-[1px] text-slate-500">
-            ISLAP uploaded
-          </p>
-          <p className="text-xl font-bold text-slate-800 tabular-nums mt-0.5">
-            {stats.islapUploaded}
-            <span className="text-sm font-semibold text-slate-400 ml-1">
-              / {stats.totalRuns}
-            </span>
+          <p
+            className="text-xl font-bold text-slate-800 tabular-nums mt-0.5"
+            title={
+              stats.pctLineageAssigned == null
+                ? undefined
+                : `${stats.totalLineageAssigned.toLocaleString()} of ${stats.totalSamples.toLocaleString()} samples`
+            }
+          >
+            {stats.pctLineageAssigned == null
+              ? "—"
+              : `${stats.pctLineageAssigned.toFixed(1)}%`}
           </p>
         </div>
       </div>

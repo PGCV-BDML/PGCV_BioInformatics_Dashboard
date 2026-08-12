@@ -33,6 +33,8 @@ export type CovidRunSummaryStats = {
   totalRuns: number;
   totalSamples: number;
   totalLineageAssigned: number;
+  /** Overall % of sequenced samples with a lineage (0–100), or null if no samples. */
+  pctLineageAssigned: number | null;
   gisaidUploaded: number;
   islapUploaded: number;
   reviewFlagged: number;
@@ -59,6 +61,8 @@ export function getCovidRunSummaryStats(
     totalRuns: rows.length,
     totalSamples,
     totalLineageAssigned,
+    pctLineageAssigned:
+      totalSamples > 0 ? (totalLineageAssigned / totalSamples) * 100 : null,
     gisaidUploaded,
     islapUploaded,
     reviewFlagged,

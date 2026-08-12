@@ -74,6 +74,7 @@ describe("getCovidRunSummaryStats", () => {
       totalRuns: 2,
       totalSamples: 100,
       totalLineageAssigned: 96,
+      pctLineageAssigned: 96,
       gisaidUploaded: 1,
       islapUploaded: 1,
       reviewFlagged: 1,
