@@ -1046,7 +1046,7 @@ export default function ServiceReportTrackerPage() {
       key: "service_report_number",
       label: "Service Report Number",
       shortLabel: "SR Number",
-      width: "11%",
+      maxWidth: "9rem",
       sortable: true,
       render: (s) => (
         <Link
@@ -1065,7 +1065,6 @@ export default function ServiceReportTrackerPage() {
       key: "service_report_date",
       label: "Date (Service Report)",
       shortLabel: "Date",
-      width: "6%",
       sortable: true,
       render: (s) => <TruncatedText text={dash(s.service_report_date)} />,
     },
@@ -1073,7 +1072,7 @@ export default function ServiceReportTrackerPage() {
       key: "analysis_classification",
       label: "Analysis Classification",
       shortLabel: "Classification",
-      width: "8%",
+      maxWidth: "10rem",
       sortable: true,
       render: (s) => (
         <TruncatedText
@@ -1085,7 +1084,7 @@ export default function ServiceReportTrackerPage() {
     {
       key: "client",
       label: "Client",
-      width: "8%",
+      maxWidth: "11rem",
       sortable: true,
       render: (s) => <TruncatedText text={dash(s.client)} />,
     },
@@ -1093,14 +1092,13 @@ export default function ServiceReportTrackerPage() {
       key: "client_type",
       label: "Client Type",
       shortLabel: "Type",
-      width: "5%",
       sortable: true,
       render: (s) => <TruncatedText text={dash(s.client_type)} />,
     },
     {
       key: "external_client_id",
       label: "Client ID",
-      width: "6%",
+      maxWidth: "8rem",
       sortable: true,
       render: (s) => {
         const id = s.external_client_id.trim();
@@ -1138,7 +1136,7 @@ export default function ServiceReportTrackerPage() {
     {
       key: "external_project_id",
       label: "Project ID",
-      width: "6%",
+      maxWidth: "8rem",
       sortable: true,
       render: (s) => (
         <TruncatedText
@@ -1151,14 +1149,14 @@ export default function ServiceReportTrackerPage() {
       key: "sample_type",
       label: "Sample Type",
       shortLabel: "Sample",
-      width: "6%",
+      maxWidth: "8rem",
       sortable: true,
       render: (s) => <TruncatedText text={dash(s.sample_type)} />,
     },
     {
       key: "run_id",
       label: "RUN ID",
-      width: "6%",
+      maxWidth: "8rem",
       sortable: true,
       render: (s) => {
         if (!s.run_id) {
@@ -1195,7 +1193,6 @@ export default function ServiceReportTrackerPage() {
       key: "status_of_completion",
       label: "Status of Completion",
       shortLabel: "Completion Status",
-      width: "7%",
       sortable: true,
       render: (s) =>
         renderTrackerStatusDropdown(
@@ -1210,7 +1207,6 @@ export default function ServiceReportTrackerPage() {
       key: "status_of_review",
       label: "Status of Review",
       shortLabel: "Review Status",
-      width: "7%",
       sortable: true,
       render: (s) => {
         const value = (s.status_of_review || "").trim();
@@ -1228,7 +1224,6 @@ export default function ServiceReportTrackerPage() {
       key: "status_of_submission",
       label: "Status of Submission",
       shortLabel: "Submission Status",
-      width: "7%",
       sortable: true,
       render: (s) =>
         renderTrackerStatusDropdown(
@@ -1243,7 +1238,6 @@ export default function ServiceReportTrackerPage() {
       key: "review_comments",
       label: "Review Comments",
       shortLabel: "Comments",
-      width: "6%",
       render: (s) => {
         const awaiting =
           isRevisionRequestedLabel(s.status_of_review) ||
@@ -1273,7 +1267,6 @@ export default function ServiceReportTrackerPage() {
       key: "report_link",
       label: "Service Report",
       shortLabel: "Report",
-      width: "6%",
       render: (s) => {
         const hasPdf = Boolean(s.service_report_file_path?.trim());
         const hasLink = Boolean(s.report_link?.trim());
@@ -1327,14 +1320,13 @@ export default function ServiceReportTrackerPage() {
       key: "client_sequences_link",
       label: "Client Sequences Link",
       shortLabel: "Sequences",
-      width: "5%",
       render: (s) => renderLinkCell(s.client_sequences_link, "Sequences"),
     },
     {
       key: "notes",
       label: "Notes/Remarks",
       shortLabel: "Notes",
-      width: "6%",
+      maxWidth: "12rem",
       sortable: true,
       render: (s) => (
         <TruncatedText
@@ -1348,7 +1340,6 @@ export default function ServiceReportTrackerPage() {
     {
       key: "id",
       label: "Actions",
-      width: "5%",
       render: (s) => (
         <div className="flex items-center justify-center gap-1">
           <button
@@ -1513,12 +1504,13 @@ export default function ServiceReportTrackerPage() {
             description="Try adjusting your search or filter criteria."
           />
         ) : (
-          <div className="w-full space-y-4 overflow-x-auto [&&_table]:min-w-[2400px] [&&_table]:table-fixed">
+          <div className="w-full space-y-4 overflow-x-auto">
             <DataTable
               columns={columns}
               data={displayedServices}
               sortConfig={sortConfig}
               onSort={handleSort}
+              layout="auto"
               emptyMessage="No matching service report records."
             />
             <Pagination

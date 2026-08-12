@@ -10,7 +10,10 @@ export interface Column<T> {
   label: string;
   /** Optional shorter header text; full `label` still used for hover title. */
   shortLabel?: string;
+  /** Column width hint (percent/px). Used as `width` in fixed layout. */
   width?: string;
+  /** Caps growth in auto layout so long text truncates instead of stretching. */
+  maxWidth?: string;
   sortable?: boolean;
   render?: (item: T) => React.ReactNode;
 }
@@ -21,6 +24,11 @@ interface DataTableProps<T> {
   sortConfig: { key: keyof T; direction: "asc" | "desc" } | null;
   onSort?: (key: keyof T) => void;
   emptyMessage?: string;
+  /**
+   * `fixed` (default) keeps equalized percent widths.
+   * `auto` sizes columns to content for denser, content-fit tables.
+   */
+  layout?: "fixed" | "auto";
 }
 
 function DataTableInner<T extends { id: string | number }>({
@@ -29,10 +37,17 @@ function DataTableInner<T extends { id: string | number }>({
   sortConfig,
   onSort,
   emptyMessage = "No active records found matching your criteria.",
+  layout = "fixed",
 }: DataTableProps<T>) {
+  const isAuto = layout === "auto";
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-surface shadow-sm">
-      <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
+      <table
+        className={`border-collapse text-left ${
+          isAuto ? "w-max min-w-full table-auto" : "w-full min-w-[900px] table-fixed"
+        }`}
+      >
         <thead>
           <tr className="border-b border-gray-200 text-[12px] font-semibold text-[#3d4f58] select-none">
             {columns.map((col, index) => {
@@ -43,11 +58,14 @@ function DataTableInner<T extends { id: string | number }>({
               return (
                 <th
                   key={index}
-                  style={{ width: col.width }}
+                  style={{
+                    width: col.width,
+                    maxWidth: col.maxWidth,
+                  }}
                   title={col.label}
                   aria-label={col.label}
                   onClick={() => isSortable && onSort(col.key as keyof T)}
-                  className={`sticky top-0 z-10 px-3 py-3 bg-[#dceaf0] shadow-[inset_0_-1px_0_rgba(42,119,151,0.25)] transition-colors ${
+                  className={`sticky top-0 z-10 px-3 py-3 bg-[#dceaf0] shadow-[inset_0_-1px_0_rgba(42,119,151,0.25)] transition-colors whitespace-nowrap ${
                     isSortable
                       ? "group cursor-pointer hover:bg-[#cfe3ec]"
                       : ""
@@ -84,6 +102,7 @@ function DataTableInner<T extends { id: string | number }>({
               {columns.map((col, colIndex) => (
                 <td
                   key={colIndex}
+                  style={{ maxWidth: col.maxWidth }}
                   className="px-3 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {col.render ? (
