@@ -476,7 +476,6 @@ export default function NotificationsPage() {
         <EmptyState
           icon={Bell}
           title={filter === "unread" ? "No unread notifications" : "No notifications yet"}
-          description="Completed analyses with an uploaded PDF and assigned reviewing officer will appear here first; the approving officer is notified after review."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4">
