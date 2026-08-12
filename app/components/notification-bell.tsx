@@ -79,7 +79,10 @@ export function NotificationBell() {
   useEffect(() => {
     if (!userId) return;
     const unsub = subscribeToNotifications(userId, (n) => {
-      setNotifications((prev) => [n, ...prev]);
+      setNotifications((prev) => {
+        if (prev.some((item) => item.id === n.id)) return prev;
+        return [{ ...n, is_read: false }, ...prev];
+      });
     });
     return unsub;
   }, [userId]);
@@ -94,10 +97,45 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const unreadCount = notifications.length;
+  // After the panel closes, drop items already marked read so the next open
+  // only shows whatever is still unread (usually nothing).
+  useEffect(() => {
+    if (isOpen) return;
+    setNotifications((prev) => prev.filter((n) => !n.is_read));
+  }, [isOpen]);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
   const sendBackKind = sendBackTarget
     ? getNotificationKind(sendBackTarget)
     : null;
+
+  async function markOneReadLocal(id: string) {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+    );
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function handleOpenChange(nextOpen: boolean) {
+    setIsOpen(nextOpen);
+    if (!nextOpen) return;
+
+    const hasUnread = notifications.some((n) => !n.is_read);
+    if (!hasUnread) return;
+
+    // Opening the bell counts as reading: clear the badge, keep the list
+    // visible for this session so actions (review / approve) stay available.
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    try {
+      await markAllNotificationsRead();
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   async function handleMarkRead(id: string) {
     setBusyId(id);
@@ -118,12 +156,15 @@ export function NotificationBell() {
     const kind = getNotificationKind(n);
     setBusyId(n.id);
     try {
+      if (!n.is_read) {
+        void markOneReadLocal(n.id);
+      }
       if (kind === "review_request") {
         await openReportForReview(n);
         setNotifications((prev) =>
           prev.map((item) =>
             item.id === n.id
-              ? { ...item, review_status: "In review" }
+              ? { ...item, review_status: "In review", is_read: true }
               : item,
           ),
         );
@@ -132,7 +173,7 @@ export function NotificationBell() {
         setNotifications((prev) =>
           prev.map((item) =>
             item.id === n.id
-              ? { ...item, submission_status: "Under review" }
+              ? { ...item, submission_status: "Under review", is_read: true }
               : item,
           ),
         );
@@ -156,6 +197,9 @@ export function NotificationBell() {
   async function handleOpenApprovedReport(n: AppNotification) {
     setBusyId(n.id);
     try {
+      if (!n.is_read) {
+        void markOneReadLocal(n.id);
+      }
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
         n.payload.service_report_link,
@@ -241,7 +285,7 @@ export function NotificationBell() {
       <button
         type="button"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={() => void handleOpenChange(!isOpen)}
         className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-[#64748b] hover:bg-brand-tint hover:text-[#2a7797] transition-colors"
       >
         <Bell className="w-4 h-4 stroke-[2.5]" />
@@ -312,7 +356,12 @@ export function NotificationBell() {
                           : FileCheck2;
 
                 return (
-                  <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <div
+                    key={n.id}
+                    className={`px-4 py-3 hover:bg-slate-50 transition-colors ${
+                      n.is_read ? "opacity-70" : ""
+                    }`}
+                  >
                     <div className="flex items-start gap-3">
                       <div
                         className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
@@ -364,7 +413,10 @@ export function NotificationBell() {
                                 href={routes.services.detail(
                                   n.payload.analysis_id,
                                 )}
-                                onClick={() => setIsOpen(false)}
+                                onClick={() => {
+                                  void markOneReadLocal(n.id);
+                                  setIsOpen(false);
+                                }}
                                 className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 transition-colors font-aileron"
                               >
                                 <ExternalLink className="w-3 h-3" /> Open record
@@ -387,7 +439,10 @@ export function NotificationBell() {
                                   href={routes.services.detail(
                                     n.payload.analysis_id,
                                   )}
-                                  onClick={() => setIsOpen(false)}
+                                  onClick={() => {
+                                    void markOneReadLocal(n.id);
+                                    setIsOpen(false);
+                                  }}
                                   className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 transition-colors font-aileron"
                                 >
                                   <ExternalLink className="w-3 h-3" /> Open record
