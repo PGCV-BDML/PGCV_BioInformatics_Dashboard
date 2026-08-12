@@ -17,10 +17,10 @@ export const routes = {
     /** Deep-link the Service Report Tracker to a sequencer run ID. */
     trackerByRunId: (runId: string) =>
       `/dashboard/services/tracker?run_id=${encodeURIComponent(runId.trim())}`,
-    /** COVID genomic surveillance Run Summary (not client sequence analysis). */
-    runSummary: "/dashboard/services/run-summary",
-    runSummaryByRunId: (runId: string) =>
-      `/dashboard/services/run-summary?run_id=${encodeURIComponent(runId.trim())}`,
+    /** COVID-19 Sample Tracker (genomic surveillance; not client sequence analysis). */
+    covidSampleTracker: "/dashboard/services/covid-sample-tracker",
+    covidSampleTrackerByRunId: (runId: string) =>
+      `/dashboard/services/covid-sample-tracker?run_id=${encodeURIComponent(runId.trim())}`,
     detail: (id: string) => `/dashboard/services/${id}`,
   },
   repositories: {

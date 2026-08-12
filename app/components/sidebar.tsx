@@ -96,8 +96,8 @@ const navItems: NavItem[] = [
         icon: ClipboardList,
       },
       {
-        name: "Run Summary",
-        href: "/dashboard/services/run-summary",
+        name: "COVID-19 Sample Tracker",
+        href: "/dashboard/services/covid-sample-tracker",
         icon: ListOrdered,
       },
     ],

@@ -110,7 +110,7 @@ export default function CovidRunModal({
       isOpen={isOpen}
       onClose={onClose}
       title={isAdding ? "Add Sequencing Run" : "Edit Sequencing Run"}
-      subtitle="COVID genomic surveillance Run Summary — not a client service report."
+      subtitle="COVID-19 Sample Tracker — not a client service report."
       onSubmit={handleSubmit}
       submitLabel="Save"
       isSaving={isSaving}

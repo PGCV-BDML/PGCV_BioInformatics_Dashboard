@@ -487,7 +487,7 @@ export type RepositoryFormData = {
 };
 
 // ============================================================
-// COVID genomic surveillance — Run Summary
+// COVID-19 Sample Tracker (genomic surveillance)
 // (Separate from client sequence analysis / Service Report Tracker.)
 // ============================================================
 
@@ -501,7 +501,7 @@ export const COVID_SEQUENCER_OPTIONS: {
   { value: "iSeq100", label: "iSeq100" },
 ];
 
-/** One sequencing run from the COVID Sample Tracker Run_Summary sheet. */
+/** One sequencing run from the COVID-19 Sample Tracker (Run_Summary sheet). */
 export type CovidSequencingRun = {
   id: string;
   run_number: number;
@@ -520,7 +520,7 @@ export type CovidSequencingRun = {
   updated_at?: string;
 };
 
-/** Form shape for add/edit Run Summary modal (booleans as checkboxes). */
+/** Form shape for add/edit COVID-19 Sample Tracker modal. */
 export type CovidSequencingRunFormData = {
   run_number: string;
   run_id: string;

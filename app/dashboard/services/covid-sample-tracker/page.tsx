@@ -29,7 +29,7 @@ import {
   CovidSequencingRunFormData,
 } from "../../../../types/database";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
-import { runSummaryBreadcrumbs } from "@/lib/breadcrumbs";
+import { covidSampleTrackerBreadcrumbs } from "@/lib/breadcrumbs";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
@@ -146,10 +146,10 @@ export default function RunSummaryPage() {
           [...rows].sort((a, b) => b.run_number - a.run_number),
         );
       } catch (err) {
-        console.error("Failed to load COVID run summary:", err);
+        console.error("Failed to load COVID-19 Sample Tracker:", err);
         if (!cancelled) {
           setLoadError(
-            "Couldn't load run summary. Apply the latest Supabase migration, then refresh.",
+            "Couldn't load COVID-19 Sample Tracker. Apply the latest Supabase migration, then refresh.",
           );
         }
       } finally {
@@ -486,9 +486,9 @@ export default function RunSummaryPage() {
       }`}
     >
       <PageHeader
-        breadcrumbTrail={runSummaryBreadcrumbs}
-        title="Run Summary"
-        subtitle="COVID genomic surveillance sequencing runs — separate from client Service Report Tracker"
+        breadcrumbTrail={covidSampleTrackerBreadcrumbs}
+        title="COVID-19 Sample Tracker"
+        subtitle="Genomic surveillance sequencing runs — separate from client Service Report Tracker"
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
