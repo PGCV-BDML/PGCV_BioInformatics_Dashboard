@@ -9,12 +9,8 @@ import {
   Dna,
   Building,
   Activity,
-  Plus,
   ExternalLink,
 } from "lucide-react";
-import AddSampleSidebar, {
-  SampleFormState,
-} from "../../../components/samplemodal";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
 import {
@@ -22,7 +18,6 @@ import {
   getNameIdFromDB,
   getUsersFromDB,
   saveDataToDB,
-  getCurrentUser,
   supabase,
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
@@ -45,15 +40,7 @@ import {
   type SupabaseClientRow,
 } from "@/lib/clients";
 import { routes } from "@/lib/routes";
-import { AnalysisStatus, Analysis, Project, Sample, ServiceReport, User, Repository } from "../../../../types/database";
-
-interface SampleRow {
-  sample_id: string;
-  sample_name: string;
-  organism: string;
-  status: string;
-  metadata?: Record<string, string>;
-}
+import { AnalysisStatus, Analysis, Project, ServiceReport, User, Repository } from "../../../../types/database";
 
 interface ServiceProjectRow {
   id: string;
@@ -79,7 +66,6 @@ interface ServiceProjectRow {
   service_report_file_name: string;
   output_link?: string;
   notes: string;
-  samples?: SampleRow[];
 }
 
 const STATUS_OPTIONS = STATUS_OF_COMPLETION_OPTIONS.map((label) => ({
@@ -96,34 +82,21 @@ export default function AnalysisDetailPage({
   const { showToast } = useToast();
   const [record, setRecord] = useState<ServiceProjectRow | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [projectId, setProjectId] = useState<string | null>(null);
   const [report, setReport] = useState<ServiceReport | null>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [runIdRepoUrl, setRunIdRepoUrl] = useState<string | null>(null);
-
-  // Synchronized state object structure matching Collaboration sidebar architecture
-  const [formState, setFormState] = useState<SampleFormState>({
-    sample_id: "",
-    sample_name: "",
-    organism: "",
-    status: "Pending",
-    metadata: [],
-  });
 
   useEffect(() => {
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [analyses, projects, clientRows, services, samples, serviceReports, users, repositories] =
+        const [analyses, projects, clientRows, services, serviceReports, users, repositories] =
           await Promise.all([
             getRowsFromDB<Analysis>("analysis"),
             getRowsFromDB<Project>("project"),
             getRowsFromDB<SupabaseClientRow>("client"),
             getNameIdFromDB("service"),
-            getRowsFromDB<Sample>("sample"),
             getRowsFromDB<ServiceReport>("service_report"),
             getUsersFromDB(["team_lead", "team_member"]),
             getRowsFromDB<Repository>("repository"),
@@ -168,15 +141,10 @@ export default function AnalysisDetailPage({
         const service = project
           ? services.find((s) => s.id === project.service_id)
           : null;
-        const analysisSamples = analysis.project_id
-          ? samples.filter((s) => s.project_id === analysis.project_id)
-          : [];
         const foundReport = serviceReports.find(
           (r) => r.analysis_id === analysis.id,
         );
         setReport(foundReport ?? null);
-
-        setProjectId(analysis.project_id);
 
         const displayRecord: ServiceProjectRow = {
           id: analysis.id,
@@ -223,16 +191,6 @@ export default function AnalysisDetailPage({
           output_link:
             analysis.client_sequences_link || analysis.output_link || "",
           notes: analysis.notes ?? "",
-          samples: analysisSamples.map((s) => {
-            const m = (s.metadata ?? {}) as Record<string, unknown>;
-            return {
-              sample_id: s.identifier,
-              sample_name: (m.sample_name as string) ?? "",
-              organism: (m.organism as string) ?? "",
-              status: (m.status as string) ?? "Pending",
-              metadata: (m.metadata as Record<string, string>) ?? {},
-            };
-          }),
         };
         setRecord(displayRecord);
       } catch (err) {
@@ -294,64 +252,6 @@ export default function AnalysisDetailPage({
     }
   };
 
-  const handleFormChange = (key: keyof SampleFormState, value: string | number | string[] | boolean | { key: string; value: string }[]) => {
-    setFormState((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    if (!record || !projectId) {
-      console.error("Cannot add sample without a linked project");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // Compile form-state list entries into an explicit dynamic key-value dictionary schema
-    const metadataMap: Record<string, string> = {};
-    formState.metadata.forEach((item) => {
-      if (item.key.trim()) metadataMap[item.key.trim()] = item.value;
-    });
-
-    try {
-      await saveDataToDB("sample", crypto.randomUUID(), {
-        project_id: projectId,
-        identifier: formState.sample_id,
-        metadata: {
-          sample_name: formState.sample_name,
-          organism: formState.organism,
-          status: formState.status,
-          ...(Object.keys(metadataMap).length > 0 ? { metadata: metadataMap } : {}),
-        },
-      });
-      const newSample: SampleRow = {
-        sample_id: formState.sample_id,
-        sample_name: formState.sample_name,
-        organism: formState.organism,
-        status: formState.status,
-        metadata: metadataMap,
-      };
-      setRecord((prev) =>
-        prev ? { ...prev, samples: [...(prev.samples || []), newSample] } : null,
-      );
-
-      // Reset FormState properties
-      setFormState({
-        sample_id: "",
-        sample_name: "",
-        organism: "",
-        status: "Pending",
-        metadata: [],
-      });
-      setIsSidebarOpen(false);
-    } catch (err) {
-      console.error("Error saving sample:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleAcknowledge = async () => {
     if (!report?.id) return;
     try {
@@ -398,13 +298,7 @@ export default function AnalysisDetailPage({
   };
 
   return (
-    <div
-      className={`mx-auto font-aileron w-full px-4 py-6 transition-all duration-300 ease-in-out ${
-        isSidebarOpen
-          ? "max-w-[1140px] pr-[24rem] xl:pr-[28rem]"
-          : "max-w-[1240px]"
-      }`}
-    >
+    <div className="mx-auto font-aileron w-full px-4 py-6 max-w-[1240px]">
       {/* Top Details Block Banner Content */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
         <div className="flex flex-col gap-1">
@@ -539,86 +433,6 @@ export default function AnalysisDetailPage({
               <p className="text-sm text-slate-700 whitespace-pre-wrap">{record.notes}</p>
             </div>
           ) : null}
-
-          {/* Connected Processing Samples Log Sub-table Array list */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-700 tracking-tight flex items-center gap-1.5">
-                <span>Linked Biological Samples Log</span>
-                <span className="bg-slate-200/60 px-1.5 py-0.5 text-[10px] font-bold rounded-md text-slate-600">
-                  {record.samples?.length || 0} Artifacts
-                </span>
-              </h3>
-              {projectId ? (
-                <button
-                  type="button"
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#2a7797] hover:text-[#215d76] bg-slate-100 hover:bg-slate-200/70 py-1.5 px-3 rounded-lg transition-all"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Sample
-                </button>
-              ) : (
-                <span className="text-[11px] text-slate-400 italic">
-                  Link a project to add samples
-                </span>
-              )}
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-left border-collapse table-fixed text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-[#55656e] font-bold border-b border-slate-200">
-                    <th className="py-2.5 px-4 w-[20%]">Sample ID</th>
-                    <th className="py-2.5 px-4 w-[25%]">Target Identifier</th>
-                    <th className="py-2.5 px-4 w-[20%]">Organism Host</th>
-                    <th className="py-2.5 px-4 w-[25%]">Expected Metadata</th>
-                    <th className="py-2.5 px-4 w-[10%] text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
-                  {record.samples?.map((sample, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-slate-50/60 transition-colors"
-                    >
-                      <td className="py-2.5 px-4 font-mono font-bold text-slate-500">
-                        {sample.sample_id}
-                      </td>
-                      <td className="py-2.5 px-4 text-[#11161a] truncate font-bold">
-                        {sample.sample_name}
-                      </td>
-                      <td className="py-2.5 px-4 italic">{sample.organism}</td>
-                      <td className="py-2.5 px-4">
-                        {sample.metadata &&
-                        Object.keys(sample.metadata).length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(sample.metadata).map(([k, v]) => (
-                              <span
-                                key={k}
-                                className="inline-block text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50"
-                              >
-                                <strong className="text-slate-700">{k}:</strong>{" "}
-                                {v}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px]">
-                            No metadata linked
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-50 border-slate-200 text-slate-500">
-                          {sample.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         {/* Deliverables Right Block */}
@@ -873,17 +687,6 @@ export default function AnalysisDetailPage({
           </div>
         </div>
       </div>
-
-      {/* Redesigned Sliding Sidebar Drawer Component Wrapper */}
-      <AddSampleSidebar
-        isOpen={isSidebarOpen}
-        isSaving={isSubmitting}
-        formState={formState}
-        pipeline={record.analysis_pipeline}
-        onClose={() => setIsSidebarOpen(false)}
-        onChange={handleFormChange}
-        onSubmit={handleFormSubmit}
-      />
     </div>
   );
 }
