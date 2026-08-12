@@ -36,6 +36,7 @@ import {
   isSameDay,
   mapTasksForCalendar,
   PRIORITY_STYLES,
+  splitCellPreview,
   startOfMonth,
   STATUS_LABELS,
   taskHref,
@@ -185,7 +186,7 @@ export default function TaskCalendar() {
   }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_400px] gap-6 items-start">
       {/* Month grid */}
       <div className="bg-surface border border-[rgba(23,33,38,0.06)] rounded-[24px] p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
@@ -317,6 +318,8 @@ export default function TaskCalendar() {
             const dayTasks = tasksByDate.get(key) ?? [];
             const dayAbsences = absencesByDate.get(key) ?? [];
             const dayCount = dayTasks.length + dayAbsences.length;
+            const preview = splitCellPreview(dayAbsences.length, dayTasks.length);
+            const hiddenCount = dayCount - preview.absences - preview.tasks;
             const inMonth = day.getMonth() === viewMonth.getMonth();
             const isToday = isSameDay(day, today);
             const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
@@ -326,7 +329,7 @@ export default function TaskCalendar() {
                 key={key}
                 type="button"
                 onClick={() => setSelectedDate(day)}
-                className={`min-h-[72px] sm:min-h-[88px] rounded-xl border p-1.5 sm:p-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 ${
+                className={`min-h-[96px] sm:min-h-[124px] rounded-xl border p-1.5 sm:p-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 ${
                   isSelected
                     ? "border-[#2a7797] bg-[#e6f4f8]/80 shadow-sm"
                     : isToday
@@ -353,7 +356,7 @@ export default function TaskCalendar() {
                   )}
                 </div>
                 <div className="space-y-0.5 hidden sm:block">
-                  {dayAbsences.slice(0, 1).map((absence) => (
+                  {dayAbsences.slice(0, preview.absences).map((absence) => (
                     <div
                       key={absence.id}
                       className="flex items-center gap-1 truncate"
@@ -367,7 +370,7 @@ export default function TaskCalendar() {
                       </span>
                     </div>
                   ))}
-                  {dayTasks.slice(0, dayAbsences.length > 0 ? 1 : 2).map((task) => (
+                  {dayTasks.slice(0, preview.tasks).map((task) => (
                     <div
                       key={task.id}
                       className="flex items-center gap-1 truncate"
@@ -387,9 +390,9 @@ export default function TaskCalendar() {
                       </span>
                     </div>
                   ))}
-                  {(dayTasks.length + dayAbsences.length) > 2 && (
+                  {hiddenCount > 0 && (
                     <span className="text-[9px] font-bold text-slate-400 pl-2.5">
-                      +{dayTasks.length + dayAbsences.length - 2} more
+                      +{hiddenCount} more
                     </span>
                   )}
                 </div>
@@ -414,8 +417,8 @@ export default function TaskCalendar() {
         </div>
       </div>
 
-      {/* Day detail panel */}
-      <div className="bg-surface border border-[rgba(23,33,38,0.06)] rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col min-h-[320px]">
+      {/* Day detail panel — sticks beside the grid and scrolls on its own */}
+      <div className="bg-surface border border-[rgba(23,33,38,0.06)] rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col min-h-[320px] xl:sticky xl:top-20 xl:max-h-[calc(100vh-7rem)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-[#2a7797]">
             <CalendarIcon className="w-4 h-4" />
@@ -444,7 +447,7 @@ export default function TaskCalendar() {
             <p className="text-sm font-semibold text-slate-500 font-aileron">
               Nothing scheduled this day
             </p>
-            <p className="text-xs text-slate-400 mt-1 max-w-[220px] font-aileron">
+            <p className="text-xs text-slate-400 mt-1 max-w-[260px] font-aileron">
               Tasks with dates and team leave/travel days appear here.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">

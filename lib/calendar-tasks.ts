@@ -142,6 +142,26 @@ export function buildTasksByDate(
   return map;
 }
 
+/** Entries a day cell previews before collapsing the rest into "+N more". */
+export const MAX_CELL_ENTRIES = 4;
+
+/**
+ * Divide a day cell's preview slots between absences and tasks. Absences lead,
+ * but always leave room for two tasks when the day has both, and any slot the
+ * other kind cannot use is handed back so the cell stays full.
+ */
+export function splitCellPreview(
+  absenceCount: number,
+  taskCount: number,
+  maxEntries: number = MAX_CELL_ENTRIES,
+): { absences: number; tasks: number } {
+  const absences = Math.min(
+    absenceCount,
+    Math.max(maxEntries - taskCount, maxEntries - 2),
+  );
+  return { absences, tasks: Math.min(taskCount, maxEntries - absences) };
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&

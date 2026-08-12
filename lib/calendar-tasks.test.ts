@@ -7,8 +7,10 @@ import {
   formatTaskDateRange,
   getMonthGrid,
   mapTasksForCalendar,
+  MAX_CELL_ENTRIES,
   normalizeDueDate,
   normalizeTaskDateRange,
+  splitCellPreview,
   startOfWeek,
   taskHref,
   taskOverlapsRange,
@@ -277,6 +279,57 @@ describe("filterByCategory", () => {
       "1",
     ]);
     expect(filterByCategory(tasks, "All")).toHaveLength(2);
+  });
+});
+
+describe("splitCellPreview", () => {
+  it("shows everything when the day fits", () => {
+    expect(splitCellPreview(1, 2)).toEqual({ absences: 1, tasks: 2 });
+  });
+
+  it("leaves room for two tasks when a day is crowded with absences", () => {
+    expect(splitCellPreview(5, 3)).toEqual({ absences: 2, tasks: 2 });
+  });
+
+  it("hands unused task slots back to absences", () => {
+    expect(splitCellPreview(5, 1)).toEqual({ absences: 3, tasks: 1 });
+  });
+
+  it("gives every slot to tasks when nobody is out", () => {
+    expect(splitCellPreview(0, 9)).toEqual({ absences: 0, tasks: 4 });
+  });
+
+  it("gives every slot to absences when there are no tasks", () => {
+    expect(splitCellPreview(9, 0)).toEqual({ absences: 4, tasks: 0 });
+  });
+
+  it("never previews more entries than the cap", () => {
+    for (let absences = 0; absences <= 8; absences += 1) {
+      for (let tasks = 0; tasks <= 8; tasks += 1) {
+        const split = splitCellPreview(absences, tasks);
+        expect(split.absences + split.tasks).toBeLessThanOrEqual(
+          MAX_CELL_ENTRIES,
+        );
+        expect(split.absences).toBeLessThanOrEqual(absences);
+        expect(split.tasks).toBeLessThanOrEqual(tasks);
+      }
+    }
+  });
+
+  it("fills every slot whenever the day has enough entries", () => {
+    for (let absences = 0; absences <= 8; absences += 1) {
+      for (let tasks = 0; tasks <= 8; tasks += 1) {
+        const split = splitCellPreview(absences, tasks);
+        const shown = split.absences + split.tasks;
+        const expected = Math.min(absences + tasks, MAX_CELL_ENTRIES);
+        expect(shown).toBe(expected);
+      }
+    }
+  });
+
+  it("never reports a negative hidden count", () => {
+    const split = splitCellPreview(0, 0);
+    expect(split).toEqual({ absences: 0, tasks: 0 });
   });
 });
 

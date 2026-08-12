@@ -8,7 +8,7 @@ import { calendarBreadcrumbs } from "@/lib/breadcrumbs";
 
 export default function CalendarPage() {
   return (
-    <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
+    <div className="space-y-8 max-w-[1600px] mx-auto pb-16 px-4 font-aileron">
       <PageHeader
         breadcrumbTrail={calendarBreadcrumbs}
         title="Calendar"
