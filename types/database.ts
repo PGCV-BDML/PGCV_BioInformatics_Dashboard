@@ -269,6 +269,9 @@ export interface OnboardingDocument {
   program_id: string;
   title: string | null;
   link: string | null;
+  file_path: string | null;
+  file_name: string | null;
+  file_size: number | null;
   is_required: boolean;
   created_at?: string;
   updated_at?: string;
