@@ -1046,18 +1046,14 @@ export default function ServiceReportTrackerPage() {
       key: "service_report_number",
       label: "Service Report Number",
       shortLabel: "SR Number",
-      maxWidth: "9rem",
       sortable: true,
       render: (s) => (
         <Link
           href={`/dashboard/services/${s.id}`}
-          className="block min-w-0 font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-colors"
+          className="inline-block whitespace-nowrap font-bold text-[#2a7797] hover:text-[#4ec2bb] transition-colors"
+          title={s.service_report_number || s.project_name}
         >
-          <TruncatedText
-            text={s.service_report_number || s.project_name}
-            display={dash(s.service_report_number)}
-            className="font-bold text-[#2a7797]"
-          />
+          {dash(s.service_report_number)}
         </Link>
       ),
     },

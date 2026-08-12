@@ -99,23 +99,34 @@ function DataTableInner<T extends { id: string | number }>({
               key={item.id}
               className="odd:bg-surface even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
             >
-              {columns.map((col, colIndex) => (
-                <td
-                  key={colIndex}
-                  style={{ maxWidth: col.maxWidth }}
-                  className="px-3 py-2.5 align-middle overflow-hidden text-ellipsis whitespace-nowrap"
-                >
-                  {col.render ? (
-                    <div className="w-full min-w-0 overflow-hidden text-ellipsis">
-                      {col.render(item)}
-                    </div>
-                  ) : (
-                    <TruncatedText
-                      text={String(item[col.key as keyof T] ?? "")}
-                    />
-                  )}
-                </td>
-              ))}
+              {columns.map((col, colIndex) => {
+                const clipLongText = !isAuto || Boolean(col.maxWidth);
+                return (
+                  <td
+                    key={colIndex}
+                    style={{ maxWidth: col.maxWidth }}
+                    className={`px-3 py-2.5 align-middle whitespace-nowrap ${
+                      clipLongText ? "overflow-hidden text-ellipsis" : ""
+                    }`}
+                  >
+                    {col.render ? (
+                      <div
+                        className={
+                          clipLongText
+                            ? "w-full min-w-0 overflow-hidden text-ellipsis"
+                            : "w-max max-w-none"
+                        }
+                      >
+                        {col.render(item)}
+                      </div>
+                    ) : (
+                      <TruncatedText
+                        text={String(item[col.key as keyof T] ?? "")}
+                      />
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
 
