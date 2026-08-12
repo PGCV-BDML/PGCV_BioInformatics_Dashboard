@@ -248,7 +248,7 @@ export default function DashboardLandingPage() {
           </h1>
 
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Lab snapshot — services, programs, projects & collaborations · {selectedYear}
+            Service reports, trainings & internships · weekly tasks · report trends & project status · {selectedYear}
           </p>
         </div>
 
