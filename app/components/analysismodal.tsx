@@ -213,7 +213,10 @@ export default function AnalysisSidebar({
     setIsOpeningFile(true);
     setFileError(null);
     try {
-      const url = await getServiceReportSignedUrl(storedFilePath);
+      const url = await getServiceReportSignedUrl(
+        storedFilePath,
+        formState.service_report_file_name,
+      );
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");
       } else {

@@ -1248,6 +1248,7 @@ export default function ServiceReportTrackerPage() {
                 void (async () => {
                   const url = await getServiceReportSignedUrl(
                     s.service_report_file_path,
+                    s.service_report_file_name,
                   );
                   if (url) {
                     window.open(url, "_blank", "noopener,noreferrer");

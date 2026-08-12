@@ -766,6 +766,7 @@ export default function AnalysisDetailPage({
                         void (async () => {
                           const url = await getServiceReportSignedUrl(
                             record.service_report_file_path,
+                            record.service_report_file_name,
                           );
                           if (url) {
                             window.open(url, "_blank", "noopener,noreferrer");

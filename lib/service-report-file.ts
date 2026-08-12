@@ -44,9 +44,75 @@ export function formatFileSize(bytes: number | null | undefined): string {
 }
 
 /**
+ * Stamp suffixes previously appended to display names. Peeled off so
+ * approval can restore the analyst's original upload basename.
+ */
+const STAMP_NAME_SUFFIX = /(-reviewed|-approved|_signed)$/i;
+
+/**
+ * Recover the analyst's original upload basename from whatever the current
+ * display name is (including prior -reviewed / -approved / _signed stamps).
+ */
+export function originalServiceReportBaseName(
+  fileName: string | null | undefined,
+): string {
+  let base = (fileName ?? "").replace(/\.pdf$/i, "").trim();
+  // Storage keys may be `{timestamp}-{slug}.pdf` — drop that uniqueness token.
+  base = base.replace(/^\d{10,}-/, "");
+  while (STAMP_NAME_SUFFIX.test(base)) {
+    base = base.replace(STAMP_NAME_SUFFIX, "");
+  }
+  return base || "service-report";
+}
+
+/**
+ * Display name written after a signature stamp.
+ * Review keeps a temporary `-reviewed` marker; approval restores the
+ * original upload name and appends `_signed`.
+ */
+export function stampedServiceReportFileName(
+  currentFileName: string | null | undefined,
+  slot: "reviewed_by" | "approved_by",
+): string {
+  const original = originalServiceReportBaseName(currentFileName);
+  if (slot === "approved_by") {
+    return `${original}_signed.pdf`;
+  }
+  return `${original}-reviewed.pdf`;
+}
+
+/**
+ * Filename browsers should use when saving the PDF. Normalizes older stacked
+ * stamp names (`…-reviewed-approved`) and storage-key leaves
+ * (`1735…-slug-reviewed-approved.pdf`) back to `{original}_signed.pdf` when
+ * the report has been through approval.
+ */
+export function serviceReportDownloadFileName(
+  storedName: string | null | undefined,
+): string {
+  let raw = (storedName ?? "").trim();
+  if (!raw) return "service-report.pdf";
+
+  raw = raw.replace(/^\d{10,}-/, "");
+
+  const withoutExt = raw.replace(/\.pdf$/i, "").trim();
+  const original = originalServiceReportBaseName(raw);
+  if (original !== withoutExt) {
+    if (/(-approved|_signed)/i.test(withoutExt)) {
+      return `${original}_signed.pdf`;
+    }
+    return `${original}-reviewed.pdf`;
+  }
+
+  return /\.pdf$/i.test(raw) ? raw : `${raw}.pdf`;
+}
+
+/**
  * Turn an arbitrary filename into something safe to use as an object key.
  * Storage keys allow a narrow character set, and the original name is kept
  * separately in `service_report_file_name` for display anyway.
+ *
+ * Underscores are preserved so approved downloads can keep `_signed`.
  */
 export function slugifyFileName(name: string): string {
   const withoutExtension = name.replace(/\.pdf$/i, "");
@@ -54,23 +120,36 @@ export function slugifyFileName(name: string): string {
     .normalize("NFKD")
     .replace(/[^\w\s-]/g, "")
     .trim()
-    .replace(/[\s_]+/g, "-")
+    .replace(/[\s]+/g, "-")
     .replace(/-+/g, "-")
     .toLowerCase()
-    .slice(0, 60);
+    .slice(0, 80);
   return slug || "service-report";
+}
+
+/**
+ * Leaf object name for storage. Kept as its own path segment so browser
+ * "Save as" can pick up `{name}_signed.pdf` from the URL when a signed URL
+ * is opened inline.
+ */
+export function serviceReportStorageLeafName(fileName: string): string {
+  const slug = slugifyFileName(fileName);
+  return `${slug}.pdf`;
 }
 
 /**
  * Uploads never reuse a key. A revision therefore leaves the version the
  * reviewer commented on in place, which matters when a comment says
  * "table 2 is wrong" and the table has since been renumbered.
+ *
+ * Layout: `{analysisId}/{timestamp}/{leaf}.pdf` — uniqueness lives in the
+ * timestamp folder so the leaf can stay a clean downloadable filename.
  */
 export function buildServiceReportPath(
   analysisId: string,
   fileName: string,
 ): string {
-  return `${analysisId}/${Date.now()}-${slugifyFileName(fileName)}.pdf`;
+  return `${analysisId}/${Date.now()}/${serviceReportStorageLeafName(fileName)}`;
 }
 
 /** Returns an error message, or null when the file is acceptable. */
@@ -134,15 +213,37 @@ export async function uploadServiceReportPdf(options: {
   };
 }
 
+/**
+ * Prefer the stored display name; if missing, derive one from the storage
+ * object leaf (stripping the old `{timestamp}-` prefix when present).
+ */
+function resolveDownloadFileName(
+  path: string,
+  fileName?: string | null,
+): string {
+  const fromRecord = fileName?.trim();
+  if (fromRecord) return serviceReportDownloadFileName(fromRecord);
+
+  const leaf = path.split("/").pop() ?? path;
+  return serviceReportDownloadFileName(leaf);
+}
+
 export async function getServiceReportSignedUrl(
   path: string | null | undefined,
+  fileName?: string | null,
 ): Promise<string | null> {
   const key = path?.trim();
   if (!key) return null;
 
+  const downloadName = resolveDownloadFileName(key, fileName);
+
+  // `download` sets Content-Disposition so Save/Open uses the display name
+  // instead of the storage object key (e.g. `1735…-slug-reviewed-approved`).
   const { data, error } = await supabase.storage
     .from(SERVICE_REPORT_BUCKET)
-    .createSignedUrl(key, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(key, SIGNED_URL_TTL_SECONDS, {
+      download: downloadName,
+    });
 
   if (error) {
     console.error("Failed to sign service report URL:", error);
@@ -159,9 +260,10 @@ export async function getServiceReportSignedUrl(
 export async function resolveReportUrl(
   filePath: string | null | undefined,
   link: string | null | undefined,
+  fileName?: string | null,
 ): Promise<string | null> {
   if (filePath?.trim()) {
-    const signed = await getServiceReportSignedUrl(filePath);
+    const signed = await getServiceReportSignedUrl(filePath, fileName);
     if (signed) return signed;
   }
   return link?.trim() || null;
@@ -200,7 +302,30 @@ export async function deleteAllServiceReportPdfs(
     return;
   }
 
-  const keys = (data ?? []).map((entry) => `${analysisId}/${entry.name}`);
+  const keys: string[] = [];
+  for (const entry of data ?? []) {
+    const childPath = `${analysisId}/${entry.name}`;
+    // New uploads live under `{analysisId}/{timestamp}/{leaf}.pdf`. Older
+    // objects were flat `{analysisId}/{timestamp}-{slug}.pdf`.
+    if (entry.name.toLowerCase().endsWith(".pdf")) {
+      keys.push(childPath);
+      continue;
+    }
+
+    const { data: nested, error: nestedError } = await supabase.storage
+      .from(SERVICE_REPORT_BUCKET)
+      .list(childPath);
+
+    if (nestedError) {
+      console.error("Failed to list nested service report PDFs:", nestedError);
+      continue;
+    }
+
+    for (const nestedEntry of nested ?? []) {
+      keys.push(`${childPath}/${nestedEntry.name}`);
+    }
+  }
+
   if (keys.length === 0) return;
 
   const { error: removeError } = await supabase.storage

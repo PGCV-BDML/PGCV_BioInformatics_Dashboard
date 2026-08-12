@@ -260,6 +260,7 @@ export default function NotificationsPage() {
       const url = await resolveReportUrl(
         notification.payload.service_report_file_path,
         notification.payload.service_report_link,
+        notification.payload.service_report_file_name,
       );
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");

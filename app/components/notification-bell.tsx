@@ -141,6 +141,7 @@ export function NotificationBell() {
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
         n.payload.service_report_link,
+        n.payload.service_report_file_name,
       );
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");
@@ -158,6 +159,7 @@ export function NotificationBell() {
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
         n.payload.service_report_link,
+        n.payload.service_report_file_name,
       );
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");
