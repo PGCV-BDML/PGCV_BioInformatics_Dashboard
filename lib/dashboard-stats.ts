@@ -46,8 +46,19 @@ function hasServiceReport(row: AnalysisDashboardRow): boolean {
 
 /** Return true when a date/string falls in the given year (e.g. "2026"). */
 function matchesYear(dateVal: string | Date | null | undefined, year: string): boolean {
+  if (!year || year === "all") return true;
   if (!dateVal) return false;
   return new Date(dateVal).getFullYear().toString() === year;
+}
+
+/** Include a row when either date matches the year, or when viewing all time. */
+function matchesSelectedYear(
+  primary: string | Date | null | undefined,
+  fallback: string | Date | null | undefined,
+  year: string,
+): boolean {
+  if (!year || year === "all") return true;
+  return matchesYear(primary, year) || matchesYear(fallback, year);
 }
 
 // ===========================================================================
@@ -124,10 +135,8 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
   // project_status enum (live DB): 'ongoing' | 'for_approval' | 'submitted' | 'on_hold' | 'completed'
   // NOTE: migration 19_initial_schema.sql only defines the first 3; 'on_hold'
   // and 'completed' were added to the live DB via direct SQL (schema drift).
-  const projectsInYear = projects.filter(
-    (p) =>
-      matchesYear(p.start_date, selectedYear) ||
-      matchesYear(p.created_at, selectedYear),
+  const projectsInYear = projects.filter((p) =>
+    matchesSelectedYear(p.start_date, p.created_at, selectedYear),
   );
   const activeProjects = projectsInYear.filter((p) => p.status === "ongoing").length;
   const completedProjects = projectsInYear.filter((p) => p.status === "completed").length;
@@ -139,8 +148,8 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
   // -- Collaborations --
   // collab_status enum: 'for_approval' | 'ongoing' | 'finished'
   // Use start_date if available, otherwise fall back to created_at.
-  const collabsInYear = collabs.filter(
-    (c) => matchesYear(c.start_date, selectedYear) || matchesYear(c.created_at, selectedYear),
+  const collabsInYear = collabs.filter((c) =>
+    matchesSelectedYear(c.start_date, c.created_at, selectedYear),
   );
   const activeCollaborations = collabsInYear.filter((c) => c.status === "ongoing").length;
   const completedCollaborations = collabsInYear.filter((c) => c.status === "finished").length;
@@ -154,8 +163,8 @@ export async function getDashboardStats(selectedYear: string): Promise<Dashboard
   // -- Training Programs --
   // training_type enum: 'training' | 'internship'
   // training_program_status: 'draft' | 'ongoing' | 'completed' | 'archived'
-  const programsInYear = programs.filter(
-    (p) => matchesYear(p.start_date, selectedYear) || matchesYear(p.created_at, selectedYear),
+  const programsInYear = programs.filter((p) =>
+    matchesSelectedYear(p.start_date, p.created_at, selectedYear),
   );
   const trainingsInYear = programsInYear.filter((p) => p.type === "training");
   const totalTrainings = trainingsInYear.filter((p) => p.status !== "archived").length;

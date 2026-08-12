@@ -83,10 +83,10 @@ export function ServiceReportsChart({
             </div>
             <div className="rounded-2xl border border-[rgba(42,119,151,0.22)] bg-[#e6f4f8]/70 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#2a7797] font-quicksand">
-                {selectedYear}
+                {selectedYear === "all" ? "All time" : selectedYear}
               </p>
               <p className="mt-1 text-2xl font-black tracking-tight text-[#174e64] font-aileron">
-                {selectedCount}
+                {selectedYear === "all" ? total : selectedCount}
               </p>
             </div>
           </div>
@@ -159,14 +159,29 @@ export function ServiceReportsChart({
                   }}
                 >
                   {data.map((entry) => {
-                    const isSelected = entry.year === selectedYear;
+                    const isSelected =
+                      selectedYear === "all" || entry.year === selectedYear;
                     return (
                       <Cell
                         key={`sr-year-${entry.year}`}
-                        fill={isSelected ? SELECTED_FILL : OTHER_FILL}
-                        fillOpacity={isSelected ? 1 : 0.55}
-                        stroke={isSelected ? "#1f5c76" : "transparent"}
-                        strokeWidth={isSelected ? 1.5 : 0}
+                        fill={
+                          selectedYear === "all"
+                            ? SELECTED_FILL
+                            : isSelected
+                              ? SELECTED_FILL
+                              : OTHER_FILL
+                        }
+                        fillOpacity={
+                          selectedYear === "all" ? 0.85 : isSelected ? 1 : 0.55
+                        }
+                        stroke={
+                          selectedYear !== "all" && isSelected
+                            ? "#1f5c76"
+                            : "transparent"
+                        }
+                        strokeWidth={
+                          selectedYear !== "all" && isSelected ? 1.5 : 0
+                        }
                       />
                     );
                   })}

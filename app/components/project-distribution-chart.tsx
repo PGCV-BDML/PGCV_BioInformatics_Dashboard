@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
 
 const PIE_COLORS = ["#4ec2bb", "#2a7797", "#f59e0b", "#6366f1", "#94a3b8"];
 
@@ -23,6 +24,8 @@ export function ProjectDistributionChart({
   selectedYear,
   totalProjects,
 }: ProjectDistributionChartProps) {
+  const yearLabel = formatAnalysisYearLabel(selectedYear);
+
   return (
     <div className="md:col-span-2 bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col justify-between">
       <div>
@@ -30,7 +33,7 @@ export function ProjectDistributionChart({
           <div className="flex items-center gap-2 text-[#2a7797]">
             <PieIcon className="w-4 h-4" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider">
-              Project Distribution ({selectedYear})
+              Project Distribution ({yearLabel})
             </h3>
           </div>
 

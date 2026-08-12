@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import type { DashboardStats } from "@/lib/dashboard-stats";
+import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
 
 export interface DashboardStatsCardsProps {
   stats: DashboardStats | null;
@@ -37,10 +38,11 @@ export function DashboardStatsCards({
   isLoading,
   selectedYear,
 }: DashboardStatsCardsProps) {
+  const yearLabel = formatAnalysisYearLabel(selectedYear);
   const cards: StatCard[] = [
     {
       href: "/dashboard/services",
-      label: `Service Reports Generated (${selectedYear})`,
+      label: `Service Reports Generated (${yearLabel})`,
       icon: <FileCheck2 className="w-4 h-4 opacity-80" />,
       value: stats?.reportsGenerated ?? null,
       tone: {
@@ -62,7 +64,7 @@ export function DashboardStatsCards({
     },
     {
       href: "/dashboard/training",
-      label: `Trainings Conducted (${selectedYear})`,
+      label: `Trainings Conducted (${yearLabel})`,
       icon: <GraduationCap className="w-4 h-4 opacity-80" />,
       value: stats?.totalTrainings ?? null,
       tone: {
@@ -84,7 +86,7 @@ export function DashboardStatsCards({
     },
     {
       href: "/dashboard/internship",
-      label: `Internship Programs (${selectedYear})`,
+      label: `Internship Programs (${yearLabel})`,
       icon: <Briefcase className="w-4 h-4 opacity-80" />,
       value: stats?.totalInternPrograms ?? null,
       tone: {

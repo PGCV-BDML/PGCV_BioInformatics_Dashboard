@@ -14,6 +14,7 @@ import { ServiceReportsChart } from "../components/service-reports-chart";
 import { ProjectDistributionChart } from "../components/project-distribution-chart";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { getDashboardStats, getServiceReportsByYear, type DashboardStats } from "@/lib/dashboard-stats";
+import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
 import {
   endOfWeek,
   formatTaskDateRange,
@@ -42,7 +43,7 @@ interface WeeklyTask {
   priority: "high" | "medium" | "low";
 }
 
-const AVAILABLE_YEARS = ["2024", "2025", "2026"];
+const AVAILABLE_YEARS = ["all", "2024", "2025", "2026"];
 
 function normalizePriority(raw: string | null | undefined): WeeklyTask["priority"] {
   const value = (raw ?? "").toLowerCase().trim();
@@ -248,7 +249,8 @@ export default function DashboardLandingPage() {
           </h1>
 
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Service reports, trainings & internships · weekly tasks · report trends & project status · {selectedYear}
+            Service reports, trainings & internships · weekly tasks · report trends & project status ·{" "}
+            {formatAnalysisYearLabel(selectedYear)}
           </p>
         </div>
 
@@ -259,7 +261,7 @@ export default function DashboardLandingPage() {
               Filtered Year:
             </span>
             <span className="text-xs font-bold text-[#174e64] font-quicksand">
-              {selectedYear}
+              {formatAnalysisYearLabel(selectedYear)}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-[#174e64] ml-1" />
           </div>
@@ -269,6 +271,7 @@ export default function DashboardLandingPage() {
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-bold text-xs font-quicksand"
+            aria-label="Filter overview by year"
           >
             {AVAILABLE_YEARS.map((year) => (
               <option
@@ -276,7 +279,7 @@ export default function DashboardLandingPage() {
                 value={year}
                 className="bg-white text-slate-700 font-medium font-quicksand"
               >
-                {year}
+                {formatAnalysisYearLabel(year)}
               </option>
             ))}
           </select>
