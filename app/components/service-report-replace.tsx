@@ -96,8 +96,8 @@ export default function ServiceReportReplace({
     <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
       <p className="text-[11px] text-amber-900 leading-relaxed">
         {hasStoredFile
-          ? "Replace the PDF if the comments require a new file, then resubmit from Review Comments."
-          : "Upload the corrected service report PDF, then resubmit from Review Comments."}
+          ? "Replace the PDF if the comments require a new file, then resubmit."
+          : "Upload the corrected service report PDF, then resubmit."}
       </p>
 
       {hasStoredFile && !isReplacing ? (

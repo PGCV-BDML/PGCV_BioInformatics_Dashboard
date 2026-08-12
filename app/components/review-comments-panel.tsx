@@ -19,6 +19,13 @@ interface ReviewCommentsPanelProps {
   statusOfSubmission: string | null;
   /** Called after a successful resubmission so the parent can refresh status. */
   onResubmitted?: (stage: "review" | "approval") => void;
+  /**
+   * When true, render an empty state instead of hiding the panel.
+   * Used in the tracker modal where the column always opens this UI.
+   */
+  forceVisible?: boolean;
+  /** Drop the outer card chrome when the parent already provides a shell. */
+  bare?: boolean;
 }
 
 function formatDate(value: string): string {
@@ -32,6 +39,8 @@ export default function ReviewCommentsPanel({
   statusOfReview,
   statusOfSubmission,
   onResubmitted,
+  forceVisible = false,
+  bare = false,
 }: ReviewCommentsPanelProps) {
   const [comments, setComments] = useState<ReviewCommentWithAuthor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,48 +100,68 @@ export default function ReviewCommentsPanel({
   }
 
   // Nothing has ever been sent back — don't take up space on the record.
-  if (!isLoading && comments.length === 0 && !awaitingSendBack) return null;
+  if (!isLoading && comments.length === 0 && !awaitingSendBack && !forceVisible) {
+    return null;
+  }
 
   return (
     <div
-      className={`bg-surface border rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4 ${
-        awaitingSendBack ? "border-amber-300" : "border-slate-300/70"
-      }`}
+      className={
+        bare
+          ? "space-y-4"
+          : `bg-surface border rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4 ${
+              awaitingSendBack ? "border-amber-300" : "border-slate-300/70"
+            }`
+      }
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
-        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-          <MessageSquareWarning
-            className={`w-4 h-4 ${awaitingSendBack ? "text-amber-600" : "text-slate-400"}`}
-            aria-hidden="true"
-          />
-          Review Comments
-        </h3>
-        {comments.length > 0 && (
-          <span className="bg-slate-200/60 px-1.5 py-0.5 text-[10px] font-bold rounded-md text-slate-600">
-            {comments.length}
-          </span>
-        )}
-      </div>
+      {!bare ? (
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+            <MessageSquareWarning
+              className={`w-4 h-4 ${awaitingSendBack ? "text-amber-600" : "text-slate-400"}`}
+              aria-hidden="true"
+            />
+            Review Comments
+          </h3>
+          {comments.length > 0 && (
+            <span className="bg-slate-200/60 px-1.5 py-0.5 text-[10px] font-bold rounded-md text-slate-600">
+              {comments.length}
+            </span>
+          )}
+        </div>
+      ) : comments.length > 0 ? (
+        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+          {comments.length} comment{comments.length === 1 ? "" : "s"}
+        </p>
+      ) : null}
 
       {awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           The reviewing officer sent this back. Address the comment below,
-          replace the PDF under Service Report Delivery if needed, then
-          resubmit to notify them for another peer review.
+          {bare
+            ? " replace the PDF below if needed,"
+            : " replace the PDF under Service Report Delivery if needed,"}{" "}
+          then resubmit to notify them for another peer review.
         </p>
       )}
       {awaitingChanges && !awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           The approving officer sent this back. Address the comment below,
-          replace the PDF under Service Report Delivery if needed, then
-          resubmit to notify them for another review.
+          {bare
+            ? " replace the PDF below if needed,"
+            : " replace the PDF under Service Report Delivery if needed,"}{" "}
+          then resubmit to notify them for another review.
         </p>
       )}
 
       {isLoading ? (
         <p className="text-xs text-slate-400 italic">Loading comments…</p>
       ) : comments.length === 0 ? (
-        <p className="text-xs text-slate-400 italic">No comments yet.</p>
+        <p className="text-xs text-slate-400 italic">
+          {forceVisible && !awaitingSendBack
+            ? "No review comments for this report yet."
+            : "No comments yet."}
+        </p>
       ) : (
         <ul className="space-y-3">
           {comments.map((comment) => (

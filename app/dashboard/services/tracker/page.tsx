@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Edit3,
   Trash2,
+  MessageSquareWarning,
 } from "lucide-react";
 import {
   getCurrentUser,
@@ -24,6 +25,8 @@ import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import {
   deriveLegacyStatus,
   displayAnalysisLabel,
+  isChangesRequestedLabel,
+  isRevisionRequestedLabel,
   labelFromAnalysisStatus,
   nextServiceReportNumber,
   parseServiceReportNumber,
@@ -60,6 +63,7 @@ import AnalysisSidebar, {
 import ServiceReportModal, {
   type ServiceReportUploadResult,
 } from "../../../components/service-report-modal";
+import ReviewCommentsModal from "../../../components/review-comments-modal";
 import { ServiceReportWorkflowInfoButton } from "../../../components/service-report-workflow-modal";
 import { PageHeader } from "../../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../../components/state-views";
@@ -279,6 +283,9 @@ export default function ServiceReportTrackerPage() {
 
   const [selectedReportRow, setSelectedReportRow] =
     useState<ServiceProjectRow | null>(null);
+  const [commentsRow, setCommentsRow] = useState<ServiceProjectRow | null>(
+    null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filterContainerRef = useRef<HTMLDivElement>(null);
@@ -1233,6 +1240,36 @@ export default function ServiceReportTrackerPage() {
         ),
     },
     {
+      key: "review_comments",
+      label: "Review Comments",
+      shortLabel: "Comments",
+      width: "6%",
+      render: (s) => {
+        const awaiting =
+          isRevisionRequestedLabel(s.status_of_review) ||
+          isChangesRequestedLabel(s.status_of_submission);
+        return (
+          <button
+            type="button"
+            onClick={() => setCommentsRow(s)}
+            className={`inline-flex items-center gap-1 text-[11px] font-semibold ${
+              awaiting
+                ? "text-amber-800 hover:text-amber-950"
+                : "text-[#2a7797] hover:text-[#1f5c76]"
+            }`}
+            title={
+              awaiting
+                ? "View comments and respond"
+                : "View review comments"
+            }
+          >
+            <MessageSquareWarning className="w-3 h-3 shrink-0" />
+            {awaiting ? "Respond" : "View"}
+          </button>
+        );
+      },
+    },
+    {
       key: "report_link",
       label: "Service Report",
       shortLabel: "Report",
@@ -1500,6 +1537,71 @@ export default function ServiceReportTrackerPage() {
         currentUserId={currentUserId}
         onClose={() => setSelectedReportRow(null)}
         onReportUploaded={handleReportUploaded}
+      />
+
+      <ReviewCommentsModal
+        row={
+          commentsRow
+            ? {
+                id: commentsRow.id,
+                label:
+                  commentsRow.service_report_number ||
+                  commentsRow.project_name ||
+                  "Service report",
+                status_of_review: commentsRow.status_of_review,
+                status_of_submission: commentsRow.status_of_submission,
+                service_report_file_path: commentsRow.service_report_file_path,
+                service_report_file_name: commentsRow.service_report_file_name,
+              }
+            : null
+        }
+        onClose={() => setCommentsRow(null)}
+        onResubmitted={(stage) => {
+          setServicesList((prev) =>
+            prev.map((row) =>
+              row.id === commentsRow?.id
+                ? {
+                    ...row,
+                    ...(stage === "review"
+                      ? { status_of_review: "For review" }
+                      : { status_of_submission: "For approval" }),
+                  }
+                : row,
+            ),
+          );
+          setCommentsRow((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  ...(stage === "review"
+                    ? { status_of_review: "For review" }
+                    : { status_of_submission: "For approval" }),
+                }
+              : prev,
+          );
+        }}
+        onPdfReplaced={({ path, name }) => {
+          setServicesList((prev) =>
+            prev.map((row) =>
+              row.id === commentsRow?.id
+                ? {
+                    ...row,
+                    service_report_file_path: path,
+                    service_report_file_name: name,
+                  }
+                : row,
+            ),
+          );
+          setCommentsRow((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  service_report_file_path: path,
+                  service_report_file_name: name,
+                }
+              : prev,
+          );
+        }}
       />
 
       <AnalysisSidebar

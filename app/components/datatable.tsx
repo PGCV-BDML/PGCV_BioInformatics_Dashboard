@@ -5,7 +5,8 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { TruncatedText } from "./cell-tooltip";
 
 export interface Column<T> {
-  key: keyof T | "actions";
+  /** Field key, or a synthetic id (e.g. custom action columns). */
+  key: keyof T | "actions" | (string & {});
   label: string;
   /** Optional shorter header text; full `label` still used for hover title. */
   shortLabel?: string;
