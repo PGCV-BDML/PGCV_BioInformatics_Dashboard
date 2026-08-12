@@ -8,6 +8,7 @@ import {
   User,
   Users,
   Building2,
+  Hash,
   ArrowRight,
   MoreHorizontal,
   Pencil,
@@ -29,6 +30,7 @@ export interface ProgramCard {
   description: string;
   instructor_name: string;
   requesting_institution: string;
+  training_code: string;
   start_date: string;
   end_date: string;
   participant_count: number;
@@ -228,7 +230,8 @@ export default function ProgramSearchGrid({
         prog.title.toLowerCase().includes(q) ||
         prog.description.toLowerCase().includes(q) ||
         prog.instructor_name.toLowerCase().includes(q) ||
-        prog.requesting_institution.toLowerCase().includes(q),
+        prog.requesting_institution.toLowerCase().includes(q) ||
+        prog.training_code.toLowerCase().includes(q),
     );
   }, [programs, searchQuery, statusFilter]);
 
@@ -346,6 +349,17 @@ export default function ProgramSearchGrid({
                       </strong>
                     </span>
                   </div>
+                  {isTraining && prog.training_code && (
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        Training Code:{" "}
+                        <strong className="text-slate-700 font-bold">
+                          {prog.training_code}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
                   {prog.requesting_institution && (
                     <div className="flex items-center gap-2">
                       <Building2 className="w-3.5 h-3.5 text-slate-400" />

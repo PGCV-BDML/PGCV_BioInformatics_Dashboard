@@ -40,6 +40,7 @@ function mapProgramCard(
     description: program.description ?? "",
     instructor_name: userMap.get(program.instructor_id)?.name ?? "Unassigned",
     requesting_institution: program.requesting_institution ?? "",
+    training_code: program.training_code ?? "",
     start_date: program.start_date ?? "",
     end_date: program.end_date ?? "",
     participant_count: 0,
@@ -140,6 +141,7 @@ export default function ProgramDirectory({
       title: selectedRaw.title,
       description: selectedRaw.description ?? "",
       requesting_institution: selectedRaw.requesting_institution ?? "",
+      training_code: selectedRaw.training_code ?? "",
       instructor_id: selectedRaw.instructor_id,
       start_date: selectedRaw.start_date ?? "",
       end_date: selectedRaw.end_date ?? "",
@@ -203,6 +205,10 @@ export default function ProgramDirectory({
         description: formData.description.trim() || null,
         requesting_institution:
           formData.requesting_institution.trim() || null,
+        training_code:
+          programType === "training"
+            ? formData.training_code.trim() || null
+            : null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };
@@ -225,6 +231,7 @@ export default function ProgramDirectory({
             description: saved.description ?? "",
             instructor_name: instructorName,
             requesting_institution: saved.requesting_institution ?? "",
+            training_code: saved.training_code ?? "",
             start_date: saved.start_date ?? "",
             end_date: saved.end_date ?? "",
             participant_count: 0,
@@ -254,6 +261,10 @@ export default function ProgramDirectory({
         description: formData.description.trim() || null,
         requesting_institution:
           formData.requesting_institution.trim() || null,
+        training_code:
+          programType === "training"
+            ? formData.training_code.trim() || null
+            : null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       };
@@ -280,6 +291,7 @@ export default function ProgramDirectory({
                   description: saved.description ?? "",
                   instructor_name: instructorName,
                   requesting_institution: saved.requesting_institution ?? "",
+                  training_code: saved.training_code ?? "",
                   start_date: saved.start_date ?? "",
                   end_date: saved.end_date ?? "",
                   status: saved.status ?? p.status,
@@ -297,7 +309,7 @@ export default function ProgramDirectory({
         setIsSaving(false);
       }
     },
-    [instructors, selectedProgram, showToast],
+    [instructors, selectedProgram, showToast, programType],
   );
 
   const handleCloseModal = useCallback(() => {

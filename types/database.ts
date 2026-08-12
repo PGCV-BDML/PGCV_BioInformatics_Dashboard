@@ -236,6 +236,7 @@ export interface TrainingProgram {
   instructor_id: string;
   description: string | null;
   requesting_institution: string | null;
+  training_code: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -245,6 +246,7 @@ export type TrainingProgramFormData = {
   title: string;
   description: string;
   requesting_institution: string;
+  training_code: string;
   instructor_id: string;
   start_date: string;
   end_date: string;

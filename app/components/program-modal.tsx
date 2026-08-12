@@ -20,6 +20,7 @@ const EMPTY_FORM: TrainingProgramFormData = {
   title: "",
   description: "",
   requesting_institution: "",
+  training_code: "",
   instructor_id: "",
   start_date: "",
   end_date: "",
@@ -207,6 +208,27 @@ export default function ProgramModal({
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
           />
         </div>
+
+        {isTraining && (
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="program-training-code"
+              className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+            >
+              Training Code
+            </label>
+            <input
+              id="program-training-code"
+              type="text"
+              value={formState.training_code}
+              onChange={(e) =>
+                handleInputChange("training_code", e.target.value)
+              }
+              placeholder="e.g., DNA-BAR-2026"
+              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
+            />
+          </div>
+        )}
       </div>
 
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
