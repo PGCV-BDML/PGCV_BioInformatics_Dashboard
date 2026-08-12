@@ -43,7 +43,7 @@ export function ServiceReportsChart({
       : "/dashboard/services/tracker";
 
   return (
-    <div className="md:col-span-2 bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col">
+    <div className="md:col-span-2 h-fit self-start bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-5 font-quicksand">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2 text-[#2a7797]">
