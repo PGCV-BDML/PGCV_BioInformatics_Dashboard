@@ -11,7 +11,6 @@ import {
 } from "../components/weekly-task-list";
 import { UpcomingEvents } from "../components/upcoming-events";
 import { ServiceReportsChart } from "../components/service-reports-chart";
-import { ProjectDistributionChart } from "../components/project-distribution-chart";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { getDashboardStats, getServiceReportsByYear, type DashboardStats } from "@/lib/dashboard-stats";
 import { formatAnalysisYearLabel } from "@/lib/analysis-dashboard-stats";
@@ -217,23 +216,7 @@ export default function DashboardLandingPage() {
     };
   }, []);
 
-  const totalProjects = stats
-    ? stats.activeProjects +
-      stats.completedProjects +
-      stats.backlogProjects +
-      stats.newProjectsThisMonth
-    : 0;
-
   const serviceReportsDeliveredByYear = serviceReportsData;
-
-  const projectStatusDistribution = stats
-    ? [
-      { name: "On-going / In-Progress", value: stats.activeProjects },
-      { name: "Completed", value: stats.completedProjects },
-      { name: "On-hold / Overdue", value: stats.backlogProjects },
-      { name: "Submitted", value: stats.newProjectsThisMonth },
-    ]
-    : [];
 
   return (
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
@@ -249,7 +232,7 @@ export default function DashboardLandingPage() {
           </h1>
 
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Service reports, trainings & internships · weekly tasks · report trends & project status ·{" "}
+            Service reports, trainings & internships · weekly tasks · report trends ·{" "}
             {formatAnalysisYearLabel(selectedYear)}
           </p>
         </div>
@@ -344,12 +327,6 @@ export default function DashboardLandingPage() {
         />
 
         <UpcomingEvents />
-
-        <ProjectDistributionChart
-          data={projectStatusDistribution}
-          selectedYear={selectedYear}
-          totalProjects={totalProjects}
-        />
       </div>
     </div>
   );
