@@ -53,6 +53,42 @@ export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   },
 };
 
+/**
+ * Stamp suffixes previously appended to display names. Peeled off so
+ * approval can restore the analyst's original upload basename.
+ */
+const STAMP_NAME_SUFFIX = /(-reviewed|-approved|_signed)$/i;
+
+/**
+ * Recover the analyst's original upload basename from whatever the current
+ * display name is (including prior -reviewed / -approved / _signed stamps).
+ */
+export function originalServiceReportBaseName(
+  fileName: string | null | undefined,
+): string {
+  let base = (fileName ?? "").replace(/\.pdf$/i, "").trim();
+  while (STAMP_NAME_SUFFIX.test(base)) {
+    base = base.replace(STAMP_NAME_SUFFIX, "");
+  }
+  return base || "service-report";
+}
+
+/**
+ * Display name written after a signature stamp.
+ * Review keeps a temporary `-reviewed` marker; approval restores the
+ * original upload name and appends `_signed`.
+ */
+export function stampedServiceReportFileName(
+  currentFileName: string | null | undefined,
+  slot: SignatureSlot,
+): string {
+  const original = originalServiceReportBaseName(currentFileName);
+  if (slot === "approved_by") {
+    return `${original}_signed.pdf`;
+  }
+  return `${original}-reviewed.pdf`;
+}
+
 export class MissingReportPdfError extends Error {
   readonly code = "MISSING_REPORT_PDF" as const;
 
@@ -190,10 +226,10 @@ export async function stampServiceReportSignature(
 
   const stamped = await pdf.save();
   const stampedBytes = new Uint8Array(stamped);
-  const baseName =
-    analysis.service_report_file_name?.replace(/\.pdf$/i, "") ||
-    "service-report";
-  const stampedName = `${baseName}-${slot === "reviewed_by" ? "reviewed" : "approved"}.pdf`;
+  const stampedName = stampedServiceReportFileName(
+    analysis.service_report_file_name,
+    slot,
+  );
   const newPath = buildServiceReportPath(analysisId, stampedName);
 
   const { error: uploadError } = await supabase.storage
