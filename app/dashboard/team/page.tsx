@@ -33,7 +33,10 @@ import {
   replaceUserAbsences,
 } from "@/lib/supabase";
 import {
+  absenceBlocksToRows,
+  absenceRowsToBlocks,
   maxAbsenceDate,
+  presenceNoteFromAbsenceRows,
   presenceStatusForSave,
   resolveEffectivePresenceStatus,
   scheduledAbsenceStatusFromRows,
@@ -186,6 +189,9 @@ export default function TeamPage() {
   const [editAvatarPreviewUrl, setEditAvatarPreviewUrl] = useState<
     string | null
   >(null);
+  /** Scheduled status the modal was opened with, so we know what to clear. */
+  const [editScheduledStatus, setEditScheduledStatus] =
+    useState<PresenceStatus | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingRoster, setIsSavingRoster] = useState(false);
   const [isOpeningEdit, setIsOpeningEdit] = useState(false);
@@ -317,6 +323,7 @@ export default function TeamPage() {
     setSelected(null);
     setEditFormData(null);
     setEditAvatarPreviewUrl(null);
+    setEditScheduledStatus(null);
   }, []);
 
   const handleOpenEdit = useCallback(
@@ -328,16 +335,17 @@ export default function TeamPage() {
         const scheduledStatus = scheduledAbsenceStatusFromRows(absences);
         const status =
           scheduledStatus ?? member.presence?.status ?? "in_office";
+        setEditScheduledStatus(scheduledStatus);
         setEditFormData({
           status,
           note: member.presence?.note || "",
           until_date: member.presence?.until_date || "",
           designation: member.designation || "",
           in_team_directory: member.in_team_directory,
-          absence_dates: scheduledStatus
-            ? absences
-                .filter((row) => row.status === scheduledStatus)
-                .map((row) => row.absence_date)
+          absence_blocks: scheduledStatus
+            ? absenceRowsToBlocks(
+                absences.filter((row) => row.status === scheduledStatus),
+              )
             : [],
         });
         setEditAvatarPreviewUrl(resolveAvatarDisplayUrl(member));
@@ -362,21 +370,28 @@ export default function TeamPage() {
 
       const designation = formData.designation.trim() || null;
       const isScheduled = SCHEDULED_ABSENCE_STATUSES.includes(formData.status);
-      const storedStatus = presenceStatusForSave(
-        formData.status,
-        formData.absence_dates,
-      );
-      const untilDate = isScheduled
-        ? maxAbsenceDate(formData.absence_dates)
-        : formData.until_date.trim() || null;
-      const note = formData.note.trim() || null;
       const absenceRows = isScheduled
-        ? formData.absence_dates.map((absence_date) => ({
-            absence_date,
-            status: formData.status,
-            note,
-          }))
+        ? absenceBlocksToRows(formData.absence_blocks, formData.status)
         : [];
+      const absenceDates = absenceRows.map((row) => row.absence_date);
+      const storedStatus = presenceStatusForSave(formData.status, absenceDates);
+      const untilDate = isScheduled
+        ? maxAbsenceDate(absenceDates)
+        : formData.until_date.trim() || null;
+      // With scheduled absences the note lives on each block, so mirror the
+      // one covering today (or next up) onto the team list.
+      const note = isScheduled
+        ? presenceNoteFromAbsenceRows(absenceRows)
+        : formData.note.trim() || null;
+      // Only clear the statuses this save owns, so leave edits leave travel
+      // days (and vice versa) untouched.
+      const statusesToReplace = Array.from(
+        new Set(
+          [isScheduled ? formData.status : null, editScheduledStatus].filter(
+            (status): status is PresenceStatus => status !== null,
+          ),
+        ),
+      );
 
       setIsSaving(true);
       try {
@@ -404,7 +419,12 @@ export default function TeamPage() {
             until_date: untilDate,
             updated_by: currentUserId,
           }),
-          replaceUserAbsences(selected.id, absenceRows, currentUserId),
+          replaceUserAbsences(
+            selected.id,
+            absenceRows,
+            currentUserId,
+            statusesToReplace,
+          ),
         ]);
 
         await reloadDirectoryMembers();
@@ -413,6 +433,7 @@ export default function TeamPage() {
         setSelected(null);
         setEditFormData(null);
         setEditAvatarPreviewUrl(null);
+        setEditScheduledStatus(null);
         showToast("Profile updated.", "success");
       } catch (err) {
         console.error("Failed to update profile:", err);
@@ -426,7 +447,14 @@ export default function TeamPage() {
         setIsSaving(false);
       }
     },
-    [selected, currentUserId, isTeamLead, showToast, reloadDirectoryMembers],
+    [
+      selected,
+      currentUserId,
+      isTeamLead,
+      editScheduledStatus,
+      showToast,
+      reloadDirectoryMembers,
+    ],
   );
 
   const handleRosterSaved = useCallback(async () => {

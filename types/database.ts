@@ -572,13 +572,24 @@ export type UserPresence = {
   updated_at?: string;
 };
 
+/**
+ * One scheduled absence with its own note, e.g. a single stretch of leave.
+ * Expanded into one `UserAbsence` row per day on save; `id` is client-only.
+ */
+export type AbsenceBlock = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  note: string;
+};
+
 export type UserPresenceFormData = {
   status: PresenceStatus;
   note: string;
   until_date: string;
   designation: string;
-  /** Explicit absence days (on leave / on travel). */
-  absence_dates: string[];
+  /** Separate stretches of leave / travel, each with its own note. */
+  absence_blocks: AbsenceBlock[];
   /** Team lead only: include on bioinformatics Team + calendar. */
   in_team_directory: boolean;
 };

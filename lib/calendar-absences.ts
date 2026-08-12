@@ -1,4 +1,9 @@
-import type { PresenceStatus, UserAbsence, UserPresence } from "@/types/database";
+import type {
+  AbsenceBlock,
+  PresenceStatus,
+  UserAbsence,
+  UserPresence,
+} from "@/types/database";
 import {
   PRESENCE_STATUS_OPTIONS,
   SCHEDULED_ABSENCE_STATUSES,
@@ -115,6 +120,151 @@ export function absencesByDateKey(
 
 export function todayDateKey(): string {
   return toDateKey(new Date());
+}
+
+// ------------------------------------------------------------
+// Absence blocks
+// ------------------------------------------------------------
+
+/** Guards against a mistyped year turning into thousands of absence rows. */
+export const MAX_ABSENCE_BLOCK_DAYS = 366;
+
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Parse a YYYY-MM-DD key as UTC midnight; null when malformed or unreal. */
+function parseDateKey(key: string): Date | null {
+  const trimmed = key.trim();
+  if (!DATE_KEY_PATTERN.test(trimmed)) return null;
+  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  // Rejects rolled-over dates such as 2026-02-31.
+  return parsed.toISOString().slice(0, 10) === trimmed ? parsed : null;
+}
+
+export function nextDateKey(key: string): string | null {
+  const parsed = parseDateKey(key);
+  if (!parsed) return null;
+  parsed.setUTCDate(parsed.getUTCDate() + 1);
+  return parsed.toISOString().slice(0, 10);
+}
+
+/** Every day covered by a block, inclusive of both ends. */
+export function expandAbsenceBlock(
+  block: Pick<AbsenceBlock, "start_date" | "end_date">,
+): string[] {
+  const start = parseDateKey(block.start_date);
+  const end = parseDateKey(block.end_date || block.start_date);
+  if (!start || !end || end < start) return [];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end && dates.length < MAX_ABSENCE_BLOCK_DAYS) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+export function absenceBlockDayCount(
+  block: Pick<AbsenceBlock, "start_date" | "end_date">,
+): number {
+  return expandAbsenceBlock(block).length;
+}
+
+export function absenceBlockDates(blocks: AbsenceBlock[]): string[] {
+  return normalizeAbsenceDates(blocks.flatMap(expandAbsenceBlock));
+}
+
+/**
+ * Flatten blocks into per-day rows, each carrying its own block's note.
+ * On overlap the earlier block wins, so a day never gets two notes.
+ */
+export function absenceBlocksToRows(
+  blocks: AbsenceBlock[],
+  status: PresenceStatus,
+): Pick<UserAbsence, "absence_date" | "status" | "note">[] {
+  const noteByDate = new Map<string, string | null>();
+  for (const block of blocks) {
+    const note = block.note.trim() || null;
+    for (const date of expandAbsenceBlock(block)) {
+      if (!noteByDate.has(date)) noteByDate.set(date, note);
+    }
+  }
+  return Array.from(noteByDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([absence_date, note]) => ({ absence_date, status, note }));
+}
+
+/** Rebuild editable blocks by merging consecutive days that share a note. */
+export function absenceRowsToBlocks(
+  rows: Pick<UserAbsence, "absence_date" | "note">[],
+): AbsenceBlock[] {
+  const sorted = [...rows].sort((a, b) =>
+    a.absence_date.localeCompare(b.absence_date),
+  );
+
+  const blocks: AbsenceBlock[] = [];
+  for (const row of sorted) {
+    const note = row.note ?? "";
+    const current = blocks[blocks.length - 1];
+    if (current) {
+      if (current.end_date === row.absence_date) continue;
+      if (
+        current.note === note &&
+        nextDateKey(current.end_date) === row.absence_date
+      ) {
+        current.end_date = row.absence_date;
+        continue;
+      }
+    }
+    blocks.push({
+      id: `absence-${row.absence_date}`,
+      start_date: row.absence_date,
+      end_date: row.absence_date,
+      note,
+    });
+  }
+  return blocks;
+}
+
+/** First problem with the blocks, or null when they are safe to save. */
+export function validateAbsenceBlocks(blocks: AbsenceBlock[]): string | null {
+  if (blocks.length === 0) return "Add at least one set of dates.";
+
+  const claimedDates = new Set<string>();
+  for (const block of blocks) {
+    if (!block.start_date.trim()) return "Every leave needs a start date.";
+
+    const start = parseDateKey(block.start_date);
+    const end = parseDateKey(block.end_date || block.start_date);
+    if (!start || !end) return "Enter valid dates for every leave.";
+    if (end < start) return "An end date cannot come before its start date.";
+
+    const dates = expandAbsenceBlock(block);
+    if (dates.length >= MAX_ABSENCE_BLOCK_DAYS) {
+      return `A single leave cannot be longer than ${MAX_ABSENCE_BLOCK_DAYS} days.`;
+    }
+    for (const date of dates) {
+      if (claimedDates.has(date)) return "Two leaves cover the same date.";
+      claimedDates.add(date);
+    }
+  }
+  return null;
+}
+
+/**
+ * Note to surface on the Team list: today's absence if there is one,
+ * otherwise the next upcoming one.
+ */
+export function presenceNoteFromAbsenceRows(
+  rows: Pick<UserAbsence, "absence_date" | "note">[],
+  todayKey: string = todayDateKey(),
+): string | null {
+  const sorted = [...rows].sort((a, b) =>
+    a.absence_date.localeCompare(b.absence_date),
+  );
+  const active = sorted.find((row) => row.absence_date >= todayKey);
+  return (active ?? sorted[sorted.length - 1])?.note ?? null;
 }
 
 function isScheduledAbsenceStatus(status: PresenceStatus): boolean {

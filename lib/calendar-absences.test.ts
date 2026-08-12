@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
-import type { UserAbsence } from "@/types/database";
+import type { AbsenceBlock, UserAbsence } from "@/types/database";
 import {
+  absenceBlocksToRows,
+  absenceRowsToBlocks,
   absencesByDateKey,
+  expandAbsenceBlock,
   filterAbsencesByStatus,
   mapAbsencesForCalendar,
   maxAbsenceDate,
   normalizeAbsenceDates,
+  presenceNoteFromAbsenceRows,
   presenceStatusForSave,
   resolveEffectivePresenceStatus,
   scheduledAbsenceStatusFromRows,
+  validateAbsenceBlocks,
 } from "./calendar-absences";
+
+function block(partial: Partial<AbsenceBlock>): AbsenceBlock {
+  return {
+    id: "b1",
+    start_date: "2026-08-10",
+    end_date: "2026-08-10",
+    note: "",
+    ...partial,
+  };
+}
 
 describe("normalizeAbsenceDates", () => {
   it("dedupes and sorts dates", () => {
@@ -209,5 +224,252 @@ describe("scheduledAbsenceStatusFromRows", () => {
 
   it("returns null when no scheduled absences exist", () => {
     expect(scheduledAbsenceStatusFromRows([])).toBeNull();
+  });
+});
+
+describe("expandAbsenceBlock", () => {
+  it("covers both ends of the range", () => {
+    expect(
+      expandAbsenceBlock({ start_date: "2026-08-10", end_date: "2026-08-12" }),
+    ).toEqual(["2026-08-10", "2026-08-11", "2026-08-12"]);
+  });
+
+  it("crosses a month boundary", () => {
+    expect(
+      expandAbsenceBlock({ start_date: "2026-08-31", end_date: "2026-09-01" }),
+    ).toEqual(["2026-08-31", "2026-09-01"]);
+  });
+
+  it("falls back to the start date when no end is set", () => {
+    expect(
+      expandAbsenceBlock({ start_date: "2026-08-10", end_date: "" }),
+    ).toEqual(["2026-08-10"]);
+  });
+
+  it("returns nothing for a reversed or malformed range", () => {
+    expect(
+      expandAbsenceBlock({ start_date: "2026-08-12", end_date: "2026-08-10" }),
+    ).toEqual([]);
+    expect(
+      expandAbsenceBlock({ start_date: "2026-02-31", end_date: "2026-02-31" }),
+    ).toEqual([]);
+  });
+});
+
+describe("absenceBlocksToRows", () => {
+  it("keeps each block's note on its own days", () => {
+    const rows = absenceBlocksToRows(
+      [
+        block({
+          id: "b1",
+          start_date: "2026-08-10",
+          end_date: "2026-08-11",
+          note: "Family vacation",
+        }),
+        block({
+          id: "b2",
+          start_date: "2026-09-01",
+          end_date: "2026-09-01",
+          note: "Medical appointment",
+        }),
+      ],
+      "on_leave",
+    );
+
+    expect(rows).toEqual([
+      {
+        absence_date: "2026-08-10",
+        status: "on_leave",
+        note: "Family vacation",
+      },
+      {
+        absence_date: "2026-08-11",
+        status: "on_leave",
+        note: "Family vacation",
+      },
+      {
+        absence_date: "2026-09-01",
+        status: "on_leave",
+        note: "Medical appointment",
+      },
+    ]);
+  });
+
+  it("does not let a new leave overwrite an earlier leave's note", () => {
+    const rows = absenceBlocksToRows(
+      [
+        block({
+          id: "b1",
+          start_date: "2026-08-10",
+          end_date: "2026-08-10",
+          note: "First",
+        }),
+        block({
+          id: "b2",
+          start_date: "2026-08-20",
+          end_date: "2026-08-20",
+          note: "Second",
+        }),
+      ],
+      "on_leave",
+    );
+    expect(rows.map((row) => row.note)).toEqual(["First", "Second"]);
+  });
+
+  it("stores a blank note as null", () => {
+    const rows = absenceBlocksToRows([block({ note: "   " })], "on_leave");
+    expect(rows[0]?.note).toBeNull();
+  });
+});
+
+describe("absenceRowsToBlocks", () => {
+  it("merges consecutive days that share a note", () => {
+    const blocks = absenceRowsToBlocks([
+      { absence_date: "2026-08-10", note: "Family vacation" },
+      { absence_date: "2026-08-11", note: "Family vacation" },
+      { absence_date: "2026-08-12", note: "Family vacation" },
+    ]);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.start_date).toBe("2026-08-10");
+    expect(blocks[0]?.end_date).toBe("2026-08-12");
+    expect(blocks[0]?.note).toBe("Family vacation");
+  });
+
+  it("splits consecutive days that carry different notes", () => {
+    const blocks = absenceRowsToBlocks([
+      { absence_date: "2026-08-10", note: "Family vacation" },
+      { absence_date: "2026-08-11", note: "Medical appointment" },
+    ]);
+    expect(blocks).toHaveLength(2);
+    expect(blocks.map((b) => b.note)).toEqual([
+      "Family vacation",
+      "Medical appointment",
+    ]);
+  });
+
+  it("splits on a gap in dates", () => {
+    const blocks = absenceRowsToBlocks([
+      { absence_date: "2026-08-10", note: "Trip" },
+      { absence_date: "2026-08-20", note: "Trip" },
+    ]);
+    expect(blocks).toHaveLength(2);
+  });
+
+  it("round-trips through absenceBlocksToRows", () => {
+    const original = [
+      block({
+        id: "b1",
+        start_date: "2026-08-10",
+        end_date: "2026-08-12",
+        note: "Family vacation",
+      }),
+      block({
+        id: "b2",
+        start_date: "2026-09-01",
+        end_date: "2026-09-02",
+        note: "Conference",
+      }),
+    ];
+    const rebuilt = absenceRowsToBlocks(
+      absenceBlocksToRows(original, "on_leave"),
+    );
+    expect(
+      rebuilt.map(({ start_date, end_date, note }) => ({
+        start_date,
+        end_date,
+        note,
+      })),
+    ).toEqual(
+      original.map(({ start_date, end_date, note }) => ({
+        start_date,
+        end_date,
+        note,
+      })),
+    );
+  });
+});
+
+describe("validateAbsenceBlocks", () => {
+  it("accepts separate, well-formed leaves", () => {
+    expect(
+      validateAbsenceBlocks([
+        block({ id: "b1", start_date: "2026-08-10", end_date: "2026-08-12" }),
+        block({ id: "b2", start_date: "2026-09-01", end_date: "2026-09-02" }),
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects an empty list", () => {
+    expect(validateAbsenceBlocks([])).toMatch(/at least one/i);
+  });
+
+  it("rejects a missing start date", () => {
+    expect(
+      validateAbsenceBlocks([block({ start_date: "", end_date: "" })]),
+    ).toMatch(/start date/i);
+  });
+
+  it("rejects an end date before its start", () => {
+    expect(
+      validateAbsenceBlocks([
+        block({ start_date: "2026-08-12", end_date: "2026-08-10" }),
+      ]),
+    ).toMatch(/before/i);
+  });
+
+  it("rejects overlapping leaves", () => {
+    expect(
+      validateAbsenceBlocks([
+        block({ id: "b1", start_date: "2026-08-10", end_date: "2026-08-12" }),
+        block({ id: "b2", start_date: "2026-08-12", end_date: "2026-08-14" }),
+      ]),
+    ).toMatch(/same date/i);
+  });
+
+  it("rejects a range long enough to look like a typo", () => {
+    expect(
+      validateAbsenceBlocks([
+        block({ start_date: "2026-08-10", end_date: "2036-08-10" }),
+      ]),
+    ).toMatch(/longer than/i);
+  });
+});
+
+describe("presenceNoteFromAbsenceRows", () => {
+  it("uses today's note when the leave is under way", () => {
+    expect(
+      presenceNoteFromAbsenceRows(
+        [
+          { absence_date: "2026-08-04", note: "Family vacation" },
+          { absence_date: "2026-09-01", note: "Conference" },
+        ],
+        "2026-08-04",
+      ),
+    ).toBe("Family vacation");
+  });
+
+  it("uses the next upcoming note when nothing is active", () => {
+    expect(
+      presenceNoteFromAbsenceRows(
+        [
+          { absence_date: "2026-08-01", note: "Family vacation" },
+          { absence_date: "2026-09-01", note: "Conference" },
+        ],
+        "2026-08-04",
+      ),
+    ).toBe("Conference");
+  });
+
+  it("falls back to the last note when every absence has passed", () => {
+    expect(
+      presenceNoteFromAbsenceRows(
+        [{ absence_date: "2026-08-01", note: "Family vacation" }],
+        "2026-08-04",
+      ),
+    ).toBe("Family vacation");
+  });
+
+  it("returns null with no rows", () => {
+    expect(presenceNoteFromAbsenceRows([], "2026-08-04")).toBeNull();
   });
 });

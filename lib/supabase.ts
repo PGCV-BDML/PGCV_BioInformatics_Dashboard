@@ -349,23 +349,45 @@ export async function getUserAbsences(userId: string): Promise<UserAbsence[]> {
   return (data ?? []) as UserAbsence[];
 }
 
-/** Replace all absence rows for a user (full sync from Team modal). */
+/**
+ * Replace a user's absence rows for the given statuses only, leaving rows of
+ * other statuses (e.g. travel days while editing leave) in place.
+ */
 export async function replaceUserAbsences(
   userId: string,
   absences: Pick<UserAbsence, "absence_date" | "status" | "note">[],
   createdBy: string | null,
+  statuses: PresenceStatus[],
 ): Promise<UserAbsence[]> {
-  const { error: deleteError } = await supabase
-    .from("user_absence")
-    .delete()
-    .eq("user_id", userId);
+  if (statuses.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("user_absence")
+      .delete()
+      .eq("user_id", userId)
+      .in("status", statuses);
 
-  if (deleteError) {
-    console.error("Error clearing user absences:", deleteError);
-    throw deleteError;
+    if (deleteError) {
+      console.error("Error clearing user absences:", deleteError);
+      throw deleteError;
+    }
   }
 
   if (absences.length === 0) return [];
+
+  // One row per user per day, so drop any surviving row on a day we reuse.
+  const { error: conflictError } = await supabase
+    .from("user_absence")
+    .delete()
+    .eq("user_id", userId)
+    .in(
+      "absence_date",
+      absences.map((row) => row.absence_date),
+    );
+
+  if (conflictError) {
+    console.error("Error clearing conflicting user absences:", conflictError);
+    throw conflictError;
+  }
 
   const rows = absences.map((row) => ({
     user_id: userId,
