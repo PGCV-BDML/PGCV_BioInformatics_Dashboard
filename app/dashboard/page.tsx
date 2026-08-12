@@ -335,6 +335,9 @@ export default function DashboardLandingPage() {
         <ServiceReportsChart
           data={serviceReportsDeliveredByYear}
           selectedYear={selectedYear}
+          onYearChange={(year) => {
+            if (AVAILABLE_YEARS.includes(year)) setSelectedYear(year);
+          }}
         />
 
         <UpcomingEvents />
