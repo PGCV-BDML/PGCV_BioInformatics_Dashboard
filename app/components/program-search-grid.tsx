@@ -74,6 +74,8 @@ interface ProgramSearchGridProps {
   programs: ProgramCard[];
   type: TrainingType;
   canManage?: boolean;
+  /** Staff cohort filters (Active / Draft / …). Hidden for trainee/intern. */
+  showStatusFilters?: boolean;
   onEdit?: (program: ProgramCard) => void;
   onMarkDone?: (program: ProgramCard) => void;
   onArchive?: (program: ProgramCard) => void;
@@ -205,6 +207,7 @@ export default function ProgramSearchGrid({
   programs,
   type,
   canManage = false,
+  showStatusFilters = true,
   onEdit,
   onMarkDone,
   onArchive,
@@ -213,14 +216,17 @@ export default function ProgramSearchGrid({
 }: ProgramSearchGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const effectiveStatusFilter: StatusFilter = showStatusFilters
+    ? statusFilter
+    : "all";
 
   const filteredPrograms = useMemo(() => {
     let list = programs;
 
-    if (statusFilter === "active") {
+    if (effectiveStatusFilter === "active") {
       list = list.filter((p) => p.status !== "archived");
-    } else if (statusFilter !== "all") {
-      list = list.filter((p) => p.status === statusFilter);
+    } else if (effectiveStatusFilter !== "all") {
+      list = list.filter((p) => p.status === effectiveStatusFilter);
     }
 
     if (!searchQuery.trim()) return list;
@@ -233,7 +239,7 @@ export default function ProgramSearchGrid({
         prog.requesting_institution.toLowerCase().includes(q) ||
         prog.training_code.toLowerCase().includes(q),
     );
-  }, [programs, searchQuery, statusFilter]);
+  }, [programs, searchQuery, effectiveStatusFilter]);
 
   const isTraining = type === "training";
   const typeLabel = isTraining ? "Training" : "Internship";
@@ -270,25 +276,27 @@ export default function ProgramSearchGrid({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTER_CHIPS.map((chip) => {
-          const isActive = statusFilter === chip.value;
-          return (
-            <button
-              key={chip.value}
-              type="button"
-              onClick={() => setStatusFilter(chip.value)}
-              className={`h-8 px-3 rounded-full text-[11px] font-bold border transition-colors ${
-                isActive
-                  ? "bg-[#2a7797] text-white border-[#2a7797]"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
+      {showStatusFilters && (
+        <div className="flex flex-wrap gap-2">
+          {FILTER_CHIPS.map((chip) => {
+            const isActive = statusFilter === chip.value;
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => setStatusFilter(chip.value)}
+                className={`h-8 px-3 rounded-full text-[11px] font-bold border transition-colors ${
+                  isActive
+                    ? "bg-[#2a7797] text-white border-[#2a7797]"
+                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredPrograms.map((prog) => {

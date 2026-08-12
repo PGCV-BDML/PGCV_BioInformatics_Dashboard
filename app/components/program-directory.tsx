@@ -395,6 +395,7 @@ export default function ProgramDirectory({
             programs={programsList}
             type={programType}
             canManage={canManage}
+            showStatusFilters={!isLearnerView}
             onEdit={(prog) => {
               setSelectedProgram(prog);
               setIsAdding(false);
