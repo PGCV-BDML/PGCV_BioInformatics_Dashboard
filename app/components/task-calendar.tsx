@@ -29,7 +29,6 @@ import {
   type CalendarTask,
   addMonths,
   buildTasksByDate,
-  endOfMonth,
   filterByCategory,
   formatTaskDateRange,
   getMonthGrid,
@@ -37,10 +36,8 @@ import {
   mapTasksForCalendar,
   PRIORITY_STYLES,
   splitCellPreview,
-  startOfMonth,
   STATUS_LABELS,
   taskHref,
-  taskOverlapsRange,
   toDateKey,
 } from "@/lib/calendar-tasks";
 import {
@@ -155,23 +152,10 @@ export default function TaskCalendar() {
     ? (absencesByDate.get(selectedKey) ?? [])
     : [];
 
-  const monthAbsenceCount = useMemo(() => {
-    const prefix = `${viewMonth.getFullYear()}-${String(viewMonth.getMonth() + 1).padStart(2, "0")}`;
-    return visibleAbsences.filter((a) => a.absence_date.startsWith(prefix)).length;
-  }, [visibleAbsences, viewMonth]);
-
   const monthLabel = viewMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
-
-  const monthTaskCount = useMemo(() => {
-    const startKey = toDateKey(startOfMonth(viewMonth));
-    const endKey = toDateKey(endOfMonth(viewMonth));
-    return visibleTasks.filter((t) =>
-      taskOverlapsRange(t.start_date, t.end_date, startKey, endKey),
-    ).length;
-  }, [visibleTasks, viewMonth]);
 
   if (isLoading) {
     return (
@@ -294,12 +278,6 @@ export default function TaskCalendar() {
             </label>
           </div>
         </div>
-
-        <p className="text-xs text-slate-500 mb-4 font-aileron">
-          {monthTaskCount} task{monthTaskCount === 1 ? "" : "s"} and{" "}
-          {monthAbsenceCount} team absence{monthAbsenceCount === 1 ? "" : "s"} this
-          month. Click a day to inspect tasks and who is out.
-        </p>
 
         <div className="grid grid-cols-7 gap-1 mb-1">
           {WEEKDAYS.map((d) => (
