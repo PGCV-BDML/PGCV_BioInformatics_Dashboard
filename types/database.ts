@@ -487,6 +487,56 @@ export type RepositoryFormData = {
 };
 
 // ============================================================
+// COVID genomic surveillance — Run Summary
+// (Separate from client sequence analysis / Service Report Tracker.)
+// ============================================================
+
+export type CovidSequencer = "NextSeq1000" | "iSeq100";
+
+export const COVID_SEQUENCER_OPTIONS: {
+  value: CovidSequencer;
+  label: string;
+}[] = [
+  { value: "NextSeq1000", label: "NextSeq1000" },
+  { value: "iSeq100", label: "iSeq100" },
+];
+
+/** One sequencing run from the COVID Sample Tracker Run_Summary sheet. */
+export type CovidSequencingRun = {
+  id: string;
+  run_number: number;
+  run_id: string | null;
+  sequencer: string | null;
+  extraction_number: string | null;
+  date_received: string | null;
+  date_loaded: string | null;
+  samples_sequenced: number;
+  lineage_assigned: number | null;
+  uploaded_gisaid: boolean;
+  uploaded_islap: boolean;
+  comments: string | null;
+  review_flag: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** Form shape for add/edit Run Summary modal (booleans as checkboxes). */
+export type CovidSequencingRunFormData = {
+  run_number: string;
+  run_id: string;
+  sequencer: string;
+  extraction_number: string;
+  date_received: string;
+  date_loaded: string;
+  samples_sequenced: string;
+  lineage_assigned: string;
+  uploaded_gisaid: boolean;
+  uploaded_islap: boolean;
+  comments: string;
+  review_flag: string;
+};
+
+// ============================================================
 // Team presence / availability
 // ============================================================
 

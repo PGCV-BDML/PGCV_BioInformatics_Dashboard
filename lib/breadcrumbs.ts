@@ -42,6 +42,12 @@ export const servicesDashboardBreadcrumbs: BreadcrumbItem[] = [
   { label: "Overview" },
 ];
 
+export const runSummaryBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Run Summary" },
+];
+
 export const notificationsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Notifications" },

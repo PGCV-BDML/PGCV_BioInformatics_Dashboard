@@ -96,6 +96,7 @@ export type TableNames =
   | "task"
   | "task_tag"
   | "repository"
+  | "covid_sequencing_run"
   | "user_presence"
   | "user_absence"
   | "conversation"
