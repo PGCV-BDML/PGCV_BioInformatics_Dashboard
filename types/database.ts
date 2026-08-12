@@ -363,6 +363,8 @@ export type UserRole =
   | "team_member"
   | "trainee"
   | "intern"
+  | "reviewing_officer"
+  | "approving_officer"
   | "none";
 
 export interface Client {

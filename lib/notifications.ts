@@ -3,7 +3,6 @@ import {
   deriveLegacyStatus,
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
-  shouldAdvanceSubmissionStatus,
   submissionStatusRank,
 } from "@/lib/analysis-tracker";
 import type { AnalysisReviewComment, ReviewCommentStage } from "@/types/database";
@@ -479,52 +478,29 @@ async function applyApprovalAction(
   analysisId: string,
   action: ReviewAction,
 ): Promise<void> {
-  const { data: analysis, error } = await supabase
-    .from("analysis")
-    .select("id, status_of_completion, status_of_submission, notes")
-    .eq("id", analysisId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to load analysis for review action:", error);
-    throw error;
-  }
-  if (!analysis) {
-    throw new Error("Analysis not found for review action.");
-  }
-
-  const nextSubmission = action;
-  const canAdvance = shouldAdvanceSubmissionStatus(
-    analysis.status_of_submission,
-    nextSubmission,
-  );
-
-  const actor = await getActorDisplayName();
-  const noteLine = buildSystemNote(action, actor);
-  const nextNotes = appendSystemNote(analysis.notes, noteLine);
-
-  if (!canAdvance && nextNotes === (analysis.notes ?? "").trim()) {
+  if (action === "Under review") {
+    const { error } = await supabase.rpc("mark_analysis_under_review", {
+      p_analysis_id: analysisId,
+    });
+    if (error) {
+      console.error("Failed to mark analysis under review:", error);
+      throw error;
+    }
     return;
   }
 
-  const payload: Record<string, unknown> = {
-    notes: nextNotes || null,
-  };
+  const { data, error } = await supabase.rpc("approve_analysis", {
+    p_analysis_id: analysisId,
+  });
 
-  if (canAdvance) {
-    payload.status_of_submission = nextSubmission;
-    payload.status = deriveLegacyStatus({
-      status_of_completion: analysis.status_of_completion,
-      status_of_submission: nextSubmission,
-    });
+  if (error) {
+    console.error("Failed to approve analysis:", error);
+    throw error;
   }
 
-  await saveDataToDB("analysis", analysisId, payload);
-
-  // Approving settles anything the officer had previously asked for.
-  if (action === "Approved" && canAdvance) {
-    const user = await getCurrentUser();
-    await resolveOpenReviewComments(analysisId, user?.id ?? null, "approval");
+  const result = (data ?? {}) as { already_approved?: boolean };
+  if (!result.already_approved) {
+    // Comments are resolved inside the RPC; nothing else to do client-side.
   }
 }
 

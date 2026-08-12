@@ -13,16 +13,24 @@ review of the PDF and approving-officer sign-off.
 | You are… | You do |
 |---|---|
 | Bioinformatician / analyst | Create the record, run the analysis, upload the PDF, assign officers, address revision/change comments and resubmit |
-| Reviewing officer (any staff except the assignee) | Peer-review the PDF from notifications; complete review or request a revision with comments |
-| Approving officer (role `team_lead`) | Approve the report after peer review, or send it back with comments |
-| Either | Mark the report **Submitted** once it has gone out to the client |
+| Reviewing officer (`reviewing_officer`, or staff) | Peer-review the PDF from **Notifications** only; complete review or request a revision with comments |
+| Approving officer (`approving_officer`, or `team_lead`) | Approve the report after peer review from **Notifications**, or send it back with comments |
+| Either staff role | Mark the report **Submitted** once it has gone out to the client |
+
+External reviewing/approving officers are **not** bioinformatics staff. After sign-in they
+only see the **Notifications** tab (same scoped-portal pattern as trainees/interns). They
+open the PDF, e-sign, and act from the notification card — they cannot open the Service
+Report Tracker.
 
 Rules that decide whether the workflow works:
 
 - **PDF is required going forward.** An optional Drive/share link can sit alongside it.
-- **Reviewing Officer** can be any staff member **except the assignee**, and must be
-  **different from the Approving Officer**.
+- **Reviewing Officer** can be a `reviewing_officer` or staff member **except the assignee**,
+  and must be **different from the Approving Officer**.
+- **Approving Officer** can be an `approving_officer` or a `team_lead`.
 - **The approving officer is notified only after Status of Review is Reviewed.**
+- Seed officer accounts with `scripts/promote-service-report-officer.sql` after applying
+  migration `20260812140000_service_report_officer_roles.sql`.
 
 ---
 
@@ -67,8 +75,10 @@ Rules that decide whether the workflow works:
 **Personnel section**
 
 - **Assignee** — required for the record to appear on the Tasks board.
-- **Reviewing Officer** — lab peer who reads the PDF before approval. Not the assignee.
-- **Approving Officer** — team lead only; notified only after peer review is done.
+- **Reviewing Officer** — peer who reads the PDF before approval (`reviewing_officer` or
+  staff). Not the assignee. External officers work from Notifications only.
+- **Approving Officer** — `approving_officer` or team lead; notified only after peer review
+  is done. External officers work from Notifications only.
 
 3. Click **Save Record**.
 

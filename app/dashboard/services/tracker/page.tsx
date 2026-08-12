@@ -311,7 +311,12 @@ export default function ServiceReportTrackerPage() {
             getRowsFromDB<Project>("project"),
             getRowsFromDB<SupabaseClientRow>("client"),
             getRowsFromDB<Service>("service"),
-            getUsersFromDB(["team_lead", "team_member", "intern", "trainee"]),
+            getUsersFromDB([
+              "team_lead",
+              "team_member",
+              "reviewing_officer",
+              "approving_officer",
+            ]),
             getCurrentUser(),
             getRowsFromDB<Repository>("repository"),
           ]);
@@ -379,13 +384,29 @@ export default function ServiceReportTrackerPage() {
         setAvailableProjects(
           Array.from(tmpProjectMap.entries()).map(([id, v]) => ({ id, ...v })),
         );
-        setAvailableAssignees(Array.from(tmpUserMap.values()));
+        setAvailableAssignees(
+          (users as User[])
+            .filter(
+              (u) => u.role === "team_lead" || u.role === "team_member",
+            )
+            .map((u) => u.name),
+        );
         setAvailableReviewers(
-          (users as User[]).map((u) => ({ id: u.id, name: u.name })),
+          (users as User[])
+            .filter(
+              (u) =>
+                u.role === "reviewing_officer" ||
+                u.role === "team_lead" ||
+                u.role === "team_member",
+            )
+            .map((u) => ({ id: u.id, name: u.name })),
         );
         setAvailableApprovers(
           (users as User[])
-            .filter((u) => u.role === "team_lead")
+            .filter(
+              (u) =>
+                u.role === "approving_officer" || u.role === "team_lead",
+            )
             .map((u) => ({ id: u.id, name: u.name })),
         );
       } catch (err) {

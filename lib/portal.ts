@@ -2,6 +2,10 @@ import type { UserRole } from "@/types/database";
 
 export const STAFF_ROLES: UserRole[] = ["team_lead", "team_member"];
 export const LEARNER_ROLES: UserRole[] = ["trainee", "intern"];
+export const OFFICER_ROLES: UserRole[] = [
+  "reviewing_officer",
+  "approving_officer",
+];
 
 export type PortalPreviewMode = "trainee" | "intern" | null;
 
@@ -13,6 +17,10 @@ export function isStaffRole(role: UserRole | null | undefined): boolean {
 
 export function isLearnerRole(role: UserRole | null | undefined): boolean {
   return role != null && LEARNER_ROLES.includes(role);
+}
+
+export function isOfficerRole(role: UserRole | null | undefined): boolean {
+  return role != null && OFFICER_ROLES.includes(role);
 }
 
 export function canEnrollParticipants(
@@ -38,6 +46,9 @@ export function getHomePathForRole(role: UserRole | null): string {
       return "/dashboard/training";
     case "intern":
       return "/dashboard/internship";
+    case "reviewing_officer":
+    case "approving_officer":
+      return "/dashboard/notifications";
     case "none":
     case null:
       return "/dashboard/pending";
@@ -46,7 +57,7 @@ export function getHomePathForRole(role: UserRole | null): string {
   }
 }
 
-/** Paths a learner (or staff in learner preview) may open. */
+/** Paths a learner, officer (or staff in learner preview) may open. */
 export function isPathAllowedForRole(
   pathname: string,
   role: UserRole | null,
@@ -70,6 +81,13 @@ export function isPathAllowedForRole(
     return (
       pathname === "/dashboard/internship" ||
       pathname.startsWith("/dashboard/internship/")
+    );
+  }
+
+  if (isOfficerRole(role)) {
+    return (
+      pathname === "/dashboard/notifications" ||
+      pathname.startsWith("/dashboard/notifications/")
     );
   }
 

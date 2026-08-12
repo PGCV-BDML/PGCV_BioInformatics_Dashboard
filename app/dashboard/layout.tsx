@@ -79,7 +79,7 @@ export default function DashboardLayout({
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
-  const { loading: portalLoading, effectiveRole } = usePortal();
+  const { loading: portalLoading, effectiveRole, isOfficerView } = usePortal();
   const hideChrome = !effectiveRole || effectiveRole === "none";
 
   if (portalLoading) {
@@ -145,7 +145,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         {!hideChrome && <DashboardFooter />}
       </main>
 
-      {!hideChrome && <ChatPanel />}
+      {!hideChrome && !isOfficerView && <ChatPanel />}
     </div>
   );
 }

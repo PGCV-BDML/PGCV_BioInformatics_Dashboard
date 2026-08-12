@@ -678,8 +678,9 @@ export default function AnalysisSidebar({
             </p>
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-              Lab peer who reviews the PDF before the approving officer is notified.
-              Cannot be the assignee.
+              Peer who reviews the PDF before the approving officer is notified
+              (reviewing officer role or staff). Cannot be the assignee. External
+              officers work from Notifications only.
             </p>
           )}
         </div>
@@ -708,7 +709,9 @@ export default function AnalysisSidebar({
             </p>
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-              Notified only after the reviewing officer signs the report off.
+              Approving officer role or team lead. Notified only after the
+              reviewing officer signs the report off. External officers work from
+              Notifications only.
             </p>
           )}
         </div>

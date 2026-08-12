@@ -1,5 +1,5 @@
 import { PDFDocument } from "pdf-lib";
-import { supabase, getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import { supabase, getCurrentUser } from "@/lib/supabase";
 import {
   buildServiceReportPath,
   SERVICE_REPORT_BUCKET,
@@ -208,13 +208,17 @@ export async function stampServiceReportSignature(
     throw new Error("Couldn't save the signed PDF. Please try again.");
   }
 
-  await saveDataToDB("analysis", analysisId, {
-    service_report_file_path: newPath,
-    service_report_file_name: stampedName,
-    service_report_file_size: stampedBytes.byteLength,
-    service_report_uploaded_at: new Date().toISOString(),
-    service_report_uploaded_by: user.id,
+  const { error: setFileError } = await supabase.rpc("set_analysis_report_file", {
+    p_analysis_id: analysisId,
+    p_file_path: newPath,
+    p_file_name: stampedName,
+    p_file_size: stampedBytes.byteLength,
   });
+
+  if (setFileError) {
+    console.error("Failed to update analysis report file:", setFileError);
+    throw new Error("Couldn't save the signed PDF. Please try again.");
+  }
 
   return {
     filePath: newPath,

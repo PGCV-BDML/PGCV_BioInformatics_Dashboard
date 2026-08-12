@@ -16,6 +16,7 @@ import {
   getEffectiveRole,
   getHomePathForRole,
   isLearnerRole,
+  isOfficerRole,
   isPathAllowedForRole,
   isStaffRole,
   readPortalPreview,
@@ -34,6 +35,7 @@ interface PortalContextValue {
   setPreviewMode: (mode: PortalPreviewMode) => void;
   isStaff: boolean;
   isLearnerView: boolean;
+  isOfficerView: boolean;
   canEnroll: boolean;
   refreshEnrollments: () => Promise<void>;
 }
@@ -106,6 +108,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const effectiveRole = getEffectiveRole(realRole, previewMode);
   const isStaff = isStaffRole(realRole);
   const isLearnerView = isLearnerRole(effectiveRole);
+  const isOfficerView = isOfficerRole(effectiveRole);
   const canEnroll = canEnrollParticipants(realRole);
 
   useEffect(() => {
@@ -128,6 +131,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       setPreviewMode,
       isStaff,
       isLearnerView,
+      isOfficerView,
       canEnroll,
       refreshEnrollments: loadEnrollments,
     }),
@@ -141,6 +145,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       setPreviewMode,
       isStaff,
       isLearnerView,
+      isOfficerView,
       canEnroll,
       loadEnrollments,
     ],

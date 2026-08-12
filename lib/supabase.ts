@@ -35,7 +35,14 @@ export async function getUsersFromDB<T = any>(
   chosenRoles: string[],
   options?: GetUsersOptions,
 ): Promise<T[]> {
-  const roleValues = ["team_lead", "team_member", "intern", "trainee"];
+  const roleValues = [
+    "team_lead",
+    "team_member",
+    "intern",
+    "trainee",
+    "reviewing_officer",
+    "approving_officer",
+  ];
 
   const isValid = chosenRoles.every((role) => roleValues.includes(role));
 

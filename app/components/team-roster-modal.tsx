@@ -19,6 +19,8 @@ interface TeamRosterModalProps {
 function roleLabel(role: User["role"]): string {
   if (role === "team_lead") return "Team lead";
   if (role === "team_member") return "Team member";
+  if (role === "reviewing_officer") return "Reviewing officer";
+  if (role === "approving_officer") return "Approving officer";
   return role;
 }
 

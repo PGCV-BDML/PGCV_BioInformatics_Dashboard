@@ -197,6 +197,12 @@ export default function Sidebar({
     if (effectiveRole === "intern") {
       return navItems.filter((item) => item.href === "/dashboard/internship");
     }
+    if (
+      effectiveRole === "reviewing_officer" ||
+      effectiveRole === "approving_officer"
+    ) {
+      return navItems.filter((item) => item.href === "/dashboard/notifications");
+    }
     return navItems;
   }, [effectiveRole]);
 
