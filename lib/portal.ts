@@ -57,6 +57,14 @@ export function getHomePathForRole(role: UserRole | null): string {
   }
 }
 
+/** Shared pages every signed-in restricted role may open (footer, etc.). */
+function isSharedDashboardPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/about" ||
+    pathname.startsWith("/dashboard/about/")
+  );
+}
+
 /** Paths a learner, officer (or staff in learner preview) may open. */
 export function isPathAllowedForRole(
   pathname: string,
@@ -69,6 +77,8 @@ export function isPathAllowedForRole(
     );
   }
   if (isStaffRole(role)) return true;
+
+  if (isSharedDashboardPath(pathname)) return true;
 
   if (role === "trainee") {
     return (
