@@ -20,6 +20,7 @@ import {
   getNotificationKind,
   getReviewStageLabel,
   getReviewStageUiState,
+  isApprovalCompleteNotification,
   isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
@@ -44,6 +45,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return "Revision requested";
     case "change_request":
       return "Changes requested";
+    case "approval_complete":
+      return "Report approved";
     case "review_request":
       return getReviewStageLabel(getReviewStageUiState(n.review_status));
     case "approval_request":
@@ -135,6 +138,23 @@ export function NotificationBell() {
         );
       }
 
+      const url = await resolveReportUrl(
+        n.payload.service_report_file_path,
+        n.payload.service_report_link,
+      );
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleOpenApprovedReport(n: AppNotification) {
+    setBusyId(n.id);
+    try {
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
         n.payload.service_report_link,
@@ -258,6 +278,7 @@ export function NotificationBell() {
                 const isBusy = busyId === n.id;
                 const kind = getNotificationKind(n);
                 const sentBack = isSentBackNotification(n);
+                const approvalComplete = isApprovalCompleteNotification(n);
                 const reviewState = getReviewStageUiState(n.review_status);
                 const approvalState = getApprovalUiState(n.submission_status);
                 const hasReport = Boolean(
@@ -275,27 +296,38 @@ export function NotificationBell() {
 
                 const StatusIcon = sentBack
                   ? MessageSquareWarning
-                  : kind === "review_request"
-                    ? reviewState === "in_review"
-                      ? Eye
-                      : FileCheck2
-                    : approvalState === "under_review"
-                      ? Eye
-                      : approvalState === "approved" || approvalState === "submitted"
-                        ? BadgeCheck
-                        : FileCheck2;
+                  : approvalComplete
+                    ? BadgeCheck
+                    : kind === "review_request"
+                      ? reviewState === "in_review"
+                        ? Eye
+                        : FileCheck2
+                      : approvalState === "under_review"
+                        ? Eye
+                        : approvalState === "approved" ||
+                            approvalState === "submitted"
+                          ? BadgeCheck
+                          : FileCheck2;
 
                 return (
                   <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div
                         className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
-                          sentBack ? "bg-amber-100" : "bg-emerald-100"
+                          sentBack
+                            ? "bg-amber-100"
+                            : approvalComplete
+                              ? "bg-emerald-100"
+                              : "bg-emerald-100"
                         }`}
                       >
                         <StatusIcon
                           className={`w-3.5 h-3.5 ${
-                            sentBack ? "text-amber-700" : "text-emerald-700"
+                            sentBack
+                              ? "text-amber-700"
+                              : approvalComplete
+                                ? "text-emerald-700"
+                                : "text-emerald-700"
                           }`}
                         />
                       </div>
@@ -317,6 +349,12 @@ export function NotificationBell() {
                             {n.payload.comment}
                           </p>
                         )}
+                        {approvalComplete && n.payload.approved_by && (
+                          <p className="mt-1.5 rounded-lg bg-emerald-50 border border-emerald-100 px-2 py-1.5 text-[11px] text-emerald-900 font-aileron leading-relaxed">
+                            Approved by {n.payload.approved_by}. Mark the report
+                            Submitted once it goes out to the client.
+                          </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           {sentBack ? (
                             n.payload.analysis_id && (
@@ -330,6 +368,30 @@ export function NotificationBell() {
                                 <ExternalLink className="w-3 h-3" /> Open record
                               </Link>
                             )
+                          ) : approvalComplete ? (
+                            <>
+                              {hasReport && (
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => void handleOpenApprovedReport(n)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
+                                >
+                                  <ExternalLink className="w-3 h-3" /> Open Report
+                                </button>
+                              )}
+                              {n.payload.analysis_id && (
+                                <Link
+                                  href={routes.services.detail(
+                                    n.payload.analysis_id,
+                                  )}
+                                  onClick={() => setIsOpen(false)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 transition-colors font-aileron"
+                                >
+                                  <ExternalLink className="w-3 h-3" /> Open record
+                                </Link>
+                              )}
+                            </>
                           ) : (
                             <>
                               {hasReport && (

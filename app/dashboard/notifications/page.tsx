@@ -27,6 +27,7 @@ import {
   getNotificationKind,
   getReviewStageLabel,
   getReviewStageUiState,
+  isApprovalCompleteNotification,
   isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
@@ -57,6 +58,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return "Revision requested";
     case "change_request":
       return "Changes requested";
+    case "approval_complete":
+      return "Report approved";
     case "review_request":
       return getReviewStageLabel(getReviewStageUiState(n.review_status));
     case "approval_request":
@@ -66,6 +69,7 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
 
 function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
   if (isSentBackNotification(n)) return "bg-amber-100 text-amber-900";
+  if (kind === "approval_complete") return "bg-emerald-100 text-emerald-800";
   if (kind === "review_request") {
     const state = getReviewStageUiState(n.review_status);
     if (state === "reviewed") return "bg-teal-100 text-teal-800";
@@ -81,6 +85,7 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
 
 function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (isSentBackNotification(n)) return MessageSquareWarning;
+  if (kind === "approval_complete") return BadgeCheck;
   if (kind === "review_request") {
     return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
   }
@@ -250,6 +255,7 @@ export default function NotificationsPage() {
         await openReportForApproval(notification);
         patchLocal(notification.id, { submission_status: "Under review" });
       }
+      // approval_complete: open PDF only; no status RPC needed.
 
       const url = await resolveReportUrl(
         notification.payload.service_report_file_path,
@@ -478,6 +484,7 @@ export default function NotificationsPage() {
             const isBusy = busyId === notification.id;
             const kind = getNotificationKind(notification);
             const sentBack = isSentBackNotification(notification);
+            const approvalComplete = isApprovalCompleteNotification(notification);
             const reviewState = getReviewStageUiState(notification.review_status);
             const approvalState = getApprovalUiState(
               notification.submission_status,
@@ -506,13 +513,15 @@ export default function NotificationsPage() {
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
                   sentBack
                     ? "border-amber-200 bg-amber-50/40"
-                    : kind === "approval_request" &&
-                        (approvalState === "approved" ||
-                          approvalState === "submitted")
+                    : approvalComplete
                       ? "border-emerald-200 bg-emerald-50/40"
-                      : notification.is_read
-                        ? "border-slate-200 bg-slate-50/70"
-                        : "border-emerald-200 bg-white"
+                      : kind === "approval_request" &&
+                          (approvalState === "approved" ||
+                            approvalState === "submitted")
+                        ? "border-emerald-200 bg-emerald-50/40"
+                        : notification.is_read
+                          ? "border-slate-200 bg-slate-50/70"
+                          : "border-emerald-200 bg-white"
                 }`}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -556,6 +565,13 @@ export default function NotificationsPage() {
                           )}
                         </blockquote>
                       )}
+                      {approvalComplete && notification.payload.approved_by && (
+                        <p className="mt-3 rounded-xl border border-emerald-200 bg-white/70 px-3 py-2.5 text-sm text-emerald-950 leading-relaxed">
+                          Approved by {notification.payload.approved_by}. Mark the
+                          report <strong>Submitted</strong> in the tracker once it
+                          goes out to the client.
+                        </p>
+                      )}
                       <p className="mt-2 text-xs text-slate-400">
                         Notified {formatTimestamp(notification.created_at)}
                       </p>
@@ -575,6 +591,31 @@ export default function NotificationsPage() {
                           Open record
                         </Link>
                       )
+                    ) : approvalComplete ? (
+                      <>
+                        {hasReport && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleOpenReport(notification)}
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open Report
+                          </button>
+                        )}
+                        {notification.payload.analysis_id && (
+                          <Link
+                            href={routes.services.detail(
+                              notification.payload.analysis_id,
+                            )}
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-4 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full transition-all whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open record
+                          </Link>
+                        )}
+                      </>
                     ) : (
                       <>
                         {hasReport && (

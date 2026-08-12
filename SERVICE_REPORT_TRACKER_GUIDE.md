@@ -159,10 +159,13 @@ not earlier.
 Officer actions:
 
 - **Open Report** → Under review + open PDF/link
-- **Approve** → Approved
+- **Approve** → Approved; notifies the assignee when one is set
 - **Request changes** → requires a comment; notifies the assignee
 
 Assignee response to changes: fix, then **Resubmit for approval** on the detail page.
+
+When approval completes, the assignee receives a **Report approved** notification
+with the signed PDF. Mark **Submitted** in the tracker once the client has the report.
 
 ---
 

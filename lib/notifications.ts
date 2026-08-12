@@ -19,6 +19,8 @@ export const NOTIFICATION_REVISION_REQUESTED = "analysis_revision_requested";
 export const NOTIFICATION_READY_FOR_APPROVAL = "analysis_ready_for_approval";
 /** Sent to the assignee when the approving officer sends a report back. */
 export const NOTIFICATION_CHANGES_REQUESTED = "analysis_changes_requested";
+/** Sent to the assignee when the approving officer signs the report off. */
+export const NOTIFICATION_APPROVED = "analysis_approved";
 
 export type AppNotification = {
   id: string;
@@ -33,6 +35,8 @@ export type AppNotification = {
     /** Present on the two "sent back" types only. */
     comment?: string | null;
     comment_author?: string | null;
+    /** Present on analysis_approved only. */
+    approved_by?: string | null;
   };
   target_user_id: string;
   is_read: boolean;
@@ -45,14 +49,15 @@ export type AppNotification = {
 };
 
 /**
- * Which of the four cards to render. Each notification belongs to exactly
- * one stage and one audience, and the actions differ across all four.
+ * Which card to render. Each notification belongs to exactly one stage and
+ * one audience, and the actions differ across all five types.
  */
 export type NotificationKind =
   | "review_request"
   | "revision_request"
   | "approval_request"
-  | "change_request";
+  | "change_request"
+  | "approval_complete";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -62,15 +67,22 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "approval_request";
     case NOTIFICATION_CHANGES_REQUESTED:
       return "change_request";
+    case NOTIFICATION_APPROVED:
+      return "approval_complete";
     default:
       return "review_request";
   }
 }
 
-/** True for notifications the analyst acts on rather than an officer. */
+/** True for notifications the assignee receives when a report is sent back. */
 export function isSentBackNotification(n: AppNotification): boolean {
   const kind = getNotificationKind(n);
   return kind === "revision_request" || kind === "change_request";
+}
+
+/** True when the assignee is notified that approval is complete. */
+export function isApprovalCompleteNotification(n: AppNotification): boolean {
+  return getNotificationKind(n) === "approval_complete";
 }
 
 /* ------------------------------------------------------------------ */
