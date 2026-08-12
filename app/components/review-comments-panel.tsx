@@ -116,13 +116,15 @@ export default function ReviewCommentsPanel({
 
       {awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
-          The reviewing officer sent this back. Address the comment below, then
+          The reviewing officer sent this back. Address the comment below,
+          replace the PDF under Service Report Delivery if needed, then
           resubmit to notify them for another peer review.
         </p>
       )}
       {awaitingChanges && !awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
-          The approving officer sent this back. Address the comment below, then
+          The approving officer sent this back. Address the comment below,
+          replace the PDF under Service Report Delivery if needed, then
           resubmit to notify them for another review.
         </p>
       )}

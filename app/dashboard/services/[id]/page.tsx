@@ -16,6 +16,7 @@ import AddSampleSidebar, {
   SampleFormState,
 } from "../../../components/samplemodal";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
+import ServiceReportReplace from "../../../components/service-report-replace";
 import {
   getRowsFromDB,
   getNameIdFromDB,
@@ -28,6 +29,8 @@ import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import { useToast } from "../../../components/toast";
 import {
   displayAnalysisLabel,
+  isChangesRequestedLabel,
+  isRevisionRequestedLabel,
   labelFromAnalysisStatus,
   mapLabelToAnalysisStatus,
   STATUS_OF_COMPLETION_OPTIONS,
@@ -782,6 +785,25 @@ export default function AnalysisDetailPage({
                     </button>
                   </div>
                 ) : null}
+                <ServiceReportReplace
+                  analysisId={record.id}
+                  filePath={record.service_report_file_path}
+                  enabled={
+                    isRevisionRequestedLabel(record.status_of_review) ||
+                    isChangesRequestedLabel(record.status_of_submission)
+                  }
+                  onReplaced={({ path, name }) =>
+                    setRecord((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            service_report_file_path: path,
+                            service_report_file_name: name,
+                          }
+                        : prev,
+                    )
+                  }
+                />
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                     Report Link
@@ -824,6 +846,24 @@ export default function AnalysisDetailPage({
                   </button>
                 )}
               </div>
+            ) : isRevisionRequestedLabel(record.status_of_review) ||
+              isChangesRequestedLabel(record.status_of_submission) ? (
+              <ServiceReportReplace
+                analysisId={record.id}
+                filePath={record.service_report_file_path}
+                enabled
+                onReplaced={({ path, name }) =>
+                  setRecord((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          service_report_file_path: path,
+                          service_report_file_name: name,
+                        }
+                      : prev,
+                  )
+                }
+              />
             ) : (
               <p className="text-sm text-slate-500 italic">
                 No report link yet. Paste one when creating the record, or use
