@@ -103,11 +103,6 @@ export default function RepositoriesPage() {
     };
   }, []);
 
-  const activeFilterIndex = useMemo(
-    () => FILTER_OPTIONS.findIndex((opt) => opt.value === activeFilter),
-    [activeFilter],
-  );
-
   const filtered = useMemo(() => {
     let records = repositories;
     if (activeFilter !== "All") {
@@ -293,22 +288,15 @@ export default function RepositoriesPage() {
             <h2 className="text-2xl font-bold text-[#333333]">Repositories</h2>
           </div>
 
-          <div className="relative flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
-            <div
-              className="absolute top-1 bottom-1 rounded-full bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none"
-              style={{
-                width: `calc((100% - 0.5rem) / ${FILTER_OPTIONS.length})`,
-                left: `calc(0.25rem + ${activeFilterIndex} * ((100% - 0.5rem) / ${FILTER_OPTIONS.length}))`,
-              }}
-            />
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
             {FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setActiveFilter(opt.value)}
-                className={`relative z-10 flex-1 min-w-[5rem] px-2 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
                   activeFilter === opt.value
-                    ? "text-[#2a7797]"
+                    ? "bg-white text-[#2a7797] shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
