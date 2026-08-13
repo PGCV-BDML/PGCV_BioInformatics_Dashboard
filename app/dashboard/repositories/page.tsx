@@ -257,7 +257,7 @@ export default function RepositoriesPage() {
       <PageHeader
         breadcrumbTrail={repositoriesBreadcrumbs}
         title="Source Repositories"
-        subtitle="Central index of pipeline, dataset, and sequence links — optionally tied to a tracker run ID"
+        subtitle="Central index of pipeline, dataset, sequence, and turnover-form links — optionally tied to a tracker run ID"
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
@@ -306,7 +306,7 @@ export default function RepositoriesPage() {
                 key={opt.value}
                 type="button"
                 onClick={() => setActiveFilter(opt.value)}
-                className={`relative z-10 flex-1 min-w-[4.5rem] px-2 py-1.5 text-[10px] font-bold rounded-full transition-colors ${
+                className={`relative z-10 flex-1 min-w-[5rem] px-2 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
                   activeFilter === opt.value
                     ? "text-[#2a7797]"
                     : "text-slate-500 hover:text-slate-700"

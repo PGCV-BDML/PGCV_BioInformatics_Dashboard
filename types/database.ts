@@ -452,6 +452,7 @@ export type RepositoryCategory =
   | "pipelines"
   | "datasets"
   | "client_sequences"
+  | "turnover_forms"
   | "other";
 
 export const REPOSITORY_KIND_OPTIONS: {
@@ -470,6 +471,7 @@ export const REPOSITORY_CATEGORY_OPTIONS: {
   { value: "pipelines", label: "Pipelines" },
   { value: "datasets", label: "Datasets" },
   { value: "client_sequences", label: "Client Sequences" },
+  { value: "turnover_forms", label: "Turnover Forms" },
   { value: "other", label: "Other" },
 ];
 
