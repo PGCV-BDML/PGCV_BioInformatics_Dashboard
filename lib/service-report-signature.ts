@@ -43,13 +43,13 @@ type SlotPlacement = {
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   reviewed_by: {
     x: 72,
-    y: 382, // centered in the Reviewed-by band (label → name)
+    y: 297, // 382 − 3cm (≈85pt)
     maxWidth: 160,
     maxHeight: 44,
   },
   approved_by: {
     x: 72,
-    y: 147, // centered in the Approved-for-Release band (label → name)
+    y: 62, // 147 − 3cm (≈85pt)
     maxWidth: 160,
     maxHeight: 44,
   },
