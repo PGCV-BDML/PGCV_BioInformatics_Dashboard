@@ -9,7 +9,6 @@ import {
   Edit3,
   Trash2,
   ListOrdered,
-  Flag,
 } from "lucide-react";
 import { PageHeader } from "../../../components/pageheader";
 import {
@@ -331,7 +330,7 @@ export default function RunSummaryPage() {
     {
       key: "run_number",
       label: "Run #",
-      width: "6%",
+      width: "8%",
       sortable: true,
       render: (r) => (
         <span className="font-bold text-[#11161a] tabular-nums">
@@ -342,26 +341,33 @@ export default function RunSummaryPage() {
     {
       key: "run_id",
       label: "Run ID",
-      width: "10%",
+      width: "16%",
       sortable: true,
       render: (r) => (
-        <span className="font-mono text-[11px]">{dash(r.run_id)}</span>
+        <TruncatedText text={dash(r.run_id)} className="font-mono text-[11px]" />
       ),
     },
     {
       key: "sequencer",
       label: "Sequencer",
-      width: "10%",
+      width: "13%",
       sortable: true,
-      render: (r) => <TruncatedText text={dash(r.sequencer)} />,
+      render: (r) =>
+        r.sequencer?.trim() ? (
+          <span className="inline-flex max-w-full items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+            <TruncatedText text={r.sequencer} />
+          </span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
     },
     {
       key: "date_received",
       label: "Received",
-      width: "9%",
+      width: "11%",
       sortable: true,
       render: (r) => (
-        <span className="tabular-nums">
+        <span className="tabular-nums text-slate-700">
           {formatDate(r.date_received) || "—"}
         </span>
       ),
@@ -369,10 +375,10 @@ export default function RunSummaryPage() {
     {
       key: "date_loaded",
       label: "Loaded",
-      width: "9%",
+      width: "11%",
       sortable: true,
       render: (r) => (
-        <span className="tabular-nums">
+        <span className="tabular-nums text-slate-700">
           {formatDate(r.date_loaded) || "—"}
         </span>
       ),
@@ -380,11 +386,10 @@ export default function RunSummaryPage() {
     {
       key: "samples_sequenced",
       label: "Samples",
-      shortLabel: "N",
-      width: "7%",
+      width: "9%",
       sortable: true,
       render: (r) => (
-        <span className="tabular-nums font-semibold">
+        <span className="tabular-nums font-semibold text-slate-800">
           {r.samples_sequenced.toLocaleString()}
         </span>
       ),
@@ -392,12 +397,12 @@ export default function RunSummaryPage() {
     {
       key: "lineage_assigned",
       label: "Assigned",
-      width: "8%",
+      width: "11%",
       sortable: true,
       render: (r) => {
         const pct = pctAssigned(r);
         return (
-          <span className="tabular-nums" title={r.review_flag ?? undefined}>
+          <span className="tabular-nums">
             {r.lineage_assigned == null
               ? "—"
               : r.lineage_assigned.toLocaleString()}
@@ -413,39 +418,21 @@ export default function RunSummaryPage() {
     {
       key: "uploaded_gisaid",
       label: "GISAID",
-      width: "6%",
+      width: "7%",
       sortable: true,
       render: (r) => <UploadBadge yes={r.uploaded_gisaid} />,
     },
     {
       key: "uploaded_islap",
       label: "ISLAP",
-      width: "6%",
+      width: "7%",
       sortable: true,
       render: (r) => <UploadBadge yes={r.uploaded_islap} />,
     },
     {
-      key: "review_flag",
-      label: "Flag",
-      width: "12%",
-      sortable: true,
-      render: (r) =>
-        r.review_flag ? (
-          <span
-            className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg px-1.5 py-0.5 max-w-full"
-            title={r.review_flag}
-          >
-            <Flag className="w-3 h-3 shrink-0" />
-            <span className="truncate">{r.review_flag}</span>
-          </span>
-        ) : (
-          <span className="text-slate-300">—</span>
-        ),
-    },
-    {
       key: "actions",
       label: "",
-      width: "8%",
+      width: "7%",
       render: (r) => (
         <div className="flex items-center justify-end gap-0.5">
           <button
@@ -646,7 +633,7 @@ export default function RunSummaryPage() {
             description="Try adjusting your search or filters."
           />
         ) : (
-          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[980px]">
+          <div className="w-full overflow-x-auto [&&_table]:table-fixed [&&_table]:min-w-[840px]">
             <DataTable
               columns={columns}
               data={displayed}
