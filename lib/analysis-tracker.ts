@@ -151,6 +151,21 @@ export function isReviewComplete(label: string | null | undefined): boolean {
   return String(label ?? "").trim().toLowerCase() === "reviewed";
 }
 
+/**
+ * Approver sent the report back, then the PDF was replaced, so the
+ * burned-in peer-review signature is gone. The reviewing officer has
+ * to sign the new file before approval can run again.
+ */
+export function needsReReviewAfterPdfReplace(
+  statusOfReview: string | null | undefined,
+  statusOfSubmission: string | null | undefined,
+): boolean {
+  return (
+    isChangesRequestedLabel(statusOfSubmission) &&
+    !isReviewComplete(statusOfReview)
+  );
+}
+
 export function shouldAdvanceSubmissionStatus(
   current: string | null | undefined,
   next: string,

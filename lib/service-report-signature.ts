@@ -10,6 +10,7 @@ import {
   MissingSignatureError,
   requireMySignaturePath,
 } from "@/lib/user-signature";
+import { isReviewComplete } from "@/lib/analysis-tracker";
 
 /**
  * Signature image placement on the last page of a PGCV service report.
@@ -125,7 +126,7 @@ export async function stampServiceReportSignature(
   const { data: analysis, error } = await supabase
     .from("analysis")
     .select(
-      "id, service_report_file_path, service_report_file_name, reviewer_user_id, approver_user_id",
+      "id, service_report_file_path, service_report_file_name, reviewer_user_id, approver_user_id, status_of_review",
     )
     .eq("id", analysisId)
     .maybeSingle();
@@ -148,6 +149,11 @@ export async function stampServiceReportSignature(
   }
   if (slot === "approved_by" && analysis.approver_user_id !== user.id) {
     throw new Error("Only the assigned approving officer can sign this report.");
+  }
+  if (slot === "approved_by" && !isReviewComplete(analysis.status_of_review)) {
+    throw new Error(
+      "This report must be peer-reviewed before it can be approved.",
+    );
   }
 
   const reportPath = analysis.service_report_file_path?.trim();

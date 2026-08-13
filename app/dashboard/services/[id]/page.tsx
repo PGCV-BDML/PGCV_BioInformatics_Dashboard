@@ -606,13 +606,16 @@ export default function AnalysisDetailPage({
                     isRevisionRequestedLabel(record.status_of_review) ||
                     isChangesRequestedLabel(record.status_of_submission)
                   }
-                  onReplaced={({ path, name }) =>
+                  onReplaced={(next) =>
                     setRecord((prev) =>
                       prev
                         ? {
                             ...prev,
-                            service_report_file_path: path,
-                            service_report_file_name: name,
+                            service_report_file_path: next.path,
+                            service_report_file_name: next.name,
+                            status_of_review:
+                              next.statusOfReview ?? prev.status_of_review,
+                            notes: next.notes ?? prev.notes,
                           }
                         : prev,
                     )
@@ -666,13 +669,16 @@ export default function AnalysisDetailPage({
                 analysisId={record.id}
                 filePath={record.service_report_file_path}
                 enabled
-                onReplaced={({ path, name }) =>
+                onReplaced={(next) =>
                   setRecord((prev) =>
                     prev
                       ? {
                           ...prev,
-                          service_report_file_path: path,
-                          service_report_file_name: name,
+                          service_report_file_path: next.path,
+                          service_report_file_name: next.name,
+                          status_of_review:
+                            next.statusOfReview ?? prev.status_of_review,
+                          notes: next.notes ?? prev.notes,
                         }
                       : prev,
                   )

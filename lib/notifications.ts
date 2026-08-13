@@ -2,6 +2,7 @@ import { supabase, getCurrentUser, saveDataToDB } from "@/lib/supabase";
 import {
   deriveLegacyStatus,
   isChangesRequestedLabel,
+  isReviewComplete,
   isRevisionRequestedLabel,
   submissionStatusRank,
 } from "@/lib/analysis-tracker";
@@ -583,7 +584,9 @@ export async function requestAnalysisChanges(
 export async function resubmitForApproval(analysisId: string): Promise<void> {
   const { data: analysis, error } = await supabase
     .from("analysis")
-    .select("id, status_of_completion, status_of_submission, notes")
+    .select(
+      "id, status_of_completion, status_of_review, status_of_submission, notes",
+    )
     .eq("id", analysisId)
     .maybeSingle();
 
@@ -596,6 +599,11 @@ export async function resubmitForApproval(analysisId: string): Promise<void> {
   }
   if (!isChangesRequestedLabel(analysis.status_of_submission)) {
     throw new Error("This report has no outstanding change request.");
+  }
+  if (!isReviewComplete(analysis.status_of_review)) {
+    throw new Error(
+      "The reviewing officer must sign the new PDF before this can go back for approval.",
+    );
   }
 
   const actor = await getActorDisplayName("Assignee");

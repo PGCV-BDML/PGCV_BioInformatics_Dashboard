@@ -5,6 +5,7 @@ import {
   isChangesRequestedLabel,
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   mapLabelToAnalysisStatus,
+  needsReReviewAfterPdfReplace,
   shouldAdvanceSubmissionStatus,
   STATUS_OF_SUBMISSION_OPTIONS,
   submissionStatusRank,
@@ -83,5 +84,31 @@ describe("legacy status mapping", () => {
         status_of_submission: CHANGES_REQUESTED,
       }),
     ).toBe("completed");
+  });
+});
+
+describe("needsReReviewAfterPdfReplace", () => {
+  it("is true when approval sent the report back and review is no longer complete", () => {
+    expect(
+      needsReReviewAfterPdfReplace("For review", CHANGES_REQUESTED),
+    ).toBe(true);
+    expect(
+      needsReReviewAfterPdfReplace("In review", CHANGES_REQUESTED),
+    ).toBe(true);
+  });
+
+  it("is false while the original reviewed PDF is still on file", () => {
+    expect(
+      needsReReviewAfterPdfReplace("Reviewed", CHANGES_REQUESTED),
+    ).toBe(false);
+  });
+
+  it("is false when the report is not in a change-request", () => {
+    expect(needsReReviewAfterPdfReplace("For review", "For approval")).toBe(
+      false,
+    );
+    expect(needsReReviewAfterPdfReplace("Reviewed", "For approval")).toBe(
+      false,
+    );
   });
 });

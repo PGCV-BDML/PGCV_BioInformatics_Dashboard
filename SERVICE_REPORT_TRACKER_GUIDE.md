@@ -162,7 +162,10 @@ Officer actions:
 - **Approve** → Approved; notifies the assignee when one is set
 - **Request changes** → requires a comment; notifies the assignee
 
-Assignee response to changes: fix, then **Resubmit for approval** on the detail page.
+Assignee response to changes:
+
+1. Fix the comments. If the PDF itself does not change, click **Resubmit for approval**.
+2. If you **replace the PDF**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file. After they **Complete review**, the approving officer is notified again (**For approval**).
 
 When approval completes, the assignee receives a **Report approved** notification
 with the signed PDF. Mark **Submitted** in the tracker once the client has the report.
@@ -201,6 +204,7 @@ before they can complete review or approve a report.
 - **On Approve:** the approving officer’s signature is stamped under **Approved for Release**
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
+- Replacing the PDF after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. Officer signature stamps (Complete review / Approve) do not.
 
 ---
 
@@ -215,3 +219,4 @@ before they can complete review or approve a report.
 | Signature looks misplaced | Template margins differ — adjust `SIGNATURE_SLOTS` in `lib/service-report-signature.ts` |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
+| Replacing the PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |

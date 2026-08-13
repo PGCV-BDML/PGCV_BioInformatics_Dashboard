@@ -1568,14 +1568,17 @@ export default function ServiceReportTrackerPage() {
               : prev,
           );
         }}
-        onPdfReplaced={({ path, name }) => {
+        onPdfReplaced={(next) => {
           setServicesList((prev) =>
             prev.map((row) =>
               row.id === commentsRow?.id
                 ? {
                     ...row,
-                    service_report_file_path: path,
-                    service_report_file_name: name,
+                    service_report_file_path: next.path,
+                    service_report_file_name: next.name,
+                    status_of_review:
+                      next.statusOfReview ?? row.status_of_review,
+                    notes: next.notes ?? row.notes,
                   }
                 : row,
             ),
@@ -1584,8 +1587,10 @@ export default function ServiceReportTrackerPage() {
             prev
               ? {
                   ...prev,
-                  service_report_file_path: path,
-                  service_report_file_name: name,
+                  service_report_file_path: next.path,
+                  service_report_file_name: next.name,
+                  status_of_review:
+                    next.statusOfReview ?? prev.status_of_review,
                 }
               : prev,
           );

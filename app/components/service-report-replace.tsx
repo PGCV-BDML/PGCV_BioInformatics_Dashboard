@@ -10,12 +10,19 @@ import {
 import PdfDropzone from "./pdf-dropzone";
 import { useToast } from "./toast";
 
+export type ServiceReportReplaceResult = {
+  path: string;
+  name: string;
+  statusOfReview: string | null;
+  notes: string | null;
+};
+
 interface ServiceReportReplaceProps {
   analysisId: string;
   filePath: string;
   /** Only show while the report is awaiting revision or changes. */
   enabled: boolean;
-  onReplaced: (next: { path: string; name: string }) => void;
+  onReplaced: (next: ServiceReportReplaceResult) => void;
 }
 
 /**
@@ -57,7 +64,7 @@ export default function ServiceReportReplace({
         uploadedBy: user?.id ?? null,
       });
 
-      await saveDataToDB("analysis", analysisId, {
+      const saved = await saveDataToDB("analysis", analysisId, {
         service_report_file_path: uploaded.service_report_file_path,
         service_report_file_name: uploaded.service_report_file_name,
         service_report_file_size: uploaded.service_report_file_size,
@@ -72,13 +79,26 @@ export default function ServiceReportReplace({
         await deleteServiceReportPdf(previousPath);
       }
 
+      const statusOfReview =
+        typeof saved.status_of_review === "string"
+          ? saved.status_of_review
+          : null;
+      const notes = typeof saved.notes === "string" ? saved.notes : null;
+
       onReplaced({
         path: uploaded.service_report_file_path,
         name: uploaded.service_report_file_name,
+        statusOfReview,
+        notes,
       });
       setPendingFile(null);
       setIsReplacing(false);
-      showToast("PDF updated. Resubmit when ready.", "success");
+      showToast(
+        String(statusOfReview ?? "").trim().toLowerCase() === "for review"
+          ? "PDF updated. The reviewing officer will sign this version again."
+          : "PDF updated. Resubmit when ready.",
+        "success",
+      );
     } catch (err) {
       console.error(err);
       const message =
@@ -96,7 +116,7 @@ export default function ServiceReportReplace({
     <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
       <p className="text-[11px] text-amber-900 leading-relaxed">
         {hasStoredFile
-          ? "Replace the PDF if the comments require a new file, then resubmit."
+          ? "Replace the PDF if the comments require a new file. A new file after peer review goes back to the reviewing officer to sign again."
           : "Upload the corrected service report PDF, then resubmit."}
       </p>
 

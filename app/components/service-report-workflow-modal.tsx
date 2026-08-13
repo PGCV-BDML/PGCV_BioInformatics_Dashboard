@@ -56,13 +56,13 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Approve or request changes",
     actor: "Approving officer",
     detail:
-      "Open Report sets Status of Submission to Under review. Approve stamps your e-signature under Approved for Release; Request changes sends comments back to the assignee.",
+      "Open Report sets Status of Submission to Under review. Approve stamps your e-signature under Approved for Release; Request changes sends comments back to the assignee. If they upload a new PDF, it goes back to the reviewing officer to sign again before it returns here.",
   },
   {
     title: "Address comments and resubmit",
     actor: "Analyst",
     detail:
-      "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval.",
+      "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval. Replacing the PDF after peer review notifies the reviewing officer again — they must sign the new file before approval can continue.",
   },
   {
     title: "Submit and close out",

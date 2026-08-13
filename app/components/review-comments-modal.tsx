@@ -23,7 +23,12 @@ interface ReviewCommentsModalProps {
   row: ReviewCommentsModalRow | null;
   onClose: () => void;
   onResubmitted?: (stage: "review" | "approval") => void;
-  onPdfReplaced?: (next: { path: string; name: string }) => void;
+  onPdfReplaced?: (next: {
+    path: string;
+    name: string;
+    statusOfReview: string | null;
+    notes: string | null;
+  }) => void;
 }
 
 export default function ReviewCommentsModal({

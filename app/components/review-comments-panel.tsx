@@ -11,6 +11,7 @@ import {
 import {
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
+  needsReReviewAfterPdfReplace,
 } from "@/lib/analysis-tracker";
 
 interface ReviewCommentsPanelProps {
@@ -71,7 +72,12 @@ export default function ReviewCommentsPanel({
 
   const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
+  const waitingOnReReview = needsReReviewAfterPdfReplace(
+    statusOfReview,
+    statusOfSubmission,
+  );
   const awaitingSendBack = awaitingRevision || awaitingChanges;
+  const canResubmit = awaitingRevision || (awaitingChanges && !waitingOnReReview);
 
   async function handleResubmit() {
     if (isResubmitting) return;
@@ -144,13 +150,20 @@ export default function ReviewCommentsPanel({
           then resubmit to notify them for another peer review.
         </p>
       )}
-      {awaitingChanges && !awaitingRevision && (
+      {waitingOnReReview && !awaitingRevision && (
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
+          The new PDF is with the reviewing officer. They will sign it again,
+          then the approving officer is notified.
+        </p>
+      )}
+      {awaitingChanges && !awaitingRevision && !waitingOnReReview && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           The approving officer sent this back. Address the comment below,
           {bare
             ? " replace the PDF below if needed,"
             : " replace the PDF under Service Report Delivery if needed,"}{" "}
-          then resubmit to notify them for another review.
+          then resubmit to notify them for another review. Replacing the PDF
+          sends it back to the reviewing officer first.
         </p>
       )}
 
@@ -210,7 +223,7 @@ export default function ReviewCommentsPanel({
         </p>
       )}
 
-      {awaitingSendBack && (
+      {canResubmit && (
         <button
           type="button"
           onClick={() => void handleResubmit()}
