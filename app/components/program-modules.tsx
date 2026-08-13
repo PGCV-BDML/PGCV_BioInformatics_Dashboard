@@ -1,16 +1,28 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
   BookOpen,
   Check,
   CheckCircle2,
+  FileText,
   Plus,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
-import SlideOverModal from "@/app/components/slidemodal";
+import SlideOverModal, {
+  renderSectionLabel,
+} from "@/app/components/slidemodal";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
@@ -21,6 +33,17 @@ import {
   packsForProgramType,
   type ModuleLibraryItem,
 } from "@/lib/module-library";
+import {
+  MAX_MODULE_FILE_BYTES,
+  MODULE_FILE_ACCEPT,
+  deleteModuleFile,
+  formatModuleFileSize,
+  hasUploadedModuleFile,
+  resolveModuleHref,
+  titleFromModuleFileName,
+  uploadModuleFile,
+  validateModuleFile,
+} from "@/lib/module-file";
 import {
   deleteDataFromDB,
   getRowsFromDB,
@@ -37,8 +60,145 @@ type ModuleRow = {
   id: string;
   title: string;
   htmlLink: string | null;
+  filePath: string | null;
+  fileName: string | null;
+  fileSize: number | null;
   order: number;
 };
+
+function toModuleRow(m: Module, index: number): ModuleRow {
+  return {
+    id: m.id,
+    title: m.title?.trim() || `Module ${index + 1}`,
+    htmlLink: m.html_content_link,
+    filePath: m.file_path ?? null,
+    fileName: m.file_name ?? null,
+    fileSize: m.file_size ?? null,
+    order: m.order ?? index + 1,
+  };
+}
+
+function ModuleFileDropzone({
+  file,
+  onFileChange,
+  error,
+  onError,
+  disabled = false,
+}: {
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+  error?: string | null;
+  onError?: (message: string | null) => void;
+  disabled?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const inputId = useId();
+
+  function accept(candidate: File | undefined) {
+    if (!candidate) return;
+    const validationError = validateModuleFile(candidate);
+    if (validationError) {
+      onError?.(validationError);
+      onFileChange(null);
+      return;
+    }
+    onError?.(null);
+    onFileChange(candidate);
+  }
+
+  function clear() {
+    onError?.(null);
+    onFileChange(null);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={inputId}
+        className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+      >
+        Module file
+      </label>
+
+      {file ? (
+        <div className="flex items-center gap-3 rounded-xl border border-[#4ec2bb]/50 bg-[#e6f7f5] px-3.5 py-2.5">
+          <FileText className="w-4 h-4 shrink-0 text-[#2a7797]" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-slate-800">
+              {file.name}
+            </p>
+            <p className="text-[10px] text-slate-500">
+              {formatModuleFileSize(file.size)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clear}
+            disabled={disabled}
+            aria-label="Remove selected file"
+            className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-700 disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!disabled) setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (disabled) return;
+            accept(e.dataTransfer.files?.[0]);
+          }}
+          className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${
+            isDragging
+              ? "border-[#4ec2bb] bg-[#e6f7f5]"
+              : "border-slate-300 bg-slate-50"
+          } ${disabled ? "opacity-60" : ""}`}
+        >
+          <Upload className="w-4 h-4 text-slate-400" />
+          <p className="text-[11px] font-bold text-slate-600">
+            Drop a file here, or{" "}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+              className="text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76] disabled:no-underline"
+            >
+              browse
+            </button>
+          </p>
+          <p className="text-[10px] text-slate-400">
+            HTML, PDF, slides, docs, sheets, images, or ZIP · up to{" "}
+            {formatModuleFileSize(MAX_MODULE_FILE_BYTES)}
+          </p>
+        </div>
+      )}
+
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        accept={MODULE_FILE_ACCEPT}
+        disabled={disabled}
+        onChange={(e) => accept(e.target.files?.[0])}
+        className="sr-only"
+      />
+
+      {error && (
+        <p className="ml-1 text-xs font-semibold text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function ProgramModules({
   programId,
@@ -53,12 +213,17 @@ export default function ProgramModules({
   const [modulesList, setModulesList] = useState<ModuleRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFileError, setUploadFileError] = useState<string | null>(null);
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([]);
   const [selectedPackIds, setSelectedPackIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ModuleRow | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [busyModuleId, setBusyModuleId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   const [readModuleIds, setReadModuleIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -88,12 +253,7 @@ export default function ProgramModules({
       const filtered = modules
         .filter((m) => m.program_id === programId)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((m, index) => ({
-          id: m.id,
-          title: m.title?.trim() || `Module ${index + 1}`,
-          htmlLink: m.html_content_link,
-          order: m.order ?? index + 1,
-        }));
+        .map((m, index) => toModuleRow(m, index));
       setModulesList(filtered);
     } catch (error) {
       console.error("Failed to load modules:", error);
@@ -147,12 +307,32 @@ export default function ProgramModules({
     );
   };
 
-  const openMaterials = (module: ModuleRow) => {
-    if (!module.htmlLink) {
-      showToast("No materials linked for this module.", "error");
-      return;
+  const closeUploadModal = () => {
+    if (isSaving) return;
+    setIsUploadOpen(false);
+    setUploadTitle("");
+    setUploadFile(null);
+    setUploadFileError(null);
+  };
+
+  const openMaterials = async (module: ModuleRow) => {
+    setOpeningId(module.id);
+    try {
+      const href = await resolveModuleHref({
+        html_content_link: module.htmlLink,
+        file_path: module.filePath,
+      });
+      if (!href) {
+        showToast("No materials linked for this module.", "error");
+        return;
+      }
+      window.open(href, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Failed to open module materials:", error);
+      showToast("Couldn't open those materials. Please try again.", "error");
+    } finally {
+      setOpeningId(null);
     }
-    window.open(module.htmlLink, "_blank", "noopener,noreferrer");
   };
 
   const persistOrder = async (ordered: ModuleRow[]) => {
@@ -208,6 +388,16 @@ export default function ProgramModules({
     setIsRemoving(true);
     try {
       await deleteDataFromDB("module", removeTarget.id);
+      if (removeTarget.filePath) {
+        try {
+          await deleteModuleFile(removeTarget.filePath);
+        } catch (cleanupError) {
+          console.error(
+            "Removed module but failed to delete uploaded file:",
+            cleanupError,
+          );
+        }
+      }
       const remaining = modulesList.filter((m) => m.id !== removeTarget.id);
       await persistOrder(remaining);
       setReadModuleIds((prev) => prev.filter((id) => id !== removeTarget.id));
@@ -259,16 +449,14 @@ export default function ProgramModules({
           program_id: programId,
           title: item.title,
           html_content_link: item.htmlPath,
+          file_path: null,
+          file_name: null,
+          file_size: null,
           order: nextOrder,
           save_log_enabled: true,
         })) as Module;
 
-        created.push({
-          id: saved.id,
-          title: saved.title?.trim() || item.title,
-          htmlLink: saved.html_content_link,
-          order: saved.order ?? nextOrder,
-        });
+        created.push(toModuleRow(saved, nextOrder - 1));
         nextOrder += 1;
       }
 
@@ -302,6 +490,76 @@ export default function ProgramModules({
     );
   };
 
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canBuild || isSaving) return;
+
+    const title = uploadTitle.trim();
+    if (!title) {
+      showToast("Add a module title.", "error");
+      return;
+    }
+    if (!uploadFile) {
+      setUploadFileError("Choose a file to upload.");
+      return;
+    }
+
+    const fileValidation = validateModuleFile(uploadFile);
+    if (fileValidation) {
+      setUploadFileError(fileValidation);
+      return;
+    }
+
+    setIsSaving(true);
+    let uploadedPath: string | null = null;
+    try {
+      const uploaded = await uploadModuleFile({
+        programId,
+        file: uploadFile,
+      });
+      uploadedPath = uploaded.file_path;
+
+      const nextOrder =
+        modulesList.reduce((max, row) => Math.max(max, row.order), 0) + 1;
+      const id = crypto.randomUUID();
+      const saved = (await saveDataToDB("module", id, {
+        id,
+        program_id: programId,
+        title,
+        html_content_link: null,
+        file_path: uploaded.file_path,
+        file_name: uploaded.file_name,
+        file_size: uploaded.file_size,
+        order: nextOrder,
+        save_log_enabled: true,
+      })) as Module;
+
+      setModulesList((prev) => [...prev, toModuleRow(saved, nextOrder - 1)]);
+      setIsUploadOpen(false);
+      setUploadTitle("");
+      setUploadFile(null);
+      setUploadFileError(null);
+      showToast("Module file added to course.", "success");
+    } catch (error) {
+      console.error("Failed to upload module file:", error);
+      if (uploadedPath) {
+        try {
+          await deleteModuleFile(uploadedPath);
+        } catch {
+          // ignore cleanup failure
+        }
+      }
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload module file.",
+        "error",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const selectedCount = resolveItemsToAdd().length;
 
   return (
@@ -315,19 +573,37 @@ export default function ProgramModules({
             <p className="text-xs font-semibold text-slate-500">
               {readModuleIds.length} of {modulesList.length} modules completed
               {canBuild
-                ? " • Add modules from the prepared library"
+                ? " • Add modules from the library or upload a file"
                 : " • Progress saved on this device"}
             </p>
           </div>
           {canBuild && (
-            <button
-              type="button"
-              onClick={() => setIsPickerOpen(true)}
-              className="inline-flex items-center justify-center gap-2 h-10 px-5 bg-[#2a7797] hover:bg-[#1f5f79] text-white text-xs font-bold rounded-full shadow-sm transition-colors self-start sm:self-center"
-            >
-              <Plus className="w-4 h-4" />
-              Add from library
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  setIsPickerOpen(false);
+                  setIsUploadOpen(true);
+                }}
+                className="inline-flex items-center justify-center gap-2 h-10 px-5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-full border border-slate-200 shadow-sm transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                Upload file
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  setIsUploadOpen(false);
+                  setIsPickerOpen(true);
+                }}
+                className="inline-flex items-center justify-center gap-2 h-10 px-5 bg-[#2a7797] hover:bg-[#1f5f79] text-white text-xs font-bold rounded-full shadow-sm transition-colors disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                Add from library
+              </button>
+            </div>
           )}
         </div>
 
@@ -341,7 +617,7 @@ export default function ProgramModules({
             </p>
             <p className="text-xs text-slate-500 max-w-md">
               {canBuild
-                ? "Use Add from library to build this course syllabus from prepared HTML modules."
+                ? "Use Add from library for prepared HTML modules, or Upload file for your own materials."
                 : "Your instructor has not added modules to this course yet."}
             </p>
           </div>
@@ -374,6 +650,14 @@ export default function ProgramModules({
                       <h4 className="text-sm font-bold text-slate-800 tracking-tight leading-snug truncate">
                         {module.title}
                       </h4>
+                      {hasUploadedModuleFile(module.filePath) && (
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {module.fileName ?? "Uploaded file"}
+                          {module.fileSize != null
+                            ? ` · ${formatModuleFileSize(module.fileSize)}`
+                            : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -437,10 +721,11 @@ export default function ProgramModules({
 
                     <button
                       type="button"
-                      onClick={() => openMaterials(module)}
-                      className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                      onClick={() => void openMaterials(module)}
+                      disabled={openingId === module.id}
+                      className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60"
                     >
-                      View Materials
+                      {openingId === module.id ? "Opening…" : "View Materials"}
                     </button>
                   </div>
                 </div>
@@ -565,13 +850,62 @@ export default function ProgramModules({
         </div>
       </SlideOverModal>
 
+      <SlideOverModal
+        isOpen={isUploadOpen}
+        onClose={closeUploadModal}
+        title="Upload module file"
+        subtitle="Add your own materials alongside the prepared HTML library"
+        onSubmit={handleUploadSubmit}
+        submitLabel="Upload module"
+        isSaving={isSaving}
+        submitDisabled={isSaving}
+      >
+        <div className="space-y-5">
+          <div>
+            {renderSectionLabel(
+              <FileText className="w-3.5 h-3.5" />,
+              "Details",
+            )}
+            <label className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Title
+            </label>
+            <input
+              type="text"
+              value={uploadTitle}
+              onChange={(e) => setUploadTitle(e.target.value)}
+              placeholder="e.g. Lecture 3 handout"
+              className="mt-1.5 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2a7797]/30 focus:border-[#2a7797]"
+              required
+            />
+          </div>
+
+          <div>
+            {renderSectionLabel(<Upload className="w-3.5 h-3.5" />, "File")}
+            <ModuleFileDropzone
+              file={uploadFile}
+              onFileChange={(file) => {
+                setUploadFile(file);
+                if (file && !uploadTitle.trim()) {
+                  setUploadTitle(titleFromModuleFileName(file.name));
+                }
+              }}
+              error={uploadFileError}
+              onError={setUploadFileError}
+              disabled={isSaving}
+            />
+          </div>
+        </div>
+      </SlideOverModal>
+
       <ConfirmModal
         isOpen={!!removeTarget}
         title="Remove module"
         message={
           <>
             Remove <strong>{removeTarget?.title}</strong> from this course?
-            The library asset stays available for other programs.
+            {hasUploadedModuleFile(removeTarget?.filePath)
+              ? " The uploaded file will be removed from this course."
+              : " The library asset stays available for other programs."}
           </>
         }
         confirmLabel="Remove"

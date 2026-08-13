@@ -258,6 +258,10 @@ export interface Module {
   program_id: string;
   title: string | null;
   html_content_link: string | null;
+  /** Object key in the private `module-files` bucket when a file was uploaded. */
+  file_path: string | null;
+  file_name: string | null;
+  file_size: number | null;
   order: number | null;
   save_log_enabled: boolean;
   created_at?: string;
