@@ -81,7 +81,7 @@ export default function ProgramModal({
             }
           : {
               ...EMPTY_FORM,
-              instructor_id: availableInstructors[0]?.id || "",
+              instructor_id: "",
             },
       );
       setErrors({});
@@ -248,13 +248,15 @@ export default function ProgramModal({
             id="program-instructor"
             required
             aria-invalid={!!errors.instructor_id}
-            value={formState.instructor_id}
+            value={formState.instructor_id || ""}
             onChange={(e) => handleInputChange("instructor_id", e.target.value)}
             className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
           >
-            {availableInstructors.length === 0 && (
-              <option value="">No staff available</option>
-            )}
+            <option value="">
+              {availableInstructors.length === 0
+                ? "No staff available"
+                : `Select a ${leaderLabel.toLowerCase()}…`}
+            </option>
             {availableInstructors.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}

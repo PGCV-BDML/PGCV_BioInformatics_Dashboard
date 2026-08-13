@@ -6,6 +6,12 @@ export const OFFICER_ROLES: UserRole[] = [
   "reviewing_officer",
   "approving_officer",
 ];
+export const ALL_USER_ROLES: UserRole[] = [
+  ...STAFF_ROLES,
+  ...LEARNER_ROLES,
+  ...OFFICER_ROLES,
+  "none",
+];
 
 export type PortalPreviewMode = "trainee" | "intern" | null;
 

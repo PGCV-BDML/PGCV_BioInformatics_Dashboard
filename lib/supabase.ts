@@ -42,6 +42,7 @@ export async function getUsersFromDB<T = any>(
     "trainee",
     "reviewing_officer",
     "approving_officer",
+    "none",
   ];
 
   const isValid = chosenRoles.every((role) => roleValues.includes(role));

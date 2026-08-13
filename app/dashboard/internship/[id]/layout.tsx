@@ -4,8 +4,9 @@ import React, { use, useState, useEffect } from "react";
 import ProgramWorkspaceLayout, {
   type ProgramWorkspaceData,
 } from "@/app/components/program-workspace-layout";
-import { getRowsFromDB, getUsersFromDB } from "@/lib/supabase";
-import type { TrainingProgram, User as UserType } from "@/types/database";
+import { getRowsFromDB } from "@/lib/supabase";
+import { loadUserNameMap } from "@/lib/user-names";
+import type { TrainingProgram } from "@/types/database";
 
 export default function InternshipProgramLayout({
   children,
@@ -20,23 +21,21 @@ export default function InternshipProgramLayout({
 
   useEffect(() => {
     const load = async () => {
-      const [programs, users] = await Promise.all([
-        getRowsFromDB<TrainingProgram>("training_program"),
-        getUsersFromDB(["team_lead", "team_member"]),
-      ]);
-      const userMap = new Map<string, string>();
-      for (const u of users as UserType[]) userMap.set(u.id, u.name);
+      const programs = await getRowsFromDB<TrainingProgram>("training_program");
       const found = programs.find(
         (p) => p.id === resolvedParams.id && p.type === "internship",
       );
       if (found) {
+        const userMap = await loadUserNameMap([found.instructor_id]);
         setProgram({
           id: found.id,
           title: found.title,
           description: found.description ?? "",
           start_date: found.start_date ?? "",
           end_date: found.end_date ?? "",
-          leaderName: userMap.get(found.instructor_id) ?? "—",
+          leaderName: found.instructor_id
+            ? (userMap.get(found.instructor_id) ?? "—")
+            : "—",
           status: found.status ?? "ongoing",
         });
       } else {

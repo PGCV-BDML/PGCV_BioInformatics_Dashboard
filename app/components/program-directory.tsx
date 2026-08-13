@@ -12,13 +12,13 @@ import DeleteModal from "@/app/components/deletemodal";
 import { useDashboardUI } from "@/app/components/dashboard-ui-context";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
-import { STAFF_ROLES } from "@/lib/portal";
 import {
   getRowsFromDB,
   getUsersFromDB,
   saveDataToDB,
   deleteDataFromDB,
 } from "@/lib/supabase";
+import { loadUserNameMap } from "@/lib/user-names";
 import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
@@ -32,13 +32,15 @@ import type {
 
 function mapProgramCard(
   program: TrainingProgram,
-  userMap: Map<string, UserType>,
+  userNameById: Map<string, string>,
 ): ProgramCard {
   return {
     id: program.id,
     title: program.title,
     description: program.description ?? "",
-    instructor_name: userMap.get(program.instructor_id)?.name ?? "Unassigned",
+    instructor_name: program.instructor_id
+      ? (userNameById.get(program.instructor_id) ?? "Unassigned")
+      : "Unassigned",
     requesting_institution: program.requesting_institution ?? "",
     training_code: program.training_code ?? "",
     start_date: program.start_date ?? "",
@@ -63,9 +65,11 @@ export default function ProgramDirectory({
   subtitle,
   addButtonLabel,
 }: ProgramDirectoryProps) {
-  const [programsList, setProgramsList] = useState<ProgramCard[]>([]);
   const [rawPrograms, setRawPrograms] = useState<TrainingProgram[]>([]);
   const [instructors, setInstructors] = useState<UserOption[]>([]);
+  const [userNameById, setUserNameById] = useState<Map<string, string>>(
+    () => new Map(),
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -84,6 +88,12 @@ export default function ProgramDirectory({
   const { showToast } = useToast();
   const isPanelOpen = isAdding || isEditing;
   const canManage = isStaff && !isLearnerView;
+
+  const programsList = useMemo(
+    () => rawPrograms.map((program) => mapProgramCard(program, userNameById)),
+    [rawPrograms, userNameById],
+  );
+
   const directoryTitle = isLearnerView ? `My ${title} Courses` : title;
   const directorySubtitle = isLearnerView
     ? programsList.length === 0
@@ -99,27 +109,19 @@ export default function ProgramDirectory({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [programs, users] = await Promise.all([
+        const [programs, staff] = await Promise.all([
           getRowsFromDB<TrainingProgram>("training_program"),
-          getUsersFromDB<UserType>([
-            "team_lead",
-            "team_member",
-            "intern",
-            "trainee",
-          ]),
+          getUsersFromDB<UserType>(["team_lead", "team_member"]),
         ]);
 
-        const userMap = new Map<string, UserType>();
-        for (const u of users) userMap.set(u.id, u);
-
         const filtered = programs.filter((p) => p.type === programType);
-        setRawPrograms(filtered);
-        setProgramsList(filtered.map((p) => mapProgramCard(p, userMap)));
-        setInstructors(
-          users
-            .filter((u) => STAFF_ROLES.includes(u.role))
-            .map((u) => ({ id: u.id, name: u.name })),
+        const nameMap = await loadUserNameMap(
+          filtered.map((program) => program.instructor_id),
         );
+
+        setRawPrograms(filtered);
+        setUserNameById(nameMap);
+        setInstructors(staff.map((u) => ({ id: u.id, name: u.name })));
       } catch (error) {
         console.error(`Failed to load ${programType} programs:`, error);
         setLoadError(
@@ -135,6 +137,20 @@ export default function ProgramDirectory({
     [rawPrograms, selectedProgram],
   );
 
+  const availableInstructors = useMemo(() => {
+    const assignedId = selectedRaw?.instructor_id;
+    if (!assignedId || instructors.some((user) => user.id === assignedId)) {
+      return instructors;
+    }
+    return [
+      {
+        id: assignedId,
+        name: userNameById.get(assignedId) ?? "Unknown instructor",
+      },
+      ...instructors,
+    ];
+  }, [instructors, selectedRaw?.instructor_id, userNameById]);
+
   const initialData = useMemo((): TrainingProgramFormData | null => {
     if (!selectedRaw) return null;
     return {
@@ -142,7 +158,7 @@ export default function ProgramDirectory({
       description: selectedRaw.description ?? "",
       requesting_institution: selectedRaw.requesting_institution ?? "",
       training_code: selectedRaw.training_code ?? "",
-      instructor_id: selectedRaw.instructor_id,
+      instructor_id: selectedRaw.instructor_id ?? "",
       start_date: selectedRaw.start_date ?? "",
       end_date: selectedRaw.end_date ?? "",
       status: selectedRaw.status ?? "ongoing",
@@ -152,11 +168,6 @@ export default function ProgramDirectory({
   const updateProgramStatus = useCallback(
     async (program: ProgramCard, newStatus: TrainingProgramStatus) => {
       const previous = program.status;
-      setProgramsList((prev) =>
-        prev.map((p) =>
-          p.id === program.id ? { ...p, status: newStatus } : p,
-        ),
-      );
       setRawPrograms((prev) =>
         prev.map((p) =>
           p.id === program.id ? { ...p, status: newStatus } : p,
@@ -177,11 +188,6 @@ export default function ProgramDirectory({
         showToast(`Program ${label}.`, "success");
       } catch (error) {
         console.error("Failed to update program status:", error);
-        setProgramsList((prev) =>
-          prev.map((p) =>
-            p.id === program.id ? { ...p, status: previous } : p,
-          ),
-        );
         setRawPrograms((prev) =>
           prev.map((p) =>
             p.id === program.id ? { ...p, status: previous } : p,
@@ -221,24 +227,6 @@ export default function ProgramDirectory({
           payload,
         )) as TrainingProgram;
         setRawPrograms((prev) => [saved, ...prev]);
-        const instructorName =
-          instructors.find((i) => i.id === saved.instructor_id)?.name ??
-          "Unassigned";
-        setProgramsList((prev) => [
-          {
-            id: saved.id,
-            title: saved.title,
-            description: saved.description ?? "",
-            instructor_name: instructorName,
-            requesting_institution: saved.requesting_institution ?? "",
-            training_code: saved.training_code ?? "",
-            start_date: saved.start_date ?? "",
-            end_date: saved.end_date ?? "",
-            participant_count: 0,
-            status: saved.status ?? "ongoing",
-          },
-          ...prev,
-        ]);
         setIsAdding(false);
         showToast(`${title} program created.`, "success");
       } catch (error) {
@@ -248,7 +236,7 @@ export default function ProgramDirectory({
         setIsSaving(false);
       }
     },
-    [instructors, programType, showToast, title],
+    [programType, showToast, title],
   );
 
   const handleEditSubmit = useCallback(
@@ -279,26 +267,6 @@ export default function ProgramDirectory({
         setRawPrograms((prev) =>
           prev.map((p) => (p.id === selectedProgram.id ? { ...p, ...saved } : p)),
         );
-        const instructorName =
-          instructors.find((i) => i.id === saved.instructor_id)?.name ??
-          selectedProgram.instructor_name;
-        setProgramsList((prev) =>
-          prev.map((p) =>
-            p.id === selectedProgram.id
-              ? {
-                  ...p,
-                  title: saved.title,
-                  description: saved.description ?? "",
-                  instructor_name: instructorName,
-                  requesting_institution: saved.requesting_institution ?? "",
-                  training_code: saved.training_code ?? "",
-                  start_date: saved.start_date ?? "",
-                  end_date: saved.end_date ?? "",
-                  status: saved.status ?? p.status,
-                }
-              : p,
-          ),
-        );
         setIsEditing(false);
         setSelectedProgram(null);
         showToast("Program updated.", "success");
@@ -309,7 +277,7 @@ export default function ProgramDirectory({
         setIsSaving(false);
       }
     },
-    [instructors, selectedProgram, showToast, programType],
+    [selectedProgram, showToast, programType],
   );
 
   const handleCloseModal = useCallback(() => {
@@ -334,7 +302,6 @@ export default function ProgramDirectory({
     setIsDeleting(true);
     try {
       await deleteDataFromDB("training_program", deleteTarget.id);
-      setProgramsList((prev) => prev.filter((p) => p.id !== deleteTarget.id));
       setRawPrograms((prev) => prev.filter((p) => p.id !== deleteTarget.id));
       if (selectedProgram?.id === deleteTarget.id) {
         handleCloseModal();
@@ -416,7 +383,7 @@ export default function ProgramDirectory({
           isSaving={isSaving}
           programType={programType}
           initialData={isEditing ? initialData : null}
-          availableInstructors={instructors}
+          availableInstructors={availableInstructors}
           onClose={handleCloseModal}
           onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
         />
