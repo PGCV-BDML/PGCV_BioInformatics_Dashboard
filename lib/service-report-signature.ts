@@ -22,8 +22,8 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  * Signature image placement on the last page of a PGCV service report.
  *
  * The Word template is A4. Stamps are placed from the actual
- * "Reviewed by:" / "Approved for Release:" text on the page — in the
- * blank band between that label and the printed name below it.
+ * "Reviewed by:" / "Approved for Release:" text on the page — hung from
+ * just under that label, in the blank band above the printed name.
  * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
@@ -52,6 +52,19 @@ export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   reviewed_by: { x: 72, y: 336, maxWidth: 160, maxHeight: 28 },
   approved_by: { x: 72, y: 131, maxWidth: 160, maxHeight: 44 },
 };
+
+/** Blank left under the label baseline before the top of the stamp. */
+const LABEL_CLEARANCE = 6;
+/** Blank left between the bottom of the stamp and the printed name. */
+const NAME_CLEARANCE = 4;
+/**
+ * Producers split a single visual line into several runs, so anything within
+ * this much of the label baseline belongs to the label's own line — not to
+ * the printed name underneath it.
+ */
+const SAME_LINE_TOLERANCE = 14;
+/** Never shrink a stamp below this, even in a cramped band. */
+const MIN_STAMP_HEIGHT = 14;
 
 export {
   originalServiceReportBaseName,
@@ -327,14 +340,17 @@ function findLabelRun(runs: TextRun[], slot: SignatureSlot): TextRun | undefined
 function findNameBelow(runs: TextRun[], label: TextRun): TextRun | undefined {
   return runs
     .filter(
-      (run) => run.y < label.y - 8 && Math.abs(run.x - label.x) < 240,
+      (run) =>
+        label.y - run.y >= SAME_LINE_TOLERANCE &&
+        Math.abs(run.x - label.x) < 240,
     )
     .sort((a, b) => b.y - a.y)[0];
 }
 
 /**
- * Bottom-left of the stamp on this page. Prefers the gap between the role
- * label and the printed name; falls back to SIGNATURE_SLOTS.
+ * Bottom-left of the stamp on this page. The stamp hangs from just below the
+ * role label and is shrunk to clear the printed name under it; falls back to
+ * SIGNATURE_SLOTS when the label cannot be read.
  */
 export function resolveSignatureRect(
   page: PDFPage,
@@ -350,35 +366,23 @@ export function resolveSignatureRect(
     return { x: fallback.x, y: fallback.y, ...size };
   }
 
+  // Top of the stamp, always under the label's baseline so the signature
+  // reads as belonging to "Reviewed by:" / "Approved for Release:".
+  const top = label.y - LABEL_CLEARANCE;
   const name = findNameBelow(runs, label);
-  let maxHeight = fallback.maxHeight;
-  if (name) {
-    const nameTop = name.y + name.height * 0.8;
-    const labelBottom = label.y - 2;
-    const band = labelBottom - nameTop;
-    if (band > 10) maxHeight = Math.min(maxHeight, Math.max(14, band - 6));
-  }
+  const floor = name
+    ? name.y + name.height * 0.8 + NAME_CLEARANCE
+    : top - fallback.maxHeight;
 
   const size = fitSignatureSize(imageWidth, imageHeight, {
     ...fallback,
-    maxHeight,
+    maxHeight: Math.min(
+      fallback.maxHeight,
+      Math.max(MIN_STAMP_HEIGHT, top - floor),
+    ),
   });
 
-  let y: number;
-  if (name) {
-    const nameTop = name.y + name.height * 0.8;
-    const labelBottom = label.y - 2;
-    const band = labelBottom - nameTop;
-    if (band > size.height + 4) {
-      y = nameTop + (band - size.height) / 2;
-    } else {
-      y = nameTop + 3;
-    }
-  } else {
-    y = label.y - 10 - size.height;
-  }
-
-  return { x: label.x, y, ...size };
+  return { x: label.x, y: top - size.height, ...size };
 }
 
 async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {

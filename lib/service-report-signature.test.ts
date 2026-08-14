@@ -122,4 +122,28 @@ describe("resolveSignatureRect", () => {
     expect(rect.y).toBeGreaterThan(121);
     expect(rect.y + rect.height).toBeLessThan(210);
   });
+
+  it("stays below the label when the label's own line is split into runs", async () => {
+    // Word/LibreOffice often emit a second run a few points under the
+    // baseline of the same visual line; it must not be read as the name.
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([595.28, 841.89]);
+    const font = await pdf.embedFont(StandardFonts.TimesRoman);
+    page.drawText("Reviewed by", { x: 72, y: 446, size: 12, font });
+    page.drawText(":", { x: 138, y: 437, size: 12, font });
+    page.drawText("JASMINE C. VELO", { x: 72, y: 356, size: 12, font });
+    page.drawText("Approved for Release:", { x: 72, y: 214, size: 12, font });
+    page.drawText("VICTOR MARCO N. FERRIOLS", {
+      x: 72,
+      y: 125,
+      size: 12,
+      font,
+    });
+    const loaded = await PDFDocument.load(await pdf.save());
+    const reloaded = loaded.getPages()[0]!;
+
+    const rect = resolveSignatureRect(reloaded, "reviewed_by", 400, 100);
+    expect(rect.y + rect.height).toBeLessThan(446);
+    expect(rect.y).toBeGreaterThan(356);
+  });
 });
