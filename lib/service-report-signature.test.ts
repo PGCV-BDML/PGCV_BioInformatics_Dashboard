@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   originalServiceReportBaseName,
   serviceReportDownloadFileName,
   stampedServiceReportFileName,
 } from "./service-report-file";
-import { SIGNATURE_SLOTS } from "./service-report-signature";
+import { resolveSignatureRect } from "./service-report-signature";
 
 describe("originalServiceReportBaseName", () => {
   it("returns the upload basename without the extension", () => {
@@ -81,13 +82,44 @@ describe("serviceReportDownloadFileName", () => {
   });
 });
 
-describe("SIGNATURE_SLOTS", () => {
-  it("places each stamp just above the printed name, below the role label", () => {
-    // Jasmine name top ≈ 330; "Reviewed by:" bottom ≈ 354.
-    expect(SIGNATURE_SLOTS.reviewed_by.y).toBeGreaterThan(330);
-    expect(SIGNATURE_SLOTS.reviewed_by.y).toBeLessThan(354);
-    // Ferriols name top ≈ 125; "Approved for Release:" bottom ≈ 205.
-    expect(SIGNATURE_SLOTS.approved_by.y).toBeGreaterThan(125);
-    expect(SIGNATURE_SLOTS.approved_by.y).toBeLessThan(205);
+describe("resolveSignatureRect", () => {
+  async function signatoryPage() {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([595.28, 841.89]);
+    const font = await pdf.embedFont(StandardFonts.TimesRoman);
+    const bold = await pdf.embedFont(StandardFonts.TimesRomanBold);
+    page.drawText("Prepared by:", { x: 72, y: 593, size: 12, font });
+    page.drawText("MICAH DANIELLE D. LOJERA", {
+      x: 72,
+      y: 561,
+      size: 12,
+      font: bold,
+    });
+    page.drawText("Reviewed by:", { x: 72, y: 358, size: 12, font });
+    page.drawText("JASMINE C. VELO", { x: 72, y: 324, size: 12, font: bold });
+    page.drawText("Approved for Release:", { x: 72, y: 210, size: 12, font });
+    page.drawText("VICTOR MARCO EMMANUEL N. FERRIOLS, PhD.", {
+      x: 72,
+      y: 121,
+      size: 12,
+      font: bold,
+    });
+    const bytes = await pdf.save();
+    const loaded = await PDFDocument.load(bytes);
+    return loaded.getPages()[0]!;
+  }
+
+  it("puts the reviewing stamp between Reviewed by and the printed name", async () => {
+    const page = await signatoryPage();
+    const rect = resolveSignatureRect(page, "reviewed_by", 400, 100);
+    expect(rect.y).toBeGreaterThan(324);
+    expect(rect.y + rect.height).toBeLessThan(358);
+  });
+
+  it("puts the approving stamp between Approved for Release and the printed name", async () => {
+    const page = await signatoryPage();
+    const rect = resolveSignatureRect(page, "approved_by", 400, 100);
+    expect(rect.y).toBeGreaterThan(121);
+    expect(rect.y + rect.height).toBeLessThan(210);
   });
 });

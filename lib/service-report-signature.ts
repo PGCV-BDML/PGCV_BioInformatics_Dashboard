@@ -1,4 +1,10 @@
-import { PDFDocument } from "pdf-lib";
+import {
+  PDFArray,
+  PDFDocument,
+  PDFRawStream,
+  decodePDFRawStream,
+  type PDFPage,
+} from "pdf-lib";
 import { supabase, getCurrentUser } from "@/lib/supabase";
 import {
   buildServiceReportPath,
@@ -15,46 +21,36 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
 /**
  * Signature image placement on the last page of a PGCV service report.
  *
- * The Word template is A4 (595.28 × 841.89 pt). Coordinates use PDF points
- * with origin at the bottom-left of the page (pdf-lib convention). `y` is
- * the bottom edge of the stamp on that A4 page.
+ * The Word template is A4. Stamps are placed from the actual
+ * "Reviewed by:" / "Approved for Release:" text on the page — in the
+ * blank band between that label and the printed name below it.
+ * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
 
 type SlotPlacement = {
-  /** Left edge of the signature image. */
   x: number;
-  /** Bottom edge of the signature image on the A4 page. */
   y: number;
-  /** Drawn width; height scales to preserve aspect ratio, capped below. */
   maxWidth: number;
   maxHeight: number;
 };
 
-/**
- * Calibrated from a real A4 PGCV signatory page (Prepared by / Reviewed by /
- * Approved for Release). Each stamp sits in the band between the role
- * label and the printed name — the same spot the analyst signs.
- *
- * Measured on A4: "Reviewed by:" ≈ 354–362, Jasmine ≈ 323–330;
- * "Approved for Release:" ≈ 205–214, Ferriols ≈ 117–125.
- */
+type TextRun = {
+  text: string;
+  x: number;
+  y: number;
+  height: number;
+};
+
+const LABEL_NEEDLES: Record<SignatureSlot, string[]> = {
+  reviewed_by: ["reviewed by"],
+  approved_by: ["approved for release"],
+};
+
+/** Fallback if the PDF text cannot be read (subsetted fonts, scanned page). */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
-  reviewed_by: {
-    x: 72,
-    // 6pt above Jasmine's name (top ≈ 330). The label→name band is only
-    // ~24pt, so maxHeight stays small enough not to sit on the label.
-    y: 336,
-    maxWidth: 160,
-    maxHeight: 28,
-  },
-  approved_by: {
-    x: 72,
-    // 6pt above Ferriols' name (top ≈ 125). That band is ~80pt tall.
-    y: 131,
-    maxWidth: 160,
-    maxHeight: 44,
-  },
+  reviewed_by: { x: 72, y: 336, maxWidth: 160, maxHeight: 28 },
+  approved_by: { x: 72, y: 131, maxWidth: 160, maxHeight: 44 },
 };
 
 export {
@@ -84,6 +80,305 @@ export function isMissingReportPdfError(
       "code" in error &&
       (error as { code?: string }).code === "MISSING_REPORT_PDF")
   );
+}
+
+function bytesToPdfString(bytes: Uint8Array): string {
+  let text = "";
+  for (let i = 0; i < bytes.length; i++) {
+    text += String.fromCharCode(bytes[i]!);
+  }
+  return text;
+}
+
+function pageContentString(page: PDFPage): string {
+  page.node.normalize();
+  const contents = page.node.Contents();
+  const chunks: string[] = [];
+
+  const take = (obj: unknown) => {
+    if (!obj || typeof obj !== "object") return;
+    if (obj instanceof PDFRawStream) {
+      chunks.push(bytesToPdfString(decodePDFRawStream(obj).decode()));
+      return;
+    }
+    const stream = obj as { getContentsString?: () => string };
+    if (typeof stream.getContentsString === "function") {
+      try {
+        chunks.push(stream.getContentsString());
+      } catch {
+        /* PDFStream base throws; ignore */
+      }
+    }
+  };
+
+  if (contents instanceof PDFArray) {
+    for (let i = 0; i < contents.size(); i++) take(contents.lookup(i));
+  } else {
+    take(contents);
+  }
+  return chunks.join("\n");
+}
+
+function tokenizePdfContent(src: string): string[] {
+  const tokens: string[] = [];
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i]!;
+    if (ch <= " ") {
+      i += 1;
+      continue;
+    }
+    if (ch === "%") {
+      while (i < src.length && src[i] !== "\n") i += 1;
+      continue;
+    }
+    if (ch === "(") {
+      let out = "(";
+      i += 1;
+      let depth = 1;
+      while (i < src.length && depth > 0) {
+        const c = src[i]!;
+        if (c === "\\") {
+          out += c + (src[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (c === "(") depth += 1;
+        if (c === ")") depth -= 1;
+        out += c;
+        i += 1;
+      }
+      tokens.push(out);
+      continue;
+    }
+    if (ch === "<") {
+      if (src[i + 1] === "<") {
+        tokens.push("<<");
+        i += 2;
+        continue;
+      }
+      let j = i + 1;
+      while (j < src.length && src[j] !== ">") j += 1;
+      tokens.push(src.slice(i, j + 1));
+      i = j + 1;
+      continue;
+    }
+    if (ch === ">" && src[i + 1] === ">") {
+      tokens.push(">>");
+      i += 2;
+      continue;
+    }
+    if ("[]{}".includes(ch)) {
+      tokens.push(ch);
+      i += 1;
+      continue;
+    }
+    if (ch === "/") {
+      let j = i + 1;
+      while (j < src.length && !/[\s()<>[\]{}/%]/.test(src[j]!)) j += 1;
+      tokens.push(src.slice(i, j));
+      i = j;
+      continue;
+    }
+    let j = i;
+    while (j < src.length && !/[\s()<>[\]{}/%]/.test(src[j]!)) j += 1;
+    tokens.push(src.slice(i, j));
+    i = j;
+  }
+  return tokens;
+}
+
+function pdfStringToken(tok: string): string | null {
+  if (tok.startsWith("(") && tok.endsWith(")")) {
+    return tok
+      .slice(1, -1)
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t")
+      .replace(/\\\(/g, "(")
+      .replace(/\\\)/g, ")")
+      .replace(/\\\\/g, "\\")
+      .replace(/\\(\d{1,3})/g, (_, digits: string) =>
+        String.fromCharCode(parseInt(digits, 8)),
+      );
+  }
+  if (tok.startsWith("<") && tok.endsWith(">") && tok[1] !== "<") {
+    const hex = tok.slice(1, -1).replace(/\s/g, "");
+    let out = "";
+    for (let i = 0; i < hex.length; i += 2) {
+      out += String.fromCharCode(
+        parseInt(hex.slice(i, i + 2).padEnd(2, "0"), 16),
+      );
+    }
+    return out;
+  }
+  return null;
+}
+
+function multiplyCtm(m: number[], n: number[]): number[] {
+  return [
+    m[0]! * n[0]! + m[2]! * n[1]!,
+    m[1]! * n[0]! + m[3]! * n[1]!,
+    m[0]! * n[2]! + m[2]! * n[3]!,
+    m[1]! * n[2]! + m[3]! * n[3]!,
+    m[0]! * n[4]! + m[2]! * n[5]! + m[4]!,
+    m[1]! * n[4]! + m[3]! * n[5]! + m[5]!,
+  ];
+}
+
+function applyCtm(m: number[], x: number, y: number): { x: number; y: number } {
+  return {
+    x: m[0]! * x + m[2]! * y + m[4]!,
+    y: m[1]! * x + m[3]! * y + m[5]!,
+  };
+}
+
+function extractTextRuns(page: PDFPage): TextRun[] {
+  const tokens = tokenizePdfContent(pageContentString(page));
+  const runs: TextRun[] = [];
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const ctmStack: number[][] = [];
+  let textX = 0;
+  let textY = 0;
+  let fontSize = 12;
+  let inText = false;
+
+  const pushRun = (text: string) => {
+    const trimmed = text.replace(/\0/g, "").trim();
+    if (!trimmed) return;
+    const pt = applyCtm(ctm, textX, textY);
+    runs.push({ text: trimmed, x: pt.x, y: pt.y, height: fontSize });
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const op = tokens[i]!;
+    if (op === "q") {
+      ctmStack.push(ctm.slice());
+      continue;
+    }
+    if (op === "Q") {
+      ctm = ctmStack.pop() ?? [1, 0, 0, 1, 0, 0];
+      continue;
+    }
+    if (op === "cm" && i >= 6) {
+      ctm = multiplyCtm(ctm, [
+        Number(tokens[i - 6]),
+        Number(tokens[i - 5]),
+        Number(tokens[i - 4]),
+        Number(tokens[i - 3]),
+        Number(tokens[i - 2]),
+        Number(tokens[i - 1]),
+      ]);
+      continue;
+    }
+    if (op === "BT") {
+      inText = true;
+      textX = 0;
+      textY = 0;
+      continue;
+    }
+    if (op === "ET") {
+      inText = false;
+      continue;
+    }
+    if (op === "Tm" && i >= 6) {
+      textX = Number(tokens[i - 2]);
+      textY = Number(tokens[i - 1]);
+      continue;
+    }
+    if ((op === "Td" || op === "TD") && i >= 2) {
+      textX += Number(tokens[i - 2]);
+      textY += Number(tokens[i - 1]);
+      continue;
+    }
+    if (op === "Tf" && i >= 1) {
+      const size = Number(tokens[i - 1]);
+      if (Number.isFinite(size) && size > 0) fontSize = size;
+      continue;
+    }
+    if (!inText) continue;
+    if (op === "Tj" && i >= 1) {
+      const str = pdfStringToken(tokens[i - 1]!);
+      if (str) pushRun(str);
+      continue;
+    }
+    if (op === "TJ") {
+      let j = i - 1;
+      const parts: string[] = [];
+      while (j >= 0 && tokens[j] !== "[") {
+        const str = pdfStringToken(tokens[j]!);
+        if (str) parts.unshift(str);
+        j -= 1;
+      }
+      if (parts.length) pushRun(parts.join(""));
+    }
+  }
+  return runs;
+}
+
+function findLabelRun(runs: TextRun[], slot: SignatureSlot): TextRun | undefined {
+  const needles = LABEL_NEEDLES[slot];
+  return runs.find((run) => {
+    const lower = run.text.toLowerCase();
+    return needles.some((needle) => lower.includes(needle));
+  });
+}
+
+function findNameBelow(runs: TextRun[], label: TextRun): TextRun | undefined {
+  return runs
+    .filter(
+      (run) => run.y < label.y - 8 && Math.abs(run.x - label.x) < 240,
+    )
+    .sort((a, b) => b.y - a.y)[0];
+}
+
+/**
+ * Bottom-left of the stamp on this page. Prefers the gap between the role
+ * label and the printed name; falls back to SIGNATURE_SLOTS.
+ */
+export function resolveSignatureRect(
+  page: PDFPage,
+  slot: SignatureSlot,
+  imageWidth: number,
+  imageHeight: number,
+): { x: number; y: number; width: number; height: number } {
+  const fallback = SIGNATURE_SLOTS[slot];
+  const runs = extractTextRuns(page);
+  const label = findLabelRun(runs, slot);
+  if (!label) {
+    const size = fitSignatureSize(imageWidth, imageHeight, fallback);
+    return { x: fallback.x, y: fallback.y, ...size };
+  }
+
+  const name = findNameBelow(runs, label);
+  let maxHeight = fallback.maxHeight;
+  if (name) {
+    const nameTop = name.y + name.height * 0.8;
+    const labelBottom = label.y - 2;
+    const band = labelBottom - nameTop;
+    if (band > 10) maxHeight = Math.min(maxHeight, Math.max(14, band - 6));
+  }
+
+  const size = fitSignatureSize(imageWidth, imageHeight, {
+    ...fallback,
+    maxHeight,
+  });
+
+  let y: number;
+  if (name) {
+    const nameTop = name.y + name.height * 0.8;
+    const labelBottom = label.y - 2;
+    const band = labelBottom - nameTop;
+    if (band > size.height + 4) {
+      y = nameTop + (band - size.height) / 2;
+    } else {
+      y = nameTop + 3;
+    }
+  } else {
+    y = label.y - 10 - size.height;
+  }
+
+  return { x: label.x, y, ...size };
 }
 
 async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
@@ -174,7 +469,6 @@ export async function stampServiceReportSignature(
     throw new Error("That PDF has no pages to sign.");
   }
   const page = pages[pages.length - 1]!;
-  const placement = SIGNATURE_SLOTS[slot];
 
   // Prefer PNG; fall back to embedding as is (webp may fail — callers upload PNG).
   let embedded;
@@ -190,18 +484,14 @@ export async function stampServiceReportSignature(
     }
   }
 
-  const size = fitSignatureSize(
+  const rect = resolveSignatureRect(
+    page,
+    slot,
     embedded.width,
     embedded.height,
-    placement,
   );
 
-  page.drawImage(embedded, {
-    x: placement.x,
-    y: placement.y,
-    width: size.width,
-    height: size.height,
-  });
+  page.drawImage(embedded, rect);
 
   const stamped = await pdf.save();
   const stampedBytes = new Uint8Array(stamped);
