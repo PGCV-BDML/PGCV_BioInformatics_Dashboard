@@ -43,15 +43,15 @@ type SlotPlacement = {
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   reviewed_by: {
     x: 72,
-    // Bottom of stamp sits ~6pt above "JASMINE C. VELO" (name top ≈ 365).
-    y: 371,
+    // Previously y: 371 (~6pt above "JASMINE C. VELO"). Shifted 2 in (144 pt) down.
+    y: 227,
     maxWidth: 160,
     maxHeight: 44,
   },
   approved_by: {
     x: 72,
-    // Bottom of stamp sits ~6pt above "FERRIOLS" (name top ≈ 130).
-    y: 136,
+    // Previously y: 136 (~6pt above "FERRIOLS"). Shifted 2 in (144 pt) down.
+    y: -8,
     maxWidth: 160,
     maxHeight: 44,
   },
