@@ -47,10 +47,26 @@ const LABEL_NEEDLES: Record<SignatureSlot, string[]> = {
   approved_by: ["approved for release"],
 };
 
-/** Fallback if the PDF text cannot be read (subsetted fonts, scanned page). */
+/**
+ * Word encodes inter-word spacing as kerning offsets inside TJ arrays rather
+ * than as space characters, so "Reviewed by:" extracts as "Reviewedby:".
+ * Match on the whitespace-stripped form so both shapes hit.
+ */
+function squash(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, "");
+}
+
+/**
+ * Fallback if the PDF text cannot be read (scanned page, unusual encoding).
+ *
+ * Calibrated from PGCV-BIOINFO-SR-2026-118 (A4, 595.28 x 841.89). On that
+ * template the signatory page is the last page and holds only the three
+ * blocks, so these are stable: label baselines sit at y=445.1 (Reviewed by:)
+ * and y=209.9 (Approved for Release:), each 87.9pt above its printed name.
+ */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
-  reviewed_by: { x: 72, y: 336, maxWidth: 160, maxHeight: 28 },
-  approved_by: { x: 72, y: 131, maxWidth: 160, maxHeight: 44 },
+  reviewed_by: { x: 72, y: 399, maxWidth: 160, maxHeight: 40 },
+  approved_by: { x: 72, y: 164, maxWidth: 160, maxHeight: 40 },
 };
 
 /** Blank left under the label baseline before the top of the stamp. */
@@ -246,7 +262,12 @@ function applyCtm(m: number[], x: number, y: number): { x: number; y: number } {
   };
 }
 
-function extractTextRuns(page: PDFPage): TextRun[] {
+/**
+ * Every text fragment on the page with its position, in PDF user space
+ * (points, origin bottom-left). Exported so SIGNATURE_SLOTS can be
+ * recalibrated by dumping runs from a real report when the template changes.
+ */
+export function extractTextRuns(page: PDFPage): TextRun[] {
   const tokens = tokenizePdfContent(pageContentString(page));
   const runs: TextRun[] = [];
   let ctm = [1, 0, 0, 1, 0, 0];
@@ -330,10 +351,10 @@ function extractTextRuns(page: PDFPage): TextRun[] {
 }
 
 function findLabelRun(runs: TextRun[], slot: SignatureSlot): TextRun | undefined {
-  const needles = LABEL_NEEDLES[slot];
+  const needles = LABEL_NEEDLES[slot].map(squash);
   return runs.find((run) => {
-    const lower = run.text.toLowerCase();
-    return needles.some((needle) => lower.includes(needle));
+    const squashed = squash(run.text);
+    return needles.some((needle) => squashed.includes(needle));
   });
 }
 

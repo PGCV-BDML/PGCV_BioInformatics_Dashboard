@@ -109,6 +109,57 @@ describe("resolveSignatureRect", () => {
     return loaded.getPages()[0]!;
   }
 
+  /**
+   * The PGCV template's signatory page as the parser actually sees it,
+   * measured from PGCV-BIOINFO-SR-2026-118. Word encodes inter-word spacing
+   * as TJ kerning, so labels arrive with their spaces stripped.
+   */
+  async function pgcvSignatoryPage() {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([595.276, 841.89]);
+    const font = await pdf.embedFont(StandardFonts.TimesRoman);
+    const line = (text: string, x: number, y: number) =>
+      page.drawText(text, { x, y, size: 10.9, font });
+    line("Preparedby:", 72, 680.4);
+    line("MICAHDANIELLED.LOJERA", 72, 592.5);
+    line("SeniorResearchAssociate,PhilippineGenomeCenterVisayas", 72, 561.3);
+    line("Reviewedby:", 72, 445.1);
+    line("JASMINEC.VELO", 71.8, 357.3);
+    line("UniversityResearchAssociateI,PhilippineGenomeCenterVisayas", 72, 326.1);
+    line("ApprovedforRelease:", 71.7, 209.9);
+    line("VICTORMARCOEMMANUELN.FERRIOLS,PhD.", 71.7, 122.0);
+    line("AssistanttotheExecutiveDirector,PhilippineGenomeCenterVisayas", 72, 90.8);
+    const loaded = await PDFDocument.load(await pdf.save());
+    return loaded.getPages()[0]!;
+  }
+
+  it("matches labels whose spaces Word stripped into TJ kerning", async () => {
+    const page = await pgcvSignatoryPage();
+
+    const reviewed = resolveSignatureRect(page, "reviewed_by", 400, 100);
+    expect(reviewed.x).toBeCloseTo(72, 0);
+    expect(reviewed.y + reviewed.height).toBeCloseTo(439.1, 0);
+    expect(reviewed.y).toBeCloseTo(399.1, 0);
+
+    const approved = resolveSignatureRect(page, "approved_by", 400, 100);
+    expect(approved.x).toBeCloseTo(71.7, 0);
+    expect(approved.y + approved.height).toBeCloseTo(203.9, 0);
+    expect(approved.y).toBeCloseTo(163.9, 0);
+  });
+
+  it("clears the printed names on the real template", async () => {
+    const page = await pgcvSignatoryPage();
+    // Name baselines, minus room for ascenders.
+    for (const [slot, label, nameTop] of [
+      ["reviewed_by", 445.1, 366.0],
+      ["approved_by", 209.9, 130.7],
+    ] as const) {
+      const rect = resolveSignatureRect(page, slot, 400, 100);
+      expect(rect.y + rect.height).toBeLessThan(label);
+      expect(rect.y).toBeGreaterThan(nameTop);
+    }
+  });
+
   it("puts the reviewing stamp between Reviewed by and the printed name", async () => {
     const page = await signatoryPage();
     const rect = resolveSignatureRect(page, "reviewed_by", 400, 100);
