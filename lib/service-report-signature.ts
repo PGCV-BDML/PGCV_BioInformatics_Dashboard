@@ -16,42 +16,58 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  * Signature image placement on the last page of a PGCV service report.
  *
  * Coordinates use PDF points with origin at the bottom-left of the page
- * (pdf-lib convention). Tuned for the standard A4 signatory page with
- * Prepared by / Reviewed by / Approved for Release blocks — adjust here
- * if the Word template margins change.
+ * (pdf-lib convention). `y` is the A4 from-bottom value; drawing converts
+ * it to a from-top offset so Letter vs A4 pages still line up with the
+ * Word template (which is laid out from the top).
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
 
 type SlotPlacement = {
   /** Left edge of the signature image. */
   x: number;
-  /** Bottom edge of the signature image. */
+  /**
+   * Bottom edge of the signature image on an A4 page (841.89 pt tall).
+   * Convert with `signatureImageY` before drawing so other page sizes
+   * keep the same distance from the top.
+   */
   y: number;
   /** Drawn width; height scales to preserve aspect ratio, capped below. */
   maxWidth: number;
   maxHeight: number;
 };
 
+/** A4 height in PDF points. The Word signatory template is top-anchored. */
+export const SERVICE_REPORT_A4_HEIGHT_PT = 841.89;
+
 /**
- * Calibrated against the standard PGCV service-report signatory page
- * (Prepared by / Reviewed by / Approved for Release on the last page).
+ * pdf-lib y for the bottom of a stamp, keeping the A4-calibrated slot the
+ * same distance from the top of whatever page we were given.
+ */
+export function signatureImageY(pageHeight: number, a4BottomY: number): number {
+  return pageHeight - (SERVICE_REPORT_A4_HEIGHT_PT - a4BottomY);
+}
+
+/**
+ * Calibrated from a real PGCV signatory page (Prepared by / Reviewed by /
+ * Approved for Release). Each stamp sits in the band between the role
+ * label and the printed name — the same spot the analyst signs.
  *
- * Each stamp sits in the blank band between the role label and the
- * printed name — the same spot the analyst's Prepared-by signature uses.
- * pdf-lib y is the bottom edge of the image (origin = page bottom-left).
+ * Measured on A4: "Reviewed by:" ≈ 354–362, Jasmine ≈ 323–330;
+ * "Approved for Release:" ≈ 205–214, Ferriols ≈ 117–125.
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
   reviewed_by: {
     x: 72,
-    // Previously y: 371 (~6pt above "JASMINE C. VELO"). Shifted 2 in (144 pt) down.
-    y: 227,
+    // 6pt above Jasmine's name (top ≈ 330). The label→name band is only
+    // ~24pt, so maxHeight stays small enough not to sit on the label.
+    y: 336,
     maxWidth: 160,
-    maxHeight: 44,
+    maxHeight: 28,
   },
   approved_by: {
     x: 72,
-    // Previously y: 136 (~6pt above "FERRIOLS"). Shifted 2 in (144 pt) down.
-    y: -8,
+    // 6pt above Ferriols' name (top ≈ 125). That band is ~80pt tall.
+    y: 131,
     maxWidth: 160,
     maxHeight: 44,
   },
@@ -198,7 +214,7 @@ export async function stampServiceReportSignature(
 
   page.drawImage(embedded, {
     x: placement.x,
-    y: placement.y,
+    y: signatureImageY(page.getHeight(), placement.y),
     width: size.width,
     height: size.height,
   });

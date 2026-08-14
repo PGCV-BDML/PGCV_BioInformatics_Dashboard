@@ -4,6 +4,11 @@ import {
   serviceReportDownloadFileName,
   stampedServiceReportFileName,
 } from "./service-report-file";
+import {
+  SERVICE_REPORT_A4_HEIGHT_PT,
+  SIGNATURE_SLOTS,
+  signatureImageY,
+} from "./service-report-signature";
 
 describe("originalServiceReportBaseName", () => {
   it("returns the upload basename without the extension", () => {
@@ -77,5 +82,31 @@ describe("serviceReportDownloadFileName", () => {
     expect(
       serviceReportDownloadFileName("PGCV-Bioinfo-SR-2026-272-Penuela.pdf"),
     ).toBe("PGCV-Bioinfo-SR-2026-272-Penuela.pdf");
+  });
+});
+
+describe("signatureImageY", () => {
+  it("keeps the A4-calibrated bottom edge on an A4 page", () => {
+    expect(signatureImageY(SERVICE_REPORT_A4_HEIGHT_PT, 336)).toBeCloseTo(336);
+    expect(signatureImageY(SERVICE_REPORT_A4_HEIGHT_PT, 131)).toBeCloseTo(131);
+  });
+
+  it("keeps the same distance from the top on a shorter Letter page", () => {
+    const letterHeight = 792;
+    const fromTop = SERVICE_REPORT_A4_HEIGHT_PT - 336;
+    expect(signatureImageY(letterHeight, 336)).toBeCloseTo(
+      letterHeight - fromTop,
+    );
+  });
+});
+
+describe("SIGNATURE_SLOTS", () => {
+  it("places each stamp just above the printed name, below the role label", () => {
+    // Jasmine name top ≈ 330; "Reviewed by:" bottom ≈ 354.
+    expect(SIGNATURE_SLOTS.reviewed_by.y).toBeGreaterThan(330);
+    expect(SIGNATURE_SLOTS.reviewed_by.y).toBeLessThan(354);
+    // Ferriols name top ≈ 125; "Approved for Release:" bottom ≈ 205.
+    expect(SIGNATURE_SLOTS.approved_by.y).toBeGreaterThan(125);
+    expect(SIGNATURE_SLOTS.approved_by.y).toBeLessThan(205);
   });
 });
