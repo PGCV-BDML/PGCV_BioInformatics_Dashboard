@@ -15,40 +15,24 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
 /**
  * Signature image placement on the last page of a PGCV service report.
  *
- * Coordinates use PDF points with origin at the bottom-left of the page
- * (pdf-lib convention). `y` is the A4 from-bottom value; drawing converts
- * it to a from-top offset so Letter vs A4 pages still line up with the
- * Word template (which is laid out from the top).
+ * The Word template is A4 (595.28 × 841.89 pt). Coordinates use PDF points
+ * with origin at the bottom-left of the page (pdf-lib convention). `y` is
+ * the bottom edge of the stamp on that A4 page.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
 
 type SlotPlacement = {
   /** Left edge of the signature image. */
   x: number;
-  /**
-   * Bottom edge of the signature image on an A4 page (841.89 pt tall).
-   * Convert with `signatureImageY` before drawing so other page sizes
-   * keep the same distance from the top.
-   */
+  /** Bottom edge of the signature image on the A4 page. */
   y: number;
   /** Drawn width; height scales to preserve aspect ratio, capped below. */
   maxWidth: number;
   maxHeight: number;
 };
 
-/** A4 height in PDF points. The Word signatory template is top-anchored. */
-export const SERVICE_REPORT_A4_HEIGHT_PT = 841.89;
-
 /**
- * pdf-lib y for the bottom of a stamp, keeping the A4-calibrated slot the
- * same distance from the top of whatever page we were given.
- */
-export function signatureImageY(pageHeight: number, a4BottomY: number): number {
-  return pageHeight - (SERVICE_REPORT_A4_HEIGHT_PT - a4BottomY);
-}
-
-/**
- * Calibrated from a real PGCV signatory page (Prepared by / Reviewed by /
+ * Calibrated from a real A4 PGCV signatory page (Prepared by / Reviewed by /
  * Approved for Release). Each stamp sits in the band between the role
  * label and the printed name — the same spot the analyst signs.
  *
@@ -214,7 +198,7 @@ export async function stampServiceReportSignature(
 
   page.drawImage(embedded, {
     x: placement.x,
-    y: signatureImageY(page.getHeight(), placement.y),
+    y: placement.y,
     width: size.width,
     height: size.height,
   });
