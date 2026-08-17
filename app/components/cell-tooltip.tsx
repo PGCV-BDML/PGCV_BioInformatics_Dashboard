@@ -11,6 +11,8 @@ type TruncatedTextProps = {
   className?: string;
   /** Use for long notes so the tooltip wraps cleanly. */
   multiline?: boolean;
+  /** Visible lines in the cell before ellipsis. Tooltip still shows the full value. */
+  lines?: 1 | 2;
   /** Show tooltip even when visible text is not truncated. */
   force?: boolean;
 };
@@ -24,6 +26,7 @@ export function TruncatedText({
   display: displayProp,
   className = "",
   multiline = false,
+  lines = 1,
   force = false,
 }: TruncatedTextProps) {
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -40,7 +43,10 @@ export function TruncatedText({
   const isTruncated = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return false;
-    return el.scrollWidth > el.clientWidth + 1;
+    return (
+      el.scrollWidth > el.clientWidth + 1 ||
+      el.scrollHeight > el.clientHeight + 1
+    );
   }, []);
 
   const updatePosition = useCallback(() => {
@@ -81,7 +87,9 @@ export function TruncatedText({
         ref={triggerRef}
         tabIndex={hasContent ? 0 : undefined}
         aria-describedby={open ? tooltipId : undefined}
-        className={`block min-w-0 truncate outline-none ${className}`}
+        className={`block min-w-0 outline-none ${
+          lines === 2 ? "line-clamp-2 whitespace-normal" : "truncate"
+        } ${className}`}
         onMouseEnter={showIfNeeded}
         onMouseLeave={hide}
         onFocus={showIfNeeded}

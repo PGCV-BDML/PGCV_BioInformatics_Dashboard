@@ -5,6 +5,7 @@ import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_STYLES,
 } from "@/lib/task-categories";
+import { TruncatedText } from "./cell-tooltip";
 
 interface CategoryChipsProps {
   categories: TaskCategory[];
@@ -44,9 +45,15 @@ export function CategoryChips({
         </span>
       ))}
       {overflow > 0 && (
-        <span className="text-[9px] font-bold text-slate-400 font-quicksand">
-          +{overflow}
-        </span>
+        <TruncatedText
+          text={categories
+            .slice(maxVisible)
+            .map((cat) => TASK_CATEGORY_LABELS[cat])
+            .join(" · ")}
+          display={`+${overflow}`}
+          force
+          className="!inline-block w-auto text-[9px] font-bold text-slate-400 font-quicksand"
+        />
       )}
     </div>
   );

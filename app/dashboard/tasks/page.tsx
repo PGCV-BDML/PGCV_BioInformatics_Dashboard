@@ -14,6 +14,7 @@ import TaskModal from "../../components/taskmodal";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
 import { CategoryChips } from "../../components/category-chips";
+import { TruncatedText } from "../../components/cell-tooltip";
 import { Task, TaskStatus, TaskPriority, TaskCategory, User } from "../../../types/database";
 import {
   Search,
@@ -506,10 +507,11 @@ function TasksPageContent() {
       width: "20%",
       sortable: true,
       render: (t) => (
-        <div className="py-1 space-y-1">
-          <span className="font-bold text-[#11161a] block whitespace-normal break-words leading-snug">
-            {t.title}
-          </span>
+        <div className="py-1 space-y-1 min-w-0">
+          <TruncatedText
+            text={t.title}
+            className="font-bold text-[#11161a] leading-snug"
+          />
           {t.linked_analysis_id && (
             <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200/70 px-1.5 py-0.5 rounded-md font-quicksand">
               Sequence analysis
@@ -531,12 +533,10 @@ function TasksPageContent() {
       render: (t) => {
         const assignee = availableUsers.find((u) => u.id === t.assignee_id);
         return (
-          <span
-            className="block truncate max-w-full text-xs text-slate-700 font-medium"
-            title={assignee ? assignee.name : "Unassigned"}
-          >
-            {assignee ? assignee.name : "Unassigned"}
-          </span>
+          <TruncatedText
+            text={assignee ? assignee.name : "Unassigned"}
+            className="text-xs text-slate-700 font-medium"
+          />
         );
       },
     },
@@ -589,7 +589,7 @@ function TasksPageContent() {
                 title="Status is managed on the sequence analysis — click to open it"
                 className={`${getStatusClass(t.status)} !w-auto !inline-flex items-center justify-center gap-1 !pl-3 !pr-2.5 no-underline hover:brightness-95 transition`}
               >
-                <span className="truncate">{label}</span>
+                <TruncatedText text={label} className="text-inherit" />
                 <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
               </Link>
             </div>
@@ -626,9 +626,10 @@ function TasksPageContent() {
       width: "12%",
       sortable: true,
       render: (t) => (
-        <span className="text-xs text-slate-600 whitespace-nowrap font-medium">
-          {formatTaskDateRange(t) || "-"}
-        </span>
+        <TruncatedText
+          text={formatTaskDateRange(t) || "-"}
+          className="text-xs text-slate-600 font-medium"
+        />
       ),
     },
     {
@@ -636,12 +637,14 @@ function TasksPageContent() {
       label: "Details",
       width: "14%",
       render: (t) => (
-        <span
-          className="text-xs text-slate-500 font-medium line-clamp-2 max-w-[160px]"
-          title={t.details ?? undefined}
-        >
-          {t.details?.trim() || "—"}
-        </span>
+        <TruncatedText
+          text={t.details}
+          display={t.details?.trim() || "—"}
+          multiline
+          lines={2}
+          force={Boolean(t.details?.trim())}
+          className="text-xs text-slate-500 font-medium"
+        />
       ),
     },
     {
