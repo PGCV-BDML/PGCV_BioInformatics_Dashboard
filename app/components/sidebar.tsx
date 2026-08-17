@@ -79,6 +79,12 @@ const navItems: NavItem[] = [
       "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
+    name: "Incident Reports",
+    href: "/dashboard/incidents",
+    icon: ShieldAlert,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
     name: "Sequence Analysis",
     href: "/dashboard/services",
     icon: Microscope,
@@ -119,12 +125,6 @@ const navItems: NavItem[] = [
     name: "Team",
     href: "/dashboard/team",
     icon: UserRound,
-    animationClass: "group-hover:scale-105 transition-transform duration-200",
-  },
-  {
-    name: "Incident Reports",
-    href: "/dashboard/incidents",
-    icon: ShieldAlert,
     animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
   {
@@ -276,10 +276,9 @@ export default function Sidebar({
       }`}
     >
       <div
-        className={`w-[292px] flex flex-col justify-between h-full transition-opacity duration-200 ${isCurrentlyHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+        className={`w-[292px] flex flex-col h-full min-h-0 transition-opacity duration-200 ${isCurrentlyHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       >
-        <div>
-          <div className="flex items-start gap-2 pb-5 border-b border-gray-100">
+        <div className="flex items-start gap-2 pb-5 border-b border-gray-100 shrink-0">
             <Link
               href={homeHref}
               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
@@ -310,7 +309,7 @@ export default function Sidebar({
             </button>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex-1 min-h-0 overflow-y-auto">
             <p className="text-[#8499a5] text-[11px] font-extrabold tracking-[1.5px] uppercase font-quicksand px-3 mb-3">
               Navigation
             </p>
@@ -419,9 +418,8 @@ export default function Sidebar({
               })}
             </nav>
           </div>
-        </div>
 
-        <div className="pt-4 border-t border-gray-100 relative" ref={cardRef}>
+        <div className="pt-4 border-t border-gray-100 relative shrink-0" ref={cardRef}>
           <div
             className={`absolute bottom-[76px] left-0 w-full bg-surface border border-[rgba(23,33,38,0.1)] rounded-2xl py-1 shadow-[0px_10px_32px_rgba(23,33,38,0.08)] z-30 transition-all duration-200 ease-out origin-bottom ${
               showProfileCard
