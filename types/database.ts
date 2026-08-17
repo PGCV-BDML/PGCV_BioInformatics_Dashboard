@@ -658,3 +658,109 @@ export type ChatMessage = {
   /** Client-enriched from users; not a column on message. */
   sender_name?: string | null;
 };
+
+// ============================================================
+// Incident reports (staff-only lab / ops log)
+// ============================================================
+
+export type IncidentCategory =
+  | "sample_data_handling"
+  | "equipment"
+  | "computational"
+  | "biosafety"
+  | "data_privacy"
+  | "facility"
+  | "other";
+
+export type IncidentSeverity = "low" | "medium" | "high" | "critical";
+
+export type IncidentStatus = "open" | "investigating" | "resolved" | "closed";
+
+export type IncidentLocation =
+  | "lab"
+  | "sequencer_room"
+  | "office"
+  | "server"
+  | "remote"
+  | "other";
+
+export const INCIDENT_CATEGORY_OPTIONS: {
+  value: IncidentCategory;
+  label: string;
+}[] = [
+  { value: "sample_data_handling", label: "Sample / data handling" },
+  { value: "equipment", label: "Equipment / instrument" },
+  { value: "computational", label: "Computational / pipeline" },
+  { value: "biosafety", label: "Biosafety / lab safety" },
+  { value: "data_privacy", label: "Data privacy / client data" },
+  { value: "facility", label: "Facility (power, access, flooding)" },
+  { value: "other", label: "Other" },
+];
+
+export const INCIDENT_SEVERITY_OPTIONS: {
+  value: IncidentSeverity;
+  label: string;
+}[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
+
+export const INCIDENT_STATUS_OPTIONS: {
+  value: IncidentStatus;
+  label: string;
+}[] = [
+  { value: "open", label: "Open" },
+  { value: "investigating", label: "Investigating" },
+  { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
+];
+
+export const INCIDENT_LOCATION_OPTIONS: {
+  value: IncidentLocation;
+  label: string;
+}[] = [
+  { value: "lab", label: "Lab" },
+  { value: "sequencer_room", label: "Sequencer room" },
+  { value: "office", label: "Office" },
+  { value: "server", label: "Server / compute" },
+  { value: "remote", label: "Remote" },
+  { value: "other", label: "Other" },
+];
+
+export type IncidentReport = {
+  id: string;
+  title: string;
+  incident_date: string;
+  incident_time: string | null;
+  location: IncidentLocation;
+  location_detail: string | null;
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  description: string;
+  immediate_action: string | null;
+  people_involved: string | null;
+  related_run_id: string | null;
+  follow_up: string | null;
+  reporter_id: string;
+  status: IncidentStatus;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type IncidentReportFormData = {
+  title: string;
+  incident_date: string;
+  incident_time: string;
+  location: IncidentLocation;
+  location_detail: string;
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  description: string;
+  immediate_action: string;
+  people_involved: string;
+  related_run_id: string;
+  follow_up: string;
+  status: IncidentStatus;
+};

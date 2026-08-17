@@ -104,6 +104,7 @@ export type TableNames =
   | "task"
   | "task_tag"
   | "repository"
+  | "incident_report"
   | "covid_sequencing_run"
   | "user_presence"
   | "user_absence"

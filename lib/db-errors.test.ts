@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeDeleteError,
+  describeSaveError,
   isForeignKeyViolation,
   referencingTableFromError,
 } from "./db-errors";
@@ -73,5 +74,21 @@ describe("describeDeleteError", () => {
     expect(describeDeleteError(new Error(""), "service")).toBe(
       "Failed to delete this service.",
     );
+    expect(describeDeleteError(new Error(""), "incident_report")).toBe(
+      "Failed to delete this incident report.",
+    );
+  });
+});
+
+describe("describeSaveError", () => {
+  it("explains empty incident title or description", () => {
+    const message = describeSaveError(
+      {
+        message:
+          'new row for relation "incident_report" violates check constraint "incident_report_title_chk"',
+      },
+      "incident_report",
+    );
+    expect(message).toContain("title and description are required");
   });
 });

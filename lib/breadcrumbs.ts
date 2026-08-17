@@ -15,6 +15,11 @@ export const teamBreadcrumbs: BreadcrumbItem[] = [
   { label: "Team" },
 ];
 
+export const incidentsBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Incident Reports" },
+];
+
 export const collaborationsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Collaborations" },

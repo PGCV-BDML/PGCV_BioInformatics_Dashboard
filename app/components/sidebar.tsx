@@ -29,6 +29,7 @@ import {
   PenLine,
   Eye,
   Bell,
+  ShieldAlert,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 
@@ -118,6 +119,12 @@ const navItems: NavItem[] = [
     name: "Team",
     href: "/dashboard/team",
     icon: UserRound,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
+    name: "Incident Reports",
+    href: "/dashboard/incidents",
+    icon: ShieldAlert,
     animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
   {

@@ -20,6 +20,7 @@ const TABLE_LABELS: Partial<
   service: { one: "service", many: "services" },
   collaboration: { one: "collaboration", many: "collaborations" },
   repository: { one: "repository link", many: "repository links" },
+  incident_report: { one: "incident report", many: "incident reports" },
   covid_sequencing_run: { one: "sequencing run", many: "sequencing runs" },
   training_program: { one: "training program", many: "training programs" },
   training_session: { one: "training session", many: "training sessions" },
@@ -130,6 +131,13 @@ export function describeSaveError(error: unknown, table: TableNames): string {
 
   if (message.includes("task_date_range_chk")) {
     return `Failed to save ${subject}: end date cannot be before start date.`;
+  }
+
+  if (
+    message.includes("incident_report_title_chk") ||
+    message.includes("incident_report_description_chk")
+  ) {
+    return `Failed to save ${subject}: title and description are required.`;
   }
 
   if (

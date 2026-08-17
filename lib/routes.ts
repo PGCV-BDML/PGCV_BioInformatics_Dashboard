@@ -26,6 +26,9 @@ export const routes = {
   repositories: {
     list: "/dashboard/repositories",
   },
+  incidents: {
+    list: "/dashboard/incidents",
+  },
   training: {
     list: "/dashboard/training",
     detail: (id: string) => `/dashboard/training/${id}`,
