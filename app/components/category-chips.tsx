@@ -7,19 +7,23 @@ import {
 } from "@/lib/task-categories";
 import { TruncatedText } from "./cell-tooltip";
 
-interface CategoryChipsProps {
-  categories: TaskCategory[];
+interface CategoryChipsProps<T extends string> {
+  categories: T[];
+  labels: Record<T, string>;
+  styles: Record<T, string>;
   maxVisible?: number;
   size?: "sm" | "xs";
   className?: string;
 }
 
-export function CategoryChips({
+export function CategoryChips<T extends string>({
   categories,
+  labels,
+  styles,
   maxVisible = 3,
   size = "xs",
   className = "",
-}: CategoryChipsProps) {
+}: CategoryChipsProps<T>) {
   if (!categories.length) {
     return (
       <span className="text-[10px] text-slate-400 font-medium font-aileron">—</span>
@@ -38,17 +42,17 @@ export function CategoryChips({
       {visible.map((cat) => (
         <span
           key={cat}
-          className={`inline-flex items-center rounded-lg border font-extrabold uppercase tracking-wider font-quicksand ${sizeClass} ${TASK_CATEGORY_STYLES[cat]}`}
-          title={TASK_CATEGORY_LABELS[cat]}
+          className={`inline-flex items-center rounded-lg border font-extrabold uppercase tracking-wider font-quicksand ${sizeClass} ${styles[cat]}`}
+          title={labels[cat]}
         >
-          {TASK_CATEGORY_LABELS[cat]}
+          {labels[cat]}
         </span>
       ))}
       {overflow > 0 && (
         <TruncatedText
           text={categories
             .slice(maxVisible)
-            .map((cat) => TASK_CATEGORY_LABELS[cat])
+            .map((cat) => labels[cat])
             .join(" · ")}
           display={`+${overflow}`}
           force
@@ -59,20 +63,44 @@ export function CategoryChips({
   );
 }
 
-interface CategoryMultiSelectProps {
-  selected: TaskCategory[];
-  options: { value: TaskCategory; label: string }[];
-  onChange: (next: TaskCategory[]) => void;
-  error?: string;
+export function TaskCategoryChips({
+  categories,
+  maxVisible,
+  size,
+  className,
+}: Omit<CategoryChipsProps<TaskCategory>, "labels" | "styles">) {
+  return (
+    <CategoryChips
+      categories={categories}
+      labels={TASK_CATEGORY_LABELS}
+      styles={TASK_CATEGORY_STYLES}
+      maxVisible={maxVisible}
+      size={size}
+      className={className}
+    />
+  );
 }
 
-export function CategoryMultiSelect({
+interface CategoryMultiSelectProps<T extends string> {
+  selected: T[];
+  options: { value: T; label: string }[];
+  styles: Record<T, string>;
+  onChange: (next: T[]) => void;
+  error?: string;
+  hint?: string;
+  groupLabel?: string;
+}
+
+export function CategoryMultiSelect<T extends string>({
   selected,
   options,
+  styles,
   onChange,
   error,
-}: CategoryMultiSelectProps) {
-  const toggle = (value: TaskCategory) => {
+  hint = "Select one or more tags for this task.",
+  groupLabel = "Task categories",
+}: CategoryMultiSelectProps<T>) {
+  const toggle = (value: T) => {
     if (selected.includes(value)) {
       onChange(selected.filter((c) => c !== value));
     } else {
@@ -86,12 +114,12 @@ export function CategoryMultiSelect({
         Categories
       </span>
       <p className="text-[10px] text-slate-400 ml-1 mb-1 font-aileron">
-        Select one or more tags for this task.
+        {hint}
       </p>
       <div
         className="flex flex-wrap gap-1.5"
         role="group"
-        aria-label="Task categories"
+        aria-label={groupLabel}
       >
         {options.map((opt) => {
           const active = selected.includes(opt.value);
@@ -103,7 +131,7 @@ export function CategoryMultiSelect({
               aria-pressed={active}
               className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border transition-all font-quicksand ${
                 active
-                  ? `${TASK_CATEGORY_STYLES[opt.value]} ring-2 ring-[#2a7797]/25`
+                  ? `${styles[opt.value]} ring-2 ring-[#2a7797]/25`
                   : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-white"
               }`}
             >

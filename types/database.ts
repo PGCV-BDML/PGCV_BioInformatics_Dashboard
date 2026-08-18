@@ -449,6 +449,20 @@ export interface AuditLog {
 
 export type RepositoryKind = "github" | "drive" | "other";
 export type RepositoryCategory =
+  | "training"
+  | "research"
+  | "collaborator"
+  | "client"
+  | "quotation"
+  | "services"
+  | "records"
+  | "analysis"
+  | "template"
+  | "automated_pipeline"
+  | "form"
+  | "internship"
+  | "covid_19"
+  | "project"
   | "pipelines"
   | "datasets"
   | "client_sequences"
@@ -464,36 +478,37 @@ export const REPOSITORY_KIND_OPTIONS: {
   { value: "other", label: "Other" },
 ];
 
-export const REPOSITORY_CATEGORY_OPTIONS: {
-  value: RepositoryCategory;
-  label: string;
-}[] = [
-  { value: "pipelines", label: "Pipelines" },
-  { value: "datasets", label: "Datasets" },
-  { value: "client_sequences", label: "Client Sequences" },
-  { value: "turnover_forms", label: "Turnover Forms" },
-  { value: "other", label: "Other" },
-];
-
 export type Repository = {
   id: string;
   kind: RepositoryKind;
   title: string;
   url: string;
   description: string | null;
+  /** Legacy primary tag; mirrored from the first selected category. */
   category: RepositoryCategory;
+  /** Client-enriched from repository_tag; not a column on repository. */
+  categories?: RepositoryCategory[];
   /** Sequencer run ID; deep-links to Service Report Tracker RUN ID. */
   run_id: string | null;
   created_at?: string;
   updated_at?: string;
 };
 
+export type RepositoryTag = {
+  repository_id: string;
+  category: RepositoryCategory;
+  created_at?: string;
+};
+
+/** Persistable repository fields (excludes client-only `categories`). */
+export type RepositoryRecord = Omit<Repository, "categories">;
+
 export type RepositoryFormData = {
   kind: RepositoryKind;
   title: string;
   url: string;
   description: string;
-  category: RepositoryCategory;
+  categories: RepositoryCategory[];
   run_id: string;
 };
 

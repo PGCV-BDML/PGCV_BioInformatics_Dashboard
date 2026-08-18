@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Task, TaskStatus, TaskPriority, TaskCategory } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { CategoryMultiSelect } from "./category-chips";
-import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
+import { TASK_CATEGORY_OPTIONS, TASK_CATEGORY_STYLES } from "@/lib/task-categories";
 import {
   ClipboardCheck,
   Briefcase,
@@ -169,6 +169,7 @@ export default function TaskModal({
         <CategoryMultiSelect
           selected={formState.categories ?? []}
           options={TASK_CATEGORY_OPTIONS}
+          styles={TASK_CATEGORY_STYLES}
           onChange={handleCategoriesChange}
           error={errors.categories}
         />

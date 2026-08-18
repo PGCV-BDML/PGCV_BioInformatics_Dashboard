@@ -6,9 +6,13 @@ import {
   RepositoryKind,
   RepositoryCategory,
   REPOSITORY_KIND_OPTIONS,
-  REPOSITORY_CATEGORY_OPTIONS,
 } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
+import { CategoryMultiSelect } from "./category-chips";
+import {
+  REPOSITORY_CATEGORY_OPTIONS,
+  REPOSITORY_CATEGORY_STYLES,
+} from "@/lib/repository-categories";
 import { Link2, Tag, FileText, Dna } from "lucide-react";
 
 export const EMPTY_REPOSITORY_FORM: RepositoryFormData = {
@@ -16,7 +20,7 @@ export const EMPTY_REPOSITORY_FORM: RepositoryFormData = {
   title: "",
   url: "",
   description: "",
-  category: "other",
+  categories: [],
   run_id: "",
 };
 
@@ -49,6 +53,9 @@ export default function RepositoryModal({
     } else if (!/^https?:\/\//.test(formState.url.trim())) {
       errs.url = "Must be a valid URL starting with http:// or https://";
     }
+    if (!formState.categories.length) {
+      errs.categories = "Select at least one category";
+    }
     return errs;
   };
 
@@ -70,6 +77,10 @@ export default function RepositoryModal({
       delete next[key];
       return next;
     });
+  };
+
+  const handleCategoriesChange = (categories: RepositoryCategory[]) => {
+    handleInputChange("categories", categories);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -163,56 +174,38 @@ export default function RepositoryModal({
         <div className="space-y-2.5 pt-1 border-t border-slate-100">
           {renderSectionLabel(<Tag className="w-3.5 h-3.5" />, "Classification")}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="repo-kind"
-                className="text-xs font-bold text-slate-800 ml-1 font-aileron"
-              >
-                Kind
-              </label>
-              <select
-                id="repo-kind"
-                value={formState.kind}
-                onChange={(e) =>
-                  handleInputChange("kind", e.target.value as RepositoryKind)
-                }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
-              >
-                {REPOSITORY_KIND_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="repo-category"
-                className="text-xs font-bold text-slate-800 ml-1 font-aileron"
-              >
-                Category
-              </label>
-              <select
-                id="repo-category"
-                value={formState.category}
-                onChange={(e) =>
-                  handleInputChange(
-                    "category",
-                    e.target.value as RepositoryCategory,
-                  )
-                }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
-              >
-                {REPOSITORY_CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="repo-kind"
+              className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+            >
+              Kind
+            </label>
+            <select
+              id="repo-kind"
+              value={formState.kind}
+              onChange={(e) =>
+                handleInputChange("kind", e.target.value as RepositoryKind)
+              }
+              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+            >
+              {REPOSITORY_KIND_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <CategoryMultiSelect
+            selected={formState.categories}
+            options={REPOSITORY_CATEGORY_OPTIONS}
+            styles={REPOSITORY_CATEGORY_STYLES}
+            onChange={handleCategoriesChange}
+            error={errors.categories}
+            hint="Select one or more tags for this link."
+            groupLabel="Repository categories"
+          />
         </div>
 
         <div className="space-y-2.5 pt-1 border-t border-slate-100">

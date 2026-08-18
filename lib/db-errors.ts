@@ -20,6 +20,7 @@ const TABLE_LABELS: Partial<
   service: { one: "service", many: "services" },
   collaboration: { one: "collaboration", many: "collaborations" },
   repository: { one: "repository link", many: "repository links" },
+  repository_tag: { one: "repository tag", many: "repository tags" },
   incident_report: { one: "incident report", many: "incident reports" },
   covid_sequencing_run: { one: "sequencing run", many: "sequencing runs" },
   training_program: { one: "training program", many: "training programs" },

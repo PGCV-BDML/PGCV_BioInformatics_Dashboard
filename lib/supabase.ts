@@ -1,5 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import type { TaskCategory, UserPresence, UserAbsence, PresenceStatus } from "@/types/database";
+import type {
+  RepositoryCategory,
+  TaskCategory,
+  UserPresence,
+  UserAbsence,
+  PresenceStatus,
+} from "@/types/database";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -104,6 +110,7 @@ export type TableNames =
   | "task"
   | "task_tag"
   | "repository"
+  | "repository_tag"
   | "incident_report"
   | "covid_sequencing_run"
   | "user_presence"
@@ -309,6 +316,78 @@ export async function replaceTaskCategories(
 
     if (deleteError) {
       console.error("Error clearing task tags:", deleteError);
+      throw deleteError;
+    }
+  }
+}
+
+/** Load all repository_tag rows grouped by repository_id. */
+export async function getRepositoryCategoriesByRepoId(): Promise<
+  Map<string, RepositoryCategory[]>
+> {
+  const { data, error } = await supabase
+    .from("repository_tag")
+    .select("repository_id, category");
+  if (error) {
+    console.error("Error retrieving repository tags:", error);
+    throw error;
+  }
+
+  const map = new Map<string, RepositoryCategory[]>();
+  for (const row of data ?? []) {
+    const repositoryId = row.repository_id as string;
+    const category = row.category as RepositoryCategory;
+    const list = map.get(repositoryId) ?? [];
+    list.push(category);
+    map.set(repositoryId, list);
+  }
+  return map;
+}
+
+/** Replace all categories for a repository link (insert new tags, then remove stale ones). */
+export async function replaceRepositoryCategories(
+  repositoryId: string,
+  categories: RepositoryCategory[],
+) {
+  const unique = Array.from(new Set(categories));
+
+  const { data: currentRows, error: fetchError } = await supabase
+    .from("repository_tag")
+    .select("category")
+    .eq("repository_id", repositoryId);
+
+  if (fetchError) {
+    console.error("Error reading repository tags:", fetchError);
+    throw fetchError;
+  }
+
+  const current = new Set(
+    (currentRows ?? []).map((row) => row.category as RepositoryCategory),
+  );
+  const next = new Set(unique);
+  const toAdd = unique.filter((category) => !current.has(category));
+  const toRemove = [...current].filter((category) => !next.has(category));
+
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase.from("repository_tag").insert(
+      toAdd.map((category) => ({ repository_id: repositoryId, category })),
+    );
+
+    if (insertError) {
+      console.error("Error inserting repository tags:", insertError);
+      throw insertError;
+    }
+  }
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("repository_tag")
+      .delete()
+      .eq("repository_id", repositoryId)
+      .in("category", toRemove);
+
+    if (deleteError) {
+      console.error("Error clearing repository tags:", deleteError);
       throw deleteError;
     }
   }

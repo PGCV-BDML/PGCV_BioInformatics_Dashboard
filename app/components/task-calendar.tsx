@@ -51,7 +51,7 @@ import {
 import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import { ErrorState, LoadingState } from "./state-views";
-import { CategoryChips } from "./category-chips";
+import { TaskCategoryChips as CategoryChips } from "./category-chips";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

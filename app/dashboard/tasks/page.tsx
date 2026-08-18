@@ -13,7 +13,7 @@ import DeleteModal from "../../components/deletemodal";
 import TaskModal from "../../components/taskmodal";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
-import { CategoryChips } from "../../components/category-chips";
+import { TaskCategoryChips as CategoryChips } from "../../components/category-chips";
 import { TruncatedText } from "../../components/cell-tooltip";
 import { Task, TaskStatus, TaskPriority, TaskCategory, User } from "../../../types/database";
 import {

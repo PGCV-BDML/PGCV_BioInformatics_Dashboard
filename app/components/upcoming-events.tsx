@@ -18,7 +18,7 @@ import {
   upcomingTasks,
 } from "@/lib/calendar-tasks";
 import { formatTaskDateRange } from "@/lib/calendar-tasks";
-import { CategoryChips } from "./category-chips";
+import { TaskCategoryChips as CategoryChips } from "./category-chips";
 
 export function UpcomingEvents() {
   const [events, setEvents] = useState<CalendarTask[]>([]);
