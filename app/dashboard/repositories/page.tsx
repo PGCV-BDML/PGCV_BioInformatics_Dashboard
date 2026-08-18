@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Search,
   ExternalLink,
@@ -10,7 +9,6 @@ import {
   Edit3,
   Trash2,
   FolderGit2,
-  Dna,
   ChevronRight,
   SlidersHorizontal,
 } from "lucide-react";
@@ -44,7 +42,6 @@ import {
   resolveRepositoryCategories,
 } from "@/lib/repository-categories";
 import { repositoriesBreadcrumbs } from "@/lib/breadcrumbs";
-import { routes } from "@/lib/routes";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
@@ -177,10 +174,6 @@ export default function RepositoriesPage() {
     initialSort: { key: "title", direction: "asc" },
     customSorters: {
       kind: (a, b) => kindLabel(a.kind).localeCompare(kindLabel(b.kind)),
-      run_id: (a, b) =>
-        (a.run_id ?? "").localeCompare(b.run_id ?? "", undefined, {
-          sensitivity: "base",
-        }),
     },
   });
 
@@ -291,7 +284,7 @@ export default function RepositoriesPage() {
     {
       key: "title",
       label: "Title",
-      width: "26%",
+      width: "38%",
       sortable: true,
       render: (row) => (
         <div className="py-1 space-y-0.5 min-w-0">
@@ -314,7 +307,7 @@ export default function RepositoriesPage() {
     {
       key: "kind",
       label: "Kind",
-      width: "10%",
+      width: "12%",
       sortable: true,
       render: (row) => (
         <TruncatedText
@@ -326,36 +319,15 @@ export default function RepositoriesPage() {
     {
       key: "categories",
       label: "Categories",
-      width: "20%",
+      width: "28%",
       render: (row) => (
         <CategoryChips
           categories={resolveRepositoryCategories(row)}
           labels={REPOSITORY_CATEGORY_LABELS}
           styles={REPOSITORY_CATEGORY_STYLES}
-          maxVisible={2}
+          maxVisible={3}
         />
       ),
-    },
-    {
-      key: "run_id",
-      label: "Tracker",
-      width: "16%",
-      sortable: true,
-      render: (row) =>
-        row.run_id ? (
-          <Link
-            href={routes.services.trackerByRunId(row.run_id)}
-            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#f8eef7] border border-[#92298d]/25 text-[11px] font-bold text-[#92298d] hover:bg-[#f1e0ef] transition-colors font-mono max-w-full"
-            title="Open matching Service Report Tracker row"
-          >
-            <Dna className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{row.run_id}</span>
-          </Link>
-        ) : (
-          <span className="text-[10px] text-slate-400 font-medium font-aileron">
-            —
-          </span>
-        ),
     },
     {
       key: "url",
@@ -419,7 +391,7 @@ export default function RepositoriesPage() {
       <PageHeader
         breadcrumbTrail={repositoriesBreadcrumbs}
         title="Source Repositories"
-        subtitle="Directory of source links and tracker run IDs — open a URL or jump to the matching Service Report Tracker row"
+        subtitle="Directory of source links — filter by kind or category and open a URL from the row"
         actions={
           <>
             <div className="relative flex items-center bg-surface rounded-full border border-gray-200 px-3 h-10 shadow-sm">
