@@ -15,7 +15,6 @@ import {
   GraduationCap,
   Briefcase,
   Users2,
-  Activity,
   FolderGit2,
   UserRound,
   ChevronRight,
@@ -131,12 +130,6 @@ const navItems: NavItem[] = [
     href: "/dashboard/clients",
     icon: Users2,
     animationClass: "group-hover:scale-105 transition-transform duration-200",
-  },
-  {
-    name: "Accomplishments",
-    href: "/dashboard/accomplishments",
-    icon: Activity,
-    animationClass: "group-hover:scale-110 transition-transform duration-200",
   },
   {
     name: "Repositories",
