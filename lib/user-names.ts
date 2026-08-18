@@ -12,7 +12,10 @@ export async function loadUserNameMap(
 
   const missing = [
     ...new Set(
-      extraIds.filter((id): id is string => Boolean(id) && !map.has(id)),
+      extraIds.filter(
+        (id): id is string =>
+          typeof id === "string" && id.length > 0 && !map.has(id),
+      ),
     ),
   ];
   if (missing.length === 0) return map;
