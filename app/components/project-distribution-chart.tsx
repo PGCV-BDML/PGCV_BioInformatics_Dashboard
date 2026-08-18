@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { PieChart as PieIcon, ExternalLink } from "lucide-react";
+import { PieChart as PieIcon } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -36,14 +35,6 @@ export function ProjectDistributionChart({
               Project Distribution ({yearLabel})
             </h3>
           </div>
-
-          <Link
-            href="/dashboard/projects"
-            className="flex items-center gap-1.5 text-[11px] font-bold text-[#2a7797] bg-[#e6f4f8] hover:bg-[#d5eff6] transition-colors duration-200 px-3 py-1.5 rounded-xl border border-[rgba(42,119,151,0.25)] shadow-[0_4px_10px_rgba(15,23,42,0.04)] font-quicksand"
-          >
-            <span>View Projects Page</span>
-            <ExternalLink className="w-3 h-3" />
-          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center my-auto py-2">
