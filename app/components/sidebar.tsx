@@ -128,12 +128,6 @@ const navItems: NavItem[] = [
     animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
   {
-    name: "Collaborations",
-    href: "/dashboard/collaborations",
-    icon: Users2,
-    animationClass: "group-hover:scale-105 transition-transform duration-200",
-  },
-  {
     name: "Projects",
     href: "/dashboard/projects",
     icon: Network,
