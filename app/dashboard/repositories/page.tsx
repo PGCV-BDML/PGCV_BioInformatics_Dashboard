@@ -87,7 +87,7 @@ export default function RepositoriesPage() {
   const [categoryFilter, setCategoryFilter] = useState<
     RepositoryCategory | "All"
   >("All");
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
