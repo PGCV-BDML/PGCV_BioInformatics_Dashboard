@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Info, X, Lightbulb } from "lucide-react";
+import Link from "next/link";
+import { Info, X, Lightbulb, ArrowRight } from "lucide-react";
+import { routes } from "@/lib/routes";
 
 type WorkflowStep = {
   title: string;
@@ -163,7 +165,15 @@ export function ServiceReportWorkflowModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end shrink-0">
+        <div className="px-6 py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+          <Link
+            href={routes.protocols.detail("service-report-tracker")}
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 text-[#2a7797] hover:text-[#236584] text-xs font-bold"
+          >
+            Read the full protocol
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
           <button
             type="button"
             onClick={onClose}

@@ -72,3 +72,16 @@ export const aboutBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "About" },
 ];
+
+export const protocolsBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Protocols" },
+];
+
+export function protocolDetailBreadcrumbs(title: string): BreadcrumbItem[] {
+  return [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Protocols", href: "/dashboard/protocols" },
+    { label: title },
+  ];
+}

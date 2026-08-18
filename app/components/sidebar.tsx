@@ -28,6 +28,7 @@ import {
   Eye,
   Bell,
   ShieldAlert,
+  BookOpen,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 
@@ -106,6 +107,12 @@ const navItems: NavItem[] = [
         icon: ListOrdered,
       },
     ],
+  },
+  {
+    name: "Protocols",
+    href: "/dashboard/protocols",
+    icon: BookOpen,
+    animationClass: "group-hover:-rotate-6 transition-transform duration-300",
   },
   {
     name: "Training",

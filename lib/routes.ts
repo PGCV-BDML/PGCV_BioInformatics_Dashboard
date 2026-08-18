@@ -2,6 +2,10 @@ export type ProgramType = "training" | "internship";
 
 export const routes = {
   about: "/dashboard/about",
+  protocols: {
+    list: "/dashboard/protocols",
+    detail: (slug: string) => `/dashboard/protocols/${encodeURIComponent(slug)}`,
+  },
   team: {
     list: "/dashboard/team",
   },
