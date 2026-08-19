@@ -13,6 +13,7 @@ export function useTableState<T extends { id: string }>({
   customSorters,
   initialSort = null,
   pinToBottom,
+  preservePinnedOrder = false,
 }: {
   items: T[];
   itemsPerPage: number;
@@ -21,6 +22,8 @@ export function useTableState<T extends { id: string }>({
   initialSort?: SortConfig<T> | null;
   /** When true, item is sorted after all non-pinned items (e.g. completed tasks). */
   pinToBottom?: (item: T) => boolean;
+  /** Keep pinned items in their incoming order instead of re-sorting that group. */
+  preservePinnedOrder?: boolean;
 }) {
   const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(
     initialSort,
@@ -48,6 +51,7 @@ export function useTableState<T extends { id: string }>({
         const aPinned = pinToBottom(a) ? 1 : 0;
         const bPinned = pinToBottom(b) ? 1 : 0;
         if (aPinned !== bPinned) return aPinned - bPinned;
+        if (preservePinnedOrder && aPinned && bPinned) return 0;
       }
 
       if (!sortConfig) return 0;
@@ -59,7 +63,7 @@ export function useTableState<T extends { id: string }>({
           );
       return sortConfig.direction === "asc" ? cmp : -cmp;
     });
-  }, [items, sortConfig, customSorters, pinToBottom]);
+  }, [items, sortConfig, customSorters, pinToBottom, preservePinnedOrder]);
 
   const displayed = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;

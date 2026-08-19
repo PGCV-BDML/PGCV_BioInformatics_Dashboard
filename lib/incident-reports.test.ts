@@ -9,6 +9,7 @@ import {
   incidentCategoryLabel,
   localDateToday,
   normalizeIncidentTime,
+  arrangeIncidentsAfterStatusChange,
 } from "./incident-reports";
 import type { IncidentReport } from "@/types/database";
 
@@ -115,6 +116,36 @@ describe("canManageIncident", () => {
   it("denies learners and missing identities", () => {
     expect(canManageIncident("trainee", "user-1", "user-1")).toBe(false);
     expect(canManageIncident("team_member", null, "user-1")).toBe(false);
+  });
+});
+
+describe("arrangeIncidentsAfterStatusChange", () => {
+  it("sends a newly closed report to the absolute bottom", () => {
+    const openA = row({ id: "a", status: "open" });
+    const openB = row({ id: "b", status: "investigating" });
+    const closedC = row({ id: "c", status: "closed" });
+
+    const result = arrangeIncidentsAfterStatusChange(
+      [openA, openB, closedC],
+      "a",
+      { ...openA, status: "closed" },
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("places a reopened report just above remaining closed rows", () => {
+    const closedA = row({ id: "a", status: "closed" });
+    const openB = row({ id: "b", status: "resolved" });
+    const closedC = row({ id: "c", status: "closed" });
+
+    const result = arrangeIncidentsAfterStatusChange(
+      [openB, closedA, closedC],
+      "a",
+      { ...closedA, status: "open" },
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["b", "a", "c"]);
   });
 });
 

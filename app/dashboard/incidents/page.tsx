@@ -39,6 +39,7 @@ import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
 import { usePortal } from "../../components/portal-context";
 import {
+  arrangeIncidentsAfterStatusChange,
   buildIncidentReportPayload,
   canManageIncident,
   emptyIncidentForm,
@@ -47,6 +48,7 @@ import {
   incidentCategoryLabel,
   incidentLocationLabel,
   incidentSeverityLabel,
+  isClosedIncidentStatus,
 } from "@/lib/incident-reports";
 
 const ITEMS_PER_PAGE = 10;
@@ -197,7 +199,8 @@ export default function IncidentsPage() {
     itemsPerPage: ITEMS_PER_PAGE,
     resetKey: `${searchQuery}-${activeFilter}-${categoryFilter}`,
     initialSort: { key: "incident_date", direction: "desc" },
-    pinToBottom: (row) => row.status === "closed",
+    pinToBottom: (row) => isClosedIncidentStatus(row.status),
+    preservePinnedOrder: true,
   });
 
   const canManage = useCallback(
@@ -251,11 +254,10 @@ export default function IncidentsPage() {
       try {
         const saved = await saveDataToDB("incident_report", selected.id, payload);
         setReports((prev) =>
-          prev.map((item) =>
-            item.id === selected.id
-              ? { ...item, ...(saved as IncidentReport) }
-              : item,
-          ),
+          arrangeIncidentsAfterStatusChange(prev, selected.id, {
+            ...selected,
+            ...(saved as IncidentReport),
+          }),
         );
         setIsEditing(false);
         setSelected(null);
@@ -291,22 +293,22 @@ export default function IncidentsPage() {
   }, [selected, deleteRecord, showToast]);
 
   const updateStatus = async (id: string, newStatus: IncidentStatus) => {
-    const previous = reports.find((row) => row.id === id)?.status;
+    const previous = reports.find((row) => row.id === id);
+    if (!previous) return;
+
     setReports((prev) =>
-      prev.map((row) =>
-        row.id === id
-          ? { ...row, status: newStatus, updated_at: new Date().toISOString() }
-          : row,
-      ),
+      arrangeIncidentsAfterStatusChange(prev, id, {
+        ...previous,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      }),
     );
     try {
       await saveDataToDB("incident_report", id, { status: newStatus });
     } catch (error) {
       console.error("Error updating incident status:", error);
       setReports((prev) =>
-        prev.map((row) =>
-          row.id === id ? { ...row, status: previous ?? row.status } : row,
-        ),
+        arrangeIncidentsAfterStatusChange(prev, id, previous),
       );
       showToast("Failed to update status. Reverting.", "error");
     }

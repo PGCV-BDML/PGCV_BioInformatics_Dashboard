@@ -118,6 +118,29 @@ export function canManageIncident(
   return role === "team_member" && Boolean(userId) && userId === reporterId;
 }
 
+export function isClosedIncidentStatus(
+  status: IncidentStatus | null | undefined,
+): boolean {
+  return status === "closed";
+}
+
+/**
+ * Keep open work first. A newly closed report always goes to the absolute
+ * bottom; reopening one places it just above the remaining closed rows.
+ */
+export function arrangeIncidentsAfterStatusChange<
+  T extends { id: string; status: IncidentStatus },
+>(rows: T[], id: string, next: T): T[] {
+  const others = rows.filter((row) => row.id !== id);
+  const active = others.filter((row) => !isClosedIncidentStatus(row.status));
+  const closed = others.filter((row) => isClosedIncidentStatus(row.status));
+
+  if (isClosedIncidentStatus(next.status)) {
+    return [...active, ...closed, next];
+  }
+  return [...active, next, ...closed];
+}
+
 export function incidentCategoryLabel(value: IncidentCategory): string {
   return (
     INCIDENT_CATEGORY_OPTIONS.find((opt) => opt.value === value)?.label ?? value
