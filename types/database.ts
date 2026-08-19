@@ -285,6 +285,8 @@ export interface OnboardingDocument {
 
 export type AssessmentType = "pre_test" | "post_test" | "evaluation";
 
+export type EvaluationRatingValue = 5 | 4 | 3 | 2 | 1 | "N/A";
+
 export type McqQuestion = {
   type: "mcq";
   id: string;
@@ -298,6 +300,8 @@ export type RatingQuestion = {
   id: string;
   question: string;
   scale: number; // e.g. 5 for 1-5 scale
+  allowNA?: boolean;
+  required?: boolean;
 };
 
 export type TextQuestion = {
@@ -305,9 +309,47 @@ export type TextQuestion = {
   id: string;
   question: string;
   multiline?: boolean;
+  required?: boolean;
+  input?: "text" | "email";
+  placeholder?: string;
 };
 
-export type Question = McqQuestion | RatingQuestion | TextQuestion;
+export type ChoiceQuestion = {
+  type: "choice";
+  id: string;
+  question: string;
+  options: string[];
+  required?: boolean;
+};
+
+export type DateQuestion = {
+  type: "date";
+  id: string;
+  question: string;
+  required?: boolean;
+};
+
+export type RatingStatement = {
+  id: string;
+  statement: string;
+};
+
+export type RatingGroupQuestion = {
+  type: "rating_group";
+  id: string;
+  question: string;
+  statements: RatingStatement[];
+  required?: boolean;
+  allowNA?: boolean;
+};
+
+export type Question =
+  | McqQuestion
+  | RatingQuestion
+  | TextQuestion
+  | ChoiceQuestion
+  | DateQuestion
+  | RatingGroupQuestion;
 
 export interface Assessment {
   id: string;

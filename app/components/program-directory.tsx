@@ -20,6 +20,7 @@ import {
 } from "@/lib/supabase";
 import { loadUserNameMap } from "@/lib/user-names";
 import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
+import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
   TrainingProgram,
@@ -226,6 +227,11 @@ export default function ProgramDirectory({
           newId,
           payload,
         )) as TrainingProgram;
+        try {
+          await ensureProgramEvaluation(saved.id);
+        } catch (error) {
+          console.error("Failed to attach evaluation form:", error);
+        }
         setRawPrograms((prev) => [saved, ...prev]);
         setIsAdding(false);
         showToast(`${title} program created.`, "success");

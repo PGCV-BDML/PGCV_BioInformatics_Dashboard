@@ -56,9 +56,9 @@ const COPY: Record<ProgramKind, ProgramCopy> = {
       "Philippine Genome Center Visayas - Bioinformatics Training Program",
     titleExample: "e.g., DNA Barcoding Short Course",
     hasTrainingCode: true,
-    evaluationTitle: "Course Evaluation Survey",
-    evaluationSubmit: "Submit Metrics & Generate Award Certificate",
-    hasInternNameField: false,
+    evaluationTitle: "Post-Activity Evaluation Form",
+    evaluationSubmit: "Submit Evaluation & Generate Award Certificate",
+    hasInternNameField: true,
   },
   internship: {
     code: "SOP-BIOINFO-IN-001",
@@ -78,8 +78,8 @@ const COPY: Record<ProgramKind, ProgramCopy> = {
       "Philippine Genome Center Visayas - Bioinformatics Internship Program",
     titleExample: "e.g., Summer Bioinformatics Internship",
     hasTrainingCode: false,
-    evaluationTitle: "Internship Performance & Placement Survey",
-    evaluationSubmit: "Submit Metrics & Generate Internship Certificate",
+    evaluationTitle: "Post-Activity Evaluation Form",
+    evaluationSubmit: "Submit Evaluation & Generate Internship Certificate",
     hasInternNameField: true,
   },
 };
@@ -335,8 +335,9 @@ export default function ProgramWorkflowProtocol({
           </li>
           <li>
             Pre/post tests and the evaluation are stored as assessment rows for
-            the program. There is no in-app question editor. If a test card
-            says it is not configured, the questions still need to be seeded.
+            the program. There is no in-app question editor. Pre/post tests still
+            need to be seeded per cohort. The post-activity evaluation form is
+            attached automatically when a program is created.
           </li>
           <li>
             Printed names on the certificate are the lab signatories — this is
@@ -584,9 +585,9 @@ export default function ProgramWorkflowProtocol({
           <strong className="text-[#172126]">Evaluation</strong> and completes
           the{" "}
           <strong className="text-[#172126]">{copy.evaluationTitle}</strong>{" "}
-          (star ratings and comments)
+          (participant details, 5–1 + N/A ratings, and comments)
           {copy.hasInternNameField
-            ? ", including Intern Full Name,"
+            ? ", including full name, email, and institution,"
             : ""}{" "}
           then clicks{" "}
           <strong className="text-[#172126]">{copy.evaluationSubmit}</strong>.
@@ -691,11 +692,12 @@ export default function ProgramWorkflowProtocol({
               </tr>
               <tr>
                 <td className="px-4 py-3 font-semibold text-[#172126] align-top">
-                  No pre-test / post-test / evaluation questions
+                  No pre-test / post-test questions
                 </td>
                 <td className="px-4 py-3">
-                  Assessments are not created in this screen. The program needs
-                  seeded question sets.
+                  Pre/post tests are not created in this screen. The program
+                  still needs seeded question sets. The post-activity evaluation
+                  form is attached automatically when the program is created.
                 </td>
               </tr>
               <tr>
