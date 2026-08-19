@@ -8,6 +8,7 @@ import {
   ListOrdered,
   Upload,
 } from "lucide-react";
+import ProtocolPageNav from "@/app/components/protocol-page-nav";
 import { routes } from "@/lib/routes";
 
 const WORKFLOW_STAGES = [
@@ -161,26 +162,7 @@ export default function CovidSampleTrackerProtocol() {
         ))}
       </div>
 
-      <nav
-        aria-label="On this page"
-        className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
-      >
-        <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#7a8e9b] font-quicksand mb-2">
-          On this page
-        </p>
-        <ol className="grid gap-1 sm:grid-cols-2 text-[13px]">
-          {TOC.map((item) => (
-            <li key={item.id}>
-              <a
-                href={`#${item.id}`}
-                className="text-[#2a7797] hover:text-[#236584] hover:underline underline-offset-2"
-              >
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ol>
-      </nav>
+      <ProtocolPageNav items={TOC} />
 
       <Section id="purpose" title="Purpose">
         <p>
