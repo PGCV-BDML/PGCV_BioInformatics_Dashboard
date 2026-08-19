@@ -587,6 +587,21 @@ function TasksPageContent() {
       render: (t) => <CategoryChips categories={t.categories ?? []} maxVisible={2} />,
     },
     {
+      key: "details",
+      label: "Details",
+      width: "14%",
+      render: (t) => (
+        <TruncatedText
+          text={t.details}
+          display={t.details?.trim() || "—"}
+          multiline
+          lines={2}
+          force={Boolean(t.details?.trim())}
+          className="text-xs text-slate-500 font-medium"
+        />
+      ),
+    },
+    {
       key: "assignee_id",
       label: "Assignees",
       width: "13%",
@@ -687,21 +702,6 @@ function TasksPageContent() {
         <TruncatedText
           text={formatTaskDateRange(t) || "-"}
           className="text-xs text-slate-600 font-medium"
-        />
-      ),
-    },
-    {
-      key: "details",
-      label: "Details",
-      width: "14%",
-      render: (t) => (
-        <TruncatedText
-          text={t.details}
-          display={t.details?.trim() || "—"}
-          multiline
-          lines={2}
-          force={Boolean(t.details?.trim())}
-          className="text-xs text-slate-500 font-medium"
         />
       ),
     },
