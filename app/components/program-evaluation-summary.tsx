@@ -13,6 +13,7 @@ import {
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import {
   formatEvaluationAverage,
+  hasEvaluationAnswers,
   summarizeEvaluationResponses,
   type EvaluationComment,
   type EvaluationSummary,
@@ -20,7 +21,8 @@ import {
 } from "@/lib/evaluation-summary";
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
-import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
+import { describeDeleteError } from "@/lib/db-errors";
+import { getRowsFromDB, getUsersFromDB, supabase } from "@/lib/supabase";
 import type { AssessmentResponse, User } from "@/types/database";
 
 type ProgramEvaluationSummaryProps = {
@@ -154,9 +156,11 @@ export default function ProgramEvaluationSummary({
         getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
       ]);
 
-      const programResponses = evaluationId
-        ? responses.filter((row) => row.assessment_id === evaluationId)
-        : [];
+      const programResponses = (
+        evaluationId
+          ? responses.filter((row) => row.assessment_id === evaluationId)
+          : []
+      ).filter((row) => hasEvaluationAnswers(row.answers));
       const nameByUserId: Record<string, string> = {};
       for (const user of users) {
         nameByUserId[user.id] = user.name;
@@ -178,17 +182,42 @@ export default function ProgramEvaluationSummary({
   }, [load]);
 
   const handleClearResponses = async () => {
+    if (responseIds.length === 0) return;
     setIsClearing(true);
     try {
-      for (const id of responseIds) {
-        await deleteDataFromDB("assessment_response", id);
+      const { data: deleted, error: deleteError } = await supabase
+        .from("assessment_response")
+        .delete()
+        .in("id", responseIds)
+        .select("id");
+      if (deleteError) throw deleteError;
+
+      const deletedIds = new Set((deleted ?? []).map((row) => row.id));
+      const remaining = responseIds.filter((id) => !deletedIds.has(id));
+
+      // Hosted DB may still lack the staff DELETE policy. UPDATE is already
+      // allowed, so wipe answers; the summary then ignores empty payloads.
+      if (remaining.length > 0) {
+        const { data: updated, error: updateError } = await supabase
+          .from("assessment_response")
+          .update({ answers: {} })
+          .in("id", remaining)
+          .select("id");
+        if (updateError) throw updateError;
+        if (!updated?.length) {
+          throw new Error("No evaluation responses were cleared.");
+        }
       }
+
       showToast("Evaluation responses cleared.", "success");
       setConfirmClear(false);
       await load();
     } catch (error) {
       console.error("Error clearing evaluation responses:", error);
-      showToast("Failed to clear evaluation responses.", "error");
+      showToast(
+        describeDeleteError(error, "assessment_response"),
+        "error",
+      );
     } finally {
       setIsClearing(false);
     }

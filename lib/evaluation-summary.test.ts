@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EvaluationAnswers } from "./evaluation-form";
 import {
   formatEvaluationAverage,
+  hasEvaluationAnswers,
   summarizeEvaluationResponses,
   toNumericEvaluationRating,
 } from "./evaluation-summary";
@@ -45,6 +46,19 @@ function answers(
     ...overrides,
   };
 }
+
+describe("hasEvaluationAnswers", () => {
+  it("treats empty or wiped payloads as no response", () => {
+    expect(hasEvaluationAnswers(null)).toBe(false);
+    expect(hasEvaluationAnswers({})).toBe(false);
+    expect(hasEvaluationAnswers({ eval_full_name: "  " })).toBe(false);
+  });
+
+  it("detects ratings and comments", () => {
+    expect(hasEvaluationAnswers(answers())).toBe(true);
+    expect(hasEvaluationAnswers({ eval_comments: "Great." })).toBe(true);
+  });
+});
 
 describe("toNumericEvaluationRating", () => {
   it("keeps 1–5 and drops N/A", () => {

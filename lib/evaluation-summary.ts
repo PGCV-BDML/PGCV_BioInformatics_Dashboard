@@ -51,6 +51,23 @@ function asAnswers(value: Record<string, unknown> | null): EvaluationAnswers {
   return value as EvaluationAnswers;
 }
 
+export function hasEvaluationAnswers(
+  answers: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
+    return false;
+  }
+  return Object.values(answers).some((value) => {
+    if (value == null) return false;
+    if (typeof value === "string") return value.trim() !== "";
+    if (typeof value === "number") return true;
+    if (typeof value === "object" && !Array.isArray(value)) {
+      return Object.keys(value).length > 0;
+    }
+    return true;
+  });
+}
+
 function nestedGroup(
   value: EvaluationAnswerValue | undefined,
 ): Record<string, unknown> {
