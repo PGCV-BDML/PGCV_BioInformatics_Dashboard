@@ -280,17 +280,17 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden w-full rounded-2xl px-5 py-4 md:px-6 md:py-5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1 max-w-2xl z-10">
-          <span className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#2a7797] font-quicksand block">
+      <div className="relative overflow-hidden w-full rounded-3xl px-6 py-5 md:px-8 md:py-7 shadow-[0_10px_28px_rgba(15,23,42,0.09)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div className="space-y-1.5 max-w-2xl z-10">
+          <span className="text-[11px] font-bold tracking-[1.8px] uppercase text-[#2a7797] font-quicksand block">
             Internal Operations Hub
           </span>
 
-          <h2 className="text-xl md:text-2xl font-black text-slate-800 leading-snug tracking-tight font-aileron">
+          <h2 className="text-2xl md:text-[32px] font-black text-slate-800 leading-snug tracking-tight font-aileron">
             Bioinformatics Workflow Dashboard
           </h2>
 
-          <p className="text-[11px] md:text-xs text-slate-500 font-medium leading-relaxed max-w-xl font-aileron">
+          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl font-aileron">
             One internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and repository
             links.
@@ -301,7 +301,7 @@ export default function DashboardLandingPage() {
           <img
             src="/assets/pgcv_logo.png"
             alt="Philippine Genome Center Visayas logo"
-            className="h-14 md:h-16 w-auto object-contain"
+            className="h-16 md:h-20 w-auto object-contain"
           />
         </div>
 
