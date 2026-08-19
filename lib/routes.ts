@@ -18,6 +18,8 @@ export const routes = {
   services: {
     list: "/dashboard/services",
     tracker: "/dashboard/services/tracker",
+    /** Open the Service Report Tracker with the add-analysis form. */
+    trackerAdd: "/dashboard/services/tracker?add=1",
     /** Deep-link the Service Report Tracker to a sequencer run ID. */
     trackerByRunId: (runId: string) =>
       `/dashboard/services/tracker?run_id=${encodeURIComponent(runId.trim())}`,
@@ -29,6 +31,11 @@ export const routes = {
   },
   repositories: {
     list: "/dashboard/repositories",
+  },
+  tasks: {
+    list: "/dashboard/tasks",
+    /** Open Tasks with the add-task form. */
+    add: "/dashboard/tasks?add=1",
   },
   incidents: {
     list: "/dashboard/incidents",

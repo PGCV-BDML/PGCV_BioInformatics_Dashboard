@@ -250,6 +250,8 @@ export default function ServiceReportTrackerPage() {
   const yearParam = searchParams.get("year")?.trim() ?? "";
   const pipelineParam = searchParams.get("pipeline")?.trim() ?? "";
   const runIdParam = searchParams.get("run_id")?.trim() ?? "";
+  const addParam = searchParams.get("add")?.trim() === "1";
+  const addHandled = useRef(false);
 
   const [servicesList, setServicesList] = useState<ServiceProjectRow[]>([]);
   const [searchQuery, setSearchQuery] = useState(runIdParam);
@@ -555,6 +557,19 @@ export default function ServiceReportTrackerPage() {
     });
     setIsSidebarOpen(true);
   }, [servicesList]);
+
+  useEffect(() => {
+    if (!addParam || addHandled.current || isLoading) return;
+    addHandled.current = true;
+    openCreateSidebar();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("add");
+    const qs = params.toString();
+    router.replace(
+      qs ? `${routes.services.tracker}?${qs}` : routes.services.tracker,
+      { scroll: false },
+    );
+  }, [addParam, isLoading, openCreateSidebar, router, searchParams]);
 
   const openEditSidebar = useCallback((row: ServiceProjectRow) => {
     setSelectedAnalysis(row);

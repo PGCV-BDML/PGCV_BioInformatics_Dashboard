@@ -1,9 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import {
+  Calendar,
+  CheckSquare,
+  ChevronDown,
+  Dna,
+  FolderGit2,
+} from "lucide-react";
 import { DashboardBreadcrumbs } from "../components/dashboardbreadcrumbs";
 import { DashboardStatsCards } from "../components/dashboard-stat-cards";
+import { routes } from "@/lib/routes";
 import {
   arrangeAfterStatusToggle,
   sortTasksForDisplay,
@@ -299,6 +307,53 @@ export default function DashboardLandingPage() {
 
         <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-teal-200/10 rounded-full blur-2xl pointer-events-none" />
       </div>
+
+      <nav
+        aria-label="Quick actions"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+      >
+        {[
+          {
+            href: routes.services.trackerAdd,
+            label: "Add analysis",
+            hint: "Open the tracker and start a new record",
+            icon: Dna,
+          },
+          {
+            href: routes.repositories.list,
+            label: "Repositories",
+            hint: "Browse pipeline, run, and document links",
+            icon: FolderGit2,
+          },
+          {
+            href: routes.tasks.add,
+            label: "Add tasks",
+            hint: "Open Tasks and start a new item",
+            icon: CheckSquare,
+          },
+        ].map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="group flex items-center gap-3 rounded-2xl border border-slate-300 bg-surface px-4 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:border-[#2a7797]/40 hover:shadow-[0_10px_22px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 transition-all"
+            >
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#e6f4f8] text-[#2a7797] group-hover:bg-[#2a7797] group-hover:text-white transition-colors">
+                <Icon className="w-4 h-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-slate-800 font-aileron">
+                  {action.label}
+                </span>
+                <span className="block text-[11px] text-slate-400 font-medium leading-snug font-aileron">
+                  {action.hint}
+                </span>
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
 
       {statsError ? (
         <ErrorState message={statsError} />

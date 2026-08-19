@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTableState } from "@/hooks/useTableState";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
@@ -102,6 +102,7 @@ export default function TasksPage() {
 }
 
 function TasksPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [tasksList, setTasksList] = useState<Task[]>([]);
   const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]);
@@ -208,7 +209,7 @@ function TasksPageContent() {
     loadData();
   }, []);
 
-  // Apply calendar / weekly-list deep links (?search=…&task=…)
+  // Apply calendar / weekly-list deep links (?search=…&task=…) and overview shortcuts (?add=1)
   useEffect(() => {
     const search = searchParams.get("search");
     if (search) setSearchQuery(search);
@@ -216,6 +217,22 @@ function TasksPageContent() {
 
   useEffect(() => {
     if (isLoading || deepLinkHandled.current) return;
+
+    if (searchParams.get("add") === "1") {
+      deepLinkHandled.current = true;
+      setSelectedTask(null);
+      setIsEditing(false);
+      setFormState(emptyForm);
+      setIsAdding(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("add");
+      const qs = params.toString();
+      router.replace(qs ? `/dashboard/tasks?${qs}` : "/dashboard/tasks", {
+        scroll: false,
+      });
+      return;
+    }
+
     const taskId = searchParams.get("task");
     if (!taskId) return;
 
@@ -239,7 +256,7 @@ function TasksPageContent() {
       categories: match.categories ?? [],
     });
     setIsEditing(true);
-  }, [isLoading, tasksList, searchParams]);
+  }, [isLoading, tasksList, searchParams, router]);
 
   useEffect(() => {
     toggleSidebar(isSidebarOpen);
