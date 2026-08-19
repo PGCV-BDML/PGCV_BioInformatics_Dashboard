@@ -388,13 +388,15 @@ export default function ProgramEvaluationForm({
       return (
         <fieldset
           key={question.id}
+          aria-label={`${number}. ${question.question}`}
           className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3"
         >
-          <legend className="text-xs font-extrabold text-slate-700">
-            {number}. {question.question}
-            <RequiredMark required={required} />
-          </legend>
-          <div className="flex flex-col gap-2 pt-2">
+          <QuestionLabel
+            number={number}
+            question={question.question}
+            required={required}
+          />
+          <div className="flex flex-col gap-2">
             {question.options.map((option) => {
               const selected = answers[question.id] === option;
               return (
@@ -439,12 +441,14 @@ export default function ProgramEvaluationForm({
       return (
         <fieldset
           key={question.id}
+          aria-label={`${number}. ${question.question}`}
           className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-4"
         >
-          <legend className="text-xs font-extrabold text-slate-700 leading-snug">
-            {number}. {question.question}
-            <RequiredMark required={required} />
-          </legend>
+          <QuestionLabel
+            number={number}
+            question={question.question}
+            required={required}
+          />
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Select one rating per statement
           </p>
