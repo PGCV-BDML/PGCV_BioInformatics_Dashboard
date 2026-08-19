@@ -313,7 +313,7 @@ export function tasksInMonth(
 
   return tasks
     .filter((t) => {
-      if (!includeCompleted && t.status === "completed") return false;
+      if (!includeCompleted && isClosedTaskStatus(t.status)) return false;
       return taskOverlapsRange(t.start_date, t.end_date, startKey, endKey);
     })
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
@@ -333,7 +333,7 @@ export function upcomingTasks(
   const endKey = toDateKey(end);
 
   return tasks
-    .filter((t) => t.status !== "completed")
+    .filter((t) => !isClosedTaskStatus(t.status))
     .filter((t) =>
       taskOverlapsRange(t.start_date, t.end_date, todayKey, endKey),
     )
@@ -391,4 +391,12 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: "In Progress",
   completed: "Completed",
   on_hold: "On Hold",
+  cancelled: "Cancelled",
 };
+
+/** Completed and cancelled work is closed — hidden from active lists by default. */
+export function isClosedTaskStatus(
+  status: TaskStatus | string | null | undefined,
+): boolean {
+  return status === "completed" || status === "cancelled";
+}

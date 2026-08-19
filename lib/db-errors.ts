@@ -116,6 +116,10 @@ export function describeSaveError(error: unknown, table: TableNames): string {
   const pgError = asPostgrestError(error);
   const message = pgError?.message ?? "";
 
+  if (message.includes("task_status")) {
+    return `Failed to save ${subject}: a selected status is not available in the database yet. Apply the latest Supabase migration, then try again.`;
+  }
+
   if (
     message.includes("task_category") ||
     message.includes("invalid input value for enum")

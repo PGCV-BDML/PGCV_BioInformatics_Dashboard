@@ -36,6 +36,7 @@ import {
   getMonthGrid,
   isSameDay,
   mapTasksForCalendar,
+  isClosedTaskStatus,
   PRIORITY_STYLES,
   splitCellPreview,
   STATUS_LABELS,
@@ -133,7 +134,7 @@ export default function TaskCalendar() {
   const visibleTasks = useMemo(() => {
     let list = showCompleted
       ? tasks
-      : tasks.filter((t) => t.status !== "completed");
+      : tasks.filter((t) => !isClosedTaskStatus(t.status));
     list = filterByCategory(list, categoryFilter);
     return list;
   }, [tasks, showCompleted, categoryFilter]);
@@ -371,7 +372,9 @@ export default function TaskCalendar() {
                       <span
                         className={`text-[10px] font-semibold truncate ${
                           task.status === "completed"
-                            ? "line-through text-slate-400"
+                          ? "line-through text-slate-400"
+                          : task.status === "cancelled"
+                            ? "text-slate-400"
                             : "text-slate-700"
                         }`}
                       >
@@ -493,7 +496,7 @@ export default function TaskCalendar() {
                 <li key={task.id}>
                   <div
                     className={`border rounded-2xl p-3.5 transition-all ${
-                      task.status === "completed"
+                      isClosedTaskStatus(task.status)
                         ? "bg-slate-50 border-slate-200 opacity-70"
                         : "bg-surface border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
                     }`}
@@ -504,7 +507,9 @@ export default function TaskCalendar() {
                         className={`text-sm font-bold tracking-tight font-aileron hover:underline ${
                           task.status === "completed"
                             ? "line-through text-slate-400"
-                            : "text-slate-800 hover:text-[#2a7797]"
+                            : task.status === "cancelled"
+                              ? "text-slate-400"
+                              : "text-slate-800 hover:text-[#2a7797]"
                         }`}
                       >
                         {task.title}

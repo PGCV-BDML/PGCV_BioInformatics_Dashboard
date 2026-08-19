@@ -15,6 +15,7 @@ import {
   normalizeTaskTime,
   splitCellPreview,
   startOfWeek,
+  STATUS_LABELS,
   taskHref,
   taskOverlapsRange,
   toDateKey,
@@ -355,6 +356,50 @@ describe("upcomingTasks", () => {
     ];
 
     expect(upcomingTasks(tasks, { limit: 5, daysAhead: 7 })).toHaveLength(1);
+  });
+
+  it("omits cancelled tasks from the upcoming list", () => {
+    const todayKey = toDateKey(new Date());
+    const tasks: Parameters<typeof upcomingTasks>[0] = [
+      {
+        id: "open",
+        title: "Still on",
+        start_date: todayKey,
+        end_date: todayKey,
+        details: null,
+        status: "pending",
+        priority: "medium",
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: [],
+        projectName: "P",
+        assigneeName: "U",
+      },
+      {
+        id: "off",
+        title: "Called off",
+        start_date: todayKey,
+        end_date: todayKey,
+        details: null,
+        status: "cancelled",
+        priority: "low",
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: [],
+        projectName: "P",
+        assigneeName: "U",
+      },
+    ];
+
+    expect(upcomingTasks(tasks, { limit: 5, daysAhead: 0 }).map((t) => t.id)).toEqual(
+      ["open"],
+    );
+  });
+});
+
+describe("STATUS_LABELS", () => {
+  it("includes Cancelled", () => {
+    expect(STATUS_LABELS.cancelled).toBe("Cancelled");
   });
 });
 

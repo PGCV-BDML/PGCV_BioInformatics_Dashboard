@@ -49,6 +49,7 @@ import {
   normalizeTaskTime,
   resolveTaskStartDate,
   taskFormDatesFromTask,
+  isClosedTaskStatus,
 } from "@/lib/calendar-tasks";
 import { describeSaveError } from "@/lib/db-errors";
 import { buildTaskRecordPayload } from "@/lib/task-payload";
@@ -70,6 +71,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "on_hold", label: "On Hold" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const FILTER_OPTIONS = [
@@ -83,7 +85,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: "high", label: "High" },
 ];
 
-const isCompletedTask = (task: Task) => task.status === "completed";
+const isClosedTask = (task: Task) => isClosedTaskStatus(task.status);
 
 export default function TasksPage() {
   return (
@@ -376,8 +378,8 @@ function TasksPageContent() {
     items: filteredTasks,
     itemsPerPage,
     resetKey: `${searchQuery}-${activeFilter}-${categoryFilter}`,
-    // Keep open work visible; completed tasks always sink below active ones.
-    pinToBottom: isCompletedTask,
+    // Keep open work visible; completed and cancelled tasks sink below.
+    pinToBottom: isClosedTask,
     customSorters: {
       priority: (a, b) => {
         const priorityWeights: Record<string, number> = {
@@ -387,7 +389,7 @@ function TasksPageContent() {
       },
       status: (a, b) => {
         const statusWeights: Record<string, number> = {
-          pending: 1, in_progress: 2, on_hold: 3, completed: 4,
+          pending: 1, in_progress: 2, on_hold: 3, completed: 4, cancelled: 5,
         };
         return (statusWeights[String(a.status)] || 99) - (statusWeights[String(b.status)] || 99);
       },
@@ -537,6 +539,8 @@ function TasksPageContent() {
         return `${baseClass} bg-[#fffdf7] text-[#f57f17] border-[#fff9c4]`;
       case "on_hold":
         return `${baseClass} bg-[#ffebee] text-[#c62828] border-[#ffcdd2]`;
+      case "cancelled":
+        return `${baseClass} bg-[#eceff1] text-[#546e7a] border-[#cfd8dc]`;
       default: //for pending
         return `${baseClass} bg-[#f5f5f5] text-[#616161] border-[#e0e0e0]`;
     }

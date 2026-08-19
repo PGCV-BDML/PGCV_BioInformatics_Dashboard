@@ -169,6 +169,7 @@ export default function DashboardLandingPage() {
         };
 
         const thisWeekRows = taskRows
+          .filter((row) => row.status !== "cancelled")
           .map((row) => ({
             id: row.id,
             title: row.title || "Untitled task",
