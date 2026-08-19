@@ -395,6 +395,47 @@ describe("upcomingTasks", () => {
       ["open"],
     );
   });
+
+  it("omits this week's tasks when excludeCurrentWeek is set", () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const thisWeek = toDateKey(startOfWeek(today));
+    const afterWeek = endOfWeek(today);
+    afterWeek.setDate(afterWeek.getDate() + 1);
+    const nextWeek = toDateKey(afterWeek);
+    const laterInNextWeek = new Date(afterWeek);
+    laterInNextWeek.setDate(laterInNextWeek.getDate() + 2);
+
+    const task = (
+      id: string,
+      start: string,
+      end: string,
+    ): Parameters<typeof upcomingTasks>[0][number] => ({
+      id,
+      title: id,
+      start_date: start,
+      end_date: end,
+      details: null,
+      status: "pending",
+      priority: "medium",
+      assignee_id: "u",
+      linked_project_id: "p",
+      categories: [],
+      projectName: "P",
+      assigneeName: "U",
+    });
+
+    const result = upcomingTasks(
+      [
+        task("this-week", thisWeek, thisWeek),
+        task("spans-into-next-week", thisWeek, nextWeek),
+        task("next-week", nextWeek, toDateKey(laterInNextWeek)),
+      ],
+      { limit: 10, daysAhead: 40, excludeCurrentWeek: true },
+    );
+
+    expect(result.map((t) => t.id)).toEqual(["next-week"]);
+  });
 });
 
 describe("STATUS_LABELS", () => {

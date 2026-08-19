@@ -365,25 +365,23 @@ export default function DashboardLandingPage() {
         />
       )}
 
-      <WeeklyTaskList
-        tasks={tasks}
-        tasksLoading={tasksLoading}
-        tasksError={tasksError}
-        onToggleTask={toggleTaskStatus}
-      />
-
-      {/* Charts and Events Bottom Grid Area */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <ServiceReportsChart
-          data={serviceReportsDeliveredByYear}
-          selectedYear={selectedYear}
-          onYearChange={(year) => {
-            if (AVAILABLE_YEARS.includes(year)) setSelectedYear(year);
-          }}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <WeeklyTaskList
+          tasks={tasks}
+          tasksLoading={tasksLoading}
+          tasksError={tasksError}
+          onToggleTask={toggleTaskStatus}
         />
-
         <UpcomingEvents />
       </div>
+
+      <ServiceReportsChart
+        data={serviceReportsDeliveredByYear}
+        selectedYear={selectedYear}
+        onYearChange={(year) => {
+          if (AVAILABLE_YEARS.includes(year)) setSelectedYear(year);
+        }}
+      />
     </div>
   );
 }

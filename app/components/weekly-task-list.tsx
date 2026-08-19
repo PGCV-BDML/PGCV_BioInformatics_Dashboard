@@ -88,7 +88,7 @@ export function WeeklyTaskList({
   ).length;
 
   return (
-    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2">
+    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] h-full flex flex-col">
       <div className="flex items-center justify-between mb-6 font-quicksand">
         <div className="flex items-center gap-2 text-[#2a7797]">
           <CheckSquare className="w-4 h-4" />

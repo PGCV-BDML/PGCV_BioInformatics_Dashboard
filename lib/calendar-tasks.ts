@@ -321,13 +321,27 @@ export function tasksInMonth(
 
 export function upcomingTasks(
   tasks: CalendarTask[],
-  options?: { limit?: number; daysAhead?: number },
+  options?: {
+    limit?: number;
+    daysAhead?: number;
+    /** Skip items that already appear in this week's task list. */
+    excludeCurrentWeek?: boolean;
+  },
 ): CalendarTask[] {
   const limit = options?.limit ?? 6;
   const daysAhead = options?.daysAhead ?? 31;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayKey = toDateKey(today);
+  const weekStartKey = toDateKey(startOfWeek(today));
+  const weekEndKey = toDateKey(endOfWeek(today));
+  const windowStart = options?.excludeCurrentWeek
+    ? (() => {
+        const afterWeek = endOfWeek(today);
+        afterWeek.setDate(afterWeek.getDate() + 1);
+        return toDateKey(afterWeek);
+      })()
+    : todayKey;
   const end = new Date(today);
   end.setDate(end.getDate() + daysAhead);
   const endKey = toDateKey(end);
@@ -335,7 +349,12 @@ export function upcomingTasks(
   return tasks
     .filter((t) => !isClosedTaskStatus(t.status))
     .filter((t) =>
-      taskOverlapsRange(t.start_date, t.end_date, todayKey, endKey),
+      taskOverlapsRange(t.start_date, t.end_date, windowStart, endKey),
+    )
+    .filter(
+      (t) =>
+        !options?.excludeCurrentWeek ||
+        !taskOverlapsRange(t.start_date, t.end_date, weekStartKey, weekEndKey),
     )
     .sort((a, b) => {
       const byDate = a.start_date.localeCompare(b.start_date);

@@ -57,7 +57,13 @@ export function UpcomingEvents() {
           projectNameById,
           new Map(),
         );
-        setEvents(upcomingTasks(mapped, { limit: 6, daysAhead: 31 }));
+        setEvents(
+          upcomingTasks(mapped, {
+            limit: 6,
+            daysAhead: 31,
+            excludeCurrentWeek: true,
+          }),
+        );
       } catch (err) {
         console.error("Failed to load upcoming events:", err);
         if (!cancelled) {
@@ -75,7 +81,7 @@ export function UpcomingEvents() {
   }, []);
 
   return (
-    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] xl:row-span-2 flex flex-col">
+    <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-[0_20px_40px_rgba(15,23,42,0.1)] h-full flex flex-col">
       <div className="flex items-center justify-between mb-6 font-quicksand">
         <div className="flex items-center gap-2 text-[#2a7797]">
           <Calendar className="w-4 h-4" />
@@ -114,10 +120,10 @@ export function UpcomingEvents() {
               <CheckSquare className="w-6 h-6 text-[#7a8e9b]" />
             </div>
             <p className="text-xs font-semibold text-slate-500 font-aileron">
-              No upcoming dates
+              No dates after this week
             </p>
             <p className="text-[11px] text-slate-400 mt-1 max-w-[220px] font-aileron">
-              Open tasks and set dates to see them here and on the calendar.
+              This week's work is in Tasks for the Week. Later dates show up here.
             </p>
             <Link
               href="/dashboard/tasks"
