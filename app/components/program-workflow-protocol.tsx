@@ -595,8 +595,10 @@ export default function ProgramWorkflowProtocol({
         <p>
           Staff open <strong className="text-[#172126]">Evaluation</strong> to
           see average ratings (N/A excluded), attendance reasons, and written
-          comments. Then open{" "}
-          <strong className="text-[#172126]">Certificate</strong>{" "}
+          comments. They can{" "}
+          <strong className="text-[#172126]">Clear responses</strong> to
+          remove a test submission; that does not delete certificates. Then
+          open <strong className="text-[#172126]">Certificate</strong>{" "}
           (Certificates Database Log Registry) and use{" "}
           <strong className="text-[#172126]">View Certificate</strong> then{" "}
           <strong className="text-[#172126]">Print / Save PDF</strong>.{" "}

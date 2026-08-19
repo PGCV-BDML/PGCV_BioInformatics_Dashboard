@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Award, BarChart3, MessageSquareText } from "lucide-react";
+import { Award, BarChart3, MessageSquareText, Trash2 } from "lucide-react";
+import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
 import {
@@ -19,7 +20,7 @@ import {
 } from "@/lib/evaluation-summary";
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
-import { getRowsFromDB, getUsersFromDB } from "@/lib/supabase";
+import { getRowsFromDB, getUsersFromDB, deleteDataFromDB } from "@/lib/supabase";
 import type { AssessmentResponse, User } from "@/types/database";
 
 type ProgramEvaluationSummaryProps = {
@@ -140,38 +141,58 @@ export default function ProgramEvaluationSummary({
   const [summary, setSummary] = useState<EvaluationSummary>(() =>
     summarizeEvaluationResponses([]),
   );
+  const [responseIds, setResponseIds] = useState<string[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const evaluationId = await ensureProgramEvaluation(programId);
+      const [responses, users] = await Promise.all([
+        getRowsFromDB<AssessmentResponse>("assessment_response"),
+        getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
+      ]);
+
+      const programResponses = evaluationId
+        ? responses.filter((row) => row.assessment_id === evaluationId)
+        : [];
+      const nameByUserId: Record<string, string> = {};
+      for (const user of users) {
+        nameByUserId[user.id] = user.name;
+      }
+      setResponseIds(programResponses.map((row) => row.id));
+      setSummary(summarizeEvaluationResponses(programResponses, nameByUserId));
+    } catch (error) {
+      console.error("Error loading evaluation summary:", error);
+      showToast("Failed to load evaluation responses.", "error");
+      setResponseIds([]);
+      setSummary(summarizeEvaluationResponses([]));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [programId, showToast]);
 
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const evaluationId = await ensureProgramEvaluation(programId);
-        const [responses, users] = await Promise.all([
-          getRowsFromDB<AssessmentResponse>("assessment_response"),
-          getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
-        ]);
-
-        const programResponses = evaluationId
-          ? responses.filter((row) => row.assessment_id === evaluationId)
-          : [];
-        const nameByUserId: Record<string, string> = {};
-        for (const user of users) {
-          nameByUserId[user.id] = user.name;
-        }
-        setSummary(
-          summarizeEvaluationResponses(programResponses, nameByUserId),
-        );
-      } catch (error) {
-        console.error("Error loading evaluation summary:", error);
-        showToast("Failed to load evaluation responses.", "error");
-        setSummary(summarizeEvaluationResponses([]));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     void load();
-  }, [programId, showToast]);
+  }, [load]);
+
+  const handleClearResponses = async () => {
+    setIsClearing(true);
+    try {
+      for (const id of responseIds) {
+        await deleteDataFromDB("assessment_response", id);
+      }
+      showToast("Evaluation responses cleared.", "success");
+      setConfirmClear(false);
+      await load();
+    } catch (error) {
+      console.error("Error clearing evaluation responses:", error);
+      showToast("Failed to clear evaluation responses.", "error");
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -190,11 +211,23 @@ export default function ProgramEvaluationSummary({
 
       <div className="space-y-6 w-full bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
         <div className="border-b border-slate-200/60 pb-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[#2a7797]" />
-            <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-              {EVALUATION_FORM_TITLE}
-            </h2>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-[#2a7797]" />
+              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
+                {EVALUATION_FORM_TITLE}
+              </h2>
+            </div>
+            {!isLoading && summary.responseCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-rose-200 bg-white text-rose-600 text-[11px] font-bold hover:bg-rose-50 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear responses
+              </button>
+            )}
           </div>
           <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
             Average ratings exclude N/A. Written comments and suggestions are
@@ -282,6 +315,23 @@ export default function ProgramEvaluationSummary({
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmClear}
+        title="Clear evaluation responses"
+        message={
+          <>
+            Remove all {summary.responseCount} submitted evaluation
+            {summary.responseCount === 1 ? "" : "s"} for this program? This
+            cannot be undone. Certificates are not deleted — remove a test
+            certificate from the Certificate tab if needed.
+          </>
+        }
+        confirmLabel="Clear responses"
+        isConfirming={isClearing}
+        onClose={() => setConfirmClear(false)}
+        onConfirm={handleClearResponses}
+      />
     </div>
   );
 }
