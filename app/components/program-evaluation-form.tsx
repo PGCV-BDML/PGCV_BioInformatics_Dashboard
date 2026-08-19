@@ -9,6 +9,8 @@ import {
   Send,
 } from "lucide-react";
 import { DataPrivacyNotice } from "@/app/components/data-privacy-notice";
+import { usePortal } from "@/app/components/portal-context";
+import ProgramEvaluationSummary from "@/app/components/program-evaluation-summary";
 import { useToast } from "@/app/components/toast";
 import {
   EVALUATION_DATA_PRIVACY,
@@ -132,6 +134,34 @@ function LikertScale({
 }
 
 export default function ProgramEvaluationForm({
+  programId,
+  programType,
+}: ProgramEvaluationFormProps) {
+  const { isStaff, isLearnerView, loading } = usePortal();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-8 w-8 rounded-full border-2 border-[#4ec2bb] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (isStaff && !isLearnerView) {
+    return (
+      <ProgramEvaluationSummary
+        programId={programId}
+        programType={programType}
+      />
+    );
+  }
+
+  return (
+    <LearnerEvaluationForm programId={programId} programType={programType} />
+  );
+}
+
+function LearnerEvaluationForm({
   programId,
   programType,
 }: ProgramEvaluationFormProps) {

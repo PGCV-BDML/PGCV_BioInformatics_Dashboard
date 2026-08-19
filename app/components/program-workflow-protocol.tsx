@@ -593,7 +593,10 @@ export default function ProgramWorkflowProtocol({
           <strong className="text-[#172126]">{copy.evaluationSubmit}</strong>.
         </p>
         <p>
-          Staff open <strong className="text-[#172126]">Certificate</strong>{" "}
+          Staff open <strong className="text-[#172126]">Evaluation</strong> to
+          see average ratings (N/A excluded), attendance reasons, and written
+          comments. Then open{" "}
+          <strong className="text-[#172126]">Certificate</strong>{" "}
           (Certificates Database Log Registry) and use{" "}
           <strong className="text-[#172126]">View Certificate</strong> then{" "}
           <strong className="text-[#172126]">Print / Save PDF</strong>.{" "}
