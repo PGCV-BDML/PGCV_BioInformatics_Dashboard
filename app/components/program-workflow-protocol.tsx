@@ -561,22 +561,21 @@ export default function ProgramWorkflowProtocol({
 
       <Section id="assessments" title="6. Pre/Post tests">
         <p>
-          On <strong className="text-[#172126]">Pre/Post Tests</strong>, each
-          card shows the question count. {copy.learnerTitle}s click{" "}
-          <strong className="text-[#172126]">Start Pre-Test</strong> (or
-          Post-Test), answer, then{" "}
+          {copy.learnerTitle}s open{" "}
+          <strong className="text-[#172126]">Pre/Post Tests</strong>, start a
+          test, answer, then click{" "}
           <strong className="text-[#172126]">Submit Answers &amp; Calculate Score</strong>.
+          Multiple-choice items are scored as a percentage. Rating and free-text
+          answers are saved but not scored. After submit, the button becomes{" "}
+          <strong className="text-[#172126]">Review Pre-Test</strong> /{" "}
+          <strong>Review Post-Test</strong>.
         </p>
-        <ul className="list-disc pl-5 space-y-1.5">
-          <li>Multiple-choice items are scored as a percentage.</li>
-          <li>Rating and free-text answers are saved but not scored.</li>
-          <li>
-            After submit, the button becomes{" "}
-            <strong className="text-[#172126]">Review Pre-Test</strong> /{" "}
-            <strong>Review Post-Test</strong>. Staff see the scores on
-            Participants.
-          </li>
-        </ul>
+        <p>
+          Staff open the same tab to see average scores, percent correct per
+          question, written answers, and a participant score list. They can{" "}
+          <strong className="text-[#172126]">Clear responses</strong> to remove
+          a test run.
+        </p>
       </Section>
 
       <Section id="evaluation" title="7. Evaluation and certificates">
