@@ -587,6 +587,18 @@ function TasksPageContent() {
       render: (t) => <CategoryChips categories={t.categories ?? []} maxVisible={2} />,
     },
     {
+      key: "start_date",
+      label: "Date",
+      width: "12%",
+      sortable: true,
+      render: (t) => (
+        <TruncatedText
+          text={formatTaskDateRange(t) || "-"}
+          className="text-xs text-slate-600 font-medium"
+        />
+      ),
+    },
+    {
       key: "details",
       label: "Details",
       width: "14%",
@@ -692,18 +704,6 @@ function TasksPageContent() {
           </div>
         );
       },
-    },
-    {
-      key: "start_date",
-      label: "Date",
-      width: "12%",
-      sortable: true,
-      render: (t) => (
-        <TruncatedText
-          text={formatTaskDateRange(t) || "-"}
-          className="text-xs text-slate-600 font-medium"
-        />
-      ),
     },
     {
       key: "id",
