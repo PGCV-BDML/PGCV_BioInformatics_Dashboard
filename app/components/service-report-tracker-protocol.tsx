@@ -129,14 +129,22 @@ export default function ServiceReportTrackerProtocol() {
             including peer review of the PDF and approving-officer sign-off.
           </p>
         </div>
-        <Link
-          href={routes.services.tracker}
-          className="inline-flex items-center gap-1.5 text-[#2a7797] hover:text-[#236584] text-sm font-medium transition-colors"
-        >
-          <ClipboardList className="w-4 h-4" />
-          Open Service Report Tracker
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <Link
+            href={routes.services.tracker}
+            className="inline-flex items-center gap-1.5 text-[#2a7797] hover:text-[#236584] text-sm font-medium transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Open Service Report Tracker
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <Link
+            href={routes.protocols.detail("covid-sample-tracker")}
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-[#2a7797] text-sm font-medium transition-colors"
+          >
+            See also: Tracking COVID-19 Samples
+          </Link>
+        </div>
       </header>
 
       <div

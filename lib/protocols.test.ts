@@ -21,6 +21,12 @@ describe("getProtocolBySlug", () => {
     );
   });
 
+  it("returns the COVID-19 sample tracker protocol", () => {
+    expect(getProtocolBySlug("covid-sample-tracker")?.code).toBe(
+      "SOP-BIOINFO-CV-001",
+    );
+  });
+
   it("returns undefined for an unknown slug", () => {
     expect(getProtocolBySlug("not-a-protocol")).toBeUndefined();
   });

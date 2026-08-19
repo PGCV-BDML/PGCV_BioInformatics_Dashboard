@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { ComponentType } from "react";
+import CovidSampleTrackerProtocol from "@/app/components/covid-sample-tracker-protocol";
 import ProgramWorkflowProtocol from "@/app/components/program-workflow-protocol";
 import ServiceReportTrackerProtocol from "@/app/components/service-report-tracker-protocol";
 import { getProtocolBySlug } from "@/lib/protocols";
@@ -16,6 +17,7 @@ const PROTOCOL_VIEWS: Record<string, ComponentType> = {
   "service-report-tracker": ServiceReportTrackerProtocol,
   "training-programs": TrainingProgramsProtocol,
   "internship-programs": InternshipProgramsProtocol,
+  "covid-sample-tracker": CovidSampleTrackerProtocol,
 };
 
 export default async function ProtocolDetailPage({

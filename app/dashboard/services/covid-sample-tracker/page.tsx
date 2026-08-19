@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -29,6 +30,7 @@ import {
 } from "../../../../types/database";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { covidSampleTrackerBreadcrumbs } from "@/lib/breadcrumbs";
+import { routes } from "@/lib/routes";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
@@ -547,6 +549,12 @@ export default function RunSummaryPage() {
             <h2 className="text-2xl font-bold text-[#333333]">
               Sequencing Runs
             </h2>
+            <Link
+              href={routes.protocols.detail("covid-sample-tracker")}
+              className="text-[11px] font-bold text-[#2a7797] hover:text-[#236584] hover:underline underline-offset-2"
+            >
+              Protocol
+            </Link>
             {stats.reviewFlagged > 0 ? (
               <span className="ml-1 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-full px-2 py-0.5">
                 {stats.reviewFlagged} flagged

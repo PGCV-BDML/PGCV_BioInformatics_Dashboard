@@ -31,6 +31,14 @@ export const PROTOCOLS: ProtocolMeta[] = [
       "Set up an internship cohort, enroll interns, deliver modules and tests, collect the evaluation, and issue certificates.",
     category: "Internship",
   },
+  {
+    slug: "covid-sample-tracker",
+    code: "SOP-BIOINFO-CV-001",
+    title: "Tracking COVID-19 Samples",
+    summary:
+      "Record SARS-CoV-2 genomic surveillance runs from receipt through lineage assignment and GISAID / ISLAP upload.",
+    category: "COVID-19",
+  },
 ];
 
 export const DEFAULT_PROTOCOL_SLUG = PROTOCOLS[0]?.slug ?? "service-report-tracker";
