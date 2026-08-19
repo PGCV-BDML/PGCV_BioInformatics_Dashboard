@@ -77,18 +77,20 @@ describe("POST_ACTIVITY_EVALUATION_QUESTIONS", () => {
     ]);
   });
 
-  it("treats designation as optional and every other item as required", () => {
+  it("treats designation, suggestions, and comments as optional", () => {
     const optional = POST_ACTIVITY_EVALUATION_QUESTIONS.filter(
       (question) => question.required === false,
     );
     expect(optional.map((question) => question.id)).toEqual([
       "eval_designation",
+      "eval_suggestions",
+      "eval_comments",
     ]);
     expect(
       POST_ACTIVITY_EVALUATION_QUESTIONS.filter(
         (question) => question.required !== false,
       ),
-    ).toHaveLength(18);
+    ).toHaveLength(16);
   });
 });
 
@@ -116,9 +118,11 @@ describe("missingRequiredAnswers", () => {
     ).toEqual([]);
   });
 
-  it("allows designation to stay blank", () => {
+  it("allows designation, suggestions, and comments to stay blank", () => {
     const answers = completeAnswers();
     delete answers.eval_designation;
+    delete answers.eval_suggestions;
+    delete answers.eval_comments;
     expect(
       missingRequiredAnswers(POST_ACTIVITY_EVALUATION_QUESTIONS, answers),
     ).toEqual([]);
