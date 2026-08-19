@@ -155,10 +155,14 @@ export function UpcomingEvents() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 text-[11px] font-aileron">
-                  <span className="flex items-center gap-1.5 text-[#2a7797] font-bold truncate min-w-0">
-                    <FolderGit2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{task.projectName}</span>
-                  </span>
+                  {task.projectName ? (
+                    <span className="flex items-center gap-1.5 text-[#2a7797] font-bold truncate min-w-0">
+                      <FolderGit2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{task.projectName}</span>
+                    </span>
+                  ) : (
+                    <span />
+                  )}
                   <span className="shrink-0 flex items-center gap-1 text-slate-500 font-semibold">
                     <Calendar className="w-3 h-3" />
                     {formatTaskDateRange(task)}

@@ -19,7 +19,7 @@ export type CalendarTask = {
   linked_project_id: string;
   linked_analysis_id?: string | null;
   categories: TaskCategory[];
-  projectName: string;
+  projectName: string | null;
   assigneeName: string;
 };
 
@@ -293,8 +293,8 @@ export function mapTasksForCalendar(
       linked_analysis_id: t.linked_analysis_id ?? null,
       categories: t.categories ?? [],
       projectName: projectId
-        ? (projectNameById.get(projectId) ?? "Unlinked project")
-        : "No linked project",
+        ? (projectNameById.get(projectId) ?? null)
+        : null,
       assigneeName: formatAssigneeNames(assigneeIds, assigneeNameById),
     });
   }

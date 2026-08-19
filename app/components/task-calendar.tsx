@@ -522,10 +522,12 @@ export default function TaskCalendar() {
                     </div>
                     <div className="flex flex-col gap-1 text-[11px] text-slate-500 font-aileron">
                       <CategoryChips categories={task.categories} maxVisible={3} />
-                      <span className="flex items-center gap-1.5 truncate">
-                        <FolderGit2 className="w-3 h-3 shrink-0" />
-                        {task.projectName}
-                      </span>
+                      {task.projectName ? (
+                        <span className="flex items-center gap-1.5 truncate">
+                          <FolderGit2 className="w-3 h-3 shrink-0" />
+                          {task.projectName}
+                        </span>
+                      ) : null}
                       <span className="flex items-center gap-1.5 truncate">
                         <User className="w-3 h-3 shrink-0" />
                         {task.assigneeName}

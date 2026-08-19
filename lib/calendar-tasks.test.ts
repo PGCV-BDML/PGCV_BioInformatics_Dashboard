@@ -200,6 +200,28 @@ describe("mapTasksForCalendar", () => {
     });
   });
 
+  it("omits a project name when the task is not linked", () => {
+    const mapped = mapTasksForCalendar(
+      [
+        {
+          id: "2",
+          title: "Open",
+          assignee_id: null,
+          start_date: "2026-07-29",
+          end_date: "2026-07-29",
+          due_date: "2026-07-29",
+          details: null,
+          status: "pending",
+          priority: "low",
+          linked_project_id: null,
+        },
+      ],
+      new Map(),
+      new Map(),
+    );
+    expect(mapped[0]?.projectName).toBeNull();
+  });
+
   it("joins multiple assignee names and labels an empty list Unassigned", () => {
     const tasks: Task[] = [
       {
