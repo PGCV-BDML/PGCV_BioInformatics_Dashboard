@@ -6,6 +6,7 @@ export type CalendarTask = {
   title: string;
   start_date: string;
   end_date: string;
+  task_time?: string | null;
   details: string | null;
   status: TaskStatus;
   priority: TaskPriority;
@@ -21,6 +22,7 @@ type TaskDateFields = {
   start_date?: string | null;
   end_date?: string | null;
   due_date?: string | null;
+  task_time?: string | null;
 };
 
 /** Parse a YYYY-MM-DD string as a local calendar date (avoids UTC shift). */
@@ -91,6 +93,23 @@ export function taskFormDatesFromTask(task: TaskDateFields): {
   return { start_date, end_date };
 }
 
+/** HTML time inputs want HH:MM; Postgres time often comes back as HH:MM:SS. */
+export function formatTaskTimeForInput(
+  value: string | null | undefined,
+): string {
+  if (!value) return "";
+  const match = value.trim().match(/^(\d{2}:\d{2})/);
+  return match?.[1] ?? "";
+}
+
+/** Persist optional time as HH:MM:SS for the Postgres `time` column. */
+export function normalizeTaskTime(
+  value: string | null | undefined,
+): string | null {
+  const hhmm = formatTaskTimeForInput(value);
+  return hhmm ? `${hhmm}:00` : null;
+}
+
 export function taskOverlapsRange(
   startKey: string | null,
   endKey: string | null,
@@ -123,9 +142,18 @@ export function eachDateKeyInRange(startKey: string, endKey: string): string[] {
 export function formatTaskDateRange(task: TaskDateFields): string {
   const start = resolveTaskStartDate(task);
   const end = resolveTaskEndDate(task);
-  if (!start) return "";
-  if (!end || start === end) return formatDate(start);
-  return `${formatDate(start)} – ${formatDate(end)}`;
+  const time = formatTaskTimeForInput(task.task_time);
+  let dateLabel = "";
+  if (start) {
+    dateLabel =
+      !end || start === end
+        ? formatDate(start)
+        : `${formatDate(start)} – ${formatDate(end)}`;
+  }
+  if (!dateLabel && !time) return "";
+  if (!time) return dateLabel;
+  if (!dateLabel) return time;
+  return `${dateLabel} · ${time}`;
 }
 
 export function buildTasksByDate(
@@ -138,6 +166,18 @@ export function buildTasksByDate(
       list.push(task);
       map.set(key, list);
     }
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => {
+      const ta = formatTaskTimeForInput(a.task_time);
+      const tb = formatTaskTimeForInput(b.task_time);
+      if (ta !== tb) {
+        if (!ta) return 1;
+        if (!tb) return -1;
+        return ta.localeCompare(tb);
+      }
+      return a.title.localeCompare(b.title);
+    });
   }
   return map;
 }
@@ -238,6 +278,7 @@ export function mapTasksForCalendar(
       title: t.title || "Untitled task",
       start_date: start,
       end_date: end,
+      task_time: t.task_time ?? null,
       details: t.details?.trim() || null,
       status: t.status,
       priority: t.priority,
@@ -293,6 +334,13 @@ export function upcomingTasks(
     .sort((a, b) => {
       const byDate = a.start_date.localeCompare(b.start_date);
       if (byDate !== 0) return byDate;
+      const ta = formatTaskTimeForInput(a.task_time);
+      const tb = formatTaskTimeForInput(b.task_time);
+      if (ta !== tb) {
+        if (!ta) return 1;
+        if (!tb) return -1;
+        return ta.localeCompare(tb);
+      }
       const priorityWeight: Record<string, number> = {
         high: 0,
         medium: 1,

@@ -31,6 +31,7 @@ import {
   buildTasksByDate,
   filterByCategory,
   formatTaskDateRange,
+  formatTaskTimeForInput,
   getMonthGrid,
   isSameDay,
   mapTasksForCalendar,
@@ -352,7 +353,11 @@ export default function TaskCalendar() {
                     <div
                       key={task.id}
                       className="flex items-center gap-1 truncate"
-                      title={task.title}
+                      title={
+                        formatTaskTimeForInput(task.task_time)
+                          ? `${formatTaskTimeForInput(task.task_time)} ${task.title}`
+                          : task.title
+                      }
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_STYLES[task.priority].dot}`}
@@ -364,7 +369,9 @@ export default function TaskCalendar() {
                             : "text-slate-700"
                         }`}
                       >
-                        {task.title}
+                        {formatTaskTimeForInput(task.task_time)
+                          ? `${formatTaskTimeForInput(task.task_time)} ${task.title}`
+                          : task.title}
                       </span>
                     </div>
                   ))}

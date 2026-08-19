@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/types/database";
 import {
+  buildTasksByDate,
   eachDateKeyInRange,
   endOfWeek,
   filterByCategory,
   formatTaskDateRange,
+  formatTaskTimeForInput,
   getMonthGrid,
   mapTasksForCalendar,
   MAX_CELL_ENTRIES,
   normalizeDueDate,
   normalizeTaskDateRange,
+  normalizeTaskTime,
   splitCellPreview,
   startOfWeek,
   taskHref,
@@ -112,6 +115,33 @@ describe("formatTaskDateRange", () => {
       }),
     ).toBe("08/04/2026 – 08/08/2026");
   });
+
+  it("appends an optional time when present", () => {
+    expect(
+      formatTaskDateRange({
+        start_date: "2026-08-04",
+        end_date: "2026-08-04",
+        task_time: "14:30:00",
+      }),
+    ).toBe("08/04/2026 · 14:30");
+  });
+});
+
+describe("normalizeTaskTime", () => {
+  it("persists HH:MM as HH:MM:SS", () => {
+    expect(normalizeTaskTime("09:15")).toBe("09:15:00");
+  });
+
+  it("returns null when empty", () => {
+    expect(normalizeTaskTime("")).toBeNull();
+    expect(normalizeTaskTime(null)).toBeNull();
+  });
+});
+
+describe("formatTaskTimeForInput", () => {
+  it("strips seconds for the time input", () => {
+    expect(formatTaskTimeForInput("14:30:00")).toBe("14:30");
+  });
 });
 
 describe("getMonthGrid", () => {
@@ -132,6 +162,7 @@ describe("mapTasksForCalendar", () => {
         start_date: "2026-07-28",
         end_date: "2026-07-30",
         due_date: "2026-07-30",
+        task_time: "09:00:00",
         details: null,
         status: "pending",
         priority: "high",
@@ -162,9 +193,51 @@ describe("mapTasksForCalendar", () => {
       id: "1",
       start_date: "2026-07-28",
       end_date: "2026-07-30",
+      task_time: "09:00:00",
       projectName: "Project A",
       assigneeName: "Ada",
     });
+  });
+});
+
+describe("buildTasksByDate", () => {
+  it("orders same-day tasks by time then title", () => {
+    const tasks: Parameters<typeof upcomingTasks>[0] = [
+      {
+        id: "late",
+        title: "Later",
+        start_date: "2026-08-04",
+        end_date: "2026-08-04",
+        task_time: "15:00:00",
+        details: null,
+        status: "pending",
+        priority: "low",
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: [],
+        projectName: "P",
+        assigneeName: "U",
+      },
+      {
+        id: "early",
+        title: "Earlier",
+        start_date: "2026-08-04",
+        end_date: "2026-08-04",
+        task_time: "09:00:00",
+        details: null,
+        status: "pending",
+        priority: "high",
+        assignee_id: "u",
+        linked_project_id: "p",
+        categories: [],
+        projectName: "P",
+        assigneeName: "U",
+      },
+    ];
+    expect(buildTasksByDate(tasks).get("2026-08-04")?.map((t) => t.id)).toEqual([
+      "early",
+      "late",
+    ]);
   });
 });
 

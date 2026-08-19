@@ -42,7 +42,9 @@ import {
 import { analysisStatusLabel } from "@/lib/analysis-tracker";
 import {
   formatTaskDateRange,
+  formatTaskTimeForInput,
   normalizeTaskDateRange,
+  normalizeTaskTime,
   resolveTaskStartDate,
   taskFormDatesFromTask,
 } from "@/lib/calendar-tasks";
@@ -133,6 +135,7 @@ function TasksPageContent() {
     start_date: "",
     end_date: "",
     due_date: null,
+    task_time: null,
     details: null,
     status: "pending",
     priority: "medium",
@@ -211,6 +214,7 @@ function TasksPageContent() {
       assignee_id: match.assignee_id,
       ...taskFormDatesFromTask(match),
       due_date: match.due_date,
+      task_time: formatTaskTimeForInput(match.task_time),
       details: match.details ?? null,
       status: match.status,
       priority: match.priority,
@@ -321,6 +325,7 @@ function TasksPageContent() {
         task.start_date,
         task.end_date,
         task.due_date,
+        task.task_time,
         task.details,
         project ? project.name : "",
         categoryLabels,
@@ -403,10 +408,12 @@ function TasksPageContent() {
     const generatedId = crypto.randomUUID();
     const categories = formState.categories ?? [];
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
+    const task_time = normalizeTaskTime(formState.task_time);
     const newTask: Task = {
       id: generatedId,
       ...formState,
       ...dates,
+      task_time,
       categories,
     };
 
@@ -435,6 +442,7 @@ function TasksPageContent() {
 
     const categories = formState.categories ?? [];
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
+    const task_time = normalizeTaskTime(formState.task_time);
 
     try {
       await replaceTaskCategories(selectedTask.id, categories);
@@ -442,7 +450,7 @@ function TasksPageContent() {
       setTasksList((prev) =>
         prev.map((item) =>
           item.id === selectedTask.id
-            ? { ...item, ...formState, ...dates, categories }
+            ? { ...item, ...formState, ...dates, task_time, categories }
             : item,
         ),
       );
@@ -662,6 +670,7 @@ function TasksPageContent() {
                 assignee_id: t.assignee_id,
                 ...taskFormDatesFromTask(t),
                 due_date: t.due_date,
+                task_time: formatTaskTimeForInput(t.task_time),
                 details: t.details ?? null,
                 status: t.status,
                 priority: t.priority,

@@ -6,6 +6,7 @@ import { Task, TaskStatus, TaskPriority, TaskCategory } from "../../types/databa
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { CategoryMultiSelect } from "./category-chips";
 import { TASK_CATEGORY_OPTIONS, TASK_CATEGORY_STYLES } from "@/lib/task-categories";
+import { formatTaskTimeForInput } from "@/lib/calendar-tasks";
 import {
   ClipboardCheck,
   Briefcase,
@@ -320,6 +321,20 @@ export default function TaskModal({
             {errors.start_date && (
               <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.start_date}</p>
             )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="task-time" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
+              Time <span className="font-medium text-slate-400">(optional)</span>
+            </label>
+            <input
+              id="task-time"
+              type="time"
+              name="task_time"
+              value={formatTaskTimeForInput(formState.task_time)}
+              onChange={handleFieldChange}
+              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

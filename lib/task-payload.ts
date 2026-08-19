@@ -1,4 +1,7 @@
-import { normalizeTaskDateRange } from "@/lib/calendar-tasks";
+import {
+  normalizeTaskDateRange,
+  normalizeTaskTime,
+} from "@/lib/calendar-tasks";
 import type { Task, TaskRecord } from "@/types/database";
 
 /** Persistable task columns from the task form (excludes tags and analysis link). */
@@ -16,6 +19,7 @@ export function buildTaskRecordPayload(
     start_date: dates.start_date,
     end_date: dates.end_date,
     due_date: dates.due_date,
+    task_time: normalizeTaskTime(record.task_time),
     details: record.details?.trim() || null,
     status: record.status,
     priority: record.priority,

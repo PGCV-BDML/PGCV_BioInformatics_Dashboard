@@ -167,6 +167,7 @@ async function runAnalysisSync(
     start_date: day,
     end_date: day,
     due_date: day,
+    task_time: existing?.task_time ?? null,
     details: existing?.details ?? null,
     status: mapAnalysisStatusToTask(analysis.status),
     priority: options?.priority ?? existing?.priority ?? "medium",
