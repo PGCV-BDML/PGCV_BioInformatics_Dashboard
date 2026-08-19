@@ -102,7 +102,8 @@ function LikertScale({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className="grid w-full gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       role="radiogroup"
       aria-label={name}
     >
@@ -116,7 +117,7 @@ function LikertScale({
             aria-checked={selected}
             aria-label={`${option.value} — ${option.label}`}
             onClick={() => onChange(option.value)}
-            className={`min-w-[2.25rem] px-2 py-1.5 rounded-lg border text-[11px] font-extrabold transition-all ${
+            className={`h-9 w-full min-w-0 px-1 rounded-lg border text-[11px] font-extrabold leading-none tabular-nums flex items-center justify-center whitespace-nowrap overflow-hidden transition-all ${
               selected
                 ? "bg-[#2a7797] border-[#2a7797] text-white shadow-sm"
                 : "bg-white border-slate-200 text-slate-500 hover:border-[#4ec2bb] hover:text-[#2a7797]"
@@ -440,7 +441,7 @@ export default function ProgramEvaluationForm({
           key={question.id}
           className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-4"
         >
-          <legend className="text-xs font-extrabold text-slate-700">
+          <legend className="text-xs font-extrabold text-slate-700 leading-snug">
             {number}. {question.question}
             <RequiredMark required={required} />
           </legend>
@@ -529,10 +530,14 @@ export default function ProgramEvaluationForm({
                       </p>
                     )}
                     {question.type === "rating_group" && (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                         {EVALUATION_RATING_SCALE.map((option) => (
-                          <span key={String(option.value)}>
-                            {option.value} — {option.label}
+                          <span
+                            key={String(option.value)}
+                            className="inline-flex items-baseline gap-1 shrink-0 tabular-nums"
+                          >
+                            <span>{option.value}</span>
+                            <span>— {option.label}</span>
                           </span>
                         ))}
                       </div>
