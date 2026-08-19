@@ -272,29 +272,28 @@ export default function DashboardLandingPage() {
       </div>
 
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden w-full rounded-[32px] p-8 md:p-12 shadow-[0_20px_50px_rgba(15,23,42,0.12)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-        <div className="space-y-4 max-w-2xl z-10">
-          <span className="text-[11px] font-bold tracking-[2px] uppercase text-[#2a7797] font-quicksand block">
+      <div className="relative overflow-hidden w-full rounded-2xl px-5 py-4 md:px-6 md:py-5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] border border-slate-300 bg-gradient-to-tr from-[#f9f5eb] via-[#fdfdfd] to-[#e1f1f5] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-1 max-w-2xl z-10">
+          <span className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#2a7797] font-quicksand block">
             Internal Operations Hub
           </span>
 
-          <h2 className="text-4xl md:text-[44px] font-black text-slate-800 leading-[1.15] tracking-tight font-aileron">
-            Bioinformatics Workflow <br />
-            Dashboard
+          <h2 className="text-xl md:text-2xl font-black text-slate-800 leading-snug tracking-tight font-aileron">
+            Bioinformatics Workflow Dashboard
           </h2>
 
-          <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed max-w-xl pt-1 font-aileron">
+          <p className="text-[11px] md:text-xs text-slate-500 font-medium leading-relaxed max-w-xl font-aileron">
             One internal workspace for service tracking, training, internships,
             collaborations, projects, accomplishments, documents, and repository
             links.
           </p>
         </div>
 
-        <div className="flex-shrink-0 z-10 self-end md:self-auto">
+        <div className="flex-shrink-0 z-10">
           <img
             src="/assets/pgcv_logo.png"
             alt="Philippine Genome Center Visayas logo"
-            className="h-28 w-auto object-contain"
+            className="h-14 md:h-16 w-auto object-contain"
           />
         </div>
 
