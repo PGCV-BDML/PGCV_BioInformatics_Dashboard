@@ -34,6 +34,7 @@ const TABLE_LABELS: Partial<
   conversation: { one: "conversation", many: "conversations" },
   message: { one: "message", many: "messages" },
   task_tag: { one: "task tag", many: "task tags" },
+  task_assignee: { one: "task assignee", many: "task assignees" },
   user_presence: { one: "presence record", many: "presence records" },
   user_absence: { one: "absence day", many: "absence days" },
   users: { one: "user", many: "users" },
@@ -132,6 +133,10 @@ export function describeSaveError(error: unknown, table: TableNames): string {
 
   if (message.includes("task_date_range_chk")) {
     return `Failed to save ${subject}: end date cannot be before start date.`;
+  }
+
+  if (message.includes("at most one assignee")) {
+    return `Failed to save ${subject}: sequence analysis tasks can have only one assignee.`;
   }
 
   if (

@@ -1,5 +1,10 @@
 import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types/database";
 import { formatDate } from "@/lib/utils";
+import {
+  formatAssigneeNames,
+  primaryAssigneeId,
+  resolveTaskAssigneeIds,
+} from "@/lib/task-assignees";
 
 export type CalendarTask = {
   id: string;
@@ -10,7 +15,7 @@ export type CalendarTask = {
   details: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  assignee_id: string;
+  assignee_id: string | null;
   linked_project_id: string;
   linked_analysis_id?: string | null;
   categories: TaskCategory[];
@@ -273,6 +278,7 @@ export function mapTasksForCalendar(
     if (!start || !end) continue;
 
     const projectId = t.linked_project_id ?? "";
+    const assigneeIds = resolveTaskAssigneeIds(t);
     mapped.push({
       id: t.id,
       title: t.title || "Untitled task",
@@ -282,14 +288,14 @@ export function mapTasksForCalendar(
       details: t.details?.trim() || null,
       status: t.status,
       priority: t.priority,
-      assignee_id: t.assignee_id,
+      assignee_id: primaryAssigneeId(assigneeIds),
       linked_project_id: projectId,
       linked_analysis_id: t.linked_analysis_id ?? null,
       categories: t.categories ?? [],
       projectName: projectId
         ? (projectNameById.get(projectId) ?? "Unlinked project")
         : "No linked project",
-      assigneeName: assigneeNameById.get(t.assignee_id) ?? "Unassigned",
+      assigneeName: formatAssigneeNames(assigneeIds, assigneeNameById),
     });
   }
 

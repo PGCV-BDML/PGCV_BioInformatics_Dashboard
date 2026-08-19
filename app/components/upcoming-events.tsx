@@ -8,7 +8,7 @@ import {
   FolderGit2,
   CheckSquare,
 } from "lucide-react";
-import { getRowsFromDB, getNameIdFromDB, getTaskCategoriesByTaskId } from "@/lib/supabase";
+import { getRowsFromDB, getNameIdFromDB, getTaskCategoriesByTaskId, getTaskAssigneesByTaskId } from "@/lib/supabase";
 import type { Task } from "@/types/database";
 import {
   type CalendarTask,
@@ -18,6 +18,7 @@ import {
   upcomingTasks,
 } from "@/lib/calendar-tasks";
 import { formatTaskDateRange } from "@/lib/calendar-tasks";
+import { applyTaskAssignees } from "@/lib/task-assignees";
 import { TaskCategoryChips as CategoryChips } from "./category-chips";
 
 export function UpcomingEvents() {
@@ -32,10 +33,11 @@ export function UpcomingEvents() {
       setIsLoading(true);
       setError(null);
       try {
-        const [taskRows, projects, categoriesByTask] = await Promise.all([
+        const [taskRows, projects, categoriesByTask, assigneesByTask] = await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
           getTaskCategoriesByTaskId(),
+          getTaskAssigneesByTaskId(),
         ]);
 
         if (cancelled) return;
@@ -43,10 +45,13 @@ export function UpcomingEvents() {
         const projectNameById = new Map(
           (projects ?? []).map((p) => [p.id, p.name]),
         );
-        const enriched = taskRows.map((t) => ({
-          ...t,
-          categories: categoriesByTask.get(t.id) ?? [],
-        }));
+        const enriched = applyTaskAssignees(
+          taskRows.map((t) => ({
+            ...t,
+            categories: categoriesByTask.get(t.id) ?? [],
+          })),
+          assigneesByTask,
+        );
         const mapped = mapTasksForCalendar(
           enriched,
           projectNameById,

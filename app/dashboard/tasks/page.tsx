@@ -36,7 +36,9 @@ import {
   saveDataToDB,
   getNameIdFromDB,
   getTaskCategoriesByTaskId,
+  getTaskAssigneesByTaskId,
   replaceTaskCategories,
+  replaceTaskAssignees,
   supabase,
 } from "@/lib/supabase";
 import { analysisStatusLabel } from "@/lib/analysis-tracker";
@@ -50,6 +52,12 @@ import {
 } from "@/lib/calendar-tasks";
 import { describeSaveError } from "@/lib/db-errors";
 import { buildTaskRecordPayload } from "@/lib/task-payload";
+import {
+  applyTaskAssignees,
+  formatAssigneeNames,
+  primaryAssigneeId,
+  resolveTaskAssigneeIds,
+} from "@/lib/task-assignees";
 import { AnalysisStatus } from "../../../types/database";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
 import {
@@ -131,7 +139,8 @@ function TasksPageContent() {
 
   const emptyForm: Omit<Task, "id"> = {
     title: "",
-    assignee_id: availableUsers[0]?.id ?? "",
+    assignee_id: null,
+    assignee_ids: [],
     start_date: "",
     end_date: "",
     due_date: null,
@@ -151,20 +160,24 @@ function TasksPageContent() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [tasks, projects, users, categoriesByTask, analyses] = await Promise.all([
+        const [tasks, projects, users, categoriesByTask, assigneesByTask, analyses] = await Promise.all([
           getRowsFromDB("task"),
           getNameIdFromDB("project"),
           getUsersFromDB(["team_lead", "team_member"]),
           getTaskCategoriesByTaskId(),
+          getTaskAssigneesByTaskId(),
           supabase
             .from("analysis")
             .select("id, status, status_of_completion, status_of_submission"),
         ]);
 
-        const enriched = (tasks as Task[]).map((t) => ({
-          ...t,
-          categories: categoriesByTask.get(t.id) ?? [],
-        }));
+        const enriched = applyTaskAssignees(
+          (tasks as Task[]).map((t) => ({
+            ...t,
+            categories: categoriesByTask.get(t.id) ?? [],
+          })),
+          assigneesByTask,
+        );
 
         const statusById = new Map<string, string>();
         for (const row of analyses.data ?? []) {
@@ -211,7 +224,8 @@ function TasksPageContent() {
     setSelectedTask(match);
     setFormState({
       title: match.title,
-      assignee_id: match.assignee_id,
+      assignee_id: primaryAssigneeId(resolveTaskAssigneeIds(match)),
+      assignee_ids: resolveTaskAssigneeIds(match),
       ...taskFormDatesFromTask(match),
       due_date: match.due_date,
       task_time: formatTaskTimeForInput(match.task_time),
@@ -303,6 +317,11 @@ function TasksPageContent() {
     }
   };
 
+  const assigneeNameById = useMemo(
+    () => new Map(availableUsers.map((u) => [u.id, u.name])),
+    [availableUsers],
+  );
+
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
       if (activeFilter !== "All" && task.status !== activeFilter) return false;
@@ -312,14 +331,17 @@ function TasksPageContent() {
       ) {
         return false;
       }
-      const assignee = availableUsers.find((u) => u.id === task.assignee_id);
+      const assigneeNames = formatAssigneeNames(
+        resolveTaskAssigneeIds(task),
+        assigneeNameById,
+      );
       const project = availableProjects.find((p) => p.id === task.linked_project_id);
       const categoryLabels = (task.categories ?? [])
         .map((c) => TASK_CATEGORY_LABELS[c])
         .join(" ");
       const searchPool = [
         task.title ?? "",
-        assignee ? assignee.name : "",
+        assigneeNames === "Unassigned" ? "" : assigneeNames,
         task.status,
         task.priority,
         task.start_date,
@@ -339,8 +361,8 @@ function TasksPageContent() {
     tasksList,
     activeFilter,
     categoryFilter,
-    availableUsers,
     availableProjects,
+    assigneeNameById,
   ]);
 
   const { 
@@ -378,6 +400,10 @@ function TasksPageContent() {
           : 0;
         return timeA - timeB;
       },
+      assignee_id: (a, b) =>
+        formatAssigneeNames(resolveTaskAssigneeIds(a), assigneeNameById).localeCompare(
+          formatAssigneeNames(resolveTaskAssigneeIds(b), assigneeNameById),
+        ),
     },
   });
 
@@ -400,6 +426,14 @@ function TasksPageContent() {
     setFormState((prev) => ({ ...prev, categories }));
   }, []);
 
+  const handleAssigneesChange = useCallback((assigneeIds: string[]) => {
+    setFormState((prev) => ({
+      ...prev,
+      assignee_ids: assigneeIds,
+      assignee_id: primaryAssigneeId(assigneeIds),
+    }));
+  }, []);
+
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; // prevent double-submit
@@ -407,6 +441,7 @@ function TasksPageContent() {
 
     const generatedId = crypto.randomUUID();
     const categories = formState.categories ?? [];
+    const assignee_ids = resolveTaskAssigneeIds(formState);
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
     const task_time = normalizeTaskTime(formState.task_time);
     const newTask: Task = {
@@ -414,12 +449,15 @@ function TasksPageContent() {
       ...formState,
       ...dates,
       task_time,
+      assignee_id: primaryAssigneeId(assignee_ids),
+      assignee_ids,
       categories,
     };
 
     try {
       await saveDataToDB("task", generatedId, buildTaskRecordPayload(formState));
       await replaceTaskCategories(generatedId, categories);
+      await replaceTaskAssignees(generatedId, assignee_ids);
       setTasksList((prev) => [newTask, ...prev]);
       showToast("Task created successfully.", "success");
     } catch (error) {
@@ -441,16 +479,26 @@ function TasksPageContent() {
     setIsSubmitting(true);
 
     const categories = formState.categories ?? [];
+    const assignee_ids = resolveTaskAssigneeIds(formState);
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
     const task_time = normalizeTaskTime(formState.task_time);
 
     try {
       await replaceTaskCategories(selectedTask.id, categories);
+      await replaceTaskAssignees(selectedTask.id, assignee_ids);
       await saveDataToDB("task", selectedTask.id, buildTaskRecordPayload(formState));
       setTasksList((prev) =>
         prev.map((item) =>
           item.id === selectedTask.id
-            ? { ...item, ...formState, ...dates, task_time, categories }
+            ? {
+                ...item,
+                ...formState,
+                ...dates,
+                task_time,
+                assignee_id: primaryAssigneeId(assignee_ids),
+                assignee_ids,
+                categories,
+              }
             : item,
         ),
       );
@@ -536,17 +584,15 @@ function TasksPageContent() {
     },
     {
       key: "assignee_id",
-      label: "Assignee",
-      width: "11%",
-      render: (t) => {
-        const assignee = availableUsers.find((u) => u.id === t.assignee_id);
-        return (
-          <TruncatedText
-            text={assignee ? assignee.name : "Unassigned"}
-            className="text-xs text-slate-700 font-medium"
-          />
-        );
-      },
+      label: "Assignees",
+      width: "13%",
+      sortable: true,
+      render: (t) => (
+        <TruncatedText
+          text={formatAssigneeNames(resolveTaskAssigneeIds(t), assigneeNameById)}
+          className="text-xs text-slate-700 font-medium"
+        />
+      ),
     },
     {
       key: "priority",
@@ -667,7 +713,8 @@ function TasksPageContent() {
               setSelectedTask(t);
               setFormState({
                 title: t.title,
-                assignee_id: t.assignee_id,
+                assignee_id: primaryAssigneeId(resolveTaskAssigneeIds(t)),
+                assignee_ids: resolveTaskAssigneeIds(t),
                 ...taskFormDatesFromTask(t),
                 due_date: t.due_date,
                 task_time: formatTaskTimeForInput(t.task_time),
@@ -869,6 +916,7 @@ function TasksPageContent() {
         priorityOptions={PRIORITY_OPTIONS}
         onInputChange={handleInputChange}
         onCategoriesChange={handleCategoriesChange}
+        onAssigneesChange={handleAssigneesChange}
         onClose={handleCloseTaskModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />

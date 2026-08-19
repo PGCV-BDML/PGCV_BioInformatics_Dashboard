@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Task, TaskStatus, TaskPriority, TaskCategory } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
 import { CategoryMultiSelect } from "./category-chips";
+import { AssigneeMultiSelect } from "./assignee-select";
 import { TASK_CATEGORY_OPTIONS, TASK_CATEGORY_STYLES } from "@/lib/task-categories";
 import { formatTaskTimeForInput } from "@/lib/calendar-tasks";
+import { resolveTaskAssigneeIds } from "@/lib/task-assignees";
 import {
   ClipboardCheck,
   Briefcase,
@@ -31,6 +33,7 @@ interface TaskModalProps {
     >,
   ) => void;
   onCategoriesChange: (categories: TaskCategory[]) => void;
+  onAssigneesChange: (assigneeIds: string[]) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -46,6 +49,7 @@ export default function TaskModal({
   priorityOptions,
   onInputChange,
   onCategoriesChange,
+  onAssigneesChange,
   onClose,
   onSubmit,
 }: TaskModalProps) {
@@ -54,7 +58,10 @@ export default function TaskModal({
   const validate = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!formState.title.trim()) errs.title = "Task description is required";
-    if (!formState.assignee_id) errs.assignee_id = "Please select an assignee";
+    const assigneeIds = resolveTaskAssigneeIds(formState);
+    if (formState.linked_analysis_id && assigneeIds.length > 1) {
+      errs.assignee_ids = "Sequence analysis tasks can have only one assignee";
+    }
     if (!formState.start_date) errs.start_date = "Start date is required";
     if (
       formState.start_date &&
@@ -92,6 +99,11 @@ export default function TaskModal({
   const handleCategoriesChange = (next: TaskCategory[]) => {
     setErrors((prev) => ({ ...prev, categories: "" }));
     onCategoriesChange(next);
+  };
+
+  const handleAssigneesChange = (next: string[]) => {
+    setErrors((prev) => ({ ...prev, assignee_ids: "" }));
+    onAssigneesChange(next);
   };
 
   const linkedAnalysisId = formState.linked_analysis_id;
@@ -213,32 +225,19 @@ export default function TaskModal({
       <div className="space-y-3.5 pt-3 border-t border-slate-100">
         {renderSectionLabel(<User className="w-3.5 h-3.5" />, "Assignment")}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="task-assignee" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-              Assignee
-            </label>
-            <select
-              id="task-assignee"
-              name="assignee_id"
-              required
-              aria-invalid={!!errors.assignee_id}
-              value={formState.assignee_id}
-              onChange={handleFieldChange}
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
-            >
-              {availableUsers.map((user) => (
-                <option
-                  key={user.id}
-                  value={user.id}
-                  className="text-slate-800 font-bold"
-                >
-                  {user.name}
-                </option>
-              ))}
-            </select>
-            {errors.assignee_id && (
-              <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.assignee_id}</p>
-            )}
+          <div className="sm:col-span-2">
+            <AssigneeMultiSelect
+              selected={resolveTaskAssigneeIds(formState)}
+              users={availableUsers}
+              onChange={handleAssigneesChange}
+              max={linkedAnalysisId ? 1 : undefined}
+              error={errors.assignee_ids}
+              hint={
+                linkedAnalysisId
+                  ? "Sequence analysis tasks can have only one assignee. Leave empty to unassign."
+                  : "Select one or more people, or leave unassigned."
+              }
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -1,4 +1,5 @@
 import {
+  replaceTaskAssignees,
   replaceTaskCategories,
   saveDataToDB,
   supabase,
@@ -59,7 +60,7 @@ function mapAnalysisStatusToTask(status: AnalysisStatus): TaskStatus {
   }
 }
 
-/** Remove a linked task and its tags (no ON DELETE CASCADE on task_tag → task). */
+/** Remove a linked task and its tags/assignees (CASCADE also covers junction rows). */
 async function deleteLinkedTask(taskId: string): Promise<void> {
   const { error: tagError } = await supabase
     .from("task_tag")
@@ -68,6 +69,15 @@ async function deleteLinkedTask(taskId: string): Promise<void> {
   if (tagError) {
     console.error("Error clearing tags for linked task:", tagError);
     throw tagError;
+  }
+
+  const { error: assigneeError } = await supabase
+    .from("task_assignee")
+    .delete()
+    .eq("task_id", taskId);
+  if (assigneeError) {
+    console.error("Error clearing assignees for linked task:", assigneeError);
+    throw assigneeError;
   }
 
   const { error } = await supabase.from("task").delete().eq("id", taskId);
@@ -124,7 +134,7 @@ export type AnalysisSyncOutcome =
 
 /**
  * Upsert a task linked to a sequence analysis so it appears on Tasks + Calendar.
- * Skips when assignee is blank (task.assignee_id is required).
+ * Skips when assignee is blank (a new analysis task needs someone to own it).
  * Creates a new task only when analysis status is `ongoing`; existing linked
  * tasks are still updated on later status changes (e.g. completed / on hold).
  * A cancelled analysis has its linked task removed.
@@ -178,6 +188,7 @@ async function runAnalysisSync(
 
   const taskId = existing?.id ?? crypto.randomUUID();
   await saveDataToDB("task", taskId, payload);
+  await replaceTaskAssignees(taskId, [analysis.assignee_id]);
 
   let categories: TaskCategory[] = ["sequence_analysis"];
   if (existing) {
@@ -198,7 +209,12 @@ async function runAnalysisSync(
 
   return {
     outcome: existing ? "updated" : "created",
-    task: { id: taskId, ...payload, categories },
+    task: {
+      id: taskId,
+      ...payload,
+      categories,
+      assignee_ids: [analysis.assignee_id],
+    },
   };
 }
 

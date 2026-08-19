@@ -81,7 +81,8 @@ export type TaskCategory =
 export type Task = {
   id: string;
   title: string;
-  assignee_id: string;
+  /** Denormalized primary assignee (first selected). Null when unassigned. */
+  assignee_id: string | null;
   /** Legacy mirror of end_date; kept for older queries and reports. */
   due_date: string | null;
   start_date: string | null;
@@ -96,6 +97,8 @@ export type Task = {
   linked_analysis_id?: string | null;
   /** Client-enriched from task_tag; not a column on task. */
   categories?: TaskCategory[];
+  /** Client-enriched from task_assignee; not a column on task. */
+  assignee_ids?: string[];
   updated_at?: string;
 };
 
@@ -105,8 +108,14 @@ export type TaskTag = {
   created_at?: string;
 };
 
-/** Persistable task fields (excludes client-only `categories`). */
-export type TaskRecord = Omit<Task, "categories">;
+export type TaskAssignee = {
+  task_id: string;
+  user_id: string;
+  created_at?: string;
+};
+
+/** Persistable task fields (excludes client-only lists). */
+export type TaskRecord = Omit<Task, "categories" | "assignee_ids">;
 
 // ============================================================
 // Client Sequence Analysis types

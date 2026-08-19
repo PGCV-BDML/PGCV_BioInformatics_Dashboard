@@ -17,6 +17,7 @@ import {
   getTeamDirectoryUsers,
   getNameIdFromDB,
   getTaskCategoriesByTaskId,
+  getTaskAssigneesByTaskId,
 } from "@/lib/supabase";
 import type {
   Task,
@@ -51,6 +52,7 @@ import {
 } from "@/lib/calendar-absences";
 import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
+import { applyTaskAssignees } from "@/lib/task-assignees";
 import { ErrorState, LoadingState } from "./state-views";
 import { TaskCategoryChips as CategoryChips } from "./category-chips";
 
@@ -78,12 +80,13 @@ export default function TaskCalendar() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [taskRows, projects, users, categoriesByTask, absenceRows] =
+        const [taskRows, projects, users, categoriesByTask, assigneesByTask, absenceRows] =
           await Promise.all([
           getRowsFromDB("task") as Promise<Task[]>,
           getNameIdFromDB("project"),
           getTeamDirectoryUsers<DbUser>(),
           getTaskCategoriesByTaskId(),
+          getTaskAssigneesByTaskId(),
           getRowsFromDB<UserAbsence>("user_absence"),
         ]);
 
@@ -96,10 +99,13 @@ export default function TaskCalendar() {
           ((users ?? []) as DbUser[]).map((u) => [u.id, u.name]),
         );
 
-        const enriched = taskRows.map((t) => ({
-          ...t,
-          categories: categoriesByTask.get(t.id) ?? [],
-        }));
+        const enriched = applyTaskAssignees(
+          taskRows.map((t) => ({
+            ...t,
+            categories: categoriesByTask.get(t.id) ?? [],
+          })),
+          assigneesByTask,
+        );
 
         setTasks(mapTasksForCalendar(enriched, projectNameById, assigneeNameById));
         setAbsences(

@@ -109,6 +109,7 @@ export type TableNames =
   | "program_enrollment"
   | "task"
   | "task_tag"
+  | "task_assignee"
   | "repository"
   | "repository_tag"
   | "incident_report"
@@ -317,6 +318,71 @@ export async function replaceTaskCategories(
     if (deleteError) {
       console.error("Error clearing task tags:", deleteError);
       throw deleteError;
+    }
+  }
+}
+
+/** Load all task_assignee rows grouped by task_id. */
+export async function getTaskAssigneesByTaskId(): Promise<Map<string, string[]>> {
+  const { data, error } = await supabase
+    .from("task_assignee")
+    .select("task_id, user_id");
+  if (error) {
+    console.error("Error retrieving task assignees:", error);
+    throw error;
+  }
+
+  const map = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    const taskId = row.task_id as string;
+    const userId = row.user_id as string;
+    const list = map.get(taskId) ?? [];
+    list.push(userId);
+    map.set(taskId, list);
+  }
+  return map;
+}
+
+/** Replace all assignees for a task (remove stale rows, then insert new ones). */
+export async function replaceTaskAssignees(taskId: string, userIds: string[]) {
+  const unique = Array.from(new Set(userIds.filter(Boolean)));
+
+  const { data: currentRows, error: fetchError } = await supabase
+    .from("task_assignee")
+    .select("user_id")
+    .eq("task_id", taskId);
+
+  if (fetchError) {
+    console.error("Error reading task assignees:", fetchError);
+    throw fetchError;
+  }
+
+  const current = new Set((currentRows ?? []).map((row) => row.user_id as string));
+  const toAdd = unique.filter((userId) => !current.has(userId));
+  const toRemove = [...current].filter((userId) => !unique.includes(userId));
+
+  // Remove first so analysis-linked tasks never briefly have two assignees.
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("task_assignee")
+      .delete()
+      .eq("task_id", taskId)
+      .in("user_id", toRemove);
+
+    if (deleteError) {
+      console.error("Error clearing task assignees:", deleteError);
+      throw deleteError;
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase.from("task_assignee").insert(
+      toAdd.map((user_id) => ({ task_id: taskId, user_id })),
+    );
+
+    if (insertError) {
+      console.error("Error inserting task assignees:", insertError);
+      throw insertError;
     }
   }
 }

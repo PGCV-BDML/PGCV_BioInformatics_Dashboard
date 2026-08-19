@@ -198,6 +198,48 @@ describe("mapTasksForCalendar", () => {
       assigneeName: "Ada",
     });
   });
+
+  it("joins multiple assignee names and labels an empty list Unassigned", () => {
+    const tasks: Task[] = [
+      {
+        id: "1",
+        title: "Shared",
+        assignee_id: "u1",
+        assignee_ids: ["u1", "u2"],
+        start_date: "2026-07-28",
+        end_date: "2026-07-28",
+        due_date: "2026-07-28",
+        details: null,
+        status: "pending",
+        priority: "medium",
+        linked_project_id: null,
+      },
+      {
+        id: "2",
+        title: "Open",
+        assignee_id: null,
+        assignee_ids: [],
+        start_date: "2026-07-29",
+        end_date: "2026-07-29",
+        due_date: "2026-07-29",
+        details: null,
+        status: "pending",
+        priority: "low",
+        linked_project_id: null,
+      },
+    ];
+
+    const mapped = mapTasksForCalendar(
+      tasks,
+      new Map(),
+      new Map([
+        ["u1", "Ada"],
+        ["u2", "Grace"],
+      ]),
+    );
+
+    expect(mapped.map((t) => t.assigneeName)).toEqual(["Ada, Grace", "Unassigned"]);
+  });
 });
 
 describe("buildTasksByDate", () => {
