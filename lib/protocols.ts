@@ -15,6 +15,22 @@ export const PROTOCOLS: ProtocolMeta[] = [
       "Record a client sequence analysis from intake through peer review, e-signature, approval, and client delivery.",
     category: "Sequence Analysis",
   },
+  {
+    slug: "training-programs",
+    code: "SOP-BIOINFO-TR-001",
+    title: "Training Programs",
+    summary:
+      "Set up a training cohort, enroll trainees, deliver modules and tests, collect the evaluation, and issue certificates.",
+    category: "Training",
+  },
+  {
+    slug: "internship-programs",
+    code: "SOP-BIOINFO-IN-001",
+    title: "Internship Programs",
+    summary:
+      "Set up an internship cohort, enroll interns, deliver modules and tests, collect the evaluation, and issue certificates.",
+    category: "Internship",
+  },
 ];
 
 export const DEFAULT_PROTOCOL_SLUG = PROTOCOLS[0]?.slug ?? "service-report-tracker";

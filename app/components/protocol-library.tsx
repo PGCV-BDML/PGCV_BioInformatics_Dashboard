@@ -64,7 +64,7 @@ export default function ProtocolLibrary({
                         {protocol.title}
                       </span>
                       <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-[#7a8e9b] font-quicksand">
-                        {protocol.code}
+                        {protocol.category} · {protocol.code}
                       </span>
                     </span>
                   </span>

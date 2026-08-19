@@ -12,6 +12,15 @@ describe("getProtocolBySlug", () => {
     expect(protocol?.title).toBe("Tracking Service Reports");
   });
 
+  it("returns the training and internship protocols", () => {
+    expect(getProtocolBySlug("training-programs")?.code).toBe(
+      "SOP-BIOINFO-TR-001",
+    );
+    expect(getProtocolBySlug("internship-programs")?.code).toBe(
+      "SOP-BIOINFO-IN-001",
+    );
+  });
+
   it("returns undefined for an unknown slug", () => {
     expect(getProtocolBySlug("not-a-protocol")).toBeUndefined();
   });
