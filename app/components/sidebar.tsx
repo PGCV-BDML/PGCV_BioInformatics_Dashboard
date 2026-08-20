@@ -78,12 +78,6 @@ const navItems: NavItem[] = [
       "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
-    name: "Incident Reports",
-    href: "/dashboard/incidents",
-    icon: ShieldAlert,
-    animationClass: "group-hover:scale-105 transition-transform duration-200",
-  },
-  {
     name: "Sequence Analysis",
     href: "/dashboard/services",
     icon: Microscope,
@@ -143,6 +137,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/repositories",
     icon: FolderGit2,
     animationClass: "group-hover:rotate-3 transition-transform duration-200",
+  },
+  {
+    name: "Incident Reports",
+    href: "/dashboard/incidents",
+    icon: ShieldAlert,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
 ];
 
