@@ -30,6 +30,7 @@ import {
   Bell,
   ShieldAlert,
   BookOpen,
+  FileOutput,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -96,6 +97,11 @@ const navItems: NavItem[] = [
         name: "Service Report Tracker",
         href: "/dashboard/services/tracker",
         icon: ClipboardList,
+      },
+      {
+        name: "Service Report Generator",
+        href: "/dashboard/services/report-generator",
+        icon: FileOutput,
       },
       {
         name: "COVID-19 Sample Tracker",

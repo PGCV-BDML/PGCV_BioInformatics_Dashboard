@@ -34,6 +34,8 @@ export const routes = {
         ? `/dashboard/services/tracker?${qs}`
         : "/dashboard/services/tracker";
     },
+    /** Launchpad of external service report generator tools. */
+    reportGenerator: "/dashboard/services/report-generator",
     /** COVID-19 Sample Tracker (genomic surveillance; not client sequence analysis). */
     covidSampleTracker: "/dashboard/services/covid-sample-tracker",
     covidSampleTrackerByRunId: (runId: string) =>
