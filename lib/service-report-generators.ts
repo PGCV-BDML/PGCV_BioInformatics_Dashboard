@@ -20,7 +20,7 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     title: "Amplicon Assembly",
     description:
       "Open the amplicon assembly report generator to draft a client-ready service report.",
-    href: "",
+    href: "http://10.49.42.66:5050",
     accent: "#2a7797",
     tint: "#e6f4f8",
   },
