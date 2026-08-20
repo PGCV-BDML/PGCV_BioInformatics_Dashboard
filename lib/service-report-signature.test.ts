@@ -95,8 +95,8 @@ describe("resolveSignatureRect", () => {
       size: 12,
       font: bold,
     });
-    page.drawText("Reviewed by:", { x: 72, y: 358, size: 12, font });
-    page.drawText("JASMINE C. VELO", { x: 72, y: 324, size: 12, font: bold });
+    page.drawText("Reviewed by:", { x: 72, y: 445, size: 12, font });
+    page.drawText("JASMINE C. VELO", { x: 72, y: 357, size: 12, font: bold });
     page.drawText("Approved for Release:", { x: 72, y: 210, size: 12, font });
     page.drawText("VICTOR MARCO EMMANUEL N. FERRIOLS, PhD.", {
       x: 72,
@@ -136,15 +136,16 @@ describe("resolveSignatureRect", () => {
   it("matches labels whose spaces Word stripped into TJ kerning", async () => {
     const page = await pgcvSignatoryPage();
 
+    const drop = 72 / 2.54; // 1 cm lower than the label-hug placement
     const reviewed = resolveSignatureRect(page, "reviewed_by", 400, 100);
     expect(reviewed.x).toBeCloseTo(72, 0);
-    expect(reviewed.y + reviewed.height).toBeCloseTo(439.1, 0);
-    expect(reviewed.y).toBeCloseTo(399.1, 0);
+    expect(reviewed.y + reviewed.height).toBeCloseTo(439.1 - drop, 0);
+    expect(reviewed.y).toBeCloseTo(399.1 - drop, 0);
 
     const approved = resolveSignatureRect(page, "approved_by", 400, 100);
     expect(approved.x).toBeCloseTo(71.7, 0);
-    expect(approved.y + approved.height).toBeCloseTo(203.9, 0);
-    expect(approved.y).toBeCloseTo(163.9, 0);
+    expect(approved.y + approved.height).toBeCloseTo(203.9 - drop, 0);
+    expect(approved.y).toBeCloseTo(163.9 - drop, 0);
   });
 
   it("clears the printed names on the real template", async () => {
@@ -163,8 +164,8 @@ describe("resolveSignatureRect", () => {
   it("puts the reviewing stamp between Reviewed by and the printed name", async () => {
     const page = await signatoryPage();
     const rect = resolveSignatureRect(page, "reviewed_by", 400, 100);
-    expect(rect.y).toBeGreaterThan(324);
-    expect(rect.y + rect.height).toBeLessThan(358);
+    expect(rect.y).toBeGreaterThan(357);
+    expect(rect.y + rect.height).toBeLessThan(445);
   });
 
   it("puts the approving stamp between Approved for Release and the printed name", async () => {

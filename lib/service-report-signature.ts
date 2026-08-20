@@ -22,8 +22,8 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  * Signature image placement on the last page of a PGCV service report.
  *
  * The Word template is A4. Stamps are placed from the actual
- * "Reviewed by:" / "Approved for Release:" text on the page — hung from
- * just under that label, in the blank band above the printed name.
+ * "Reviewed by:" / "Approved for Release:" text on the page — hung 1 cm
+ * below that label, in the blank band above the printed name.
  * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
@@ -56,6 +56,11 @@ function squash(text: string): string {
   return text.toLowerCase().replace(/\s+/g, "");
 }
 
+/** PDF user-space points per centimetre (72 pt = 1 in = 2.54 cm). */
+const PT_PER_CM = 72 / 2.54;
+/** Extra drop of both officer stamps under the role label. */
+const STAMP_DROP_PT = 1 * PT_PER_CM;
+
 /**
  * Fallback if the PDF text cannot be read (scanned page, unusual encoding).
  *
@@ -63,14 +68,16 @@ function squash(text: string): string {
  * template the signatory page is the last page and holds only the three
  * blocks, so these are stable: label baselines sit at y=445.1 (Reviewed by:)
  * and y=209.9 (Approved for Release:), each 87.9pt above its printed name.
+ * The y values here already include STAMP_DROP_PT (1 cm below the
+ * label-hug placement).
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
-  reviewed_by: { x: 72, y: 399, maxWidth: 160, maxHeight: 40 },
-  approved_by: { x: 72, y: 164, maxWidth: 160, maxHeight: 40 },
+  reviewed_by: { x: 72, y: 399 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
+  approved_by: { x: 72, y: 164 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
 };
 
 /** Blank left under the label baseline before the top of the stamp. */
-const LABEL_CLEARANCE = 6;
+const LABEL_CLEARANCE = 6 + STAMP_DROP_PT;
 /** Blank left between the bottom of the stamp and the printed name. */
 const NAME_CLEARANCE = 4;
 /**
