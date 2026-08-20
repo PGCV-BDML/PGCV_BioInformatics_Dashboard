@@ -142,6 +142,18 @@ const FILTER_OPTIONS = [
 
 const ITEMS_PER_PAGE = 15;
 
+/** Keep a currently assigned person in the list even if their role later changed. */
+function withAssignedPerson(
+  options: ApproverOption[],
+  assignedId: string,
+  directory: ApproverOption[],
+): ApproverOption[] {
+  const id = assignedId.trim();
+  if (!id || options.some((o) => o.id === id)) return options;
+  const current = directory.find((o) => o.id === id);
+  return current ? [current, ...options] : options;
+}
+
 function emptyToNull(value: string): string | null {
   const t = value.trim();
   return t ? t : null;
@@ -271,6 +283,7 @@ export default function ServiceReportTrackerPage() {
   const [availableAssignees, setAvailableAssignees] = useState<string[]>([]);
   const [availableReviewers, setAvailableReviewers] = useState<ApproverOption[]>([]);
   const [availableApprovers, setAvailableApprovers] = useState<ApproverOption[]>([]);
+  const [personnelDirectory, setPersonnelDirectory] = useState<ApproverOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   /** run_id (normalized) → repository URL from Repositories module */
@@ -398,6 +411,11 @@ export default function ServiceReportTrackerPage() {
         setAvailableProjects(
           Array.from(tmpProjectMap.entries()).map(([id, v]) => ({ id, ...v })),
         );
+        const personnel = (users as User[]).map((u) => ({
+          id: u.id,
+          name: u.name,
+        }));
+        setPersonnelDirectory(personnel);
         setAvailableAssignees(
           (users as User[])
             .filter(
@@ -407,20 +425,12 @@ export default function ServiceReportTrackerPage() {
         );
         setAvailableReviewers(
           (users as User[])
-            .filter(
-              (u) =>
-                u.role === "reviewing_officer" ||
-                u.role === "team_lead" ||
-                u.role === "team_member",
-            )
+            .filter((u) => u.role === "reviewing_officer")
             .map((u) => ({ id: u.id, name: u.name })),
         );
         setAvailableApprovers(
           (users as User[])
-            .filter(
-              (u) =>
-                u.role === "approving_officer" || u.role === "team_lead",
-            )
+            .filter((u) => u.role === "approving_officer")
             .map((u) => ({ id: u.id, name: u.name })),
         );
       } catch (err) {
@@ -592,7 +602,7 @@ export default function ServiceReportTrackerPage() {
       try {
         let assigneeId: string | null = null;
         if (formState.assignee.trim()) {
-          const matchedUser = availableReviewers.find(
+          const matchedUser = personnelDirectory.find(
             (u) => u.name === formState.assignee,
           );
           if (!matchedUser) {
@@ -778,7 +788,7 @@ export default function ServiceReportTrackerPage() {
     [
       formState,
       availableProjects,
-      availableReviewers,
+      personnelDirectory,
       pendingFile,
       currentUserId,
       showToast,
@@ -1651,8 +1661,16 @@ export default function ServiceReportTrackerPage() {
         formState={formState}
         availableProjects={availableProjects}
         availableAssignees={availableAssignees}
-        availableReviewers={availableReviewers}
-        availableApprovers={availableApprovers}
+        availableReviewers={withAssignedPerson(
+          availableReviewers,
+          formState.reviewer_user_id,
+          personnelDirectory,
+        )}
+        availableApprovers={withAssignedPerson(
+          availableApprovers,
+          formState.approver_user_id,
+          personnelDirectory,
+        )}
         pendingFile={pendingFile}
         onPendingFileChange={setPendingFile}
         onClose={closeSidebar}

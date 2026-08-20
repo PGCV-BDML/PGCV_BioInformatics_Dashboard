@@ -40,7 +40,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Assign the Reviewing Officer",
     actor: "Analyst",
     detail:
-      "Open the edit panel and pick a lab peer under Personnel. Anyone except the assignee can review. Saving with a completed report notifies them.",
+      "Open the edit panel and pick a reviewing officer under Personnel. Only accounts with that role are listed, and the reviewer cannot be the assignee. Saving with a completed report notifies them.",
   },
   {
     title: "Peer review",
@@ -52,7 +52,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Assign the Approving Officer",
     actor: "Analyst",
     detail:
-      "Pick a team lead under Approving Officer. They are notified only after Status of Review is Reviewed — never before.",
+      "Pick an approving officer under Approving Officer. Only accounts with that role are listed. They are notified only after Status of Review is Reviewed — never before.",
   },
   {
     title: "Approve or request changes",

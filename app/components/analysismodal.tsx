@@ -50,9 +50,9 @@ export type AnalysisFormState = {
   notes: string;
   project_id: string;
   assignee: string;
-  /** UUID of the lab peer who reviews the report. Empty string = unassigned. */
+  /** UUID of the reviewing officer. Empty string = unassigned. */
   reviewer_user_id: string;
-  /** UUID of the team lead assigned as approving officer. Empty string = unassigned. */
+  /** UUID of the approving officer. Empty string = unassigned. */
   approver_user_id: string;
 };
 
@@ -100,8 +100,9 @@ interface AnalysisSidebarProps {
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availableAssignees: string[];
-  /** Any staff member can review; leads only can approve. */
+  /** Accounts with the reviewing_officer role. */
   availableReviewers: ApproverOption[];
+  /** Accounts with the approving_officer role. */
   availableApprovers: ApproverOption[];
   /** PDF staged for upload on save. The parent performs the upload. */
   pendingFile: File | null;
@@ -681,9 +682,8 @@ export default function AnalysisSidebar({
             </p>
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-              Peer who reviews the PDF before the approving officer is notified
-              (reviewing officer role or staff). Cannot be the assignee. External
-              officers work from Notifications only.
+              Accounts with the reviewing officer role. Cannot be the assignee.
+              External officers work from Notifications only.
             </p>
           )}
         </div>
@@ -712,7 +712,7 @@ export default function AnalysisSidebar({
             </p>
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-              Approving officer role or team lead. Notified only after the
+              Accounts with the approving officer role. Notified only after the
               reviewing officer signs the report off. External officers work from
               Notifications only.
             </p>
