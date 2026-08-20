@@ -33,10 +33,15 @@ export function AnalysisDashboardStatCards({
       <div className="bg-[#f3faf5] border border-emerald-300/50 rounded-[22px] p-6 shadow-[0_12px_28px_rgba(6,78,59,0.1)] flex flex-col justify-between gap-4">
         <div>
           <div className="flex items-center justify-between text-emerald-700 mb-1 font-quicksand">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">
-              Completed
-            </span>
-            <CheckCircle2 className="w-4 h-4 opacity-80" />
+            <div className="min-w-0">
+              <span className="block text-[11px] font-extrabold uppercase tracking-wider">
+                Completed
+              </span>
+              <span className="block text-[10px] font-bold normal-case tracking-normal text-emerald-700/70 mt-0.5">
+                Service reports · {selectedYear}
+              </span>
+            </div>
+            <CheckCircle2 className="w-4 h-4 opacity-80 shrink-0" />
           </div>
           {isLoading || !stats ? (
             <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
@@ -69,10 +74,15 @@ export function AnalysisDashboardStatCards({
       >
         <div>
           <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">
-              Ongoing
-            </span>
-            <Activity className="w-4 h-4 opacity-80" />
+            <div className="min-w-0">
+              <span className="block text-[11px] font-extrabold uppercase tracking-wider">
+                Ongoing
+              </span>
+              <span className="block text-[10px] font-bold normal-case tracking-normal text-amber-800/70 mt-0.5">
+                Service reports · {selectedYear}
+              </span>
+            </div>
+            <Activity className="w-4 h-4 opacity-80 shrink-0" />
           </div>
           {isLoading || !stats ? (
             <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
@@ -98,10 +108,15 @@ export function AnalysisDashboardStatCards({
       >
         <div>
           <div className="flex items-center justify-between text-amber-800 mb-1 font-quicksand">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">
-              On Hold
-            </span>
-            <PauseCircle className="w-4 h-4 opacity-80" />
+            <div className="min-w-0">
+              <span className="block text-[11px] font-extrabold uppercase tracking-wider">
+                On Hold
+              </span>
+              <span className="block text-[10px] font-bold normal-case tracking-normal text-amber-800/70 mt-0.5">
+                Service reports · {selectedYear}
+              </span>
+            </div>
+            <PauseCircle className="w-4 h-4 opacity-80 shrink-0" />
           </div>
           {isLoading || !stats ? (
             <div className="h-10 w-20 bg-slate-300/40 animate-pulse rounded-lg mt-1" />
