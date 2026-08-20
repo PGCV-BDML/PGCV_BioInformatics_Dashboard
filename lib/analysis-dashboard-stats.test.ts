@@ -52,7 +52,7 @@ describe("getServiceReportsByClientId", () => {
     ]);
   });
 
-  it("splits multi-ID cells and buckets missing IDs last", () => {
+  it("splits multi-ID cells and buckets in-house reports last", () => {
     const rows: AnalysisDashboardRow[] = [
       row({
         service_report_number: "SR-2026-010",

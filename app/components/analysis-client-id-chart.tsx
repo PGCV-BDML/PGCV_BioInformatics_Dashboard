@@ -119,11 +119,11 @@ export function AnalysisClientIdChart({
                   <YAxis
                     type="category"
                     dataKey="name"
-                    width={120}
+                    width={128}
                     axisLine={false}
                     tickLine={false}
                     className="text-[11px] fill-slate-500 font-quicksand"
-                    tick={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                    tick={{ fontSize: 11 }}
                   />
                   <Tooltip
                     wrapperStyle={{

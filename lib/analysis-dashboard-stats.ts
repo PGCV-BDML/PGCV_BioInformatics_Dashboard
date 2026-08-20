@@ -6,8 +6,8 @@ import {
 import { parseExternalClientIds } from "@/lib/clients";
 import type { AnalysisStatus } from "@/types/database";
 
-/** Bucket label when a generated report has no parseable Client ID. */
-export const MISSING_CLIENT_ID_LABEL = "—";
+/** Bucket label when a generated report has no parseable Client ID (in-house work). */
+export const MISSING_CLIENT_ID_LABEL = "PGCV In-house";
 
 /** Minimal analysis fields needed for Sequence Analysis dashboard aggregations. */
 export type AnalysisDashboardRow = {
