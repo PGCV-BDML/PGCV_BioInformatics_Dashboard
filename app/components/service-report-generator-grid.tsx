@@ -14,7 +14,7 @@ import {
   type ServiceReportGenerator,
 } from "@/lib/service-report-generators";
 
-/** Lucide-style bacterium; this package build does not export Bacteria. */
+/** Simple rod bacterium so it still reads at card size. */
 function BacteriaIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -25,15 +25,10 @@ function BacteriaIcon(props: SVGProps<SVGSVGElement>) {
       strokeLinejoin="round"
       {...props}
     >
-      <path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z" />
-      <path d="M8 8 4 4" />
-      <path d="m12 2 2 2" />
-      <path d="m14 8 2-2" />
-      <path d="m16 22-2-2" />
-      <path d="m20 12 2 2" />
-      <path d="m22 16-2-2" />
-      <path d="m8 14 2 2" />
-      <path d="m8 22 2-2" />
+      <rect x="7" y="8" width="14" height="8" rx="4" />
+      <path d="M7 12H3" />
+      <path d="M7.4 10 3.5 7.5" />
+      <path d="M7.4 14 3.5 16.5" />
     </svg>
   );
 }
