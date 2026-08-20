@@ -14,6 +14,7 @@ import {
   resolveEffectivePresenceStatus,
   scheduledAbsenceStatusFromRows,
   validateAbsenceBlocks,
+  absenceSavePlan,
 } from "./calendar-absences";
 
 function block(partial: Partial<AbsenceBlock>): AbsenceBlock {
@@ -224,6 +225,57 @@ describe("scheduledAbsenceStatusFromRows", () => {
 
   it("returns null when no scheduled absences exist", () => {
     expect(scheduledAbsenceStatusFromRows([])).toBeNull();
+  });
+});
+
+describe("absenceSavePlan", () => {
+  it("writes leave rows when the form status is on_leave", () => {
+    const plan = absenceSavePlan(
+      "on_leave",
+      [block({ note: "Family vacation" })],
+      null,
+    );
+    expect(plan.statusesToReplace).toEqual(["on_leave"]);
+    expect(plan.absenceRows).toEqual([
+      {
+        absence_date: "2026-08-10",
+        status: "on_leave",
+        note: "Family vacation",
+      },
+    ]);
+  });
+
+  it("keeps filed leave when the current status is back in office", () => {
+    const plan = absenceSavePlan(
+      "in_office",
+      [block({ note: "Family vacation" })],
+      "on_leave",
+    );
+    expect(plan.statusesToReplace).toEqual(["on_leave"]);
+    expect(plan.absenceRows.map((row) => row.status)).toEqual(["on_leave"]);
+    expect(plan.absenceRows.map((row) => row.note)).toEqual(["Family vacation"]);
+  });
+
+  it("does not wipe absences when in office with no prior leave", () => {
+    const plan = absenceSavePlan("in_office", [], null);
+    expect(plan.statusesToReplace).toEqual([]);
+    expect(plan.absenceRows).toEqual([]);
+  });
+
+  it("clears leave only when the remaining dates are removed", () => {
+    const plan = absenceSavePlan("in_office", [], "on_leave");
+    expect(plan.statusesToReplace).toEqual(["on_leave"]);
+    expect(plan.absenceRows).toEqual([]);
+  });
+
+  it("replaces leave with travel when switching scheduled types", () => {
+    const plan = absenceSavePlan(
+      "on_travel",
+      [block({ note: "Conference" })],
+      "on_leave",
+    );
+    expect(plan.statusesToReplace).toEqual(["on_travel", "on_leave"]);
+    expect(plan.absenceRows[0]?.status).toBe("on_travel");
   });
 });
 

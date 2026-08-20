@@ -40,6 +40,9 @@ interface TeamPresenceModalProps {
   memberName: string;
   initialData: UserPresenceFormData | null;
   initialAvatarPreviewUrl: string | null;
+  /** Leave/travel already on the calendar, if any. Used for labels when the
+   *  current status is back in office. */
+  scheduledAbsenceStatus: PresenceStatus | null;
   canManageDirectory: boolean;
   onClose: () => void;
   onSubmit: (
@@ -58,6 +61,7 @@ export default function TeamPresenceModal({
   memberName,
   initialData,
   initialAvatarPreviewUrl,
+  scheduledAbsenceStatus,
   canManageDirectory,
   onClose,
   onSubmit,
@@ -199,7 +203,8 @@ export default function TeamPresenceModal({
     e.preventDefault();
 
     const isScheduled = usesScheduledDates(formState.status);
-    if (isScheduled) {
+    const hasAbsenceBlocks = formState.absence_blocks.length > 0;
+    if (isScheduled || hasAbsenceBlocks) {
       const absenceError = validateAbsenceBlocks(formState.absence_blocks);
       if (absenceError) {
         setErrors((prev) => ({ ...prev, absence_blocks: absenceError }));
@@ -208,10 +213,7 @@ export default function TeamPresenceModal({
     }
 
     onSubmit(
-      {
-        ...formState,
-        absence_blocks: isScheduled ? formState.absence_blocks : [],
-      },
+      formState,
       {
         file: pendingAvatarFile ?? undefined,
         remove: removeAvatarRequested || undefined,
@@ -223,8 +225,13 @@ export default function TeamPresenceModal({
   const showStoredPreview =
     !removeAvatarRequested && (localAvatarPreview || initialAvatarPreviewUrl);
   const displayPreview = localAvatarPreview || initialAvatarPreviewUrl;
-  const showAbsenceDates = usesScheduledDates(formState.status);
-  const scheduledLabel = formState.status === "on_travel" ? "Trip" : "Leave";
+  const showAbsenceDates =
+    usesScheduledDates(formState.status) ||
+    formState.absence_blocks.length > 0;
+  const absenceKind = usesScheduledDates(formState.status)
+    ? formState.status
+    : scheduledAbsenceStatus;
+  const scheduledLabel = absenceKind === "on_travel" ? "Trip" : "Leave";
 
   return (
     <SlideOverModal
@@ -378,8 +385,10 @@ export default function TeamPresenceModal({
               </span>
               <p className="text-[11px] text-amber-800/80 font-quicksand leading-relaxed">
                 Each entry below is a separate {scheduledLabel.toLowerCase()}{" "}
-                with its own note, shown on the lab calendar for those days
-                only.
+                with its own note, shown on the lab calendar for those days.
+                Changing your current status (for example back to in office)
+                does not remove these dates — only delete an entry to cancel
+                it.
               </p>
 
               {formState.absence_blocks.length > 0 ? (
@@ -487,7 +496,9 @@ export default function TeamPresenceModal({
                 </p>
               ) : null}
             </div>
-          ) : (
+          ) : null}
+
+          {usesScheduledDates(formState.status) ? null : (
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="presence-until"
@@ -517,7 +528,7 @@ export default function TeamPresenceModal({
         <div className="space-y-2.5">
           {renderSectionLabel(<StickyNote className="w-3.5 h-3.5" />, "Note")}
 
-          {showAbsenceDates ? (
+          {usesScheduledDates(formState.status) ? (
             <p className="text-[11px] text-slate-400 font-quicksand leading-relaxed">
               Notes are set per {scheduledLabel.toLowerCase()} above, so each
               one keeps its own details on the calendar.
@@ -538,6 +549,12 @@ export default function TeamPresenceModal({
                 placeholder="e.g. Conference in Manila, Wet lab bay 2…"
                 className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#2a7797]/50 focus:ring-2 focus:ring-[#2a7797]/15"
               />
+              {formState.absence_blocks.length > 0 ? (
+                <p className="text-[11px] text-slate-400 font-quicksand leading-relaxed">
+                  Leave and travel notes stay on each entry above for the
+                  calendar. This field is only for your current status.
+                </p>
+              ) : null}
             </div>
           )}
         </div>

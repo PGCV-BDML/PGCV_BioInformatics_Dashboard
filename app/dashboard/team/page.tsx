@@ -33,8 +33,8 @@ import {
   replaceUserAbsences,
 } from "@/lib/supabase";
 import {
-  absenceBlocksToRows,
   absenceRowsToBlocks,
+  absenceSavePlan,
   maxAbsenceDate,
   presenceNoteFromAbsenceRows,
   presenceStatusForSave,
@@ -335,8 +335,10 @@ export default function TeamPage() {
       try {
         const absences = await getUserAbsences(member.id);
         const scheduledStatus = scheduledAbsenceStatusFromRows(absences);
-        const status =
-          scheduledStatus ?? member.presence?.status ?? "in_office";
+        // Current location is independent of filed leave/travel. Opening the
+        // form as "on leave" whenever dates exist made people switch back to
+        // in office and wipe the calendar record.
+        const status = member.presence?.status ?? "in_office";
         setEditScheduledStatus(scheduledStatus);
         setEditFormData({
           status,
@@ -372,9 +374,11 @@ export default function TeamPage() {
 
       const designation = formData.designation.trim() || null;
       const isScheduled = SCHEDULED_ABSENCE_STATUSES.includes(formData.status);
-      const absenceRows = isScheduled
-        ? absenceBlocksToRows(formData.absence_blocks, formData.status)
-        : [];
+      const { absenceRows, statusesToReplace } = absenceSavePlan(
+        formData.status,
+        formData.absence_blocks,
+        editScheduledStatus,
+      );
       const absenceDates = absenceRows.map((row) => row.absence_date);
       const storedStatus = presenceStatusForSave(formData.status, absenceDates);
       const untilDate = isScheduled
@@ -385,15 +389,6 @@ export default function TeamPage() {
       const note = isScheduled
         ? presenceNoteFromAbsenceRows(absenceRows)
         : formData.note.trim() || null;
-      // Only clear the statuses this save owns, so leave edits leave travel
-      // days (and vice versa) untouched.
-      const statusesToReplace = Array.from(
-        new Set(
-          [isScheduled ? formData.status : null, editScheduledStatus].filter(
-            (status): status is PresenceStatus => status !== null,
-          ),
-        ),
-      );
 
       setIsSaving(true);
       try {
@@ -673,6 +668,7 @@ export default function TeamPage() {
         memberName={selected?.name ?? ""}
         initialData={initialData}
         initialAvatarPreviewUrl={editAvatarPreviewUrl}
+        scheduledAbsenceStatus={editScheduledStatus}
         canManageDirectory={isTeamLead}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}

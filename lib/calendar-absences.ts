@@ -281,6 +281,53 @@ export function scheduledAbsenceStatusFromRows(
   return null;
 }
 
+export type AbsenceSavePlan = {
+  absenceRows: Pick<UserAbsence, "absence_date" | "status" | "note">[];
+  statusesToReplace: PresenceStatus[];
+};
+
+/**
+ * Decide which absence rows to write when saving presence.
+ *
+ * Filing leave/travel still replaces that type. Switching to a current
+ * location (in office, lab, etc.) keeps the dates already in the form so
+ * returning to the office does not wipe the calendar record. An empty
+ * block list with a previous leave/travel type is an explicit cancel.
+ */
+export function absenceSavePlan(
+  formStatus: PresenceStatus,
+  absenceBlocks: AbsenceBlock[],
+  previousScheduledStatus: PresenceStatus | null,
+): AbsenceSavePlan {
+  const isScheduled = isScheduledAbsenceStatus(formStatus);
+
+  if (isScheduled) {
+    const statusesToReplace = Array.from(
+      new Set(
+        [formStatus, previousScheduledStatus].filter(
+          (status): status is PresenceStatus => status !== null,
+        ),
+      ),
+    );
+    return {
+      absenceRows: absenceBlocksToRows(absenceBlocks, formStatus),
+      statusesToReplace,
+    };
+  }
+
+  if (previousScheduledStatus) {
+    return {
+      absenceRows: absenceBlocksToRows(
+        absenceBlocks,
+        previousScheduledStatus,
+      ),
+      statusesToReplace: [previousScheduledStatus],
+    };
+  }
+
+  return { absenceRows: [], statusesToReplace: [] };
+}
+
 /** Status to persist in user_presence when saving scheduled absences. */
 export function presenceStatusForSave(
   formStatus: PresenceStatus,
