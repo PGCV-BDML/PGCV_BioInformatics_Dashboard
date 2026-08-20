@@ -31,6 +31,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
+import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 
 type NavChild = {
   name: string;
@@ -162,6 +163,7 @@ export default function Sidebar({
   const router = useRouter();
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
   const { effectiveRole, isStaff, previewMode, setPreviewMode } = usePortal();
+  const unreadNotificationCount = useUnreadNotificationCount();
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(
@@ -355,6 +357,12 @@ export default function Sidebar({
                       <Link
                         href={item.href}
                         onClick={closeMobileSidebar}
+                        aria-label={
+                          item.href === "/dashboard/notifications" &&
+                          unreadNotificationCount > 0
+                            ? `Notifications (${unreadNotificationCount} unread)`
+                            : undefined
+                        }
                         className={`group flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-200 font-bold text-[13.5px] font-aileron tracking-wide ${
                           isActive
                             ? "bg-[#4ec2bb] text-white shadow-[0px_8px_16px_rgba(78,194,187,0.3)]"
@@ -362,9 +370,19 @@ export default function Sidebar({
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <Icon
-                            className={`w-4 h-4 stroke-[2.5] ${item.animationClass} ${isActive ? "text-white" : "text-[#334155] group-hover:text-[#2a7797]"}`}
-                          />
+                          <span className="relative inline-flex">
+                            <Icon
+                              className={`w-4 h-4 stroke-[2.5] ${item.animationClass} ${isActive ? "text-white" : "text-[#334155] group-hover:text-[#2a7797]"}`}
+                            />
+                            {item.href === "/dashboard/notifications" &&
+                              unreadNotificationCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] flex items-center justify-center bg-red-500 text-white text-[8px] font-black rounded-full px-0.5 leading-none">
+                                  {unreadNotificationCount > 99
+                                    ? "99+"
+                                    : unreadNotificationCount}
+                                </span>
+                              )}
+                          </span>
                           <span>{item.name}</span>
                         </div>
                         <ChevronRight

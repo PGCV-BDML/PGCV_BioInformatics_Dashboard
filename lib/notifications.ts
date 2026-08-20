@@ -284,6 +284,21 @@ export async function deleteReadNotifications(): Promise<number> {
   return (data ?? []).length;
 }
 
+/** Unread count for the current user (RLS already scopes the query). */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("*", { count: "exact", head: true })
+    .eq("is_read", false);
+
+  if (error) {
+    console.error("Failed to count unread notifications:", error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
 /**
  * Subscribe to real-time inserts into the notifications table for the current user.
  * Returns an unsubscribe function — call it on component unmount.
@@ -304,6 +319,35 @@ export function subscribeToNotifications(
       },
       (payload) => {
         onNew(payload.new as AppNotification);
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Subscribe to any notification row change for the current user so unread
+ * badges stay in sync when items are inserted, marked read, or deleted.
+ */
+export function subscribeToNotificationChanges(
+  userId: string,
+  onChange: () => void,
+): () => void {
+  const channel = supabase
+    .channel(`notifications-count:${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "notifications",
+        filter: `target_user_id=eq.${userId}`,
+      },
+      () => {
+        onChange();
       },
     )
     .subscribe();
