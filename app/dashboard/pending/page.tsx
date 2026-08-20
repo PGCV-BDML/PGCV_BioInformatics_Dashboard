@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Mail, ShieldAlert } from "lucide-react";
 import { usePortal } from "@/app/components/portal-context";
 import { supabase } from "@/lib/supabase";
+import { clearGoogleCalendarReconnectAttempt, clearGoogleCalendarToken } from "@/lib/google-calendar";
 import { useRouter } from "next/navigation";
 
 export default function PendingAccessPage() {
@@ -12,6 +13,8 @@ export default function PendingAccessPage() {
 
   const handleSignOut = async () => {
     try {
+      clearGoogleCalendarToken();
+      clearGoogleCalendarReconnectAttempt();
       await supabase.auth.signOut();
     } finally {
       router.push("/login");

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { clearGoogleCalendarReconnectAttempt, clearGoogleCalendarToken } from "@/lib/google-calendar";
 import { useDashboardUI } from "./dashboard-ui-context";
 import { usePortal } from "./portal-context";
 import { getHomePathForRole } from "@/lib/portal";
@@ -242,6 +243,8 @@ export default function Sidebar({
 
   const handleSignOut = async () => {
     try {
+      clearGoogleCalendarToken();
+      clearGoogleCalendarReconnectAttempt();
       await supabase.auth.signOut();
       router.push("/login");
     } catch (err) {

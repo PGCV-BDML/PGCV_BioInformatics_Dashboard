@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Calendar as CalendarIcon,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CheckSquare,
@@ -19,6 +20,7 @@ import {
   getNameIdFromDB,
   getTaskCategoriesByTaskId,
   getTaskAssigneesByTaskId,
+  supabase,
 } from "@/lib/supabase";
 import type {
   Task,
@@ -64,8 +66,26 @@ import {
 import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import { applyTaskAssignees } from "@/lib/task-assignees";
+import {
+  type GoogleCalendarEvent,
+  GOOGLE_CALENDAR_STYLE,
+  GoogleCalendarAuthError,
+  clearGoogleCalendarReconnectAttempt,
+  clearGoogleCalendarToken,
+  connectGoogleCalendar,
+  fetchGoogleCalendarEvents,
+  formatGoogleEventTime,
+  googleCalendarErrorMessage,
+  googleEventsByDateKey,
+  hasGoogleCalendarReconnectAttempt,
+  markGoogleCalendarReconnectAttempt,
+  persistGoogleCalendarToken,
+  readGoogleCalendarToken,
+} from "@/lib/google-calendar";
 import { ErrorState, LoadingState } from "./state-views";
 import { TaskCategoryChips as CategoryChips } from "./category-chips";
+
+type GoogleCalendarStatus = "idle" | "loading" | "connected" | "disconnected" | "error";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -81,6 +101,11 @@ export default function TaskCalendar() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [showTeamAbsences, setShowTeamAbsences] = useState(true);
   const [showHolidays, setShowHolidays] = useState(true);
+  const [showGoogleEvents, setShowGoogleEvents] = useState(true);
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus>("idle");
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleConnecting, setGoogleConnecting] = useState(false);
   const [remoteHolidays, setRemoteHolidays] = useState<PhilippineHoliday[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [absenceFilter, setAbsenceFilter] = useState<PresenceStatus | "All">("All");
@@ -153,6 +178,100 @@ export default function TaskCalendar() {
     };
   }, [viewMonth]);
 
+  useEffect(() => {
+    if (!showGoogleEvents) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadGoogleEvents() {
+      setGoogleStatus((prev) => (prev === "connected" ? "connected" : "loading"));
+      setGoogleError(null);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        if (!userId) {
+          if (!cancelled) {
+            setGoogleEvents([]);
+            setGoogleStatus("disconnected");
+          }
+          return;
+        }
+
+        const storedToken = readGoogleCalendarToken(userId);
+        const token = storedToken ?? session.provider_token?.trim() ?? null;
+        if (!token) {
+          if (!cancelled) {
+            setGoogleEvents([]);
+            setGoogleStatus("disconnected");
+          }
+          return;
+        }
+
+        const grid = getMonthGrid(viewMonth);
+        const timeMin = new Date(grid[0]!);
+        timeMin.setHours(0, 0, 0, 0);
+        const timeMax = new Date(grid[grid.length - 1]!);
+        timeMax.setHours(23, 59, 59, 999);
+
+        const events = await fetchGoogleCalendarEvents(token, {
+          timeMin,
+          timeMax,
+        });
+        if (cancelled) return;
+
+        persistGoogleCalendarToken(userId, token);
+        clearGoogleCalendarReconnectAttempt();
+        setGoogleEvents(events);
+        setGoogleStatus("connected");
+      } catch (err) {
+        if (cancelled) return;
+        setGoogleEvents([]);
+        if (err instanceof GoogleCalendarAuthError) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const userId = session?.user?.id;
+          const hadStored = userId
+            ? Boolean(readGoogleCalendarToken(userId))
+            : false;
+          clearGoogleCalendarToken();
+          if (hadStored && !hasGoogleCalendarReconnectAttempt()) {
+            markGoogleCalendarReconnectAttempt();
+            await connectGoogleCalendar();
+            return;
+          }
+          clearGoogleCalendarReconnectAttempt();
+          setGoogleStatus("disconnected");
+          setGoogleError(null);
+          return;
+        }
+        setGoogleStatus("error");
+        setGoogleError(googleCalendarErrorMessage(err));
+      }
+    }
+
+    void loadGoogleEvents();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMonth, showGoogleEvents]);
+
+  async function handleConnectGoogleCalendar() {
+    setGoogleConnecting(true);
+    setGoogleError(null);
+    try {
+      await connectGoogleCalendar();
+    } catch (err) {
+      setGoogleConnecting(false);
+      setGoogleStatus("error");
+      setGoogleError(googleCalendarErrorMessage(err));
+    }
+  }
+
   const grid = useMemo(() => getMonthGrid(viewMonth), [viewMonth]);
   const today = useMemo(() => new Date(), []);
 
@@ -179,6 +298,11 @@ export default function TaskCalendar() {
     return mergeHolidays(localHolidays, remoteHolidays);
   }, [showHolidays, localHolidays, remoteHolidays]);
 
+  const visibleGoogleEvents = useMemo(() => {
+    if (!showGoogleEvents || googleStatus !== "connected") return [];
+    return googleEvents;
+  }, [showGoogleEvents, googleStatus, googleEvents]);
+
   const tasksByDate = useMemo(
     () => buildTasksByDate(visibleTasks),
     [visibleTasks],
@@ -194,6 +318,11 @@ export default function TaskCalendar() {
     [visibleHolidays],
   );
 
+  const googleByDate = useMemo(
+    () => googleEventsByDateKey(visibleGoogleEvents),
+    [visibleGoogleEvents],
+  );
+
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedTasks = selectedKey ? (tasksByDate.get(selectedKey) ?? []) : [];
   const selectedAbsences = selectedKey
@@ -201,6 +330,9 @@ export default function TaskCalendar() {
     : [];
   const selectedHolidays = selectedKey
     ? (holidaysByDate.get(selectedKey) ?? [])
+    : [];
+  const selectedGoogleEvents = selectedKey
+    ? (googleByDate.get(selectedKey) ?? [])
     : [];
 
   const monthLabel = viewMonth.toLocaleDateString("en-US", {
@@ -340,8 +472,69 @@ export default function TaskCalendar() {
               />
               Show holidays
             </label>
+            <span className="invisible w-16 shrink-0" aria-hidden>
+              Google
+            </span>
+            <span aria-hidden />
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={showGoogleEvents}
+                onChange={(e) => setShowGoogleEvents(e.target.checked)}
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+              />
+              Show my Google Calendar
+            </label>
           </div>
         </div>
+
+        {googleStatus === "disconnected" && showGoogleEvents ? (
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-indigo-950 font-aileron">
+                Show your Google Calendar
+              </p>
+              <p className="text-[11px] text-indigo-900/70 font-aileron mt-0.5">
+                Events from the Google account you signed in with appear only for
+                you, next to lab tasks and team leave.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleConnectGoogleCalendar()}
+              disabled={googleConnecting}
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-xl transition-colors font-quicksand"
+            >
+              {googleConnecting ? "Redirecting…" : "Connect Google Calendar"}
+            </button>
+          </div>
+        ) : null}
+
+        {googleStatus === "error" && googleError ? (
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-[11px] text-amber-900 font-aileron">{googleError}</p>
+            <button
+              type="button"
+              onClick={() => void handleConnectGoogleCalendar()}
+              disabled={googleConnecting}
+              className="shrink-0 inline-flex items-center justify-center px-3.5 py-2 text-[11px] font-bold text-amber-900 bg-white hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors font-quicksand"
+            >
+              {googleConnecting ? "Redirecting…" : "Try again"}
+            </button>
+          </div>
+        ) : null}
+
+        {googleStatus === "loading" ? (
+          <p className="mb-3 text-[11px] text-slate-400 font-aileron">
+            Loading your Google Calendar…
+          </p>
+        ) : null}
+
+        {googleStatus === "connected" && showGoogleEvents ? (
+          <p className="mb-3 text-[11px] text-indigo-800 font-aileron">
+            Showing your Google Calendar. Only you can see these events.
+          </p>
+        ) : null}
 
         <div className="grid grid-cols-7 gap-1 mb-1">
           {WEEKDAYS.map((d) => (
@@ -360,16 +553,25 @@ export default function TaskCalendar() {
             const dayTasks = tasksByDate.get(key) ?? [];
             const dayAbsences = absencesByDate.get(key) ?? [];
             const dayHolidays = holidaysByDate.get(key) ?? [];
+            const dayGoogle = googleByDate.get(key) ?? [];
             const holidayPreview = dayHolidays.length > 0 ? 1 : 0;
+            const googlePreview = dayGoogle.length > 0 ? 1 : 0;
             const dayCount =
-              dayTasks.length + dayAbsences.length + dayHolidays.length;
+              dayTasks.length +
+              dayAbsences.length +
+              dayHolidays.length +
+              dayGoogle.length;
             const preview = splitCellPreview(
               dayAbsences.length,
               dayTasks.length,
-              MAX_CELL_ENTRIES - holidayPreview,
+              Math.max(0, MAX_CELL_ENTRIES - holidayPreview - googlePreview),
             );
             const hiddenCount =
-              dayCount - preview.absences - preview.tasks - holidayPreview;
+              dayCount -
+              preview.absences -
+              preview.tasks -
+              holidayPreview -
+              googlePreview;
             const inMonth = day.getMonth() === viewMonth.getMonth();
             const isToday = isSameDay(day, today);
             const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
@@ -417,6 +619,26 @@ export default function TaskCalendar() {
                       <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-rose-500" />
                       <span className="text-[10px] font-semibold truncate text-rose-800">
                         {holiday.name}
+                      </span>
+                    </div>
+                  ))}
+                  {dayGoogle.slice(0, googlePreview).map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center gap-1 truncate"
+                      title={
+                        formatGoogleEventTime(event)
+                          ? `${formatGoogleEventTime(event)} ${event.title}`
+                          : event.title
+                      }
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${GOOGLE_CALENDAR_STYLE.dot}`}
+                      />
+                      <span className="text-[10px] font-semibold truncate text-indigo-800">
+                        {formatGoogleEventTime(event)
+                          ? `${formatGoogleEventTime(event)} ${event.title}`
+                          : event.title}
                       </span>
                     </div>
                   ))}
@@ -476,6 +698,12 @@ export default function TaskCalendar() {
                       className="w-1.5 h-1.5 rounded-full bg-rose-500"
                     />
                   ))}
+                  {dayGoogle.slice(0, 1).map((event) => (
+                    <span
+                      key={event.id}
+                      className={`w-1.5 h-1.5 rounded-full ${GOOGLE_CALENDAR_STYLE.dot}`}
+                    />
+                  ))}
                   {dayAbsences.slice(0, 1).map((absence) => (
                     <span
                       key={absence.id}
@@ -521,14 +749,16 @@ export default function TaskCalendar() {
 
         {selectedTasks.length === 0 &&
         selectedAbsences.length === 0 &&
-        selectedHolidays.length === 0 ? (
+        selectedHolidays.length === 0 &&
+        selectedGoogleEvents.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <CheckSquare className="w-8 h-8 text-slate-300 mb-3" />
             <p className="text-sm font-semibold text-slate-500 font-aileron">
               Nothing scheduled this day
             </p>
             <p className="text-xs text-slate-400 mt-1 max-w-[260px] font-aileron">
-              Tasks with dates, team leave/travel, and Philippine holidays appear here.
+              Tasks with dates, your Google Calendar, team leave/travel, and
+              Philippine holidays appear here.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Link
@@ -571,6 +801,59 @@ export default function TaskCalendar() {
                 </div>
               </li>
             ))}
+            {selectedGoogleEvents.map((event) => {
+              const timeLabel = formatGoogleEventTime(event);
+              return (
+                <li key={event.id}>
+                  <div
+                    className={`border rounded-2xl p-3.5 ${GOOGLE_CALENDAR_STYLE.card}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CalendarDays className="w-4 h-4 text-indigo-700 shrink-0" />
+                        {event.htmlLink ? (
+                          <a
+                            href={event.htmlLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-bold text-slate-800 font-aileron truncate hover:underline hover:text-indigo-800"
+                          >
+                            {event.title}
+                          </a>
+                        ) : (
+                          <span className="text-sm font-bold text-slate-800 font-aileron truncate">
+                            {event.title}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand ${GOOGLE_CALENDAR_STYLE.chip}`}
+                      >
+                        Google
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-[11px] text-slate-500 font-aileron pl-6">
+                      {timeLabel ? <span>{timeLabel}</span> : null}
+                      <span className="truncate">{event.calendarName}</span>
+                      {event.location ? (
+                        <span className="truncate">{event.location}</span>
+                      ) : null}
+                      {event.htmlLink ? (
+                        <a
+                          href={event.htmlLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:underline font-quicksand"
+                        >
+                          Open in Google Calendar
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
             {selectedAbsences.map((absence) => {
               const style = ABSENCE_STATUS_STYLES[absence.status];
               return (

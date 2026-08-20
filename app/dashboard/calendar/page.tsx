@@ -12,7 +12,7 @@ export default function CalendarPage() {
       <PageHeader
         breadcrumbTrail={calendarBreadcrumbs}
         title="Calendar"
-        subtitle="Task dates, team leave/travel, Philippine holidays, and sequence-analysis work by category."
+        subtitle="Your Google Calendar (private to you), plus lab task dates, team leave/travel, and Philippine holidays."
         actions={
           <Link
             href="/dashboard/tasks"

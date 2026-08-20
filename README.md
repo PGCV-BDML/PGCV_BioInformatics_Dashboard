@@ -23,8 +23,9 @@ This is a **proof-of-concept MVP** built during the June–July 2026 Internship 
 | ✅ | **Collaborations Tracker** | DB-integrated table with add/edit/delete at `/dashboard/collaborations`. Same helper pattern as Projects. |
 | ✅ | **Bioinformatics Services Tracker** | Service-report master table at `/dashboard/services` with three tabs: **3.3.1 Client Sequence Analysis**, **3.3.2 Training**, **3.3.3 Internship**. The Sequence Analysis tab has a status filter, color-coded status dropdown, and a "Generate Report" fallback that writes a `service_report` row and audits the delivery via the `audit_data_modification` RPC. Tabs 3.3.2 and 3.3.3 link to the dedicated training/internship sub-routes. |
 | ✅ | **Training & Internship Modules** | Program lists at `/dashboard/services/training` and `/dashboard/services/internship` render DB `training_program` rows filtered by `type`. Per-program sub-routes cover page, assessment, participants, evaluation, onboarding, and certificate views (`/dashboard/services/{training,internship}/[id]/...`). |
-| ✅ | **Stub Pages** | Calendar, Accomplishments, Services List, and Repositories render functional stub pages with "Coming Soon" messages per [`11_deliverables_checklist.md`](https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard/blob/main/11_deliverables_checklist.md) §1 (all 8 components present). |
-| ✅ | **Google OAuth Login** | Authentication via Supabase Auth with Google OAuth. Session managed in `app/dashboard/layout.tsx:16-40`; redirects to `/login` when unauthenticated. |
+| ✅ | **Stub Pages** | Accomplishments, Services List, and Repositories render functional stub pages with "Coming Soon" messages per [`11_deliverables_checklist.md`](https://github.com/PGCV-BDML/PGCV_BioInformatics_Dashboard/blob/main/11_deliverables_checklist.md) §1 (all 8 components present). |
+| ✅ | **Google OAuth Login** | Authentication via Supabase Auth with Google OAuth. Session managed in `app/dashboard/layout.tsx`; redirects to `/login` when unauthenticated. |
+| ✅ | **Calendar** | Month view at `/dashboard/calendar` for lab tasks, team leave/travel, and Philippine holidays. Optional per-user Google Calendar overlay (private to the signed-in account). |
 | ✅ | **Real-time Audit Logging** | Two secured RPCs in `supabase/migrations/`: `audit_session_event` (called from `app/components/sessionauditor.tsx` on `SIGNED_IN` / `SIGNED_OUT`) and `audit_data_modification` (called from `app/components/service-report-modal.tsx` on report delivery). Both `REVOKE … FROM PUBLIC; GRANT … TO authenticated`. PostgreSQL triggers via `23_audit_triggers.sql` plus the `protect_user_role` defense-in-depth trigger. See [`SECURITY.md`](./SECURITY.md) §5. |
 
 ### UI/UX Overhaul (7 phases, completed 2026-07-20)
@@ -101,6 +102,13 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The app redirects to `/login` when unauthenticated — sign in with a Google account that has a corresponding row in the `users` table.
+
+To overlay each user's own Google Calendar on `/dashboard/calendar` (private to that login):
+
+1. In the same Google Cloud project used for OAuth, enable the **Google Calendar API**.
+2. Add the scope `https://www.googleapis.com/auth/calendar.readonly` to the OAuth consent screen.
+3. In Supabase **Authentication → URL Configuration**, allow the redirect `https://<your-domain>/dashboard/calendar` (and `http://localhost:3000/dashboard/calendar` for local dev).
+4. On the dashboard Calendar page, click **Connect Google Calendar** and approve access.
 
 > **Note:** Your local checkout may be behind `origin/main`. The current codebase uses typed Supabase helpers in `lib/supabase.ts` (generics `getRowsFromDB<T>`, `saveDataToDB<T>`, etc.) — run `git pull origin main` to bring in the latest code.
 

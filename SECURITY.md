@@ -26,10 +26,12 @@ The dashboard is **not** designed to handle sensitive personal information beyon
 | Aspect | Detail |
 |--------|--------|
 | **OAuth provider** | Google Cloud Console (Client ID + Client Secret) |
-| **Implementation** | `app/login/page.tsx:14-27` — calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/' } })` |
+| **Implementation** | `app/login/page.tsx` — Google sign-in for identity only. Calendar overlay is a separate consent: `lib/google-calendar.ts` requests `https://www.googleapis.com/auth/calendar.readonly` from `/dashboard/calendar`. |
 | **Session expiry** | 24 hours (Supabase Auth default) |
 | **Session storage** | HTTP-only cookies (Supabase JS client default) |
 | **Sign-out** | `app/components/sidebar.tsx:138-141` — calls `supabase.auth.signOut()` and redirects to `/login` |
+
+**Personal Google Calendar overlay:** The lab calendar can show the signed-in user's own Google Calendar events. Those events are fetched in the browser from the Google Calendar API and are **not written to Supabase**. Only that user sees them. The Google access token is kept in `localStorage` for the current user and is cleared on sign-out. Enable the Calendar API on the same Google Cloud OAuth project, or the overlay cannot connect.
 
 **Session lifecycle:**
 - On mount, `app/dashboard/layout.tsx:18-44` calls `supabase.auth.getSession()`. If no session exists, `router.push("/login")`.
@@ -170,7 +172,7 @@ The `audit_log` table records modifications to database records for accountabili
 | **In transit** | HTTPS enforced by Vercel (Edge TLS) and Supabase (managed TLS). No mixed-content warnings present at deployment. |
 | **At rest** | Supabase managed PostgreSQL provides encryption at rest. **[TO CONFIRM IN SUPABASE DASHBOARD]** — the free-tier project should have this enabled by default but this has not been explicitly verified during this internship. |
 | **Sensitive fields** | `client.contact_info`, `users.email` are classified as sensitive. Access is controlled by RLS (staff-only SELECT on `client`; row-owner-or-staff on `users`). These fields are excluded from audit log `details` JSON. |
-| **No secrets in DB** | No passwords, API keys, or tokens are stored in the database. Authentication is delegated entirely to Supabase Auth. |
+| **No secrets in DB** | No passwords, API keys, or tokens are stored in the database. Authentication is delegated entirely to Supabase Auth. Google Calendar access tokens stay in the browser (`localStorage`) and are never inserted into Postgres. |
 
 ---
 
