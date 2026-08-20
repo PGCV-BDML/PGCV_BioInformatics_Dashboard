@@ -3,7 +3,11 @@ import {
   displayAnalysisLabel,
   parseServiceReportNumber,
 } from "@/lib/analysis-tracker";
+import { parseExternalClientIds } from "@/lib/clients";
 import type { AnalysisStatus } from "@/types/database";
+
+/** Bucket label when a generated report has no parseable Client ID. */
+export const MISSING_CLIENT_ID_LABEL = "—";
 
 /** Minimal analysis fields needed for Sequence Analysis dashboard aggregations. */
 export type AnalysisDashboardRow = {
@@ -16,6 +20,7 @@ export type AnalysisDashboardRow = {
   started_at?: string | null;
   client_name?: string | null;
   client_type?: string | null;
+  external_client_id?: string | null;
 };
 
 export type AnalysisDashboardStats = {
@@ -169,4 +174,41 @@ export function getAnalysesByClientType(
     });
 
   return [...ordered, ...extras];
+}
+
+/**
+ * Count generated service reports grouped by unique Client ID.
+ * Multi-ID cells (comma/semicolon) increment each parsed ID once.
+ */
+export function getServiceReportsByClientId(
+  rows: AnalysisDashboardRow[],
+  year: string,
+): NamedCount[] {
+  const scoped = filterAnalysesByYear(rows, year);
+  const counts = new Map<string, number>();
+
+  for (const row of scoped) {
+    if (!hasServiceReport(row)) continue;
+
+    const ids = parseExternalClientIds(row.external_client_id);
+    if (ids.length === 0) {
+      counts.set(
+        MISSING_CLIENT_ID_LABEL,
+        (counts.get(MISSING_CLIENT_ID_LABEL) ?? 0) + 1,
+      );
+      continue;
+    }
+
+    for (const id of ids) {
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => {
+      if (a.name === MISSING_CLIENT_ID_LABEL) return 1;
+      if (b.name === MISSING_CLIENT_ID_LABEL) return -1;
+      return b.value - a.value || a.name.localeCompare(b.name);
+    });
 }

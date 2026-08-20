@@ -80,6 +80,8 @@ import {
   buildClientIdLookup,
   mapClientRowToRecord,
   matchClientByExternalId,
+  normalizeClientIdKey,
+  parseExternalClientIds,
   type ClientMatchStatus,
   type SupabaseClientRow,
 } from "@/lib/clients";
@@ -250,6 +252,7 @@ export default function ServiceReportTrackerPage() {
   const yearParam = searchParams.get("year")?.trim() ?? "";
   const pipelineParam = searchParams.get("pipeline")?.trim() ?? "";
   const runIdParam = searchParams.get("run_id")?.trim() ?? "";
+  const clientIdParam = searchParams.get("client_id")?.trim() ?? "";
   const addParam = searchParams.get("add")?.trim() === "1";
   const addHandled = useRef(false);
 
@@ -259,6 +262,7 @@ export default function ServiceReportTrackerPage() {
   const [yearFilter, setYearFilter] = useState(yearParam || "all");
   const [pipelineFilter, setPipelineFilter] = useState(pipelineParam);
   const [runIdFilter, setRunIdFilter] = useState(runIdParam);
+  const [clientIdFilter, setClientIdFilter] = useState(clientIdParam);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [availableProjects, setAvailableProjects] = useState<
@@ -300,10 +304,11 @@ export default function ServiceReportTrackerPage() {
     setYearFilter(yearParam || "all");
     setPipelineFilter(pipelineParam);
     setRunIdFilter(runIdParam);
+    setClientIdFilter(clientIdParam);
     if (runIdParam) {
       setSearchQuery(runIdParam);
     }
-  }, [yearParam, pipelineParam, runIdParam]);
+  }, [yearParam, pipelineParam, runIdParam, clientIdParam]);
 
   useEffect(() => {
     toggleSidebar(isSidebarOpen);
@@ -890,6 +895,15 @@ export default function ServiceReportTrackerPage() {
       );
     }
 
+    if (clientIdFilter) {
+      const needle = normalizeClientIdKey(clientIdFilter);
+      if (needle) {
+        records = records.filter((item) =>
+          parseExternalClientIds(item.external_client_id).includes(needle),
+        );
+      }
+    }
+
     if (activeFilter !== "All") {
       records = records.filter((item) => item.status === activeFilter);
     }
@@ -918,7 +932,7 @@ export default function ServiceReportTrackerPage() {
         item.assignee.toLowerCase().includes(query) ||
         item.notes.toLowerCase().includes(query),
     );
-  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter, runIdFilter]);
+  }, [searchQuery, servicesList, activeFilter, yearFilter, pipelineFilter, runIdFilter, clientIdFilter]);
 
   const {
     displayed: displayedServices,
@@ -929,7 +943,7 @@ export default function ServiceReportTrackerPage() {
   } = useTableState<ServiceProjectRow>({
     items: filteredServices,
     itemsPerPage: ITEMS_PER_PAGE,
-    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}-${runIdFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${yearFilter}-${pipelineFilter}-${runIdFilter}-${clientIdFilter}`,
     initialSort: { key: "service_report_number", direction: "desc" },
     customSorters: {
       service_report_number: (a, b) => {
@@ -1434,6 +1448,24 @@ export default function ServiceReportTrackerPage() {
                 title="Clear run ID filter"
               >
                 Run ID: {runIdFilter} ×
+              </button>
+            ) : null}
+            {clientIdFilter ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setClientIdFilter("");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete("client_id");
+                  const qs = params.toString();
+                  router.replace(
+                    qs ? `${routes.services.tracker}?${qs}` : routes.services.tracker,
+                  );
+                }}
+                className="h-10 px-3 rounded-full border border-[#2a7797]/30 bg-[#e6f4f8] text-[11px] font-bold text-[#2a7797] hover:bg-[#d5eff6] transition-colors font-mono"
+                title="Clear Client ID filter"
+              >
+                Client ID: {clientIdFilter} ×
               </button>
             ) : null}
             <div className="relative w-full min-[480px]:w-64">

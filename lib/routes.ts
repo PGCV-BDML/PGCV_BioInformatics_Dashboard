@@ -23,6 +23,17 @@ export const routes = {
     /** Deep-link the Service Report Tracker to a sequencer run ID. */
     trackerByRunId: (runId: string) =>
       `/dashboard/services/tracker?run_id=${encodeURIComponent(runId.trim())}`,
+    /** Deep-link the Service Report Tracker to a Client ID. */
+    trackerByClientId: (clientId: string, year?: string) => {
+      const params = new URLSearchParams();
+      const trimmed = clientId.trim();
+      if (trimmed) params.set("client_id", trimmed);
+      if (year && year !== "all") params.set("year", year);
+      const qs = params.toString();
+      return qs
+        ? `/dashboard/services/tracker?${qs}`
+        : "/dashboard/services/tracker";
+    },
     /** COVID-19 Sample Tracker (genomic surveillance; not client sequence analysis). */
     covidSampleTracker: "/dashboard/services/covid-sample-tracker",
     covidSampleTrackerByRunId: (runId: string) =>

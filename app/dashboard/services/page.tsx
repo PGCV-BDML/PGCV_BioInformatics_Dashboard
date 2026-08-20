@@ -7,6 +7,7 @@ import { DashboardBreadcrumbs } from "../../components/dashboardbreadcrumbs";
 import { AnalysisDashboardStatCards } from "../../components/analysis-dashboard-stat-cards";
 import { AnalysisTypeChart } from "../../components/analysis-type-chart";
 import { AnalysisClientTypeChart } from "../../components/analysis-client-type-chart";
+import { AnalysisClientIdChart } from "../../components/analysis-client-id-chart";
 import { ErrorState, LoadingState } from "../../components/state-views";
 import { getRowsFromDB } from "@/lib/supabase";
 import {
@@ -15,6 +16,7 @@ import {
   getAnalysesByClientType,
   getAnalysesByType,
   getAvailableAnalysisYears,
+  getServiceReportsByClientId,
   type AnalysisDashboardRow,
 } from "@/lib/analysis-dashboard-stats";
 import { servicesDashboardBreadcrumbs } from "@/lib/breadcrumbs";
@@ -50,6 +52,7 @@ export default function ServicesDashboardPage() {
           started_at: a.started_at,
           client_name: a.client_name,
           client_type: a.client_type,
+          external_client_id: a.external_client_id,
         }));
 
         setRows(mapped);
@@ -101,6 +104,11 @@ export default function ServicesDashboardPage() {
     [rows, selectedYear],
   );
 
+  const byClientId = useMemo(
+    () => getServiceReportsByClientId(rows, selectedYear || ALL_TIME),
+    [rows, selectedYear],
+  );
+
   const trackerHrefForPipeline = (pipeline: string) => {
     const params = new URLSearchParams();
     if (typeChartYear && typeChartYear !== ALL_TIME) {
@@ -127,7 +135,7 @@ export default function ServicesDashboardPage() {
             Sequence Analysis Dashboard
           </h1>
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
-            Sequence Analysis · Volume, types, and service reports by year
+            Sequence Analysis · Volume, types, client IDs, and service reports by year
           </p>
         </div>
 
@@ -196,6 +204,11 @@ export default function ServicesDashboardPage() {
               total={stats.total}
             />
           </div>
+
+          <AnalysisClientIdChart
+            data={byClientId}
+            selectedYear={selectedYear}
+          />
         </>
       )}
     </div>
