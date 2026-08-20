@@ -9,6 +9,7 @@ import {
   CheckSquare,
   ExternalLink,
   FolderGit2,
+  Landmark,
   User,
   UserRound,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import {
   STATUS_LABELS,
   taskHref,
   toDateKey,
+  MAX_CELL_ENTRIES,
 } from "@/lib/calendar-tasks";
 import {
   type CalendarAbsence,
@@ -51,6 +53,14 @@ import {
   filterAbsencesByStatus,
   mapAbsencesForCalendar,
 } from "@/lib/calendar-absences";
+import {
+  type PhilippineHoliday,
+  getRegularPhilippineHolidays,
+  holidaysByDateKey,
+  loadPhilippineHolidaysForYears,
+  mergeHolidays,
+  yearsAroundMonth,
+} from "@/lib/ph-holidays";
 import { PRESENCE_STATUS_OPTIONS } from "@/types/database";
 import { TASK_CATEGORY_OPTIONS } from "@/lib/task-categories";
 import { applyTaskAssignees } from "@/lib/task-assignees";
@@ -70,6 +80,8 @@ export default function TaskCalendar() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showTeamAbsences, setShowTeamAbsences] = useState(true);
+  const [showHolidays, setShowHolidays] = useState(true);
+  const [remoteHolidays, setRemoteHolidays] = useState<PhilippineHoliday[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [absenceFilter, setAbsenceFilter] = useState<PresenceStatus | "All">("All");
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
@@ -128,6 +140,19 @@ export default function TaskCalendar() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const years = yearsAroundMonth(viewMonth);
+
+    void loadPhilippineHolidaysForYears(years).then((rows) => {
+      if (!cancelled) setRemoteHolidays(rows);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMonth]);
+
   const grid = useMemo(() => getMonthGrid(viewMonth), [viewMonth]);
   const today = useMemo(() => new Date(), []);
 
@@ -144,6 +169,16 @@ export default function TaskCalendar() {
     return filterAbsencesByStatus(absences, absenceFilter);
   }, [absences, showTeamAbsences, absenceFilter]);
 
+  const localHolidays = useMemo(() => {
+    const years = yearsAroundMonth(viewMonth);
+    return mergeHolidays(...years.map(getRegularPhilippineHolidays));
+  }, [viewMonth]);
+
+  const visibleHolidays = useMemo(() => {
+    if (!showHolidays) return [];
+    return mergeHolidays(localHolidays, remoteHolidays);
+  }, [showHolidays, localHolidays, remoteHolidays]);
+
   const tasksByDate = useMemo(
     () => buildTasksByDate(visibleTasks),
     [visibleTasks],
@@ -154,10 +189,18 @@ export default function TaskCalendar() {
     [visibleAbsences],
   );
 
+  const holidaysByDate = useMemo(
+    () => holidaysByDateKey(visibleHolidays),
+    [visibleHolidays],
+  );
+
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedTasks = selectedKey ? (tasksByDate.get(selectedKey) ?? []) : [];
   const selectedAbsences = selectedKey
     ? (absencesByDate.get(selectedKey) ?? [])
+    : [];
+  const selectedHolidays = selectedKey
+    ? (holidaysByDate.get(selectedKey) ?? [])
     : [];
 
   const monthLabel = viewMonth.toLocaleDateString("en-US", {
@@ -284,6 +327,19 @@ export default function TaskCalendar() {
               />
               Show completed
             </label>
+            <span className="invisible w-16 shrink-0" aria-hidden>
+              Holiday
+            </span>
+            <span aria-hidden />
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none font-aileron whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={showHolidays}
+                onChange={(e) => setShowHolidays(e.target.checked)}
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+              />
+              Show holidays
+            </label>
           </div>
         </div>
 
@@ -303,9 +359,17 @@ export default function TaskCalendar() {
             const key = toDateKey(day);
             const dayTasks = tasksByDate.get(key) ?? [];
             const dayAbsences = absencesByDate.get(key) ?? [];
-            const dayCount = dayTasks.length + dayAbsences.length;
-            const preview = splitCellPreview(dayAbsences.length, dayTasks.length);
-            const hiddenCount = dayCount - preview.absences - preview.tasks;
+            const dayHolidays = holidaysByDate.get(key) ?? [];
+            const holidayPreview = dayHolidays.length > 0 ? 1 : 0;
+            const dayCount =
+              dayTasks.length + dayAbsences.length + dayHolidays.length;
+            const preview = splitCellPreview(
+              dayAbsences.length,
+              dayTasks.length,
+              MAX_CELL_ENTRIES - holidayPreview,
+            );
+            const hiddenCount =
+              dayCount - preview.absences - preview.tasks - holidayPreview;
             const inMonth = day.getMonth() === viewMonth.getMonth();
             const isToday = isSameDay(day, today);
             const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
@@ -320,7 +384,9 @@ export default function TaskCalendar() {
                     ? "border-[#2a7797] bg-[#e6f4f8]/80 shadow-sm"
                     : isToday
                       ? "border-[#2a7797]/40 bg-[#fcb016]/5"
-                      : "border-transparent hover:border-slate-200 hover:bg-slate-50"
+                      : dayHolidays.length > 0
+                        ? "border-rose-100 bg-rose-50/50 hover:border-rose-200"
+                        : "border-transparent hover:border-slate-200 hover:bg-slate-50"
                 } ${inMonth ? "" : "opacity-40"}`}
               >
                 <div className="flex items-center justify-between mb-1 shrink-0">
@@ -342,6 +408,18 @@ export default function TaskCalendar() {
                   )}
                 </div>
                 <div className="space-y-0.5 hidden sm:block">
+                  {dayHolidays.slice(0, holidayPreview).map((holiday) => (
+                    <div
+                      key={`${holiday.date}-${holiday.name}`}
+                      className="flex items-center gap-1 truncate"
+                      title={holiday.localName ?? holiday.name}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-rose-500" />
+                      <span className="text-[10px] font-semibold truncate text-rose-800">
+                        {holiday.name}
+                      </span>
+                    </div>
+                  ))}
                   {dayAbsences.slice(0, preview.absences).map((absence) => (
                     <div
                       key={absence.id}
@@ -392,6 +470,12 @@ export default function TaskCalendar() {
                 </div>
                 {/* Mobile: dots only */}
                 <div className="flex gap-0.5 mt-1 sm:hidden">
+                  {dayHolidays.slice(0, 1).map((holiday) => (
+                    <span
+                      key={`${holiday.date}-${holiday.name}`}
+                      className="w-1.5 h-1.5 rounded-full bg-rose-500"
+                    />
+                  ))}
                   {dayAbsences.slice(0, 1).map((absence) => (
                     <span
                       key={absence.id}
@@ -435,14 +519,16 @@ export default function TaskCalendar() {
           </Link>
         </div>
 
-        {selectedTasks.length === 0 && selectedAbsences.length === 0 ? (
+        {selectedTasks.length === 0 &&
+        selectedAbsences.length === 0 &&
+        selectedHolidays.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <CheckSquare className="w-8 h-8 text-slate-300 mb-3" />
             <p className="text-sm font-semibold text-slate-500 font-aileron">
               Nothing scheduled this day
             </p>
             <p className="text-xs text-slate-400 mt-1 max-w-[260px] font-aileron">
-              Tasks with dates and team leave/travel days appear here.
+              Tasks with dates, team leave/travel, and Philippine holidays appear here.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Link
@@ -463,6 +549,28 @@ export default function TaskCalendar() {
           </div>
         ) : (
           <ul className="space-y-2.5 flex-1 overflow-y-auto">
+            {selectedHolidays.map((holiday) => (
+              <li key={`${holiday.date}-${holiday.name}`}>
+                <div className="border rounded-2xl p-3.5 bg-rose-50/50 border-rose-100">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Landmark className="w-4 h-4 text-rose-700 shrink-0" />
+                      <span className="text-sm font-bold text-slate-800 font-aileron truncate">
+                        {holiday.name}
+                      </span>
+                    </div>
+                    <span className="shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand bg-rose-50 text-rose-800 border-rose-200">
+                      Holiday
+                    </span>
+                  </div>
+                  {holiday.localName && holiday.localName !== holiday.name ? (
+                    <p className="text-[11px] text-slate-500 font-aileron pl-6">
+                      {holiday.localName}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
             {selectedAbsences.map((absence) => {
               const style = ABSENCE_STATUS_STYLES[absence.status];
               return (
