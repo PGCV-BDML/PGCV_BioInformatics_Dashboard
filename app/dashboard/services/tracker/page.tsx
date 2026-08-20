@@ -425,7 +425,10 @@ export default function ServiceReportTrackerPage() {
         );
         setAvailableReviewers(
           (users as User[])
-            .filter((u) => u.role === "reviewing_officer")
+            .filter(
+              (u) =>
+                u.role === "reviewing_officer" || u.role === "team_lead",
+            )
             .map((u) => ({ id: u.id, name: u.name })),
         );
         setAvailableApprovers(

@@ -100,7 +100,7 @@ interface AnalysisSidebarProps {
   formState: AnalysisFormState;
   availableProjects: ProjectOption[];
   availableAssignees: string[];
-  /** Accounts with the reviewing_officer role. */
+  /** Accounts with the reviewing_officer or team_lead role. */
   availableReviewers: ApproverOption[];
   /** Accounts with the approving_officer role. */
   availableApprovers: ApproverOption[];
@@ -682,8 +682,8 @@ export default function AnalysisSidebar({
             </p>
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
-              Accounts with the reviewing officer role. Cannot be the assignee.
-              External officers work from Notifications only.
+              Accounts with the reviewing officer or team lead role. Cannot be
+              the assignee. External officers work from Notifications only.
             </p>
           )}
         </div>

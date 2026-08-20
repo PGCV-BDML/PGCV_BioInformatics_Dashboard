@@ -258,8 +258,8 @@ export default function ServiceReportTrackerProtocol() {
           <li>
             The <strong className="text-[#172126]">Reviewing Officer</strong> can
             be a <code className="text-[12px] bg-slate-100 px-1 py-0.5 rounded">reviewing_officer</code>{" "}
-            <strong>except the assignee</strong>, and must be different from the
-            Approving Officer.
+            or a team lead <strong>except the assignee</strong>, and must be
+            different from the Approving Officer.
           </li>
           <li>
             The <strong className="text-[#172126]">Approving Officer</strong> can

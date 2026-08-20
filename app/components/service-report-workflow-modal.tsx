@@ -40,7 +40,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Assign the Reviewing Officer",
     actor: "Analyst",
     detail:
-      "Open the edit panel and pick a reviewing officer under Personnel. Only accounts with that role are listed, and the reviewer cannot be the assignee. Saving with a completed report notifies them.",
+      "Open the edit panel and pick a reviewing officer under Personnel. Reviewing officers and team leads are listed, and the reviewer cannot be the assignee. Saving with a completed report notifies them.",
   },
   {
     title: "Peer review",
