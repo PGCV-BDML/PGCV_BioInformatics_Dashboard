@@ -1,10 +1,10 @@
 "use client";
 
+import type { SVGProps } from "react";
 import {
   ArrowUpRight,
   Dna,
   Layers3,
-  Leaf,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -14,10 +14,34 @@ import {
   type ServiceReportGenerator,
 } from "@/lib/service-report-generators";
 
-const GENERATOR_ICONS: Record<string, LucideIcon> = {
+/** Lucide-style bacterium; this package build does not export Bacteria. */
+function BacteriaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z" />
+      <path d="M8 8 4 4" />
+      <path d="m12 2 2 2" />
+      <path d="m14 8 2-2" />
+      <path d="m16 22-2-2" />
+      <path d="m20 12 2 2" />
+      <path d="m22 16-2-2" />
+      <path d="m8 14 2 2" />
+      <path d="m8 22 2-2" />
+    </svg>
+  );
+}
+
+const GENERATOR_ICONS: Record<string, LucideIcon | typeof BacteriaIcon> = {
   "amplicon-assembly": Layers3,
   "whole-genome-assembly": Dna,
-  "16s-metabarcoding": Leaf,
+  "16s-metabarcoding": BacteriaIcon,
 };
 
 function GeneratorCard({ generator }: { generator: ServiceReportGenerator }) {
