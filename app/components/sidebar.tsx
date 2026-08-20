@@ -12,7 +12,7 @@ import {
   LayoutGrid,
   CheckSquare,
   Calendar,
-  Microscope,
+  Dna,
   GraduationCap,
   Briefcase,
   Users2,
@@ -83,7 +83,7 @@ const navItems: NavItem[] = [
   {
     name: "Sequence Analysis",
     href: "/dashboard/services",
-    icon: Microscope,
+    icon: Dna,
     animationClass:
       "group-hover:scale-110 group-hover:rotate-6 transition-all duration-300",
     children: [
