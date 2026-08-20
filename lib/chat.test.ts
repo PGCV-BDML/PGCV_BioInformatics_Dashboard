@@ -5,6 +5,7 @@ import {
   formatDayDivider,
   mergeMessage,
   normalizeMessageBody,
+  parseMessageBody,
   shouldGroupWithPrevious,
 } from "./chat";
 import type { ChatMessage } from "@/types/database";
@@ -120,6 +121,69 @@ describe("shouldGroupWithPrevious", () => {
 
   it("never groups the first message", () => {
     expect(shouldGroupWithPrevious(message(), undefined)).toBe(false);
+  });
+});
+
+describe("parseMessageBody", () => {
+  it("keeps plain text as a single segment", () => {
+    expect(parseMessageBody("hello team")).toEqual([
+      { type: "text", value: "hello team" },
+    ]);
+  });
+
+  it("turns http(s) URLs into links", () => {
+    expect(parseMessageBody("see https://example.com/docs")).toEqual([
+      { type: "text", value: "see " },
+      {
+        type: "link",
+        value: "https://example.com/docs",
+        href: "https://example.com/docs",
+      },
+    ]);
+  });
+
+  it("treats www. hosts as https links", () => {
+    expect(parseMessageBody("www.example.com")).toEqual([
+      { type: "link", value: "www.example.com", href: "https://www.example.com" },
+    ]);
+  });
+
+  it("leaves trailing sentence punctuation out of the href", () => {
+    expect(parseMessageBody("go to https://example.com.")).toEqual([
+      { type: "text", value: "go to " },
+      {
+        type: "link",
+        value: "https://example.com",
+        href: "https://example.com",
+      },
+      { type: "text", value: "." },
+    ]);
+  });
+
+  it("keeps balanced parentheses that belong to the path", () => {
+    expect(
+      parseMessageBody("https://en.wikipedia.org/wiki/Foo_(bar)"),
+    ).toEqual([
+      {
+        type: "link",
+        value: "https://en.wikipedia.org/wiki/Foo_(bar)",
+        href: "https://en.wikipedia.org/wiki/Foo_(bar)",
+      },
+    ]);
+  });
+
+  it("does not link javascript URLs", () => {
+    expect(parseMessageBody("javascript:alert(1)")).toEqual([
+      { type: "text", value: "javascript:alert(1)" },
+    ]);
+  });
+
+  it("splits a message with more than one URL", () => {
+    const segments = parseMessageBody(
+      "a https://one.example and https://two.example/path",
+    );
+    expect(segments.filter((s) => s.type === "link")).toHaveLength(2);
+    expect(segments[0]).toEqual({ type: "text", value: "a " });
   });
 });
 

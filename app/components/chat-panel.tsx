@@ -15,6 +15,7 @@ import {
   markConversationRead,
   mergeMessage,
   normalizeMessageBody,
+  parseMessageBody,
   sendMessage,
   shouldGroupWithPrevious,
   subscribeToMessages,
@@ -250,7 +251,7 @@ export function ChatPanel() {
                           </span>
                         )}
 
-                        <div className="flex items-end gap-1.5">
+                        <div className="flex items-end gap-1.5 min-w-0">
                           {isMine && !m.deleted_at && (
                             <button
                               type="button"
@@ -263,7 +264,7 @@ export function ChatPanel() {
                           )}
 
                           <div
-                            className={`rounded-2xl px-3 py-1.5 text-[12px] font-aileron leading-snug break-words ${
+                            className={`min-w-0 max-w-full rounded-2xl px-3 py-1.5 text-[12px] font-aileron leading-snug whitespace-pre-wrap wrap-anywhere ${
                               m.deleted_at
                                 ? "bg-slate-50 text-slate-400 italic border border-slate-100"
                                 : isMine
@@ -271,7 +272,9 @@ export function ChatPanel() {
                                   : "bg-slate-100 text-[#1e293b]"
                             }`}
                           >
-                            {m.deleted_at ? "Message deleted" : m.body}
+                            {m.deleted_at ? "Message deleted" : (
+                              <MessageBody body={m.body} isMine={isMine} />
+                            )}
                           </div>
                         </div>
 
@@ -323,6 +326,34 @@ export function ChatPanel() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+function MessageBody({ body, isMine }: { body: string; isMine: boolean }) {
+  return (
+    <>
+      {parseMessageBody(body).map((segment, i) => {
+        if (segment.type === "text") {
+          return <span key={i}>{segment.value}</span>;
+        }
+
+        return (
+          <a
+            key={i}
+            href={segment.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`break-all underline underline-offset-2 ${
+              isMine
+                ? "text-white decoration-white/70 hover:decoration-white"
+                : "text-[#2a7797] decoration-[#2a7797]/70 hover:text-[#1c5c59]"
+            }`}
+          >
+            {segment.value}
+          </a>
+        );
+      })}
     </>
   );
 }

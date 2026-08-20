@@ -57,6 +57,89 @@ export function mergeMessage(
   return next;
 }
 
+export type MessageBodySegment =
+  | { type: "text"; value: string }
+  | { type: "link"; value: string; href: string };
+
+const URL_FINDER = /(?:https?:\/\/|www\.)[^\s<>"']+/gi;
+const TRAILING_SOFT_PUNCTUATION = new Set([".", ",", ";", ":", "!", "?", "'", '"']);
+
+function unmatchedCloser(url: string, open: string, close: string): boolean {
+  let depth = 0;
+  for (const char of url) {
+    if (char === open) depth += 1;
+    else if (char === close) depth -= 1;
+  }
+  return depth < 0;
+}
+
+/** Peel off punctuation that is almost never part of the URL itself. */
+function trimUrlMatch(raw: string): string {
+  let url = raw;
+
+  while (url.length > 0) {
+    const last = url.at(-1);
+    if (!last) break;
+    if (TRAILING_SOFT_PUNCTUATION.has(last)) {
+      url = url.slice(0, -1);
+      continue;
+    }
+    if (last === ")" && unmatchedCloser(url, "(", ")")) {
+      url = url.slice(0, -1);
+      continue;
+    }
+    if (last === "]" && unmatchedCloser(url, "[", "]")) {
+      url = url.slice(0, -1);
+      continue;
+    }
+    break;
+  }
+
+  return url;
+}
+
+function hrefFor(url: string): string | null {
+  const candidate = /^www\./i.test(url) ? `https://${url}` : url;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Split a message into plain text and http(s) links so the panel can
+ * render long URLs as wrapping, clickable anchors.
+ */
+export function parseMessageBody(body: string): MessageBodySegment[] {
+  const segments: MessageBodySegment[] = [];
+  const finder = new RegExp(URL_FINDER.source, "gi");
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = finder.exec(body)) !== null) {
+    const url = trimUrlMatch(match[0]);
+    const href = url ? hrefFor(url) : null;
+    if (!href) continue;
+
+    const urlStart = match.index;
+    if (urlStart > cursor) {
+      segments.push({ type: "text", value: body.slice(cursor, urlStart) });
+    }
+    segments.push({ type: "link", value: url, href });
+    cursor = urlStart + url.length;
+    finder.lastIndex = cursor;
+  }
+
+  if (cursor < body.length) {
+    segments.push({ type: "text", value: body.slice(cursor) });
+  }
+
+  return segments.length > 0 ? segments : [{ type: "text", value: body }];
+}
+
 /** Group consecutive messages from one sender within `windowMs`. */
 export function shouldGroupWithPrevious(
   message: Pick<ChatMessage, "sender_id" | "created_at">,
