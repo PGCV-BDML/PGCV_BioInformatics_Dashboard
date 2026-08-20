@@ -39,6 +39,14 @@ export const PROTOCOLS: ProtocolMeta[] = [
       "Record SARS-CoV-2 genomic surveillance runs from receipt through lineage assignment and GISAID / ISLAP upload.",
     category: "COVID-19",
   },
+  {
+    slug: "genome-assembly",
+    code: "SOP-BIOINFO-GA-001",
+    title: "Short-read Genome Assembly",
+    summary:
+      "QC, trim, downsample, assemble, map, and identify short paired-end reads with the PGCV utility script.",
+    category: "Sequence Analysis",
+  },
 ];
 
 export const DEFAULT_PROTOCOL_SLUG = PROTOCOLS[0]?.slug ?? "service-report-tracker";

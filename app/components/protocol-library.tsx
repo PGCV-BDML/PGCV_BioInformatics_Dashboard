@@ -30,7 +30,7 @@ export default function ProtocolLibrary({
             : protocolsBreadcrumbs
         }
         title="Protocols"
-        subtitle="Lab how-to guides for dashboard workflows, sign-off, and close-out"
+        subtitle="Lab how-to guides for dashboard workflows, analysis pipelines, sign-off, and close-out"
       />
 
       <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] items-start">

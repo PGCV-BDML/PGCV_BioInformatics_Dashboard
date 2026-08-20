@@ -27,6 +27,15 @@ describe("getProtocolBySlug", () => {
     );
   });
 
+  it("returns the genome assembly protocol", () => {
+    expect(getProtocolBySlug("genome-assembly")?.code).toBe(
+      "SOP-BIOINFO-GA-001",
+    );
+    expect(getProtocolBySlug("genome-assembly")?.title).toBe(
+      "Short-read Genome Assembly",
+    );
+  });
+
   it("returns undefined for an unknown slug", () => {
     expect(getProtocolBySlug("not-a-protocol")).toBeUndefined();
   });

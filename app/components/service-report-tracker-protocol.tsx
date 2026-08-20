@@ -145,6 +145,12 @@ export default function ServiceReportTrackerProtocol() {
           >
             See also: Tracking COVID-19 Samples
           </Link>
+          <Link
+            href={routes.protocols.detail("genome-assembly")}
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-[#2a7797] text-sm font-medium transition-colors"
+          >
+            See also: Short-read Genome Assembly
+          </Link>
         </div>
       </header>
 
