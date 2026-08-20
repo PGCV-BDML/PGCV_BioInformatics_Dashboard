@@ -135,7 +135,7 @@ describe("resolveSignatureRect", () => {
 
   it("matches labels whose spaces Word stripped into TJ kerning", async () => {
     const page = await pgcvSignatoryPage();
-    const drop = 0.5 * (72 / 2.54);
+    const drop = 0.25 * (72 / 2.54);
 
     const reviewed = resolveSignatureRect(page, "reviewed_by", 400, 100);
     expect(reviewed.x).toBeCloseTo(72, 0);
@@ -154,7 +154,7 @@ describe("resolveSignatureRect", () => {
 
   it("overlaps the printed name at full stamp size", async () => {
     const page = await pgcvSignatoryPage();
-    const drop = 0.5 * (72 / 2.54);
+    const drop = 0.25 * (72 / 2.54);
     for (const [slot, label, nameBaseline] of [
       ["reviewed_by", 445.1, 357.3],
       ["approved_by", 209.9, 122.0],
@@ -169,7 +169,7 @@ describe("resolveSignatureRect", () => {
 
   it("puts the reviewing stamp over the printed name under Reviewed by", async () => {
     const page = await signatoryPage();
-    const drop = 0.5 * (72 / 2.54);
+    const drop = 0.25 * (72 / 2.54);
     const rect = resolveSignatureRect(page, "reviewed_by", 400, 100);
     expect(rect.height).toBe(40);
     expect(rect.y).toBeCloseTo(357 - drop, 0);
@@ -178,7 +178,7 @@ describe("resolveSignatureRect", () => {
 
   it("puts the approving stamp over the printed name under Approved for Release", async () => {
     const page = await signatoryPage();
-    const drop = 0.5 * (72 / 2.54);
+    const drop = 0.25 * (72 / 2.54);
     const rect = resolveSignatureRect(page, "approved_by", 400, 100);
     expect(rect.height).toBe(40);
     expect(rect.y).toBeCloseTo(121 - drop, 0);
@@ -205,7 +205,7 @@ describe("resolveSignatureRect", () => {
     const reloaded = loaded.getPages()[0]!;
 
     const rect = resolveSignatureRect(reloaded, "reviewed_by", 400, 100);
-    expect(rect.y).toBeCloseTo(356 - 0.5 * (72 / 2.54), 0);
+    expect(rect.y).toBeCloseTo(356 - 0.25 * (72 / 2.54), 0);
     expect(rect.y + rect.height).toBeLessThan(446);
   });
 });

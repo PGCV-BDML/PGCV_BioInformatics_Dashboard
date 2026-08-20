@@ -23,7 +23,7 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  *
  * The Word template is A4. Stamps are placed from the actual
  * "Reviewed by:" / "Approved for Release:" text on the page — full size,
- * overlapping the printed name under that label, then shifted 0.5 cm down.
+ * overlapping the printed name under that label, then shifted 0.25 cm down.
  * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
@@ -59,14 +59,14 @@ function squash(text: string): string {
 /** PDF user-space points per centimetre (72 pt = 1 in = 2.54 cm). */
 const PT_PER_CM = 72 / 2.54;
 /** Extra drop of both officer stamps below the printed-name baseline. */
-const STAMP_DROP_PT = 0.5 * PT_PER_CM;
+const STAMP_DROP_PT = 0.25 * PT_PER_CM;
 
 /**
  * Fallback if the PDF text cannot be read (scanned page, unusual encoding).
  *
  * Calibrated from PGCV-BIOINFO-SR-2026-118 (A4, 595.28 x 841.89). On that
  * template the signatory page is the last page and holds only the three
- * blocks. y is 0.5 cm below the printed-name baseline so the full-size
+ * blocks. y is 0.25 cm below the printed-name baseline so the full-size
  * stamp overlaps the name: Reviewed by name at y=357.3, Approved for
  * Release at y=122.0.
  */
@@ -372,7 +372,7 @@ function findNameBelow(runs: TextRun[], label: TextRun): TextRun | undefined {
 
 /**
  * Bottom-left of the stamp on this page. The stamp is always the slot's
- * full size and overlaps the printed name, sitting 0.5 cm below the name
+ * full size and overlaps the printed name, sitting 0.25 cm below the name
  * baseline. Falls back to SIGNATURE_SLOTS when the label cannot be read.
  */
 export function resolveSignatureRect(
