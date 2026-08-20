@@ -136,42 +136,48 @@ describe("resolveSignatureRect", () => {
   it("matches labels whose spaces Word stripped into TJ kerning", async () => {
     const page = await pgcvSignatoryPage();
 
-    const drop = 72 / 2.54; // 1 cm lower than the label-hug placement
     const reviewed = resolveSignatureRect(page, "reviewed_by", 400, 100);
     expect(reviewed.x).toBeCloseTo(72, 0);
-    expect(reviewed.y + reviewed.height).toBeCloseTo(439.1 - drop, 0);
-    expect(reviewed.y).toBeCloseTo(399.1 - drop, 0);
+    expect(reviewed.width).toBe(160);
+    expect(reviewed.height).toBe(40);
+    expect(reviewed.y).toBeCloseTo(357.3, 0);
+    expect(reviewed.y + reviewed.height).toBeCloseTo(397.3, 0);
 
     const approved = resolveSignatureRect(page, "approved_by", 400, 100);
     expect(approved.x).toBeCloseTo(71.7, 0);
-    expect(approved.y + approved.height).toBeCloseTo(203.9 - drop, 0);
-    expect(approved.y).toBeCloseTo(163.9 - drop, 0);
+    expect(approved.width).toBe(160);
+    expect(approved.height).toBe(40);
+    expect(approved.y).toBeCloseTo(122.0, 0);
+    expect(approved.y + approved.height).toBeCloseTo(162.0, 0);
   });
 
-  it("clears the printed names on the real template", async () => {
+  it("overlaps the printed name at full stamp size", async () => {
     const page = await pgcvSignatoryPage();
-    // Name baselines, minus room for ascenders.
-    for (const [slot, label, nameTop] of [
-      ["reviewed_by", 445.1, 366.0],
-      ["approved_by", 209.9, 130.7],
+    for (const [slot, label, nameBaseline] of [
+      ["reviewed_by", 445.1, 357.3],
+      ["approved_by", 209.9, 122.0],
     ] as const) {
       const rect = resolveSignatureRect(page, slot, 400, 100);
+      expect(rect.height).toBe(40);
+      expect(rect.y).toBeCloseTo(nameBaseline, 0);
+      expect(rect.y + rect.height).toBeGreaterThan(nameBaseline);
       expect(rect.y + rect.height).toBeLessThan(label);
-      expect(rect.y).toBeGreaterThan(nameTop);
     }
   });
 
-  it("puts the reviewing stamp between Reviewed by and the printed name", async () => {
+  it("puts the reviewing stamp over the printed name under Reviewed by", async () => {
     const page = await signatoryPage();
     const rect = resolveSignatureRect(page, "reviewed_by", 400, 100);
-    expect(rect.y).toBeGreaterThan(357);
+    expect(rect.height).toBe(40);
+    expect(rect.y).toBeCloseTo(357, 0);
     expect(rect.y + rect.height).toBeLessThan(445);
   });
 
-  it("puts the approving stamp between Approved for Release and the printed name", async () => {
+  it("puts the approving stamp over the printed name under Approved for Release", async () => {
     const page = await signatoryPage();
     const rect = resolveSignatureRect(page, "approved_by", 400, 100);
-    expect(rect.y).toBeGreaterThan(121);
+    expect(rect.height).toBe(40);
+    expect(rect.y).toBeCloseTo(121, 0);
     expect(rect.y + rect.height).toBeLessThan(210);
   });
 
@@ -195,7 +201,7 @@ describe("resolveSignatureRect", () => {
     const reloaded = loaded.getPages()[0]!;
 
     const rect = resolveSignatureRect(reloaded, "reviewed_by", 400, 100);
+    expect(rect.y).toBeCloseTo(356, 0);
     expect(rect.y + rect.height).toBeLessThan(446);
-    expect(rect.y).toBeGreaterThan(356);
   });
 });

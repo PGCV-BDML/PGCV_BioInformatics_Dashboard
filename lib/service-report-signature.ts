@@ -22,8 +22,8 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  * Signature image placement on the last page of a PGCV service report.
  *
  * The Word template is A4. Stamps are placed from the actual
- * "Reviewed by:" / "Approved for Release:" text on the page — hung 1 cm
- * below that label, in the blank band above the printed name.
+ * "Reviewed by:" / "Approved for Release:" text on the page — full size,
+ * overlapping the printed name under that label.
  * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
@@ -56,38 +56,27 @@ function squash(text: string): string {
   return text.toLowerCase().replace(/\s+/g, "");
 }
 
-/** PDF user-space points per centimetre (72 pt = 1 in = 2.54 cm). */
-const PT_PER_CM = 72 / 2.54;
-/** Extra drop of both officer stamps under the role label. */
-const STAMP_DROP_PT = 1 * PT_PER_CM;
-
 /**
  * Fallback if the PDF text cannot be read (scanned page, unusual encoding).
  *
  * Calibrated from PGCV-BIOINFO-SR-2026-118 (A4, 595.28 x 841.89). On that
  * template the signatory page is the last page and holds only the three
- * blocks, so these are stable: label baselines sit at y=445.1 (Reviewed by:)
- * and y=209.9 (Approved for Release:), each 87.9pt above its printed name.
- * The y values here already include STAMP_DROP_PT (1 cm below the
- * label-hug placement).
+ * blocks. y is the printed-name baseline so the full-size stamp overlaps
+ * the name: Reviewed by name at y=357.3, Approved for Release at y=122.0.
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
-  reviewed_by: { x: 72, y: 399 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
-  approved_by: { x: 72, y: 164 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
+  reviewed_by: { x: 72, y: 357, maxWidth: 160, maxHeight: 40 },
+  approved_by: { x: 72, y: 122, maxWidth: 160, maxHeight: 40 },
 };
 
 /** Blank left under the label baseline before the top of the stamp. */
-const LABEL_CLEARANCE = 6 + STAMP_DROP_PT;
-/** Blank left between the bottom of the stamp and the printed name. */
-const NAME_CLEARANCE = 4;
+const LABEL_CLEARANCE = 6;
 /**
  * Producers split a single visual line into several runs, so anything within
  * this much of the label baseline belongs to the label's own line — not to
  * the printed name underneath it.
  */
 const SAME_LINE_TOLERANCE = 14;
-/** Never shrink a stamp below this, even in a cramped band. */
-const MIN_STAMP_HEIGHT = 14;
 
 export {
   originalServiceReportBaseName,
@@ -376,9 +365,9 @@ function findNameBelow(runs: TextRun[], label: TextRun): TextRun | undefined {
 }
 
 /**
- * Bottom-left of the stamp on this page. The stamp hangs from just below the
- * role label and is shrunk to clear the printed name under it; falls back to
- * SIGNATURE_SLOTS when the label cannot be read.
+ * Bottom-left of the stamp on this page. The stamp is always the slot's
+ * full size and overlaps the printed name (bottom on the name baseline).
+ * Falls back to SIGNATURE_SLOTS when the label cannot be read.
  */
 export function resolveSignatureRect(
   page: PDFPage,
@@ -387,30 +376,16 @@ export function resolveSignatureRect(
   imageHeight: number,
 ): { x: number; y: number; width: number; height: number } {
   const fallback = SIGNATURE_SLOTS[slot];
+  const size = fitSignatureSize(imageWidth, imageHeight, fallback);
   const runs = extractTextRuns(page);
   const label = findLabelRun(runs, slot);
   if (!label) {
-    const size = fitSignatureSize(imageWidth, imageHeight, fallback);
     return { x: fallback.x, y: fallback.y, ...size };
   }
 
-  // Top of the stamp, always under the label's baseline so the signature
-  // reads as belonging to "Reviewed by:" / "Approved for Release:".
-  const top = label.y - LABEL_CLEARANCE;
   const name = findNameBelow(runs, label);
-  const floor = name
-    ? name.y + name.height * 0.8 + NAME_CLEARANCE
-    : top - fallback.maxHeight;
-
-  const size = fitSignatureSize(imageWidth, imageHeight, {
-    ...fallback,
-    maxHeight: Math.min(
-      fallback.maxHeight,
-      Math.max(MIN_STAMP_HEIGHT, top - floor),
-    ),
-  });
-
-  return { x: label.x, y: top - size.height, ...size };
+  const y = name ? name.y : label.y - LABEL_CLEARANCE - size.height;
+  return { x: label.x, y, ...size };
 }
 
 async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
