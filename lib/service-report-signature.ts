@@ -23,7 +23,7 @@ import { isReviewComplete } from "@/lib/analysis-tracker";
  *
  * The Word template is A4. Stamps are placed from the actual
  * "Reviewed by:" / "Approved for Release:" text on the page — full size,
- * overlapping the printed name under that label.
+ * overlapping the printed name under that label, then shifted 0.5 cm down.
  * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
  */
 export type SignatureSlot = "reviewed_by" | "approved_by";
@@ -56,17 +56,23 @@ function squash(text: string): string {
   return text.toLowerCase().replace(/\s+/g, "");
 }
 
+/** PDF user-space points per centimetre (72 pt = 1 in = 2.54 cm). */
+const PT_PER_CM = 72 / 2.54;
+/** Extra drop of both officer stamps below the printed-name baseline. */
+const STAMP_DROP_PT = 0.5 * PT_PER_CM;
+
 /**
  * Fallback if the PDF text cannot be read (scanned page, unusual encoding).
  *
  * Calibrated from PGCV-BIOINFO-SR-2026-118 (A4, 595.28 x 841.89). On that
  * template the signatory page is the last page and holds only the three
- * blocks. y is the printed-name baseline so the full-size stamp overlaps
- * the name: Reviewed by name at y=357.3, Approved for Release at y=122.0.
+ * blocks. y is 0.5 cm below the printed-name baseline so the full-size
+ * stamp overlaps the name: Reviewed by name at y=357.3, Approved for
+ * Release at y=122.0.
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
-  reviewed_by: { x: 72, y: 357, maxWidth: 160, maxHeight: 40 },
-  approved_by: { x: 72, y: 122, maxWidth: 160, maxHeight: 40 },
+  reviewed_by: { x: 72, y: 357 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
+  approved_by: { x: 72, y: 122 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
 };
 
 /** Blank left under the label baseline before the top of the stamp. */
@@ -366,8 +372,8 @@ function findNameBelow(runs: TextRun[], label: TextRun): TextRun | undefined {
 
 /**
  * Bottom-left of the stamp on this page. The stamp is always the slot's
- * full size and overlaps the printed name (bottom on the name baseline).
- * Falls back to SIGNATURE_SLOTS when the label cannot be read.
+ * full size and overlaps the printed name, sitting 0.5 cm below the name
+ * baseline. Falls back to SIGNATURE_SLOTS when the label cannot be read.
  */
 export function resolveSignatureRect(
   page: PDFPage,
@@ -384,7 +390,7 @@ export function resolveSignatureRect(
   }
 
   const name = findNameBelow(runs, label);
-  const y = name ? name.y : label.y - LABEL_CLEARANCE - size.height;
+  const y = (name ? name.y : label.y - LABEL_CLEARANCE - size.height) - STAMP_DROP_PT;
   return { x: label.x, y, ...size };
 }
 
