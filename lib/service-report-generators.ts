@@ -38,7 +38,7 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     title: "16s Metabarcoding",
     description:
       "Open the 16s metabarcoding report generator for community composition reports.",
-    href: "",
+    href: "http://10.49.42.66:5070",
     accent: "#6bb155",
     tint: "#eef7ea",
   },

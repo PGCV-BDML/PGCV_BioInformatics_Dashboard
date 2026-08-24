@@ -23,6 +23,14 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     expect(wgs?.href).toBe("http://10.49.42.66:5051");
     expect(isGeneratorHrefReady(wgs?.href)).toBe(true);
   });
+
+  it("points 16s Metabarcoding at the LAN generator", () => {
+    const metabarcoding = SERVICE_REPORT_GENERATORS.find(
+      (g) => g.id === "16s-metabarcoding",
+    );
+    expect(metabarcoding?.href).toBe("http://10.49.42.66:5070");
+    expect(isGeneratorHrefReady(metabarcoding?.href)).toBe(true);
+  });
 });
 
 describe("normalizeGeneratorHref", () => {
