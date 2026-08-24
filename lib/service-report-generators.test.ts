@@ -15,6 +15,14 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     ]);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("points Whole Genome Assembly at the LAN generator", () => {
+    const wgs = SERVICE_REPORT_GENERATORS.find(
+      (g) => g.id === "whole-genome-assembly",
+    );
+    expect(wgs?.href).toBe("http://10.49.42.66:5051");
+    expect(isGeneratorHrefReady(wgs?.href)).toBe(true);
+  });
 });
 
 describe("normalizeGeneratorHref", () => {
