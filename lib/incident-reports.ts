@@ -6,6 +6,7 @@ import type {
   IncidentReportFormData,
   IncidentSeverity,
   IncidentStatus,
+  IncidentStatusEvent,
   UserRole,
 } from "@/types/database";
 import {
@@ -38,6 +39,7 @@ export function emptyIncidentForm(
     people_involved: "",
     related_run_id: "",
     follow_up: "",
+    point_person_id: "",
     status: "open",
   };
 }
@@ -85,13 +87,24 @@ export function formFromIncident(row: IncidentReport): IncidentReportFormData {
     people_involved: row.people_involved ?? "",
     related_run_id: row.related_run_id ?? "",
     follow_up: row.follow_up ?? "",
+    point_person_id: row.point_person_id ?? "",
     status: row.status,
   };
 }
 
 export function buildIncidentReportPayload(
   form: IncidentReportFormData,
-): Omit<IncidentReport, "id" | "reporter_id" | "created_at" | "updated_at"> {
+): Omit<
+  IncidentReport,
+  | "id"
+  | "reporter_id"
+  | "created_at"
+  | "updated_at"
+  | "resolved_by"
+  | "resolved_at"
+  | "closed_by"
+  | "closed_at"
+> {
   return {
     title: form.title.trim(),
     incident_date: form.incident_date,
@@ -105,7 +118,18 @@ export function buildIncidentReportPayload(
     people_involved: form.people_involved.trim() || null,
     related_run_id: form.related_run_id.trim() || null,
     follow_up: form.follow_up.trim() || null,
+    point_person_id: form.point_person_id.trim() || null,
     status: form.status,
+  };
+}
+
+/** Status + follow-up only — what a point person who did not file the case may save. */
+export function buildIncidentStatusFollowUpPayload(
+  form: IncidentReportFormData,
+): Pick<IncidentReport, "status" | "follow_up"> {
+  return {
+    status: form.status,
+    follow_up: form.follow_up.trim() || null,
   };
 }
 
@@ -116,6 +140,20 @@ export function canManageIncident(
 ): boolean {
   if (role === "team_lead") return true;
   return role === "team_member" && Boolean(userId) && userId === reporterId;
+}
+
+export function canChangeIncidentStatus(
+  role: UserRole | null | undefined,
+  userId: string | null | undefined,
+  reporterId: string,
+  pointPersonId: string | null | undefined,
+): boolean {
+  if (canManageIncident(role, userId, reporterId)) return true;
+  return (
+    (role === "team_lead" || role === "team_member") &&
+    Boolean(userId) &&
+    userId === pointPersonId
+  );
 }
 
 export function isClosedIncidentStatus(
@@ -163,4 +201,40 @@ export function incidentLocationLabel(value: IncidentLocation): string {
   return (
     INCIDENT_LOCATION_OPTIONS.find((opt) => opt.value === value)?.label ?? value
   );
+}
+
+export function formatIncidentDateTime(
+  value: string | null | undefined,
+): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function incidentStatusEventLabel(
+  event: IncidentStatusEvent,
+  actorName: string | null | undefined,
+): string {
+  const name = actorName?.trim() || "Unknown";
+  const when = formatIncidentDateTime(event.changed_at) || "an unknown time";
+  const toLabel = incidentStatusLabel(event.to_status);
+
+  if (!event.from_status) {
+    return `${name} logged this as ${toLabel} on ${when}`;
+  }
+  if (event.to_status === "resolved") {
+    return `${name} marked this resolved on ${when}`;
+  }
+  if (event.to_status === "closed") {
+    return `${name} closed this case on ${when}`;
+  }
+  const fromLabel = incidentStatusLabel(event.from_status);
+  return `${name} changed this from ${fromLabel} to ${toLabel} on ${when}`;
 }

@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   Eye,
   MessageSquareWarning,
+  ShieldAlert,
 } from "lucide-react";
 import {
   approveAnalysis,
@@ -21,6 +22,7 @@ import {
   getReviewStageLabel,
   getReviewStageUiState,
   isApprovalCompleteNotification,
+  isIncidentAssignedNotification,
   isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
@@ -51,6 +53,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return getReviewStageLabel(getReviewStageUiState(n.review_status));
     case "approval_request":
       return getApprovalStatusLabel(getApprovalUiState(n.submission_status));
+    case "incident_assigned":
+      return "Incident assigned to you";
   }
 }
 
@@ -323,6 +327,58 @@ export function NotificationBell() {
               notifications.map((n) => {
                 const isBusy = busyId === n.id;
                 const kind = getNotificationKind(n);
+
+                if (isIncidentAssignedNotification(n) || kind === "incident_assigned") {
+                  const href = n.payload.incident_id
+                    ? routes.incidents.byId(n.payload.incident_id)
+                    : routes.incidents.list;
+                  return (
+                    <div
+                      key={n.id}
+                      className={`px-4 py-3 hover:bg-slate-50 transition-colors ${
+                        n.is_read ? "opacity-70" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-amber-100">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-800" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
+                            Incident assigned to you
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
+                            {n.payload.title ?? "Incident report"}
+                            {n.payload.reporter_name
+                              ? ` · ${n.payload.reporter_name}`
+                              : ""}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <Link
+                              href={href}
+                              onClick={() => {
+                                void markOneReadLocal(n.id);
+                                setIsOpen(false);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Open incident
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleMarkRead(n.id)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 disabled:opacity-60 transition-colors font-aileron ml-auto"
+                            >
+                              <CheckCheck className="w-3 h-3" /> Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const sentBack = isSentBackNotification(n);
                 const approvalComplete = isApprovalCompleteNotification(n);
                 const reviewState = getReviewStageUiState(n.review_status);

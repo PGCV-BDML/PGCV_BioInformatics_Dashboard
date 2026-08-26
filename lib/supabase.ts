@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type {
+  IncidentStatusEvent,
   RepositoryCategory,
   TaskCategory,
   UserPresence,
@@ -113,6 +114,7 @@ export type TableNames =
   | "repository"
   | "repository_tag"
   | "incident_report"
+  | "incident_status_event"
   | "covid_sequencing_run"
   | "service_report_generator"
   | "user_presence"
@@ -184,6 +186,23 @@ export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   }
 
   return (rows ?? []) as T[];
+}
+
+export async function getIncidentStatusEvents(
+  incidentId: string,
+): Promise<IncidentStatusEvent[]> {
+  const { data, error } = await supabase
+    .from("incident_status_event")
+    .select("*")
+    .eq("incident_id", incidentId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    console.error("Error retrieving incident status events:", error);
+    throw error;
+  }
+
+  return (data ?? []) as IncidentStatusEvent[];
 }
 
 //For Updating Public.Collab table

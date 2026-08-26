@@ -22,6 +22,8 @@ export const NOTIFICATION_READY_FOR_APPROVAL = "analysis_ready_for_approval";
 export const NOTIFICATION_CHANGES_REQUESTED = "analysis_changes_requested";
 /** Sent to the assignee when the approving officer signs the report off. */
 export const NOTIFICATION_APPROVED = "analysis_approved";
+/** Sent to the point person when they are assigned an incident report. */
+export const NOTIFICATION_INCIDENT_ASSIGNED = "incident_assigned";
 
 export type AppNotification = {
   id: string;
@@ -38,6 +40,13 @@ export type AppNotification = {
     comment_author?: string | null;
     /** Present on analysis_approved only. */
     approved_by?: string | null;
+    /** Present on incident_assigned. */
+    incident_id?: string;
+    title?: string | null;
+    severity?: string | null;
+    category?: string | null;
+    status?: string | null;
+    reporter_name?: string | null;
   };
   target_user_id: string;
   is_read: boolean;
@@ -58,7 +67,8 @@ export type NotificationKind =
   | "revision_request"
   | "approval_request"
   | "change_request"
-  | "approval_complete";
+  | "approval_complete"
+  | "incident_assigned";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -70,9 +80,16 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "change_request";
     case NOTIFICATION_APPROVED:
       return "approval_complete";
+    case NOTIFICATION_INCIDENT_ASSIGNED:
+      return "incident_assigned";
+    case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
   }
+}
+
+export function isIncidentAssignedNotification(n: AppNotification): boolean {
+  return n.type === NOTIFICATION_INCIDENT_ASSIGNED;
 }
 
 /** True for notifications the assignee receives when a report is sent back. */

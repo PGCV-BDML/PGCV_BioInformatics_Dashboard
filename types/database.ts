@@ -820,9 +820,24 @@ export type IncidentReport = {
   related_run_id: string | null;
   follow_up: string | null;
   reporter_id: string;
+  point_person_id: string | null;
   status: IncidentStatus;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  closed_by: string | null;
+  closed_at: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type IncidentStatusEvent = {
+  id: string;
+  incident_id: string;
+  from_status: IncidentStatus | null;
+  to_status: IncidentStatus;
+  changed_by: string | null;
+  changed_at: string;
+  note: string | null;
 };
 
 export type IncidentReportFormData = {
@@ -838,5 +853,6 @@ export type IncidentReportFormData = {
   people_involved: string;
   related_run_id: string;
   follow_up: string;
+  point_person_id: string;
   status: IncidentStatus;
 };

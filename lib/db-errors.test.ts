@@ -102,4 +102,12 @@ describe("describeSaveError", () => {
     );
     expect(message).toContain("apply the latest Supabase migration");
   });
+
+  it("explains a point-person column restriction", () => {
+    const message = describeSaveError(
+      { message: "Point person may only update status and follow-up notes" },
+      "incident_report",
+    );
+    expect(message).toContain("status and follow-up notes");
+  });
 });

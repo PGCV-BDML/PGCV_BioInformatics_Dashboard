@@ -11,6 +11,7 @@ import {
   Eye,
   MessageSquareWarning,
   Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
@@ -28,6 +29,7 @@ import {
   getReviewStageLabel,
   getReviewStageUiState,
   isApprovalCompleteNotification,
+  isIncidentAssignedNotification,
   isSentBackNotification,
   markAllNotificationsRead,
   markNotificationRead,
@@ -64,12 +66,15 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return getReviewStageLabel(getReviewStageUiState(n.review_status));
     case "approval_request":
       return getApprovalStatusLabel(getApprovalUiState(n.submission_status));
+    case "incident_assigned":
+      return "Incident assigned to you";
   }
 }
 
 function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
   if (isSentBackNotification(n)) return "bg-amber-100 text-amber-900";
   if (kind === "approval_complete") return "bg-emerald-100 text-emerald-800";
+  if (kind === "incident_assigned") return "bg-amber-100 text-amber-900";
   if (kind === "review_request") {
     const state = getReviewStageUiState(n.review_status);
     if (state === "reviewed") return "bg-teal-100 text-teal-800";
@@ -86,6 +91,7 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
 function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (isSentBackNotification(n)) return MessageSquareWarning;
   if (kind === "approval_complete") return BadgeCheck;
+  if (kind === "incident_assigned") return ShieldAlert;
   if (kind === "review_request") {
     return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
   }
@@ -404,7 +410,7 @@ export default function NotificationsPage() {
       <PageHeader
         breadcrumbTrail={notificationsBreadcrumbs}
         title="Notifications"
-        subtitle="Peer review, approval alerts, and revision comments for service reports"
+        subtitle="Peer review, approval alerts, revision comments, and incident assignments"
         actions={
           <>
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-surface p-1 shadow-sm">
@@ -483,6 +489,9 @@ export default function NotificationsPage() {
           {notifications.map((notification) => {
             const isBusy = busyId === notification.id;
             const kind = getNotificationKind(notification);
+            const incidentAssigned =
+              isIncidentAssignedNotification(notification) ||
+              kind === "incident_assigned";
             const sentBack = isSentBackNotification(notification);
             const approvalComplete = isApprovalCompleteNotification(notification);
             const reviewState = getReviewStageUiState(notification.review_status);
@@ -504,6 +513,7 @@ export default function NotificationsPage() {
               (approvalState === "ready" || approvalState === "under_review");
             const isAmber =
               sentBack ||
+              incidentAssigned ||
               reviewState === "in_review" ||
               approvalState === "under_review";
 
@@ -511,7 +521,7 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                  sentBack
+                  sentBack || incidentAssigned
                     ? "border-amber-200 bg-amber-50/40"
                     : approvalComplete
                       ? "border-emerald-200 bg-emerald-50/40"
@@ -544,14 +554,27 @@ export default function NotificationsPage() {
                         {kindTitle(kind, notification)}
                       </p>
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
-                        {notification.payload.client_name || "Unnamed analysis"}
+                        {incidentAssigned
+                          ? notification.payload.title || "Incident report"
+                          : notification.payload.client_name || "Unnamed analysis"}
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        {notification.payload.service_report_number
-                          ? `Service report ${notification.payload.service_report_number}`
-                          : notification.payload.service_report_file_name
-                            ? notification.payload.service_report_file_name
-                            : "Service report ready"}
+                        {incidentAssigned
+                          ? [
+                              notification.payload.reporter_name
+                                ? `Reported by ${notification.payload.reporter_name}`
+                                : null,
+                              notification.payload.severity
+                                ? `Severity: ${notification.payload.severity}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || "You were assigned as the point person."
+                          : notification.payload.service_report_number
+                            ? `Service report ${notification.payload.service_report_number}`
+                            : notification.payload.service_report_file_name
+                              ? notification.payload.service_report_file_name
+                              : "Service report ready"}
                       </p>
                       {sentBack && notification.payload.comment && (
                         <blockquote className="mt-3 rounded-xl border border-amber-200 bg-white/70 px-3 py-2.5">
@@ -579,7 +602,21 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {sentBack ? (
+                    {incidentAssigned ? (
+                      <Link
+                        href={
+                          notification.payload.incident_id
+                            ? routes.incidents.byId(
+                                notification.payload.incident_id,
+                              )
+                            : routes.incidents.list
+                        }
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open incident
+                      </Link>
+                    ) : sentBack ? (
                       notification.payload.analysis_id && (
                         <Link
                           href={routes.services.detail(

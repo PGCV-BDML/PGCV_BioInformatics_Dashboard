@@ -52,6 +52,9 @@ export const routes = {
   },
   incidents: {
     list: "/dashboard/incidents",
+    /** Open Incident Reports with a specific case selected. */
+    byId: (id: string) =>
+      `/dashboard/incidents?id=${encodeURIComponent(id.trim())}`,
   },
   training: {
     list: "/dashboard/training",

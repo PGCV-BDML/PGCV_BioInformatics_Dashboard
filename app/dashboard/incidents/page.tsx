@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   ShieldAlert,
@@ -12,6 +13,7 @@ import {
   ChevronRight,
   ChevronDown,
   Dna,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../components/state-views";
@@ -25,11 +27,17 @@ import {
   IncidentReport,
   IncidentReportFormData,
   IncidentStatus,
+  IncidentStatusEvent,
   INCIDENT_CATEGORY_OPTIONS,
   INCIDENT_STATUS_OPTIONS,
   User,
 } from "../../../types/database";
-import { getRowsFromDB, getUsersFromDB, saveDataToDB } from "@/lib/supabase";
+import {
+  getIncidentStatusEvents,
+  getRowsFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+} from "@/lib/supabase";
 import { incidentsBreadcrumbs } from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
 import { describeSaveError } from "@/lib/db-errors";
@@ -41,6 +49,8 @@ import { usePortal } from "../../components/portal-context";
 import {
   arrangeIncidentsAfterStatusChange,
   buildIncidentReportPayload,
+  buildIncidentStatusFollowUpPayload,
+  canChangeIncidentStatus,
   canManageIncident,
   emptyIncidentForm,
   formFromIncident,
@@ -88,6 +98,20 @@ function severityClass(severity: IncidentReport["severity"]): string {
 }
 
 export default function IncidentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-8 mx-auto font-aileron max-w-[1240px]">
+          <LoadingState message="Loading incident reports…" />
+        </div>
+      }
+    >
+      <IncidentsPageContent />
+    </Suspense>
+  );
+}
+
+function IncidentsPageContent() {
   const [reports, setReports] = useState<IncidentReport[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,11 +130,20 @@ export default function IncidentsPage() {
   const [selected, setSelected] = useState<IncidentReport | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const [statusEvents, setStatusEvents] = useState<IncidentStatusEvent[]>([]);
+  const [statusEventsLoadedFor, setStatusEventsLoadedFor] = useState<
+    string | null
+  >(null);
+  const [dismissedDeepLinkId, setDismissedDeepLinkId] = useState<string | null>(
+    null,
+  );
   const isPanelOpen = isAdding || isEditing;
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
   const { profile, realRole } = usePortal();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const incidentIdParam = searchParams.get("id")?.trim() ?? "";
 
   useEffect(() => {
     toggleSidebar(isPanelOpen);
@@ -168,6 +201,9 @@ export default function IncidentsPage() {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       const reporter = userMap[row.reporter_id] ?? "";
+      const pointPerson = row.point_person_id
+        ? (userMap[row.point_person_id] ?? "")
+        : "";
       const searchPool = [
         row.title,
         row.description,
@@ -177,6 +213,7 @@ export default function IncidentsPage() {
         row.immediate_action,
         row.follow_up,
         reporter,
+        pointPerson,
         incidentCategoryLabel(row.category),
         incidentLocationLabel(row.location),
         incidentSeverityLabel(row.severity),
@@ -209,11 +246,79 @@ export default function IncidentsPage() {
     [realRole, profile?.id],
   );
 
+  const canChangeStatus = useCallback(
+    (row: IncidentReport) =>
+      canChangeIncidentStatus(
+        realRole,
+        profile?.id,
+        row.reporter_id,
+        row.point_person_id,
+      ),
+    [realRole, profile?.id],
+  );
+
+  const openIncident = useCallback((row: IncidentReport, editing: boolean) => {
+    setSelected(row);
+    setIsAdding(false);
+    setIsEditing(editing);
+  }, []);
+
+  if (!incidentIdParam && dismissedDeepLinkId) {
+    setDismissedDeepLinkId(null);
+  }
+
+  if (
+    !isLoading &&
+    incidentIdParam &&
+    dismissedDeepLinkId !== incidentIdParam &&
+    selected?.id !== incidentIdParam
+  ) {
+    const match = reports.find((row) => row.id === incidentIdParam);
+    if (match) {
+      setSelected(match);
+      setIsAdding(false);
+      setIsEditing(true);
+    }
+  }
+
+  const statusEventsLoading = Boolean(
+    selected && !isAdding && statusEventsLoadedFor !== selected.id,
+  );
+
+  useEffect(() => {
+    if (!selected?.id || isAdding) return;
+    const incidentId = selected.id;
+    let cancelled = false;
+
+    getIncidentStatusEvents(incidentId)
+      .then((rows) => {
+        if (cancelled) return;
+        setStatusEvents(rows);
+        setStatusEventsLoadedFor(incidentId);
+      })
+      .catch((error) => {
+        console.error("Failed to load incident activity:", error);
+        if (cancelled) return;
+        setStatusEvents([]);
+        setStatusEventsLoadedFor(incidentId);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, isAdding]);
+
   const handleCloseModal = useCallback(() => {
     setIsAdding(false);
     setIsEditing(false);
     setSelected(null);
-  }, []);
+    setStatusEvents([]);
+    setStatusEventsLoadedFor(null);
+    setDismissedDeepLinkId(incidentIdParam || selected?.id || null);
+    if (incidentIdParam) {
+      router.replace(routes.incidents.list, { scroll: false });
+    }
+  }, [incidentIdParam, router, selected]);
 
   const handleAddSubmit = useCallback(
     async (formData: IncidentReportFormData) => {
@@ -248,7 +353,9 @@ export default function IncidentsPage() {
   const handleEditSubmit = useCallback(
     async (formData: IncidentReportFormData) => {
       if (!selected) return;
-      const payload = buildIncidentReportPayload(formData);
+      const payload = canManage(selected)
+        ? buildIncidentReportPayload(formData)
+        : buildIncidentStatusFollowUpPayload(formData);
 
       setIsSaving(true);
       try {
@@ -269,7 +376,7 @@ export default function IncidentsPage() {
         setIsSaving(false);
       }
     },
-    [selected, showToast],
+    [selected, showToast, canManage],
   );
 
   const deleteRecord = useDeleteRecord<IncidentReport>(
@@ -304,7 +411,26 @@ export default function IncidentsPage() {
       }),
     );
     try {
-      await saveDataToDB("incident_report", id, { status: newStatus });
+      const saved = (await saveDataToDB("incident_report", id, {
+        status: newStatus,
+      })) as IncidentReport;
+      setReports((prev) =>
+        arrangeIncidentsAfterStatusChange(prev, id, {
+          ...previous,
+          ...saved,
+        }),
+      );
+      if (selected?.id === id) {
+        setSelected((current) =>
+          current ? { ...current, ...saved } : current,
+        );
+        try {
+          setStatusEvents(await getIncidentStatusEvents(id));
+          setStatusEventsLoadedFor(id);
+        } catch (loadError) {
+          console.error("Failed to refresh incident activity:", loadError);
+        }
+      }
     } catch (error) {
       console.error("Error updating incident status:", error);
       setReports((prev) =>
@@ -389,7 +515,7 @@ export default function IncidentsPage() {
       width: "13%",
       sortable: true,
       render: (row) => {
-        if (!canManage(row)) {
+        if (!canChangeStatus(row)) {
           return (
             <span className={`${statusClass(row.status)} !cursor-default`}>
               {INCIDENT_STATUS_OPTIONS.find((o) => o.value === row.status)
@@ -424,7 +550,7 @@ export default function IncidentsPage() {
     },
     {
       key: "reporter_id",
-      label: "Reporter",
+      label: "People",
       width: "12%",
       render: (row) => (
         <div className="space-y-0.5 min-w-0">
@@ -432,6 +558,14 @@ export default function IncidentsPage() {
             text={userMap[row.reporter_id] || "Unknown"}
             className="text-xs text-slate-700 font-medium"
           />
+          {row.point_person_id ? (
+            <TruncatedText
+              text={`Assigned: ${userMap[row.point_person_id] || "Unknown"}`}
+              className="text-[11px] text-slate-400"
+            />
+          ) : (
+            <span className="text-[11px] text-slate-400">Unassigned</span>
+          )}
           {row.related_run_id ? (
             <Link
               href={routes.services.trackerByRunId(row.related_run_id)}
@@ -450,32 +584,34 @@ export default function IncidentsPage() {
       label: "Actions",
       width: "8%",
       render: (row) =>
-        canManage(row) ? (
+        canChangeStatus(row) || canManage(row) ? (
           <div className="flex items-center justify-center gap-0.5">
             <button
               type="button"
-              onClick={() => {
-                setSelected(row);
-                setIsAdding(false);
-                setIsEditing(true);
-              }}
+              onClick={() => openIncident(row, true)}
               className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all"
-              title="Edit"
+              title={canManage(row) ? "Edit" : "Open case"}
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              {canManage(row) ? (
+                <Edit3 className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
               <ChevronRight className="w-3 h-3 opacity-0 max-w-0 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] transition-all text-slate-400" />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelected(row);
-                setShowDeleteConfirm(true);
-              }}
-              className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {canManage(row) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(row);
+                  setShowDeleteConfirm(true);
+                }}
+                className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
           </div>
         ) : (
           <span className="text-[11px] text-slate-400">—</span>
@@ -619,6 +755,16 @@ export default function IncidentsPage() {
         isAdding={isAdding}
         isSaving={isSaving}
         initialData={initialForm}
+        staffUsers={availableUsers.map((user) => ({
+          id: user.id,
+          name: user.name,
+        }))}
+        userNames={userMap}
+        canEditDetails={selected ? canManage(selected) : true}
+        canChangeStatus={selected ? canChangeStatus(selected) : true}
+        canAssignPointPerson={selected ? canManage(selected) : true}
+        statusEvents={statusEvents}
+        statusEventsLoading={statusEventsLoading}
         onClose={handleCloseModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />

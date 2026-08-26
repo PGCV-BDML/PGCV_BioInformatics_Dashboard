@@ -11,21 +11,38 @@ import {
   type IncidentReportFormData,
   type IncidentSeverity,
   type IncidentStatus,
+  type IncidentStatusEvent,
 } from "../../types/database";
 import SlideOverModal, { renderSectionLabel } from "./slidemodal";
+import { AssigneeMultiSelect } from "./assignee-select";
 import {
   AlertTriangle,
   CalendarClock,
   ClipboardCheck,
   FileText,
+  History,
   MapPin,
 } from "lucide-react";
+import { incidentStatusEventLabel } from "@/lib/incident-reports";
+
+const inputClass =
+  "w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed disabled:focus:ring-0 disabled:focus:border-slate-300/80";
+
+const textareaClass =
+  "w-full p-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-none disabled:opacity-70 disabled:cursor-not-allowed disabled:focus:ring-0 disabled:focus:border-slate-300/80";
 
 interface IncidentReportModalProps {
   isOpen: boolean;
   isAdding: boolean;
   isSaving: boolean;
   initialData: IncidentReportFormData;
+  staffUsers: { id: string; name: string }[];
+  userNames: Record<string, string>;
+  canEditDetails: boolean;
+  canChangeStatus: boolean;
+  canAssignPointPerson: boolean;
+  statusEvents: IncidentStatusEvent[];
+  statusEventsLoading?: boolean;
   onClose: () => void;
   onSubmit: (data: IncidentReportFormData) => void;
 }
@@ -35,12 +52,23 @@ export default function IncidentReportModal({
   isAdding,
   isSaving,
   initialData,
+  staffUsers,
+  userNames,
+  canEditDetails,
+  canChangeStatus,
+  canAssignPointPerson,
+  statusEvents,
+  statusEventsLoading = false,
   onClose,
   onSubmit,
 }: IncidentReportModalProps) {
   const [formState, setFormState] =
     useState<IncidentReportFormData>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const canSave = isAdding || canEditDetails || canChangeStatus;
+  const lockDetails = !isAdding && !canEditDetails;
+  const lockStatus = !isAdding && !canChangeStatus;
+  const lockAssignment = !isAdding && !canAssignPointPerson;
 
   const validate = (): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -67,6 +95,7 @@ export default function IncidentReportModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSave) return;
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -79,12 +108,39 @@ export default function IncidentReportModal({
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isAdding ? "Log Incident Report" : "Edit Incident Report"}
-      subtitle="Staff-only log of what happened, when, and what was done."
-      onSubmit={handleSubmit}
+      title={
+        isAdding
+          ? "Log Incident Report"
+          : canEditDetails
+            ? "Edit Incident Report"
+            : "Incident Report"
+      }
+      subtitle={
+        isAdding
+          ? "Staff-only log of what happened, when, and who should own the case."
+          : canEditDetails
+            ? "Update the record, assignment, or status."
+            : canChangeStatus
+              ? "Update status or follow-up notes for this case."
+              : "Staff-only log of what happened, when, and what was done."
+      }
+      onSubmit={canSave ? handleSubmit : undefined}
       submitLabel="Save"
       isSaving={isSaving}
-      submitDisabled={isSaving}
+      submitDisabled={isSaving || !canSave}
+      footer={
+        canSave ? undefined : (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors font-aileron"
+            >
+              Close
+            </button>
+          </div>
+        )
+      }
     >
       <div className="space-y-4">
         <div className="space-y-2.5">
@@ -105,9 +161,10 @@ export default function IncidentReportModal({
               type="text"
               aria-invalid={!!errors.title}
               value={formState.title}
+              disabled={lockDetails}
               onChange={(e) => handleInputChange("title", e.target.value)}
               placeholder="e.g. Sample mix-up on extraction batch"
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
+              className={inputClass}
             />
             {errors.title && (
               <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">
@@ -127,13 +184,14 @@ export default function IncidentReportModal({
               <select
                 id="incident-category"
                 value={formState.category}
+                disabled={lockDetails}
                 onChange={(e) =>
                   handleInputChange(
                     "category",
                     e.target.value as IncidentCategory,
                   )
                 }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                className={inputClass}
               >
                 {INCIDENT_CATEGORY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -153,13 +211,14 @@ export default function IncidentReportModal({
               <select
                 id="incident-severity"
                 value={formState.severity}
+                disabled={lockDetails}
                 onChange={(e) =>
                   handleInputChange(
                     "severity",
                     e.target.value as IncidentSeverity,
                   )
                 }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                className={inputClass}
               >
                 {INCIDENT_SEVERITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -182,9 +241,10 @@ export default function IncidentReportModal({
               rows={4}
               aria-invalid={!!errors.description}
               value={formState.description}
+              disabled={lockDetails}
               onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="What happened, including samples, instruments, or systems involved."
-              className="w-full p-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-none"
+              placeholder="What happened, who noticed it, and any impact."
+              className={textareaClass}
             />
             {errors.description && (
               <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">
@@ -213,10 +273,11 @@ export default function IncidentReportModal({
                 type="date"
                 aria-invalid={!!errors.incident_date}
                 value={formState.incident_date}
+                disabled={lockDetails}
                 onChange={(e) =>
                   handleInputChange("incident_date", e.target.value)
                 }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                className={inputClass}
               />
               {errors.incident_date && (
                 <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">
@@ -230,64 +291,70 @@ export default function IncidentReportModal({
                 htmlFor="incident-time"
                 className="text-xs font-bold text-slate-800 ml-1 font-aileron"
               >
-                Time <span className="font-medium text-slate-400">(optional)</span>
+                Time{" "}
+                <span className="font-medium text-slate-400">(optional)</span>
               </label>
               <input
                 id="incident-time"
                 type="time"
                 value={formState.incident_time}
+                disabled={lockDetails}
                 onChange={(e) =>
                   handleInputChange("incident_time", e.target.value)
                 }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                className={inputClass}
               />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="incident-location"
-              className="text-xs font-bold text-slate-800 ml-1 font-aileron"
-            >
-              Location
-            </label>
-            <select
-              id="incident-location"
-              value={formState.location}
-              onChange={(e) =>
-                handleInputChange(
-                  "location",
-                  e.target.value as IncidentLocation,
-                )
-              }
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
-            >
-              {INCIDENT_LOCATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="incident-location"
+                className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+              >
+                Location
+              </label>
+              <select
+                id="incident-location"
+                value={formState.location}
+                disabled={lockDetails}
+                onChange={(e) =>
+                  handleInputChange(
+                    "location",
+                    e.target.value as IncidentLocation,
+                  )
+                }
+                className={inputClass}
+              >
+                {INCIDENT_LOCATION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="incident-location-detail"
-              className="text-xs font-bold text-slate-800 ml-1 font-aileron"
-            >
-              Location details{" "}
-              <span className="font-medium text-slate-400">(optional)</span>
-            </label>
-            <input
-              id="incident-location-detail"
-              type="text"
-              value={formState.location_detail}
-              onChange={(e) =>
-                handleInputChange("location_detail", e.target.value)
-              }
-              placeholder="e.g. Lab 2, freezer A, or sequencer NS-1"
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
-            />
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="incident-location-detail"
+                className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+              >
+                Location detail{" "}
+                <span className="font-medium text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="incident-location-detail"
+                type="text"
+                value={formState.location_detail}
+                disabled={lockDetails}
+                onChange={(e) =>
+                  handleInputChange("location_detail", e.target.value)
+                }
+                placeholder="e.g. Lab 2, freezer A, or sequencer NS-1"
+                className={inputClass}
+              />
+            </div>
           </div>
         </div>
 
@@ -309,11 +376,12 @@ export default function IncidentReportModal({
               id="incident-action"
               rows={3}
               value={formState.immediate_action}
+              disabled={lockDetails}
               onChange={(e) =>
                 handleInputChange("immediate_action", e.target.value)
               }
               placeholder="What was already done to contain or correct the issue."
-              className="w-full p-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-none"
+              className={textareaClass}
             />
           </div>
 
@@ -329,11 +397,12 @@ export default function IncidentReportModal({
               id="incident-people"
               type="text"
               value={formState.people_involved}
+              disabled={lockDetails}
               onChange={(e) =>
                 handleInputChange("people_involved", e.target.value)
               }
               placeholder="Names of people present or affected"
-              className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
+              className={inputClass}
             />
           </div>
         </div>
@@ -343,6 +412,18 @@ export default function IncidentReportModal({
             <ClipboardCheck className="w-3.5 h-3.5" />,
             "Follow-up",
           )}
+
+          <AssigneeMultiSelect
+            selected={formState.point_person_id ? [formState.point_person_id] : []}
+            users={staffUsers}
+            onChange={(ids) =>
+              handleInputChange("point_person_id", ids[0] ?? "")
+            }
+            max={1}
+            disabled={lockAssignment}
+            label="Point person"
+            hint="Optional. Who should own this case? They are notified when you save, unless you assign yourself."
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -355,10 +436,11 @@ export default function IncidentReportModal({
               <select
                 id="incident-status"
                 value={formState.status}
+                disabled={lockStatus}
                 onChange={(e) =>
                   handleInputChange("status", e.target.value as IncidentStatus)
                 }
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 transition-all shadow-sm"
+                className={inputClass}
               >
                 {INCIDENT_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -380,11 +462,12 @@ export default function IncidentReportModal({
                 id="incident-run-id"
                 type="text"
                 value={formState.related_run_id}
+                disabled={lockDetails}
                 onChange={(e) =>
                   handleInputChange("related_run_id", e.target.value)
                 }
                 placeholder="e.g. PGCV_NS_0059"
-                className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm font-mono"
+                className={`${inputClass} font-mono`}
               />
             </div>
           </div>
@@ -401,9 +484,10 @@ export default function IncidentReportModal({
               id="incident-follow-up"
               rows={3}
               value={formState.follow_up}
+              disabled={lockStatus && lockDetails}
               onChange={(e) => handleInputChange("follow_up", e.target.value)}
               placeholder="Corrective actions, root cause, or next steps."
-              className="w-full p-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-none"
+              className={textareaClass}
             />
           </div>
 
@@ -412,6 +496,42 @@ export default function IncidentReportModal({
             Reporter is set automatically from the signed-in staff account.
           </p>
         </div>
+
+        {!isAdding ? (
+          <div className="space-y-2.5 pt-1 border-t border-slate-100">
+            {renderSectionLabel(
+              <History className="w-3.5 h-3.5" />,
+              "Case activity",
+            )}
+            {statusEventsLoading ? (
+              <p className="text-[11px] text-slate-400 ml-1 font-aileron">
+                Loading activity…
+              </p>
+            ) : statusEvents.length === 0 ? (
+              <p className="text-[11px] text-slate-400 ml-1 font-aileron">
+                No status history yet.
+              </p>
+            ) : (
+              <ol className="space-y-2 ml-1">
+                {statusEvents.map((event) => (
+                  <li
+                    key={event.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2"
+                  >
+                    <p className="text-[11px] font-semibold text-slate-700 font-aileron leading-relaxed">
+                      {incidentStatusEventLabel(
+                        event,
+                        event.changed_by
+                          ? userNames[event.changed_by]
+                          : null,
+                      )}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        ) : null}
       </div>
     </SlideOverModal>
   );

@@ -22,6 +22,10 @@ const TABLE_LABELS: Partial<
   repository: { one: "repository link", many: "repository links" },
   repository_tag: { one: "repository tag", many: "repository tags" },
   incident_report: { one: "incident report", many: "incident reports" },
+  incident_status_event: {
+    one: "incident status event",
+    many: "incident status events",
+  },
   covid_sequencing_run: { one: "sequencing run", many: "sequencing runs" },
   service_report_generator: {
     one: "generator address",
@@ -152,6 +156,14 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     message.includes("incident_report_description_chk")
   ) {
     return `Failed to save ${subject}: title and description are required.`;
+  }
+
+  if (message.includes("Point person may only")) {
+    return `Failed to save ${subject}: the assigned point person can only update status and follow-up notes.`;
+  }
+
+  if (message.includes("Point person must be")) {
+    return `Failed to save ${subject}: the point person must be a team lead or team member.`;
   }
 
   if (
