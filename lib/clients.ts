@@ -230,12 +230,12 @@ export function unknownColumnFromError(error: unknown): string | null {
   const text = errorText(error);
 
   const pgrst = text.match(/Could not find the '([^']+)' column/i);
-  if (pgrst) return pgrst[1];
+  if (pgrst) return pgrst[1] ?? null;
 
   const pg = text.match(
     /column "([^"]+)"(?: of relation "[^"]+")? does not exist/i,
   );
-  if (pg) return pg[1];
+  if (pg) return pg[1] ?? null;
 
   if (e.code === "PGRST204" || e.code === "42703") {
     const quoted = text.match(/'([^']+)'/) || text.match(/"([^"]+)"/);
