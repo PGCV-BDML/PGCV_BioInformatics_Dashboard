@@ -20,7 +20,7 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     title: "Amplicon Assembly",
     description:
       "Open the amplicon assembly report generator to draft a client-ready service report.",
-    href: "http://10.49.42.66:5050",
+    href: "http://10.49.42.113:5050",
     accent: "#2a7797",
     tint: "#e6f4f8",
   },
@@ -38,7 +38,7 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     title: "16s Metabarcoding",
     description:
       "Open the 16s metabarcoding report generator for community composition reports.",
-    href: "http://10.49.42.66:5070",
+    href: "http://10.49.42.113:5070",
     accent: "#6bb155",
     tint: "#eef7ea",
   },

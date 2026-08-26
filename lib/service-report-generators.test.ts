@@ -16,6 +16,14 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("points Amplicon Assembly at the LAN generator", () => {
+    const amplicon = SERVICE_REPORT_GENERATORS.find(
+      (g) => g.id === "amplicon-assembly",
+    );
+    expect(amplicon?.href).toBe("http://10.49.42.113:5050");
+    expect(isGeneratorHrefReady(amplicon?.href)).toBe(true);
+  });
+
   it("points Whole Genome Assembly at the LAN generator", () => {
     const wgs = SERVICE_REPORT_GENERATORS.find(
       (g) => g.id === "whole-genome-assembly",
@@ -28,7 +36,7 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     const metabarcoding = SERVICE_REPORT_GENERATORS.find(
       (g) => g.id === "16s-metabarcoding",
     );
-    expect(metabarcoding?.href).toBe("http://10.49.42.66:5070");
+    expect(metabarcoding?.href).toBe("http://10.49.42.113:5070");
     expect(isGeneratorHrefReady(metabarcoding?.href)).toBe(true);
   });
 });
