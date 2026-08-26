@@ -23,6 +23,10 @@ const TABLE_LABELS: Partial<
   repository_tag: { one: "repository tag", many: "repository tags" },
   incident_report: { one: "incident report", many: "incident reports" },
   covid_sequencing_run: { one: "sequencing run", many: "sequencing runs" },
+  service_report_generator: {
+    one: "generator address",
+    many: "generator addresses",
+  },
   training_program: { one: "training program", many: "training programs" },
   training_session: { one: "training session", many: "training sessions" },
   program_enrollment: { one: "enrollment", many: "enrollments" },
@@ -173,6 +177,13 @@ export function describeSaveError(error: unknown, table: TableNames): string {
 
   if (message.includes("row-level security") || pgError?.code === "42501") {
     return `Failed to save ${subject}: you don't have permission to add this record.`;
+  }
+
+  if (
+    message.includes("schema cache") ||
+    message.includes("does not exist")
+  ) {
+    return `Failed to save ${subject}: apply the latest Supabase migration, then try again.`;
   }
 
   if (message) {

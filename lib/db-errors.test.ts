@@ -91,4 +91,15 @@ describe("describeSaveError", () => {
     );
     expect(message).toContain("title and description are required");
   });
+
+  it("points at a missing migration when the table is not in the schema cache", () => {
+    const message = describeSaveError(
+      {
+        message:
+          "Could not find the table 'public.service_report_generator' in the schema cache",
+      },
+      "service_report_generator",
+    );
+    expect(message).toContain("apply the latest Supabase migration");
+  });
 });

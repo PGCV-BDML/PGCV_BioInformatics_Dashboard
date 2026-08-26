@@ -797,6 +797,14 @@ export const INCIDENT_LOCATION_OPTIONS: {
   { value: "other", label: "Other" },
 ];
 
+/** Live launchpad address for one Service Report Generator card. */
+export type ServiceReportGeneratorRow = {
+  id: string;
+  href: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
+};
+
 export type IncidentReport = {
   id: string;
   title: string;

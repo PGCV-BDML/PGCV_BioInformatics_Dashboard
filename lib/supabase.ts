@@ -114,6 +114,7 @@ export type TableNames =
   | "repository_tag"
   | "incident_report"
   | "covid_sequencing_run"
+  | "service_report_generator"
   | "user_presence"
   | "user_absence"
   | "conversation"

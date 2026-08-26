@@ -1,9 +1,15 @@
 /**
  * Shortcut catalog for the Service Report Generator launchpad.
  *
- * Put each generator's public URL or LAN address in `href`.
+ * Titles, colors, and fallback addresses live here. Live `href` values
+ * are stored in `service_report_generator` so staff can change the lab
+ * IP from the dashboard without a deploy.
+ *
  * Bare IPs and host:port values are treated as http://.
  */
+import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
+import type { ServiceReportGeneratorRow } from "@/types/database";
+
 export type ServiceReportGenerator = {
   id: string;
   title: string;
@@ -44,6 +50,38 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
   },
 ];
 
+/** Catalog fallbacks keyed by generator id. */
+export function catalogHrefById(): Record<string, string> {
+  return Object.fromEntries(
+    SERVICE_REPORT_GENERATORS.map((generator) => [generator.id, generator.href]),
+  );
+}
+
+/** Overlay stored hrefs onto the catalog. Unknown ids are ignored. */
+export function mergeGeneratorHrefs(
+  stored:
+    | ReadonlyArray<{ id: string; href: string | null | undefined }>
+    | null
+    | undefined,
+): Record<string, string> {
+  const next = catalogHrefById();
+  for (const row of stored ?? []) {
+    if (!Object.prototype.hasOwnProperty.call(next, row.id)) continue;
+    if (typeof row.href !== "string") continue;
+    next[row.id] = row.href;
+  }
+  return next;
+}
+
+export function generatorsWithHrefs(
+  hrefById: Record<string, string>,
+): ServiceReportGenerator[] {
+  return SERVICE_REPORT_GENERATORS.map((generator) => ({
+    ...generator,
+    href: hrefById[generator.id] ?? generator.href,
+  }));
+}
+
 /** True when a catalog entry has a usable destination. */
 export function isGeneratorHrefReady(href: string | null | undefined): boolean {
   return Boolean(normalizeGeneratorHref(href));
@@ -62,4 +100,111 @@ export function normalizeGeneratorHref(
     return trimmed;
   }
   return `http://${trimmed}`;
+}
+
+/** Hostname only, for the shared lab-IP field. */
+export function normalizeHostInput(raw: string | null | undefined): string {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "";
+  try {
+    const asUrl = /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+      ? new URL(trimmed)
+      : new URL(`http://${trimmed}`);
+    return asUrl.hostname;
+  } catch {
+    return trimmed;
+  }
+}
+
+export function hostFromHref(href: string | null | undefined): string {
+  const normalized = normalizeGeneratorHref(href);
+  if (!normalized || normalized.startsWith("/")) return "";
+  try {
+    return new URL(normalized).hostname;
+  } catch {
+    return "";
+  }
+}
+
+/** Shared hostname when every address points at the same machine. */
+export function sharedGeneratorHost(hrefs: Record<string, string>): string {
+  const hosts = SERVICE_REPORT_GENERATORS.map((generator) =>
+    hostFromHref(hrefs[generator.id] ?? ""),
+  );
+  const first = hosts[0];
+  if (!first) return "";
+  return hosts.every((host) => host === first) ? first : "";
+}
+
+export function replaceGeneratorHost(
+  href: string,
+  nextHost: string,
+): string {
+  const host = normalizeHostInput(nextHost);
+  if (!host) return href;
+  const normalized = normalizeGeneratorHref(href);
+  if (!normalized || normalized.startsWith("/")) return href;
+  try {
+    const url = new URL(normalized);
+    url.hostname = host;
+    const rendered = url.toString();
+    return rendered.endsWith("/") && !normalized.endsWith("/")
+      ? rendered.slice(0, -1)
+      : rendered;
+  } catch {
+    return href;
+  }
+}
+
+export function applySharedHost(
+  hrefs: Record<string, string>,
+  nextHost: string,
+): Record<string, string> {
+  const next: Record<string, string> = { ...hrefs };
+  for (const generator of SERVICE_REPORT_GENERATORS) {
+    next[generator.id] = replaceGeneratorHost(
+      hrefs[generator.id] ?? "",
+      nextHost,
+    );
+  }
+  return next;
+}
+
+export function displayGeneratorHref(href: string | null | undefined): string {
+  const normalized = normalizeGeneratorHref(href);
+  if (!normalized) return "";
+  return normalized.replace(/^https?:\/\//i, "");
+}
+
+export async function loadGeneratorHrefMap(): Promise<Record<string, string>> {
+  try {
+    const rows = await getRowsFromDB<ServiceReportGeneratorRow>(
+      "service_report_generator",
+    );
+    return mergeGeneratorHrefs(rows);
+  } catch (error) {
+    console.error("Failed to load service report generator addresses:", error);
+    return catalogHrefById();
+  }
+}
+
+export async function saveGeneratorHrefMap(
+  hrefs: Record<string, string>,
+  updatedBy: string | null,
+): Promise<Record<string, string>> {
+  const saved: Record<string, string> = { ...hrefs };
+  for (const generator of SERVICE_REPORT_GENERATORS) {
+    const href = String(hrefs[generator.id] ?? "").trim();
+    const row = await saveDataToDB<ServiceReportGeneratorRow>(
+      "service_report_generator",
+      generator.id,
+      {
+        href,
+        updated_by: updatedBy,
+      },
+    );
+    saved[generator.id] =
+      typeof row?.href === "string" ? row.href : href;
+  }
+  return saved;
 }

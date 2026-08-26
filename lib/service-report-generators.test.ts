@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  applySharedHost,
+  catalogHrefById,
+  displayGeneratorHref,
   isGeneratorHrefReady,
+  mergeGeneratorHrefs,
   normalizeGeneratorHref,
+  normalizeHostInput,
+  replaceGeneratorHost,
   SERVICE_REPORT_GENERATORS,
+  sharedGeneratorHost,
 } from "./service-report-generators";
 
 describe("SERVICE_REPORT_GENERATORS", () => {
@@ -69,5 +76,71 @@ describe("isGeneratorHrefReady", () => {
   it("is false until a destination is set", () => {
     expect(isGeneratorHrefReady("")).toBe(false);
     expect(isGeneratorHrefReady("http://10.0.0.8:3001")).toBe(true);
+  });
+});
+
+describe("mergeGeneratorHrefs", () => {
+  it("keeps catalog fallbacks when nothing is stored", () => {
+    expect(mergeGeneratorHrefs([])).toEqual(catalogHrefById());
+    expect(mergeGeneratorHrefs(null)).toEqual(catalogHrefById());
+  });
+
+  it("overlays stored hrefs and ignores unknown ids", () => {
+    const merged = mergeGeneratorHrefs([
+      { id: "amplicon-assembly", href: "http://10.0.0.9:5050" },
+      { id: "unknown-tool", href: "http://example.test" },
+      { id: "16s-metabarcoding", href: "" },
+    ]);
+    expect(merged["amplicon-assembly"]).toBe("http://10.0.0.9:5050");
+    expect(merged["whole-genome-assembly"]).toBe(
+      "http://10.49.42.113:5051",
+    );
+    expect(merged["16s-metabarcoding"]).toBe("");
+    expect(merged["unknown-tool"]).toBeUndefined();
+  });
+});
+
+describe("shared generator host", () => {
+  it("normalizes a typed IP or URL down to the hostname", () => {
+    expect(normalizeHostInput("http://10.49.42.200:5050")).toBe(
+      "10.49.42.200",
+    );
+    expect(normalizeHostInput("10.49.42.200")).toBe("10.49.42.200");
+  });
+
+  it("returns the shared host when every generator uses the same machine", () => {
+    expect(sharedGeneratorHost(catalogHrefById())).toBe("10.49.42.113");
+    expect(
+      sharedGeneratorHost({
+        "amplicon-assembly": "http://10.0.0.1:5050",
+        "whole-genome-assembly": "http://10.0.0.2:5051",
+        "16s-metabarcoding": "http://10.0.0.1:5070",
+      }),
+    ).toBe("");
+  });
+
+  it("replaces the hostname and keeps the port", () => {
+    expect(
+      replaceGeneratorHost("http://10.49.42.113:5050", "10.49.42.200"),
+    ).toBe("http://10.49.42.200:5050");
+    expect(replaceGeneratorHost("10.49.42.113:5070", "lab.local")).toBe(
+      "http://lab.local:5070",
+    );
+  });
+
+  it("applies a new lab host to every catalog generator", () => {
+    const next = applySharedHost(catalogHrefById(), "10.49.42.200");
+    expect(next["amplicon-assembly"]).toBe("http://10.49.42.200:5050");
+    expect(next["whole-genome-assembly"]).toBe("http://10.49.42.200:5051");
+    expect(next["16s-metabarcoding"]).toBe("http://10.49.42.200:5070");
+  });
+});
+
+describe("displayGeneratorHref", () => {
+  it("strips the scheme for the card footer", () => {
+    expect(displayGeneratorHref("http://10.49.42.113:5050")).toBe(
+      "10.49.42.113:5050",
+    );
+    expect(displayGeneratorHref("")).toBe("");
   });
 });
