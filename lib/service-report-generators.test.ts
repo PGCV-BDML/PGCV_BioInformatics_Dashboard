@@ -20,7 +20,7 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     const wgs = SERVICE_REPORT_GENERATORS.find(
       (g) => g.id === "whole-genome-assembly",
     );
-    expect(wgs?.href).toBe("http://10.49.42.66:5051");
+    expect(wgs?.href).toBe("http://10.49.42.113:5051");
     expect(isGeneratorHrefReady(wgs?.href)).toBe(true);
   });
 

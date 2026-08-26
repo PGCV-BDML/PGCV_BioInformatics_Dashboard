@@ -29,7 +29,7 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     title: "Whole Genome Assembly",
     description:
       "Open the whole genome assembly report generator for WGS analyses.",
-    href: "http://10.49.42.66:5051",
+    href: "http://10.49.42.113:5051",
     accent: "#4ec2bb",
     tint: "#e7f8f6",
   },
