@@ -346,7 +346,8 @@ export default function ServiceReportTrackerProtocol() {
       <Section id="work" title="2. Work the record">
         <p>
           Change Status of Completion and Status of Submission inline in the
-          table, or open the pencil icon in the Actions column. Status of Review
+          table, or open the pencil icon in the first column, next to the
+          service report number. Status of Review
           stays a read-only chip.
         </p>
         <div className="overflow-x-auto rounded-2xl border border-slate-200">

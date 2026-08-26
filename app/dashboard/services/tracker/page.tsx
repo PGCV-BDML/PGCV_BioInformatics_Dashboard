@@ -1085,6 +1085,35 @@ export default function ServiceReportTrackerPage() {
 
   const columns: Column<ServiceProjectRow>[] = [
     {
+      key: "actions",
+      label: "Actions",
+      render: (s) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => openEditSidebar(s)}
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+            title="Edit analysis"
+          >
+            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAnalysis(s);
+              setShowDeleteConfirm(true);
+            }}
+            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
+            title="Delete analysis"
+          >
+            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
+          </button>
+        </div>
+      ),
+    },
+    {
       key: "service_report_number",
       label: "Service Report Number",
       shortLabel: "SR Number",
@@ -1373,35 +1402,6 @@ export default function ServiceReportTrackerPage() {
           multiline
           force={Boolean(s.notes?.trim())}
         />
-      ),
-    },
-    {
-      key: "id",
-      label: "Actions",
-      render: (s) => (
-        <div className="flex items-center justify-center gap-1">
-          <button
-            type="button"
-            onClick={() => openEditSidebar(s)}
-            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
-            title="Edit analysis"
-          >
-            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
-            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedAnalysis(s);
-              setShowDeleteConfirm(true);
-            }}
-            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
-            title="Delete analysis"
-          >
-            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
-            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
-          </button>
-        </div>
       ),
     },
   ];

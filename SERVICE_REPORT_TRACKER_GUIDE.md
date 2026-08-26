@@ -90,7 +90,7 @@ Statuses can be changed two ways:
 
 - **Inline in the table** — Status of Completion and Status of Submission are dropdowns.
   Status of Review is a read-only chip.
-- **In the edit panel** — click the pencil icon in the Actions column.
+- **In the edit panel** — click the pencil icon in the first column, next to the service report number.
 
 **Status of Completion** options:
 
