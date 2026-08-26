@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   buildClientIdLookup,
   buildClientPayload,
+  buildClientProfilePatch,
+  buildCoreClientInsert,
   buildLegacyClientPayload,
   extractEmailAddress,
   mapClientRowToRecord,
   matchClientByExternalId,
+  nextGeneratedClientId,
   normalizeClientIdKey,
   parseExternalClientIds,
-  saveClientWithSchemaFallback,
+  saveNewClient,
   unknownColumnFromError,
   type ClientFormState,
   type ClientRecord,
@@ -156,42 +159,121 @@ describe("unknownColumnFromError", () => {
   });
 });
 
-describe("saveClientWithSchemaFallback", () => {
-  it("retries without the unknown column, then succeeds", async () => {
-    const calls: Array<Record<string, unknown>> = [];
-    const save = async (payload: Record<string, unknown>) => {
-      calls.push(payload);
-      if ("email_address" in payload) {
+describe("nextGeneratedClientId", () => {
+  it("starts at 001 for the current year when none exist", () => {
+    expect(nextGeneratedClientId([], new Date("2026-08-26"))).toBe(
+      "CL-2026-001",
+    );
+  });
+
+  it("increments the highest ID for the current year", () => {
+    expect(
+      nextGeneratedClientId(
+        ["CL-2024-999", "CL-2026-7", "CL-2026-012"],
+        new Date("2026-08-26"),
+      ),
+    ).toBe("CL-2026-013");
+  });
+});
+
+describe("buildCoreClientInsert", () => {
+  it("writes only original schema columns and a concrete client_id", () => {
+    const row = buildCoreClientInsert("uuid-1", makeForm(), []);
+    expect(row).toEqual({
+      id: "uuid-1",
+      client_id: "CL-2024-128",
+      name: "Ada Lovelace",
+      affiliation: "PGCV",
+      contact_info: "ada@example.org | PGCV",
+      notes: "Project ID: P-1",
+    });
+    expect(row).not.toHaveProperty("email_address");
+    expect(row).not.toHaveProperty("project_id");
+  });
+
+  it("auto-assigns a yearly Client ID when the form leaves it blank", () => {
+    const row = buildCoreClientInsert(
+      "uuid-1",
+      makeForm({ clientId: "  " }),
+      ["CL-2026-004"],
+    );
+    expect(row.client_id).toMatch(/^CL-\d{4}-\d{3}$/);
+  });
+});
+
+describe("buildClientProfilePatch", () => {
+  it("only includes filled expanded fields", () => {
+    expect(buildClientProfilePatch(makeForm({ designation: "" }))).toEqual({
+      project_id: "P-1",
+      email_address: "ada@example.org",
+    });
+  });
+});
+
+describe("saveNewClient", () => {
+  it("inserts core columns then patches profile fields", async () => {
+    const inserts: Array<Record<string, unknown>> = [];
+    const updates: Array<Record<string, unknown>> = [];
+
+    const saved = await saveNewClient(makeForm(), [], {
+      insert: async (row) => {
+        inserts.push(row);
+        expect(row).not.toHaveProperty("email_address");
+        return { id: row.id as string, ...row };
+      },
+      update: async (id, patch) => {
+        updates.push(patch);
+        return { id, name: "Ada Lovelace", ...patch };
+      },
+    });
+
+    expect(inserts).toHaveLength(1);
+    expect(updates).toEqual([
+      {
+        project_id: "P-1",
+        email_address: "ada@example.org",
+        designation: "PI",
+      },
+    ]);
+    expect(saved.email_address).toBe("ada@example.org");
+  });
+
+  it("still succeeds when the profile patch is rejected", async () => {
+    const saved = await saveNewClient(makeForm(), [], {
+      insert: async (row) => ({ id: row.id as string, ...row }),
+      update: async () => {
         throw {
           code: "PGRST204",
           message:
             "Could not find the 'email_address' column of 'client' in the schema cache",
         };
-      }
-      return { id: "uuid-1", ...payload };
-    };
+      },
+    });
 
-    const saved = await saveClientWithSchemaFallback(save, makeForm());
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toHaveProperty("email_address");
-    expect(calls[1]).not.toHaveProperty("email_address");
     expect(saved.name).toBe("Ada Lovelace");
+    expect(saved.contact_info).toBe("ada@example.org | PGCV");
   });
 
-  it("falls back to the original schema when the error is not a missing column", async () => {
-    const calls: Array<Record<string, unknown>> = [];
-    const save = async (payload: Record<string, unknown>) => {
-      calls.push(payload);
-      if ("email_address" in payload) {
-        throw new Error("insert failed");
-      }
-      return { id: "uuid-1", ...payload };
-    };
+  it("retries the insert without unknown optional columns", async () => {
+    const inserts: Array<Record<string, unknown>> = [];
+    await saveNewClient(makeForm(), [], {
+      insert: async (row) => {
+        inserts.push(row);
+        if ("notes" in row) {
+          throw {
+            code: "PGRST204",
+            message:
+              "Could not find the 'notes' column of 'client' in the schema cache",
+          };
+        }
+        return { id: row.id as string, ...row };
+      },
+      update: async () => null,
+    });
 
-    const saved = await saveClientWithSchemaFallback(save, makeForm());
-    expect(calls).toHaveLength(2);
-    expect(calls[1]).not.toHaveProperty("email_address");
-    expect(saved.notes).toBe("Project ID: P-1");
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0]).toHaveProperty("notes");
+    expect(inserts[1]).not.toHaveProperty("notes");
   });
 });
 

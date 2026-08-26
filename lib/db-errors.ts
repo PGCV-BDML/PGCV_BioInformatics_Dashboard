@@ -164,6 +164,17 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     return `Failed to save ${subject}: that run ID is already in use.`;
   }
 
+  if (
+    message.includes("duplicate key") &&
+    (message.includes("client_id") || message.includes("client_client_id"))
+  ) {
+    return `Failed to save ${subject}: that Client ID is already in use.`;
+  }
+
+  if (message.includes("row-level security") || pgError?.code === "42501") {
+    return `Failed to save ${subject}: you don't have permission to add this record.`;
+  }
+
   if (message) {
     return `Failed to save ${subject}: ${message}`;
   }

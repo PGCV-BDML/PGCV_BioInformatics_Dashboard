@@ -87,20 +87,28 @@ export type ClientWritePayload = {
   designation?: string;
 };
 
-/**
- * Payload for `public.client`.
- *
- * `name`, `affiliation`, and `contact_info` are NOT NULL. Empty optional
- * fields are omitted so Postgres defaults apply (`client_id` is generated)
- * and we never send `null` into those required columns.
- *
- * `email_address` (and other expanded profile columns) may be missing from
- * a drifted live database. PostgREST rejects unknown columns with PGRST204
- * *before* RLS, which is why adding a client used to fail. Callers should
- * retry via `saveClientWithSchemaFallback`.
- */
-export function buildClientPayload(form: ClientFormState): ClientWritePayload {
-  const trimmed = {
+const CLIENT_ID_SEQUENCE = /^CL-(\d{4})-(\d+)$/i;
+
+/** Next `CL-YYYY-NNN` for the current year, based on IDs already loaded. */
+export function nextGeneratedClientId(
+  existingIds: string[],
+  now = new Date(),
+): string {
+  const year = now.getFullYear();
+  let max = 0;
+
+  for (const raw of existingIds) {
+    const match = raw.trim().match(CLIENT_ID_SEQUENCE);
+    if (!match) continue;
+    if (Number(match[1]) !== year) continue;
+    max = Math.max(max, Number(match[2]));
+  }
+
+  return `CL-${year}-${String(max + 1).padStart(3, "0")}`;
+}
+
+function trimClientForm(form: ClientFormState) {
+  return {
     clientId: form.clientId.trim(),
     clientName: form.clientName.trim(),
     projectId: form.projectId.trim(),
@@ -108,15 +116,69 @@ export function buildClientPayload(form: ClientFormState): ClientWritePayload {
     affiliation: form.affiliation.trim(),
     designation: form.designation.trim(),
   };
+}
 
-  const contactInfo = [trimmed.emailAddress, trimmed.affiliation]
-    .filter(Boolean)
-    .join(" | ");
+function packedContactInfo(email: string, affiliation: string, name: string) {
+  return [email, affiliation].filter(Boolean).join(" | ") || name;
+}
 
+/**
+ * Original `public.client` columns only (`name`, `affiliation`,
+ * `contact_info`, `client_id`, optional `notes`). Expanded profile
+ * fields are applied afterwards so a missing `email_address` column
+ * cannot block the insert.
+ */
+export function buildCoreClientInsert(
+  rowId: string,
+  form: ClientFormState,
+  existingClientIds: string[],
+): Record<string, unknown> {
+  const trimmed = trimClientForm(form);
+  const clientId =
+    trimmed.clientId || nextGeneratedClientId(existingClientIds);
+
+  return {
+    id: rowId,
+    client_id: clientId,
+    name: trimmed.clientName,
+    affiliation: trimmed.affiliation,
+    contact_info: packedContactInfo(
+      trimmed.emailAddress,
+      trimmed.affiliation,
+      trimmed.clientName,
+    ),
+    notes: trimmed.projectId ? `Project ID: ${trimmed.projectId}` : null,
+  };
+}
+
+/** Newer profile columns that may be absent on a drifted live database. */
+export function buildClientProfilePatch(
+  form: ClientFormState,
+): Record<string, unknown> {
+  const trimmed = trimClientForm(form);
+  const patch: Record<string, unknown> = {};
+  if (trimmed.projectId) patch.project_id = trimmed.projectId;
+  if (trimmed.emailAddress) patch.email_address = trimmed.emailAddress;
+  if (trimmed.designation) patch.designation = trimmed.designation;
+  return patch;
+}
+
+/**
+ * Payload for `public.client`.
+ *
+ * `name`, `affiliation`, and `contact_info` are NOT NULL. Empty optional
+ * fields are omitted so we never send `null` into those required columns.
+ */
+export function buildClientPayload(form: ClientFormState): ClientWritePayload {
+  const trimmed = trimClientForm(form);
   const payload: ClientWritePayload = {
     name: trimmed.clientName,
     affiliation: trimmed.affiliation,
-    contact_info: contactInfo || trimmed.clientName,
+    contact_info: packedContactInfo(
+      trimmed.emailAddress,
+      trimmed.affiliation,
+      trimmed.clientName,
+    ),
     updated_at: new Date().toISOString(),
   };
 
@@ -145,19 +207,34 @@ export function buildLegacyClientPayload(
   };
 }
 
+function errorText(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return typeof error === "string" ? error : "";
+  }
+  const e = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
+  return [e.message, e.details, e.hint].filter(Boolean).join(" ");
+}
+
 /**
  * PostgREST PGRST204 / Postgres 42703: column is not in the schema cache
  * (or the table). Returns the column name when it can be parsed.
  */
 export function unknownColumnFromError(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
-  const e = error as { code?: string; message?: string; details?: string };
-  const text = [e.message, e.details].filter(Boolean).join(" ");
+  const e = error as { code?: string };
+  const text = errorText(error);
 
   const pgrst = text.match(/Could not find the '([^']+)' column/i);
   if (pgrst) return pgrst[1];
 
-  const pg = text.match(/column "([^"]+)"(?: of relation "[^"]+")? does not exist/i);
+  const pg = text.match(
+    /column "([^"]+)"(?: of relation "[^"]+")? does not exist/i,
+  );
   if (pg) return pg[1];
 
   if (e.code === "PGRST204" || e.code === "42703") {
@@ -168,40 +245,90 @@ export function unknownColumnFromError(error: unknown): string | null {
   return null;
 }
 
+export function isUniqueClientIdError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: string };
+  const text = errorText(error).toLowerCase();
+  if (e.code === "23505" && text.includes("client_id")) return true;
+  return text.includes("duplicate key") && text.includes("client_id");
+}
+
+const CORE_REQUIRED_COLUMNS = new Set([
+  "id",
+  "client_id",
+  "name",
+  "affiliation",
+  "contact_info",
+]);
+
+export interface ClientWriter {
+  insert: (row: Record<string, unknown>) => Promise<SupabaseClientRow>;
+  update: (
+    id: string,
+    patch: Record<string, unknown>,
+  ) => Promise<SupabaseClientRow | null>;
+}
+
 /**
- * Insert/update a client, stripping columns PostgREST does not know about
- * and finally retrying with the original schema if needed.
+ * Insert the original client columns, then best-effort patch profile
+ * fields. A missing `email_address` (PGRST204) no longer blocks create.
  */
-export async function saveClientWithSchemaFallback<T>(
-  save: (payload: Record<string, unknown>) => Promise<T>,
+export async function saveNewClient(
   form: ClientFormState,
-): Promise<T> {
-  let payload: Record<string, unknown> = { ...buildClientPayload(form) };
-  let usedLegacy = false;
+  existingClientIds: string[],
+  db: ClientWriter,
+): Promise<SupabaseClientRow> {
+  const rowId = crypto.randomUUID();
+  let core = buildCoreClientInsert(rowId, form, existingClientIds);
+  let saved: SupabaseClientRow | null = null;
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      return await save(payload);
+      saved = await db.insert(core);
+      break;
     } catch (error) {
       lastError = error;
       const column = unknownColumnFromError(error);
-      if (column && Object.prototype.hasOwnProperty.call(payload, column)) {
-        const next = { ...payload };
+      if (
+        column &&
+        Object.prototype.hasOwnProperty.call(core, column) &&
+        !CORE_REQUIRED_COLUMNS.has(column)
+      ) {
+        const next = { ...core };
         delete next[column];
-        payload = next;
+        core = next;
         continue;
       }
-      if (!usedLegacy) {
-        usedLegacy = true;
-        payload = buildLegacyClientPayload(form);
+      if (
+        isUniqueClientIdError(error) &&
+        !form.clientId.trim() &&
+        typeof core.client_id === "string"
+      ) {
+        core = {
+          ...core,
+          client_id: nextGeneratedClientId([
+            ...existingClientIds,
+            core.client_id,
+          ]),
+        };
         continue;
       }
       throw error;
     }
   }
 
-  throw lastError;
+  if (!saved) throw lastError;
+
+  const patch = buildClientProfilePatch(form);
+  if (Object.keys(patch).length === 0) return saved;
+
+  try {
+    const patched = await db.update(saved.id, patch);
+    return patched ?? saved;
+  } catch {
+    return saved;
+  }
 }
 
 /* ------------------------------------------------------------------ */

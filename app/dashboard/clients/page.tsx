@@ -29,12 +29,13 @@ import Pagination from "../../components/pagination";
 import {
   createEmptyClientForm,
   mapClientRowToRecord,
-  saveClientWithSchemaFallback,
+  saveNewClient,
   type ClientFormState,
   type ClientRecord,
   type SupabaseClientRow,
 } from "@/lib/clients";
-import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
+import { describeSaveError } from "@/lib/db-errors";
+import { getRowsFromDB, supabase } from "@/lib/supabase";
 import { useTableState } from "@/hooks/useTableState";
 import SlideOverModal, {
   renderSectionLabel,
@@ -270,11 +271,30 @@ export default function ClientsPage() {
       setIsSaving(true);
 
       try {
-        const rowId = crypto.randomUUID();
-        const savedRow = await saveClientWithSchemaFallback(
-          (payload) =>
-            saveDataToDB("client", rowId, payload) as Promise<SupabaseClientRow>,
+        const savedRow = await saveNewClient(
           formState,
+          clients.map((client) => client.clientId),
+          {
+            insert: async (row) => {
+              const { data, error } = await supabase
+                .from("client")
+                .insert(row)
+                .select()
+                .maybeSingle();
+              if (error) throw error;
+              return (data ?? row) as SupabaseClientRow;
+            },
+            update: async (id, patch) => {
+              const { data, error } = await supabase
+                .from("client")
+                .update(patch)
+                .eq("id", id)
+                .select()
+                .maybeSingle();
+              if (error) throw error;
+              return data as SupabaseClientRow | null;
+            },
+          },
         );
 
         const nextClient = mapClientRowToRecord(savedRow);
@@ -285,7 +305,7 @@ export default function ClientsPage() {
         showToast("Client added successfully.", "success");
       } catch (error) {
         console.error("Failed to add client", error);
-        showToast("Failed to save client. Please try again.", "error");
+        showToast(describeSaveError(error, "client"), "error");
       } finally {
         setIsSaving(false);
       }
