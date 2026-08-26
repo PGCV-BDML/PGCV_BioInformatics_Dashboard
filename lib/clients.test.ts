@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClientIdLookup,
+  buildClientPayload,
+  buildLegacyClientPayload,
   extractEmailAddress,
   mapClientRowToRecord,
   matchClientByExternalId,
   normalizeClientIdKey,
   parseExternalClientIds,
+  saveClientWithSchemaFallback,
+  unknownColumnFromError,
+  type ClientFormState,
   type ClientRecord,
 } from "./clients";
 
@@ -72,6 +77,121 @@ describe("mapClientRowToRecord", () => {
         contact_info: "PGC Visayas",
       }).emailAddress,
     ).toBe("");
+  });
+});
+
+function makeForm(overrides: Partial<ClientFormState> = {}): ClientFormState {
+  return {
+    clientId: "CL-2024-128",
+    clientName: "Ada Lovelace",
+    projectId: "P-1",
+    emailAddress: "ada@example.org",
+    affiliation: "PGCV",
+    designation: "PI",
+    ...overrides,
+  };
+}
+
+describe("buildClientPayload", () => {
+  it("sends required columns as non-null strings", () => {
+    const payload = buildClientPayload(makeForm());
+    expect(payload.name).toBe("Ada Lovelace");
+    expect(payload.affiliation).toBe("PGCV");
+    expect(payload.contact_info).toBe("ada@example.org | PGCV");
+    expect(payload.email_address).toBe("ada@example.org");
+    expect(payload.client_id).toBe("CL-2024-128");
+  });
+
+  it("omits empty optional fields so NOT NULL defaults still apply", () => {
+    const payload = buildClientPayload(
+      makeForm({
+        clientId: "  ",
+        projectId: "",
+        emailAddress: "",
+        designation: "",
+      }),
+    );
+    expect(payload).not.toHaveProperty("client_id");
+    expect(payload).not.toHaveProperty("email_address");
+    expect(payload).not.toHaveProperty("project_id");
+    expect(payload).not.toHaveProperty("designation");
+    expect(payload.contact_info).toBe("PGCV");
+  });
+});
+
+describe("buildLegacyClientPayload", () => {
+  it("drops expanded profile columns that may be missing on live DBs", () => {
+    const payload = buildLegacyClientPayload(makeForm());
+    expect(payload).not.toHaveProperty("email_address");
+    expect(payload).not.toHaveProperty("project_id");
+    expect(payload).not.toHaveProperty("designation");
+    expect(payload.name).toBe("Ada Lovelace");
+    expect(payload.notes).toBe("Project ID: P-1");
+  });
+});
+
+describe("unknownColumnFromError", () => {
+  it("parses PostgREST schema-cache errors", () => {
+    expect(
+      unknownColumnFromError({
+        code: "PGRST204",
+        message:
+          "Could not find the 'email_address' column of 'client' in the schema cache",
+      }),
+    ).toBe("email_address");
+  });
+
+  it("parses Postgres undefined-column errors", () => {
+    expect(
+      unknownColumnFromError({
+        code: "42703",
+        message: 'column "designation" of relation "client" does not exist',
+      }),
+    ).toBe("designation");
+  });
+
+  it("returns null for unrelated errors", () => {
+    expect(unknownColumnFromError(new Error("RLS denied"))).toBeNull();
+    expect(unknownColumnFromError(null)).toBeNull();
+  });
+});
+
+describe("saveClientWithSchemaFallback", () => {
+  it("retries without the unknown column, then succeeds", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const save = async (payload: Record<string, unknown>) => {
+      calls.push(payload);
+      if ("email_address" in payload) {
+        throw {
+          code: "PGRST204",
+          message:
+            "Could not find the 'email_address' column of 'client' in the schema cache",
+        };
+      }
+      return { id: "uuid-1", ...payload };
+    };
+
+    const saved = await saveClientWithSchemaFallback(save, makeForm());
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toHaveProperty("email_address");
+    expect(calls[1]).not.toHaveProperty("email_address");
+    expect(saved.name).toBe("Ada Lovelace");
+  });
+
+  it("falls back to the original schema when the error is not a missing column", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const save = async (payload: Record<string, unknown>) => {
+      calls.push(payload);
+      if ("email_address" in payload) {
+        throw new Error("insert failed");
+      }
+      return { id: "uuid-1", ...payload };
+    };
+
+    const saved = await saveClientWithSchemaFallback(save, makeForm());
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).not.toHaveProperty("email_address");
+    expect(saved.notes).toBe("Project ID: P-1");
   });
 });
 

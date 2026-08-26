@@ -27,9 +27,9 @@ import DataTable, { Column } from "../../components/datatable";
 import { TruncatedText } from "../../components/cell-tooltip";
 import Pagination from "../../components/pagination";
 import {
-  buildClientPayload,
   createEmptyClientForm,
   mapClientRowToRecord,
+  saveClientWithSchemaFallback,
   type ClientFormState,
   type ClientRecord,
   type SupabaseClientRow,
@@ -46,12 +46,13 @@ const FIELD_CONFIG: Array<{
   type?: string;
   placeholder?: string;
   icon: typeof UserRound;
+  required?: boolean;
 }> = [
   {
     key: "clientId",
     label: "Client ID",
     type: "text",
-    placeholder: "CL-1001",
+    placeholder: "Leave blank to auto-generate",
     icon: Hash,
   },
   {
@@ -60,6 +61,7 @@ const FIELD_CONFIG: Array<{
     type: "text",
     placeholder: "Enter full name",
     icon: UserRound,
+    required: true,
   },
   {
     key: "projectId",
@@ -81,6 +83,7 @@ const FIELD_CONFIG: Array<{
     type: "text",
     placeholder: "Institution / Office",
     icon: Building2,
+    required: true,
   },
   {
     key: "designation",
@@ -244,48 +247,41 @@ export default function ClientsPage() {
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {
       event.preventDefault();
+
+      const clientName = formState.clientName.trim();
+      const affiliation = formState.affiliation.trim();
+      if (!clientName || !affiliation) {
+        showToast("Client name and affiliation are required.", "error");
+        return;
+      }
+
+      const typedClientId = formState.clientId.trim();
+      if (
+        typedClientId &&
+        clients.some(
+          (client) =>
+            client.clientId.trim().toLowerCase() === typedClientId.toLowerCase(),
+        )
+      ) {
+        showToast("A client with this ID already exists.", "error");
+        return;
+      }
+
       setIsSaving(true);
 
       try {
-        const clientId = crypto.randomUUID();
-        const payload = buildClientPayload(formState);
-
-        let savedRow: SupabaseClientRow | null = null;
-
-        try {
-          savedRow = (await saveDataToDB(
-            "client",
-            clientId,
-            payload,
-          )) as SupabaseClientRow;
-        } catch (error) {
-          console.warn(
-            "Primary client insert failed; trying legacy fallback.",
-            error,
-          );
-          savedRow = (await saveDataToDB("client", clientId, {
-            name: formState.clientName.trim(),
-            affiliation: formState.affiliation.trim(),
-            project_id: formState.projectId.trim() || null,
-            designation: formState.designation.trim() || null,
-            contact_info:
-              [formState.emailAddress.trim()].filter(Boolean).join(" | ") ||
-              formState.clientName.trim(),
-            notes: `Project ID: ${formState.projectId.trim() || "N/A"}`,
-            client_id: formState.clientId.trim(),
-            email_address: formState.emailAddress.trim() || null,
-          })) as SupabaseClientRow;
-        }
-
-        const nextClient = mapClientRowToRecord(
-          savedRow ?? {
-            id: clientId,
-            ...payload,
-          },
+        const rowId = crypto.randomUUID();
+        const savedRow = await saveClientWithSchemaFallback(
+          (payload) =>
+            saveDataToDB("client", rowId, payload) as Promise<SupabaseClientRow>,
+          formState,
         );
+
+        const nextClient = mapClientRowToRecord(savedRow);
 
         setClients((prev) => [nextClient, ...prev]);
         setFormState(createEmptyClientForm());
+        setIsPanelOpen(false);
         showToast("Client added successfully.", "success");
       } catch (error) {
         console.error("Failed to add client", error);
@@ -294,7 +290,7 @@ export default function ClientsPage() {
         setIsSaving(false);
       }
     },
-    [formState, showToast],
+    [clients, formState, showToast],
   );
 
   return (
@@ -419,13 +415,23 @@ export default function ClientsPage() {
           )}
 
           {FIELD_CONFIG.map(
-            ({ key, label, type = "text", placeholder, icon: Icon }) => (
+            ({
+              key,
+              label,
+              type = "text",
+              placeholder,
+              icon: Icon,
+              required = false,
+            }) => (
               <div key={key} className="flex flex-col gap-1.5">
                 <label
                   htmlFor={`client-${key}`}
                   className="text-xs font-bold text-slate-800 ml-1 font-aileron"
                 >
                   {label}
+                  {required ? (
+                    <span className="text-red-500 font-bold"> *</span>
+                  ) : null}
                 </label>
                 <div className="relative">
                   <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -437,7 +443,7 @@ export default function ClientsPage() {
                     onChange={handleInputChange}
                     placeholder={placeholder}
                     className="w-full h-10 pl-9 pr-3 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
-                    required={true}
+                    required={required}
                   />
                 </div>
               </div>
