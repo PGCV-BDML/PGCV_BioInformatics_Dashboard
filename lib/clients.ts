@@ -89,6 +89,27 @@ export type ClientWritePayload = {
 
 const CLIENT_ID_SEQUENCE = /^CL-(\d{4})-(\d+)$/i;
 
+export function parseGeneratedClientId(
+  raw: string,
+): { year: number; sequence: number } | null {
+  const match = raw.trim().match(CLIENT_ID_SEQUENCE);
+  if (!match) return null;
+  return { year: Number(match[1]), sequence: Number(match[2]) };
+}
+
+/** Ascending by year, then sequence. Non-standard IDs sort first in asc (last in desc). */
+export function compareClientIds(a: string, b: string): number {
+  const pa = parseGeneratedClientId(a);
+  const pb = parseGeneratedClientId(b);
+  if (pa && pb) {
+    if (pa.year !== pb.year) return pa.year - pb.year;
+    return pa.sequence - pb.sequence;
+  }
+  if (pa && !pb) return 1;
+  if (!pa && pb) return -1;
+  return a.toLowerCase().localeCompare(b.toLowerCase());
+}
+
 /** Next `CL-YYYY-NNN` for the current year, based on IDs already loaded. */
 export function nextGeneratedClientId(
   existingIds: string[],
@@ -98,10 +119,9 @@ export function nextGeneratedClientId(
   let max = 0;
 
   for (const raw of existingIds) {
-    const match = raw.trim().match(CLIENT_ID_SEQUENCE);
-    if (!match) continue;
-    if (Number(match[1]) !== year) continue;
-    max = Math.max(max, Number(match[2]));
+    const parsed = parseGeneratedClientId(raw);
+    if (!parsed || parsed.year !== year) continue;
+    max = Math.max(max, parsed.sequence);
   }
 
   return `CL-${year}-${String(max + 1).padStart(3, "0")}`;

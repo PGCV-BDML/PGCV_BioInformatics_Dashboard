@@ -8,8 +8,10 @@ import {
   extractEmailAddress,
   mapClientRowToRecord,
   matchClientByExternalId,
+  compareClientIds,
   nextGeneratedClientId,
   normalizeClientIdKey,
+  parseGeneratedClientId,
   parseExternalClientIds,
   saveNewClient,
   unknownColumnFromError,
@@ -156,6 +158,40 @@ describe("unknownColumnFromError", () => {
   it("returns null for unrelated errors", () => {
     expect(unknownColumnFromError(new Error("RLS denied"))).toBeNull();
     expect(unknownColumnFromError(null)).toBeNull();
+  });
+});
+
+describe("parseGeneratedClientId", () => {
+  it("reads year and sequence from CL-YYYY-NNN", () => {
+    expect(parseGeneratedClientId("CL-2026-012")).toEqual({
+      year: 2026,
+      sequence: 12,
+    });
+  });
+
+  it("returns null for non-standard IDs", () => {
+    expect(parseGeneratedClientId("CUST-1")).toBeNull();
+  });
+});
+
+describe("compareClientIds", () => {
+  it("orders by year then sequence number", () => {
+    const ids = ["CL-2026-7", "CL-2025-999", "CL-2026-012", "CL-2026-001"];
+    expect([...ids].sort(compareClientIds)).toEqual([
+      "CL-2025-999",
+      "CL-2026-001",
+      "CL-2026-7",
+      "CL-2026-012",
+    ]);
+  });
+
+  it("puts the newest generated ID first when reversed (table default)", () => {
+    const ids = ["CL-2026-7", "CUST-1", "CL-2026-012"];
+    expect([...ids].sort((a, b) => -compareClientIds(a, b))).toEqual([
+      "CL-2026-012",
+      "CL-2026-7",
+      "CUST-1",
+    ]);
   });
 });
 

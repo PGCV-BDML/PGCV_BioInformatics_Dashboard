@@ -27,6 +27,7 @@ import DataTable, { Column } from "../../components/datatable";
 import { TruncatedText } from "../../components/cell-tooltip";
 import Pagination from "../../components/pagination";
 import {
+  compareClientIds,
   createEmptyClientForm,
   mapClientRowToRecord,
   saveNewClient,
@@ -174,7 +175,10 @@ export default function ClientsPage() {
     items: filteredClients,
     itemsPerPage,
     resetKey: searchQuery,
-    initialSort: { key: "clientId", direction: "asc" },
+    initialSort: { key: "clientId", direction: "desc" },
+    customSorters: {
+      clientId: (a, b) => compareClientIds(a.clientId, b.clientId),
+    },
   });
 
   const columns: Column<ClientRecord>[] = useMemo(
