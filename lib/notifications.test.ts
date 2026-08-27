@@ -70,12 +70,12 @@ describe("overlayLiveAnalysisOnNotifications", () => {
       },
     });
     const [next] = overlayLiveAnalysisOnNotifications([review], live);
-    expect(next.payload.service_report_file_path).toBe(
+    expect(next?.payload.service_report_file_path).toBe(
       "a-1/stamp/report_signed.pdf",
     );
-    expect(next.payload.service_report_file_name).toBe("report_signed.pdf");
-    expect(next.review_status).toBe("Reviewed");
-    expect(next.submission_status).toBe("Approved");
+    expect(next?.payload.service_report_file_name).toBe("report_signed.pdf");
+    expect(next?.review_status).toBe("Reviewed");
+    expect(next?.submission_status).toBe("Approved");
   });
 
   it("leaves the file on revision-request cards", () => {
@@ -87,8 +87,8 @@ describe("overlayLiveAnalysisOnNotifications", () => {
       },
     });
     const [next] = overlayLiveAnalysisOnNotifications([sentBack], live);
-    expect(next.payload.service_report_file_path).toBe("a-1/old/report.pdf");
-    expect(next.review_status).toBe("Reviewed");
+    expect(next?.payload.service_report_file_path).toBe("a-1/old/report.pdf");
+    expect(next?.review_status).toBe("Reviewed");
   });
 });
 

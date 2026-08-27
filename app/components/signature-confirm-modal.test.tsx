@@ -34,7 +34,7 @@ const preview: SignaturePreview = {
 
 describe("SignatureConfirmModal", () => {
   beforeEach(() => {
-    prepareSignaturePreview.mockReset();
+    vi.mocked(prepareSignaturePreview).mockReset();
     vi.mocked(prepareSignaturePreview).mockResolvedValue(preview);
   });
 

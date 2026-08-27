@@ -41,6 +41,6 @@ describe("getProtocolBySlug", () => {
   });
 
   it("uses the first catalog entry as the default slug", () => {
-    expect(DEFAULT_PROTOCOL_SLUG).toBe(PROTOCOLS[0].slug);
+    expect(DEFAULT_PROTOCOL_SLUG).toBe(PROTOCOLS[0]?.slug);
   });
 });

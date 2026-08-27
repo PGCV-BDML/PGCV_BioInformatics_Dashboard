@@ -56,7 +56,8 @@ export function PdfLastPageCanvas({
 
     let cancelled = false;
     let generation = 0;
-    let renderTask: { cancel: () => void } | null = null;
+    let renderTask: { cancel: () => void; promise: Promise<unknown> } | null =
+      null;
     let loadingTask: ReturnType<PdfjsModule["getDocument"]> | null = null;
 
     async function releasePdf() {

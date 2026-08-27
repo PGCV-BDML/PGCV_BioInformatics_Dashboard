@@ -97,7 +97,7 @@ export default function SignatureConfirmModal({
         );
         if (cancelled) return;
         objectUrl = URL.createObjectURL(
-          new Blob([next.signatureBytes], { type: "image/png" }),
+          new Blob([next.signatureBytes.slice()], { type: "image/png" }),
         );
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
