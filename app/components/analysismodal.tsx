@@ -564,7 +564,7 @@ export default function AnalysisSidebar({
               onClick={handleRemoveStoredFile}
               className="ml-1 self-start text-[10px] font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
             >
-              Replace with a new PDF
+              Upload a new version
             </button>
           </div>
         ) : (
@@ -683,7 +683,8 @@ export default function AnalysisSidebar({
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
               Accounts with the reviewing officer or team lead role. Cannot be
-              the assignee. External officers work from Notifications only.
+              the assignee. Reviewing officers can browse Sequence Analysis
+              view-only; they complete review from Notifications.
             </p>
           )}
         </div>

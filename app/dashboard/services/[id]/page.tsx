@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
+import ServiceReportVersions from "../../../components/service-report-versions";
 import {
   getRowsFromDB,
   getNameIdFromDB,
@@ -40,6 +41,8 @@ import {
   type SupabaseClientRow,
 } from "@/lib/clients";
 import { routes } from "@/lib/routes";
+import { usePortal } from "../../../components/portal-context";
+import { canEditSequenceAnalysis } from "@/lib/portal";
 import { AnalysisStatus, Analysis, Project, ServiceReport, User, Repository } from "../../../../types/database";
 
 interface ServiceProjectRow {
@@ -80,6 +83,8 @@ export default function AnalysisDetailPage({
 }) {
   const resolvedParams = use(params);
   const { showToast } = useToast();
+  const { effectiveRole } = usePortal();
+  const isReadOnly = !canEditSequenceAnalysis(effectiveRole);
   const [record, setRecord] = useState<ServiceProjectRow | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [report, setReport] = useState<ServiceReport | null>(null);
@@ -204,7 +209,7 @@ export default function AnalysisDetailPage({
   const handleStatusChange = async (
     newStatus: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed",
   ) => {
-    if (!record) return;
+    if (isReadOnly || !record) return;
     setIsUpdating(true);
     try {
       const completedAt =
@@ -253,7 +258,7 @@ export default function AnalysisDetailPage({
   };
 
   const handleAcknowledge = async () => {
-    if (!report?.id) return;
+    if (isReadOnly || !report?.id) return;
     try {
       const now = new Date().toISOString();
       await saveDataToDB("service_report", report.id, {
@@ -330,6 +335,11 @@ export default function AnalysisDetailPage({
             </span>
           </div>
           <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+          {isReadOnly ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              View only
+            </span>
+          ) : (
           <select
             value={record.status}
             disabled={isUpdating}
@@ -347,6 +357,7 @@ export default function AnalysisDetailPage({
               </option>
             ) : null}
           </select>
+          )}
         </div>
       </div>
 
@@ -441,6 +452,8 @@ export default function AnalysisDetailPage({
             analysisId={record.id}
             statusOfReview={record.status_of_review}
             statusOfSubmission={record.status_of_submission}
+            currentFilePath={record.service_report_file_path}
+            readOnly={isReadOnly}
             onResubmitted={(stage) =>
               setRecord((prev) =>
                 prev
@@ -476,7 +489,7 @@ export default function AnalysisDetailPage({
                   Client ID
                 </h4>
                 {record.external_client_id ? (
-                  record.client_match === "matched" ? (
+                  record.client_match === "matched" && !isReadOnly ? (
                     <Link
                       href={routes.clients.byQuery(record.external_client_id)}
                       className="text-sm font-bold text-[#1b5e20] hover:underline font-mono"
@@ -485,8 +498,16 @@ export default function AnalysisDetailPage({
                     </Link>
                   ) : (
                     <p
-                      className="text-sm font-bold text-amber-800/90 font-mono"
-                      title="No matching client in Clients module"
+                      className={`text-sm font-bold font-mono ${
+                        record.client_match === "matched"
+                          ? "text-[#1b5e20]"
+                          : "text-amber-800/90"
+                      }`}
+                      title={
+                        record.client_match === "matched"
+                          ? undefined
+                          : "No matching client in Clients module"
+                      }
                     >
                       {record.external_client_id}
                     </p>
@@ -599,6 +620,7 @@ export default function AnalysisDetailPage({
                     </button>
                   </div>
                 ) : null}
+                {!isReadOnly ? (
                 <ServiceReportReplace
                   analysisId={record.id}
                   filePath={record.service_report_file_path}
@@ -620,6 +642,11 @@ export default function AnalysisDetailPage({
                         : prev,
                     )
                   }
+                />
+                ) : null}
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
                 />
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">
@@ -653,7 +680,7 @@ export default function AnalysisDetailPage({
                     </a>
                   </div>
                 ) : null}
-                {report && !report.client_acknowledged_at && (
+                {report && !report.client_acknowledged_at && !isReadOnly && (
                   <button
                     type="button"
                     onClick={handleAcknowledge}
@@ -663,32 +690,46 @@ export default function AnalysisDetailPage({
                   </button>
                 )}
               </div>
-            ) : isRevisionRequestedLabel(record.status_of_review) ||
-              isChangesRequestedLabel(record.status_of_submission) ? (
-              <ServiceReportReplace
-                analysisId={record.id}
-                filePath={record.service_report_file_path}
-                enabled
-                onReplaced={(next) =>
-                  setRecord((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          service_report_file_path: next.path,
-                          service_report_file_name: next.name,
-                          status_of_review:
-                            next.statusOfReview ?? prev.status_of_review,
-                          notes: next.notes ?? prev.notes,
-                        }
-                      : prev,
-                  )
-                }
-              />
+            ) : !isReadOnly &&
+              (isRevisionRequestedLabel(record.status_of_review) ||
+                isChangesRequestedLabel(record.status_of_submission)) ? (
+              <>
+                <ServiceReportReplace
+                  analysisId={record.id}
+                  filePath={record.service_report_file_path}
+                  enabled
+                  onReplaced={(next) =>
+                    setRecord((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            service_report_file_path: next.path,
+                            service_report_file_name: next.name,
+                            status_of_review:
+                              next.statusOfReview ?? prev.status_of_review,
+                            notes: next.notes ?? prev.notes,
+                          }
+                        : prev,
+                    )
+                  }
+                />
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
+                />
+              </>
             ) : (
-              <p className="text-sm text-slate-500 italic">
-                No report link yet. Paste one when creating the record, or use
-                &ldquo;Generate Report&rdquo; once completion status is Completed.
-              </p>
+              <>
+                <p className="text-sm text-slate-500 italic">
+                  {isReadOnly
+                    ? "No service report has been uploaded yet."
+                    : 'No report link yet. Paste one when creating the record, or use "Generate Report" once completion status is Completed.'}
+                </p>
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
+                />
+              </>
             )}
           </div>
         </div>

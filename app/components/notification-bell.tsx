@@ -30,16 +30,20 @@ import {
   openReportForReview,
   requestAnalysisChanges,
   requestAnalysisRevision,
+  shouldPreviewSignedLastPage,
   subscribeToNotifications,
   type AppNotification,
   type NotificationKind,
 } from "@/lib/notifications";
 import { resolveReportUrl } from "@/lib/service-report-file";
 import { isMissingSignatureError } from "@/lib/user-signature";
+import type { SignatureRect } from "@/lib/signature-placement";
 import { getCurrentUser } from "@/lib/supabase";
 import { routes } from "@/lib/routes";
 import RequestChangesModal from "./request-changes-modal";
 import MySignatureModal from "./my-signature-modal";
+import SignatureConfirmModal from "./signature-confirm-modal";
+import ReportLastPageModal from "./report-last-page-modal";
 
 function kindTitle(kind: NotificationKind, n: AppNotification): string {
   switch (kind) {
@@ -70,6 +74,13 @@ export function NotificationBell() {
     analysisId: string;
     action: "review" | "approve";
   } | null>(null);
+  const [signOff, setSignOff] = useState<{
+    notification: AppNotification;
+    action: "review" | "approve";
+  } | null>(null);
+  const [lastPageTarget, setLastPageTarget] = useState<AppNotification | null>(
+    null,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -163,6 +174,11 @@ export function NotificationBell() {
       if (!n.is_read) {
         void markOneReadLocal(n.id);
       }
+      if (shouldPreviewSignedLastPage(n)) {
+        setIsOpen(false);
+        setLastPageTarget(n);
+        return;
+      }
       if (kind === "review_request") {
         await openReportForReview(n);
         setNotifications((prev) =>
@@ -204,6 +220,11 @@ export function NotificationBell() {
       if (!n.is_read) {
         void markOneReadLocal(n.id);
       }
+      if (shouldPreviewSignedLastPage(n)) {
+        setIsOpen(false);
+        setLastPageTarget(n);
+        return;
+      }
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
         n.payload.service_report_link,
@@ -219,54 +240,38 @@ export function NotificationBell() {
     }
   }
 
-  async function handleCompleteReview(n: AppNotification) {
-    const analysisId = n.payload.analysis_id;
-    if (!analysisId) return;
-    setBusyId(n.id);
+  function openSignOff(n: AppNotification, action: "review" | "approve") {
+    if (!n.payload.analysis_id) return;
+    setIsOpen(false);
+    setSignOff({ notification: n, action });
+  }
+
+  async function submitSignOff(rect: SignatureRect) {
+    const target = signOff;
+    const analysisId = target?.notification.payload.analysis_id;
+    if (!target || !analysisId) {
+      throw new Error("Missing analysis reference for this notification.");
+    }
+    setBusyId(target.notification.id);
     try {
-      await completeAnalysisReview(analysisId);
-      await markNotificationRead(n.id);
-      setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+      if (target.action === "review") {
+        await completeAnalysisReview(analysisId, undefined, rect);
+      } else {
+        await approveAnalysis(analysisId, rect);
+      }
+      await markNotificationRead(target.notification.id);
+      setNotifications((prev) =>
+        prev.filter((item) => item.id !== target.notification.id),
+      );
+      setSignOff(null);
     } catch (error) {
       console.error(error);
       if (isMissingSignatureError(error)) {
-        setSignaturePrompt({ analysisId, action: "review" });
+        setSignaturePrompt({ analysisId, action: target.action });
       }
+      throw error;
     } finally {
       setBusyId(null);
-    }
-  }
-
-  async function handleApprove(n: AppNotification) {
-    const analysisId = n.payload.analysis_id;
-    if (!analysisId) return;
-    setBusyId(n.id);
-    try {
-      await approveAnalysis(analysisId);
-      await markNotificationRead(n.id);
-      setNotifications((prev) => prev.filter((item) => item.id !== n.id));
-    } catch (error) {
-      console.error(error);
-      if (isMissingSignatureError(error)) {
-        setSignaturePrompt({ analysisId, action: "approve" });
-      }
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function retryAfterSignatureUpload() {
-    const prompt = signaturePrompt;
-    if (!prompt) return;
-    setSignaturePrompt(null);
-    const n = notifications.find(
-      (item) => item.payload.analysis_id === prompt.analysisId,
-    );
-    if (!n) return;
-    if (prompt.action === "review") {
-      await handleCompleteReview(n);
-    } else {
-      await handleApprove(n);
     }
   }
 
@@ -522,7 +527,7 @@ export function NotificationBell() {
                                   <button
                                     type="button"
                                     disabled={isBusy}
-                                    onClick={() => void handleCompleteReview(n)}
+                                    onClick={() => openSignOff(n, "review")}
                                     className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
                                   >
                                     <BadgeCheck className="w-3 h-3" /> Complete review
@@ -543,7 +548,7 @@ export function NotificationBell() {
                                   <button
                                     type="button"
                                     disabled={isBusy}
-                                    onClick={() => void handleApprove(n)}
+                                    onClick={() => openSignOff(n, "approve")}
                                     className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
                                   >
                                     <BadgeCheck className="w-3 h-3" /> Approve
@@ -602,13 +607,51 @@ export function NotificationBell() {
         onSubmit={handleSendBack}
       />
 
+      {lastPageTarget ? (
+        <ReportLastPageModal
+          isOpen
+          analysisId={lastPageTarget.payload.analysis_id ?? null}
+          reportLabel={
+            lastPageTarget.payload.service_report_number ||
+            lastPageTarget.payload.client_name ||
+            "Service report"
+          }
+          filePath={lastPageTarget.payload.service_report_file_path}
+          fileName={lastPageTarget.payload.service_report_file_name}
+          fileLink={lastPageTarget.payload.service_report_link}
+          onClose={() => setLastPageTarget(null)}
+        />
+      ) : null}
+
+      {signOff && signaturePrompt === null ? (
+        <SignatureConfirmModal
+          key={`${signOff.notification.id}-${signOff.action}`}
+          isOpen
+          analysisId={signOff.notification.payload.analysis_id ?? null}
+          action={signOff.action}
+          reportLabel={
+            signOff.notification.payload.service_report_number ||
+            signOff.notification.payload.client_name ||
+            "Service report"
+          }
+          onClose={() => setSignOff(null)}
+          onMissingSignature={() => {
+            const analysisId = signOff.notification.payload.analysis_id;
+            if (!analysisId) return;
+            setSignaturePrompt({ analysisId, action: signOff.action });
+          }}
+          onConfirm={submitSignOff}
+        />
+      ) : null}
+
       <MySignatureModal
         isOpen={signaturePrompt !== null}
-        onClose={() => setSignaturePrompt(null)}
-        requiredForAction
-        onUploaded={() => {
-          void retryAfterSignatureUpload();
+        onClose={() => {
+          setSignaturePrompt(null);
+          setSignOff(null);
         }}
+        requiredForAction
+        onUploaded={() => setSignaturePrompt(null)}
       />
     </div>
   );

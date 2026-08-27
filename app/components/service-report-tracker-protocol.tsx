@@ -216,7 +216,8 @@ export default function ServiceReportTrackerProtocol() {
                 </td>
                 <td className="px-4 py-3">
                   Peer-review the PDF from <strong>Notifications</strong> only.
-                  Complete review (e-sign) or request a revision with comments.
+                  Complete review (preview and e-sign) or request a revision
+                  with comments.
                 </td>
               </tr>
               <tr>
@@ -226,7 +227,7 @@ export default function ServiceReportTrackerProtocol() {
                 <td className="px-4 py-3">
                   Approve the report after peer review from{" "}
                   <strong>Notifications</strong>, or send it back with comments.
-                  Approve stamps the e-signature for release.
+                  Approve previews the e-signature, then stamps it for release.
                 </td>
               </tr>
               <tr>
@@ -241,11 +242,13 @@ export default function ServiceReportTrackerProtocol() {
             </tbody>
           </table>
         </div>
-        <Callout title="External officers stay in Notifications">
-          Reviewing and approving officers who are not bioinformatics staff only
-          see the Notifications tab after sign-in. They open the PDF, e-sign, and
-          act from the notification card — they cannot open the Service Report
-          Tracker.
+        <Callout title="External reviewing officers can browse Sequence Analysis">
+          Reviewing officers who are not bioinformatics staff still land on
+          Notifications after sign-in. They can also open Sequence Analysis
+          (dashboard, tracker, and analysis detail) as <strong className="text-[#172126]">view-only</strong>:
+          search records, open links, and download PDFs. They cannot add, edit,
+          or delete records. Complete review and request revision stay on the
+          notification card. Approving officers remain on Notifications only.
         </Callout>
       </Section>
 
@@ -448,12 +451,14 @@ export default function ServiceReportTrackerProtocol() {
           <ul className="list-disc pl-5 space-y-1 text-xs">
             <li>
               <strong className="text-[#172126]">Open Report</strong> marks In
-              review and opens the PDF (signed URL) or legacy link.
+              review and opens the full PDF (signed URL) or legacy link. After
+              you have signed, it shows the last page of the stamped PDF.
             </li>
             <li>
-              <strong className="text-[#172126]">Complete review</strong> sets
-              Reviewed, stamps the e-signature, and notifies the approving
-              officer if assigned.
+              <strong className="text-[#172126]">Complete review</strong> opens
+              a last-page preview of your e-signature. Confirm the placement
+              (you can drag or resize it), then it stamps the PDF, sets
+              Reviewed, and notifies the approving officer if assigned.
             </li>
             <li>
               <strong className="text-[#172126]">Request revision</strong>{" "}
@@ -473,7 +478,8 @@ export default function ServiceReportTrackerProtocol() {
           Reviewing and approving officers must have a PNG of their handwritten
           signature on file before they can complete review or approve a report.
           The stamp is placed on the last page of the PDF; printed names are not
-          changed.
+          changed. Before the stamp is written, officers preview that last page
+          and can drag or resize their signature so it sits on the printed name.
         </p>
         <ol className="list-decimal pl-5 space-y-2">
           <li>
@@ -485,12 +491,15 @@ export default function ServiceReportTrackerProtocol() {
             transparent or light background so it sits cleanly under the label.
           </li>
           <li>
-            On <strong className="text-[#172126]">Complete review</strong>, the
-            reviewer’s signature is stamped under <em>Reviewed by</em>.
+            On <strong className="text-[#172126]">Complete review</strong>, a
+            preview of the last page opens with the reviewer&apos;s signature
+            over <em>Reviewed by</em>. Confirm placement (drag or resize if
+            needed) to stamp it.
           </li>
           <li>
-            On <strong className="text-[#172126]">Approve</strong>, the approving
-            officer’s signature is stamped under <em>Approved for Release</em>.
+            On <strong className="text-[#172126]">Approve</strong>, the same
+            preview opens for <em>Approved for Release</em>. The reviewer stamp
+            is already on that page and cannot be moved.
           </li>
         </ol>
         <div className="grid gap-3 md:grid-cols-2">
@@ -500,7 +509,8 @@ export default function ServiceReportTrackerProtocol() {
               Reviewed by
             </p>
             <p className="text-xs">
-              Applied when the reviewing officer completes review. If no
+              Applied when the reviewing officer completes review. They first
+              see it on the last page and can adjust position or size. If no
               signature is on file, the action is blocked and an upload prompt
               appears.
             </p>
@@ -512,16 +522,18 @@ export default function ServiceReportTrackerProtocol() {
             </p>
             <p className="text-xs">
               Applied when the approving officer approves. Same rule: a
-              signature PNG must already be uploaded.
+              signature PNG must already be uploaded, and they confirm placement
+              before it is written.
             </p>
           </div>
         </div>
-        <Callout tone="warning" title="Replacing the PDF after review voids the reviewer stamp">
-          If you replace the PDF after Status of Review is Reviewed, the
-          reviewer stamp on the old file no longer applies. Status of Review
-          returns to For review and the reviewing officer must Complete review
-          again on the new file. The approving officer is only notified after
-          that second review.
+        <Callout tone="warning" title="A new PDF version after review voids the reviewer stamp">
+          If you upload a new PDF version after Status of Review is Reviewed,
+          the reviewer stamp on the old file no longer applies. Status of
+          Review returns to For review and the reviewing officer must Complete
+          review again on the new file. The previous PDF stays under Previous
+          versions. The approving officer is only notified after that second
+          review.
         </Callout>
       </Section>
 
@@ -570,11 +582,13 @@ export default function ServiceReportTrackerProtocol() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <strong className="text-[#172126]">Open Report</strong> → Under
-            review and opens the PDF or link.
+            review and opens the full PDF or link. After you have approved, it
+            shows the last page of the signed PDF.
           </li>
           <li>
-            <strong className="text-[#172126]">Approve</strong> → Approved;
-            stamps the signature; notifies the assignee when one is set.
+            <strong className="text-[#172126]">Approve</strong> → last-page
+            preview, then Approved; stamps the signature; notifies the assignee
+            when one is set.
           </li>
           <li>
             <strong className="text-[#172126]">Request changes</strong> →
@@ -584,7 +598,8 @@ export default function ServiceReportTrackerProtocol() {
         <p>
           If comments come back and the PDF itself does not change, click{" "}
           <strong className="text-[#172126]">Resubmit for approval</strong>. If
-          you replace the PDF, it goes back through peer review first.
+          you upload a new PDF version, it goes back through peer review first.
+          The earlier file stays on Previous versions.
         </p>
       </Section>
 
@@ -593,7 +608,8 @@ export default function ServiceReportTrackerProtocol() {
           <li>
             After approval, the assignee receives a{" "}
             <strong className="text-[#172126]">Report approved</strong>{" "}
-            notification with the signed PDF.
+            notification with the signed PDF. Reviewing and approving officers
+            also keep that signed file on their notification cards.
           </li>
           <li>
             Set Status of Submission to{" "}
@@ -655,8 +671,20 @@ export default function ServiceReportTrackerProtocol() {
                   Signature looks misplaced
                 </td>
                 <td className="px-4 py-3">
-                  Template margins differ from the usual A4 service-report
-                  layout. Ask a maintainer to check signature placement.
+                  Drag or resize the stamp in the confirm-signature preview
+                  before you complete review or approve. The stored PDF is not
+                  changed until you confirm. That preview is always the last
+                  page.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-[#172126] align-top">
+                  Notification still has the unsigned PDF
+                </td>
+                <td className="px-4 py-3">
+                  After you sign, Open Report uses the current stamped file and
+                  shows its last page. Refresh Notifications if an old card
+                  still looks unsigned.
                 </td>
               </tr>
               <tr>

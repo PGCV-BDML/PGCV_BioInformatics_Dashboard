@@ -35,7 +35,6 @@ import {
 } from "@/lib/analysis-tracker";
 import {
   deleteAllServiceReportPdfs,
-  deleteServiceReportPdf,
   getServiceReportSignedUrl,
   uploadServiceReportPdf,
   type ServiceReportFileMeta,
@@ -86,6 +85,8 @@ import {
   type SupabaseClientRow,
 } from "@/lib/clients";
 import { routes } from "@/lib/routes";
+import { canEditSequenceAnalysis } from "@/lib/portal";
+import { usePortal } from "../../../components/portal-context";
 
 function normalizeRunId(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
@@ -261,6 +262,8 @@ function analysisToRow(
 export default function ServiceReportTrackerPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { effectiveRole } = usePortal();
+  const isReadOnly = !canEditSequenceAnalysis(effectiveRole);
   const yearParam = searchParams.get("year")?.trim() ?? "";
   const pipelineParam = searchParams.get("pipeline")?.trim() ?? "";
   const runIdParam = searchParams.get("run_id")?.trim() ?? "";
@@ -472,6 +475,7 @@ export default function ServiceReportTrackerPage() {
     field: "status_of_completion" | "status_of_submission",
     label: string,
   ) => {
+    if (isReadOnly) return;
     const row = servicesList.find((s) => s.id === id);
     if (!row) return;
 
@@ -558,6 +562,7 @@ export default function ServiceReportTrackerPage() {
   }, []);
 
   const openCreateSidebar = useCallback(() => {
+    if (isReadOnly) return;
     const today = new Date();
     const dateKey = today.toISOString().slice(0, 10);
     setIsEditing(false);
@@ -574,12 +579,14 @@ export default function ServiceReportTrackerPage() {
       status_of_completion: "On-going",
     });
     setIsSidebarOpen(true);
-  }, [servicesList]);
+  }, [isReadOnly, servicesList]);
 
   useEffect(() => {
     if (!addParam || addHandled.current || isLoading) return;
     addHandled.current = true;
-    openCreateSidebar();
+    if (!isReadOnly) {
+      openCreateSidebar();
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.delete("add");
     const qs = params.toString();
@@ -587,20 +594,21 @@ export default function ServiceReportTrackerPage() {
       qs ? `${routes.services.tracker}?${qs}` : routes.services.tracker,
       { scroll: false },
     );
-  }, [addParam, isLoading, openCreateSidebar, router, searchParams]);
+  }, [addParam, isLoading, isReadOnly, openCreateSidebar, router, searchParams]);
 
   const openEditSidebar = useCallback((row: ServiceProjectRow) => {
+    if (isReadOnly) return;
     setSelectedAnalysis(row);
     setIsEditing(true);
     setPendingFile(null);
     setFormState(rowToFormState(row));
     setIsSidebarOpen(true);
-  }, []);
+  }, [isReadOnly]);
 
   const handleSaveAnalysis = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (isSubmitting) return;
+      if (isReadOnly || isSubmitting) return;
       setIsSubmitting(true);
       try {
         let assigneeId: string | null = null;
@@ -699,12 +707,6 @@ export default function ServiceReportTrackerPage() {
 
         const saved = await saveDataToDB("analysis", targetId, payload);
 
-        if (fileMeta && previousPath && previousPath !== fileMeta.service_report_file_path) {
-          await deleteServiceReportPdf(previousPath);
-        } else if (pathCleared && previousPath) {
-          await deleteServiceReportPdf(previousPath);
-        }
-
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
 
         const syncResult = await syncAnalysisToTaskSafe({
@@ -797,13 +799,14 @@ export default function ServiceReportTrackerPage() {
       showToast,
       isSubmitting,
       isEditing,
+      isReadOnly,
       selectedAnalysis,
       closeSidebar,
     ],
   );
 
   const handleDeleteAnalysis = useCallback(async () => {
-    if (!selectedAnalysis) return;
+    if (isReadOnly || !selectedAnalysis) return;
     setIsDeleting(true);
     try {
       const analysisId = selectedAnalysis.id;
@@ -832,7 +835,7 @@ export default function ServiceReportTrackerPage() {
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedAnalysis, showToast]);
+  }, [isReadOnly, selectedAnalysis, showToast]);
 
   const handleReportUploaded = useCallback(
     (analysisId: string, result: ServiceReportUploadResult) => {
@@ -1024,6 +1027,18 @@ export default function ServiceReportTrackerPage() {
     return { colorClasses, chevronClass };
   };
 
+  const renderStatusChip = (label: string) => {
+    const value = label.trim();
+    const { colorClasses } = statusChipColors(value || "blank");
+    return (
+      <span
+        className={`inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-sm ${colorClasses}`}
+      >
+        {value || "—"}
+      </span>
+    );
+  };
+
   const renderTrackerStatusDropdown = (
     id: string,
     field: "status_of_completion" | "status_of_submission",
@@ -1084,35 +1099,39 @@ export default function ServiceReportTrackerPage() {
   };
 
   const columns: Column<ServiceProjectRow>[] = [
-    {
-      key: "actions",
-      label: "Actions",
-      render: (s) => (
-        <div className="flex items-center justify-center gap-1">
-          <button
-            type="button"
-            onClick={() => openEditSidebar(s)}
-            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
-            title="Edit analysis"
-          >
-            <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
-            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedAnalysis(s);
-              setShowDeleteConfirm(true);
-            }}
-            className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
-            title="Delete analysis"
-          >
-            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
-            <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
-          </button>
-        </div>
-      ),
-    },
+    ...(isReadOnly
+      ? []
+      : [
+          {
+            key: "actions",
+            label: "Actions",
+            render: (s: ServiceProjectRow) => (
+              <div className="flex items-center justify-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => openEditSidebar(s)}
+                  className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+                  title="Edit analysis"
+                >
+                  <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+                  <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAnalysis(s);
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all duration-200 shadow-sm"
+                  title="Delete analysis"
+                >
+                  <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+                  <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-red-300" />
+                </button>
+              </div>
+            ),
+          } satisfies Column<ServiceProjectRow>,
+        ]),
     {
       key: "service_report_number",
       label: "Service Report Number",
@@ -1171,7 +1190,7 @@ export default function ServiceReportTrackerPage() {
         const id = s.external_client_id.trim();
         if (!id) return "—";
 
-        if (s.client_match === "matched") {
+        if (s.client_match === "matched" && !isReadOnly) {
           return (
             <Link
               href={routes.clients.byQuery(id)}
@@ -1188,6 +1207,20 @@ export default function ServiceReportTrackerPage() {
                 className="font-mono text-[11px] text-[#1b5e20]"
               />
             </Link>
+          );
+        }
+
+        if (s.client_match === "matched") {
+          return (
+            <TruncatedText
+              text={
+                s.matched_client_name
+                  ? `${id} · Linked to ${s.matched_client_name}`
+                  : id
+              }
+              display={id}
+              className="font-mono text-[11px] text-[#1b5e20]"
+            />
           );
         }
 
@@ -1262,13 +1295,17 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Completion Status",
       sortable: true,
       render: (s) =>
-        renderTrackerStatusDropdown(
-          s.id,
-          "status_of_completion",
-          s.status_of_completion || labelFromAnalysisStatus(s.status),
-          STATUS_OF_COMPLETION_OPTIONS,
-          "Status of Completion",
-        ),
+        isReadOnly
+          ? renderStatusChip(
+              s.status_of_completion || labelFromAnalysisStatus(s.status),
+            )
+          : renderTrackerStatusDropdown(
+              s.id,
+              "status_of_completion",
+              s.status_of_completion || labelFromAnalysisStatus(s.status),
+              STATUS_OF_COMPLETION_OPTIONS,
+              "Status of Completion",
+            ),
     },
     {
       key: "status_of_review",
@@ -1277,14 +1314,7 @@ export default function ServiceReportTrackerPage() {
       sortable: true,
       render: (s) => {
         const value = (s.status_of_review || "").trim();
-        const { colorClasses } = statusChipColors(value || "blank");
-        return (
-          <span
-            className={`inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-sm ${colorClasses}`}
-          >
-            {value || "—"}
-          </span>
-        );
+        return renderStatusChip(value);
       },
     },
     {
@@ -1293,13 +1323,15 @@ export default function ServiceReportTrackerPage() {
       shortLabel: "Submission Status",
       sortable: true,
       render: (s) =>
-        renderTrackerStatusDropdown(
-          s.id,
-          "status_of_submission",
-          s.status_of_submission,
-          MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
-          "Status of Submission",
-        ),
+        isReadOnly
+          ? renderStatusChip(s.status_of_submission)
+          : renderTrackerStatusDropdown(
+              s.id,
+              "status_of_submission",
+              s.status_of_submission,
+              MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
+              "Status of Submission",
+            ),
     },
     {
       key: "review_comments",
@@ -1319,13 +1351,15 @@ export default function ServiceReportTrackerPage() {
                 : "text-[#2a7797] hover:text-[#1f5c76]"
             }`}
             title={
-              awaiting
-                ? "View comments and respond"
-                : "View review comments"
+              isReadOnly
+                ? "View review comments"
+                : awaiting
+                  ? "View comments and respond"
+                  : "View review comments"
             }
           >
             <MessageSquareWarning className="w-3 h-3 shrink-0" />
-            {awaiting ? "Respond" : "View"}
+            {awaiting && !isReadOnly ? "Respond" : "View"}
           </button>
         );
       },
@@ -1369,7 +1403,7 @@ export default function ServiceReportTrackerPage() {
         if (hasLink) {
           return renderLinkCell(s.report_link, "Link");
         }
-        if (s.status === "completed") {
+        if (s.status === "completed" && !isReadOnly) {
           return (
             <button
               type="button"
@@ -1415,7 +1449,11 @@ export default function ServiceReportTrackerPage() {
       <PageHeader
         breadcrumbTrail={servicesBreadcrumbs}
         title="Service Report Tracker"
-        subtitle="Bioinformatics Services · Client sequence analysis records, status, and reporting links"
+        subtitle={
+          effectiveRole === "reviewing_officer"
+            ? "View only · Open links and download PDFs. Complete review from Notifications."
+            : "Bioinformatics Services · Client sequence analysis records, status, and reporting links"
+        }
         actions={
           <>
             <div className="relative">
@@ -1492,6 +1530,7 @@ export default function ServiceReportTrackerPage() {
                 className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
+            {isReadOnly ? null : (
             <button
               type="button"
               onClick={openCreateSidebar}
@@ -1499,6 +1538,7 @@ export default function ServiceReportTrackerPage() {
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Analysis
             </button>
+            )}
           </>
         }
       />
@@ -1551,7 +1591,11 @@ export default function ServiceReportTrackerPage() {
           <EmptyState
             icon={Inbox}
             title="No services yet"
-            description="Create your first analysis to get started."
+            description={
+              isReadOnly
+                ? "There are no sequence analysis records to view yet."
+                : "Create your first analysis to get started."
+            }
           />
         ) : filteredServices.length === 0 ? (
           <EmptyState
@@ -1579,6 +1623,7 @@ export default function ServiceReportTrackerPage() {
         )}
       </div>
 
+      {!isReadOnly ? (
       <ServiceReportModal
         isOpen={!!selectedReportRow}
         analysis={selectedReportRow}
@@ -1586,6 +1631,7 @@ export default function ServiceReportTrackerPage() {
         onClose={() => setSelectedReportRow(null)}
         onReportUploaded={handleReportUploaded}
       />
+      ) : null}
 
       <ReviewCommentsModal
         row={
@@ -1603,6 +1649,7 @@ export default function ServiceReportTrackerPage() {
               }
             : null
         }
+        readOnly={isReadOnly}
         onClose={() => setCommentsRow(null)}
         onResubmitted={(stage) => {
           setServicesList((prev) =>
@@ -1657,6 +1704,7 @@ export default function ServiceReportTrackerPage() {
         }}
       />
 
+      {!isReadOnly ? (
       <AnalysisSidebar
         isOpen={isSidebarOpen}
         isSaving={isSubmitting}
@@ -1680,7 +1728,9 @@ export default function ServiceReportTrackerPage() {
         onChange={handleInputChange}
         onSubmit={handleSaveAnalysis}
       />
+      ) : null}
 
+      {!isReadOnly ? (
       <DeleteModal
         isOpen={showDeleteConfirm}
         itemName={
@@ -1695,6 +1745,7 @@ export default function ServiceReportTrackerPage() {
         onConfirm={handleDeleteAnalysis}
         isDeleting={isDeleting}
       />
+      ) : null}
     </div>
   );
 }

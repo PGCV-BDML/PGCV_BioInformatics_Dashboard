@@ -5,7 +5,11 @@ import {
   serviceReportDownloadFileName,
   stampedServiceReportFileName,
 } from "./service-report-file";
-import { resolveSignatureRect } from "./service-report-signature";
+import {
+  extractLastPagePdf,
+  rectForStamp,
+  resolveSignatureRect,
+} from "./service-report-signature";
 
 describe("originalServiceReportBaseName", () => {
   it("returns the upload basename without the extension", () => {
@@ -79,6 +83,24 @@ describe("serviceReportDownloadFileName", () => {
     expect(
       serviceReportDownloadFileName("PGCV-Bioinfo-SR-2026-272-Penuela.pdf"),
     ).toBe("PGCV-Bioinfo-SR-2026-272-Penuela.pdf");
+  });
+});
+
+describe("extractLastPagePdf", () => {
+  it("keeps only the last page of a multi-page report", async () => {
+    const src = await PDFDocument.create();
+    src.addPage([200, 300]);
+    src.addPage([400, 500]);
+    const extracted = await extractLastPagePdf(await src.save());
+
+    expect(extracted.pageCount).toBe(2);
+    expect(extracted.pageWidth).toBe(400);
+    expect(extracted.pageHeight).toBe(500);
+
+    const loaded = await PDFDocument.load(extracted.pdfBytes);
+    expect(loaded.getPageCount()).toBe(1);
+    expect(loaded.getPage(0).getWidth()).toBe(400);
+    expect(loaded.getPage(0).getHeight()).toBe(500);
   });
 });
 
@@ -207,5 +229,28 @@ describe("resolveSignatureRect", () => {
     const rect = resolveSignatureRect(reloaded, "reviewed_by", 400, 100);
     expect(rect.y).toBeCloseTo(356 - 0.25 * (72 / 2.54), 0);
     expect(rect.y + rect.height).toBeLessThan(446);
+  });
+
+  it("lets an officer override win over the auto placement", async () => {
+    const page = await pgcvSignatoryPage();
+    const override = { x: 90, y: 140, width: 180, height: 45 };
+    const rect = rectForStamp(page, "approved_by", 400, 100, override);
+    expect(rect.x).toBe(90);
+    expect(rect.y).toBe(140);
+    expect(rect.width).toBe(180);
+    expect(rect.height).toBe(45);
+  });
+
+  it("clamps an override that hangs off the page", async () => {
+    const page = await pgcvSignatoryPage();
+    const rect = rectForStamp(
+      page,
+      "reviewed_by",
+      400,
+      100,
+      { x: 900, y: -40, width: 160, height: 40 },
+    );
+    expect(rect.x + rect.width).toBeCloseTo(page.getWidth(), 5);
+    expect(rect.y).toBe(0);
   });
 });

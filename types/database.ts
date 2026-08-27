@@ -210,9 +210,30 @@ export interface AnalysisReviewComment {
   author_id: string;
   body: string;
   stage: ReviewCommentStage;
+  /** Storage key of the PDF that was current when this comment was written. */
+  file_path: string | null;
+  file_name: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;
+}
+
+/** One stored PDF that has been current on an analysis. */
+export type ServiceReportVersionKind =
+  | "upload"
+  | "revision"
+  | "reviewed"
+  | "signed";
+
+export interface AnalysisServiceReportVersion {
+  id: string;
+  analysis_id: string;
+  file_path: string;
+  file_name: string | null;
+  file_size: number | null;
+  kind: ServiceReportVersionKind;
+  uploaded_by: string | null;
+  uploaded_at: string;
 }
 
 // ============================================================

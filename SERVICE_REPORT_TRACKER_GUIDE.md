@@ -13,14 +13,15 @@ review of the PDF and approving-officer sign-off.
 | You are… | You do |
 |---|---|
 | Bioinformatician / analyst | Create the record, run the analysis, upload the PDF, assign officers, address revision/change comments and resubmit |
-| Reviewing officer (`reviewing_officer`, or staff) | Peer-review the PDF from **Notifications** only; complete review or request a revision with comments |
+| Reviewing officer (`reviewing_officer`, or staff) | Browse **Sequence Analysis** (dashboard, tracker, detail) view-only; peer-review the PDF from **Notifications** (complete review or request a revision) |
 | Approving officer (`approving_officer`, or `team_lead`) | Approve the report after peer review from **Notifications**, or send it back with comments |
 | Either staff role | Mark the report **Submitted** once it has gone out to the client |
 
-External reviewing/approving officers are **not** bioinformatics staff. After sign-in they
-only see the **Notifications** tab (same scoped-portal pattern as trainees/interns). They
-open the PDF, e-sign, and act from the notification card — they cannot open the Service
-Report Tracker.
+External reviewing officers are **not** bioinformatics staff. After sign-in they
+land on **Notifications**, and they can also open **Sequence Analysis** (dashboard,
+tracker, and analysis detail) as **view-only**: open links and download PDFs, but
+not add, edit, or delete records. Complete review and request revision stay on
+the notification card. Approving officers still only see **Notifications**.
 
 Rules that decide whether the workflow works:
 
@@ -76,9 +77,10 @@ Rules that decide whether the workflow works:
 
 - **Assignee** — required for the record to appear on the Tasks board.
 - **Reviewing Officer** — peer who reads the PDF before approval (`reviewing_officer` or
-  staff). Not the assignee. External officers work from Notifications only.
+  staff). Not the assignee. Reviewing officers can browse Sequence Analysis view-only;
+  they complete review from Notifications.
 - **Approving Officer** — `approving_officer` or team lead; notified only after peer review
-  is done. External officers work from Notifications only.
+  is done. External approving officers work from Notifications only.
 
 3. Click **Save Record**.
 
@@ -130,8 +132,8 @@ Officer, Status of Review opens as **For review** and that person is notified.
 
 Reviewer actions (bell / Notifications page):
 
-- **Open Report** → marks In review and opens the PDF (signed URL) or legacy link
-- **Complete review** → sets Reviewed; notifies the approving officer if assigned
+- **Open Report** → marks In review and opens the full PDF (signed URL) or legacy link. After you have signed, Open Report shows the **last page** of the stamped PDF so you can check the signature.
+- **Complete review** → last-page preview of your e-signature under **Reviewed by**; confirm (drag/resize if needed) to stamp and set Reviewed; notifies the approving officer if assigned. The notification then stores that signed PDF.
 - **Request revision** → requires a comment; notifies the assignee
 
 Assignee response to a revision:
@@ -158,17 +160,19 @@ not earlier.
 
 Officer actions:
 
-- **Open Report** → Under review + open PDF/link
-- **Approve** → Approved; notifies the assignee when one is set
+- **Open Report** → Under review + open the full PDF/link. After you have approved, Open Report shows the **last page** of the signed PDF.
+- **Approve** → last-page preview of your e-signature under **Approved for Release**; confirm (drag/resize if needed) to stamp and set Approved; notifies the assignee when one is set. The notification then stores the signed PDF.
 - **Request changes** → requires a comment; notifies the assignee
 
 Assignee response to changes:
 
 1. Fix the comments. If the PDF itself does not change, click **Resubmit for approval**.
-2. If you **replace the PDF**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file. After they **Complete review**, the approving officer is notified again (**For approval**).
+2. If you **upload a new PDF version**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file, which stays under Previous versions. After they **Complete review**, the approving officer is notified again (**For approval**).
 
 When approval completes, the assignee receives a **Report approved** notification
-with the signed PDF. Mark **Submitted** in the tracker once the client has the report.
+with the signed PDF (last page on Open Report). The reviewing and approving
+officers' stored notification attachments are updated to that same signed file.
+Mark **Submitted** in the tracker once the client has the report.
 
 ---
 
@@ -200,11 +204,12 @@ Reviewing and approving officers must upload a PNG of their handwritten signatur
 before they can complete review or approve a report.
 
 - **Where:** sidebar profile menu → **My signature** (any logged-in staff user)
-- **On Complete review:** the reviewer’s signature is stamped under **Reviewed by**
-- **On Approve:** the approving officer’s signature is stamped under **Approved for Release**
+- **On Complete review:** a last-page preview opens so you can see the stamp on the signature page; after you confirm, the reviewer’s signature is stamped under **Reviewed by**
+- **On Approve:** the same last-page preview for **Approved for Release** (the reviewer stamp is already on the page and cannot be moved)
+- Drag or resize your own stamp in that preview. Nothing is written to the stored PDF until you confirm.
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
-- Replacing the PDF after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. Officer signature stamps (Complete review / Approve) do not.
+- Uploading a new PDF version after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. The previous file stays under **Previous versions**. Officer signature stamps (Complete review / Approve) do not void review.
 
 ---
 
@@ -216,7 +221,9 @@ before they can complete review or approve a report.
 | Approving officer never notified | Status of Review is not Reviewed yet |
 | Can't pick someone as reviewer | They are the assignee, or they are already the approving officer |
 | Can't complete review / approve | No e-signature uploaded yet (profile menu → My signature) |
-| Signature looks misplaced | Template margins differ — adjust `SIGNATURE_SLOTS` in `lib/service-report-signature.ts` |
+| Signature looks misplaced | Drag or resize the stamp in the confirm-signature preview before you complete review or approve |
+| Notification still has the unsigned PDF | After sign-off, Open Report uses the current stamped file and shows its last page. Apply `20260827120000_sync_notification_signed_report.sql` so stored payloads are updated too |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
-| Replacing the PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
+| Uploading a new PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
+| Previous versions missing after a new upload | Apply `20260827180000_service_report_versions.sql`. Replacements made before that deleted the previous file. |

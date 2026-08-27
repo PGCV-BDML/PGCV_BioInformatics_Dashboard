@@ -200,10 +200,28 @@ export default function Sidebar({
     if (effectiveRole === "intern") {
       return navItems.filter((item) => item.href === "/dashboard/internship");
     }
-    if (
-      effectiveRole === "reviewing_officer" ||
-      effectiveRole === "approving_officer"
-    ) {
+    if (effectiveRole === "reviewing_officer") {
+      return navItems
+        .filter(
+          (item) =>
+            item.href === "/dashboard/notifications" ||
+            item.href === "/dashboard/services",
+        )
+        .map((item) => {
+          if (item.href !== "/dashboard/services" || !item.children) {
+            return item;
+          }
+          return {
+            ...item,
+            children: item.children.filter(
+              (child) =>
+                child.href === "/dashboard/services" ||
+                child.href === "/dashboard/services/tracker",
+            ),
+          };
+        });
+    }
+    if (effectiveRole === "approving_officer") {
       return navItems.filter((item) => item.href === "/dashboard/notifications");
     }
     return navItems;
