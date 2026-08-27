@@ -6,10 +6,14 @@
 -- the first assignment can be done here; afterwards a team_lead can UPDATE
 -- roles from any client that uses their session.
 --
--- Officers only see Notifications. They act on service reports assigned to
--- them as Reviewing Officer (reviewing_officer) or Approving Officer
--- (approving_officer). Apply migration 20260812140000_service_report_officer_roles.sql
--- before running this script.
+-- Reviewing officers land on Notifications and can also browse Sequence
+-- Analysis (dashboard, tracker, detail) as view-only. Approving officers
+-- only see Notifications. They act on service reports assigned to them
+-- as Reviewing Officer (reviewing_officer) or Approving Officer
+-- (approving_officer). Apply
+-- 20260812140000_service_report_officer_roles.sql and
+-- 20260827140000_reviewing_officer_sequence_analysis_read.sql before
+-- relying on Sequence Analysis browse access.
 --
 -- Replace you@example.com and the role value before running.
 

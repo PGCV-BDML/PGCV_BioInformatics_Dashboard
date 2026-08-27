@@ -27,6 +27,8 @@ interface ReviewCommentsPanelProps {
   forceVisible?: boolean;
   /** Drop the outer card chrome when the parent already provides a shell. */
   bare?: boolean;
+  /** Hide resubmit; reviewing officers browse comments from the tracker. */
+  readOnly?: boolean;
 }
 
 function formatDate(value: string): string {
@@ -42,6 +44,7 @@ export default function ReviewCommentsPanel({
   onResubmitted,
   forceVisible = false,
   bare = false,
+  readOnly = false,
 }: ReviewCommentsPanelProps) {
   const [comments, setComments] = useState<ReviewCommentWithAuthor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,11 +146,13 @@ export default function ReviewCommentsPanel({
 
       {awaitingRevision && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
-          The reviewing officer sent this back. Address the comment below,
-          {bare
-            ? " replace the PDF below if needed,"
-            : " replace the PDF under Service Report Delivery if needed,"}{" "}
-          then resubmit to notify them for another peer review.
+          {readOnly
+            ? "This report was sent back to the assignee for revision."
+            : `The reviewing officer sent this back. Address the comment below,${
+                bare
+                  ? " replace the PDF below if needed,"
+                  : " replace the PDF under Service Report Delivery if needed,"
+              } then resubmit to notify them for another peer review.`}
         </p>
       )}
       {waitingOnReReview && !awaitingRevision && (
@@ -158,12 +163,13 @@ export default function ReviewCommentsPanel({
       )}
       {awaitingChanges && !awaitingRevision && !waitingOnReReview && (
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
-          The approving officer sent this back. Address the comment below,
-          {bare
-            ? " replace the PDF below if needed,"
-            : " replace the PDF under Service Report Delivery if needed,"}{" "}
-          then resubmit to notify them for another review. Replacing the PDF
-          sends it back to the reviewing officer first.
+          {readOnly
+            ? "This report was sent back to the assignee after approval review."
+            : `The approving officer sent this back. Address the comment below,${
+                bare
+                  ? " replace the PDF below if needed,"
+                  : " replace the PDF under Service Report Delivery if needed,"
+              } then resubmit to notify them for another review. Replacing the PDF sends it back to the reviewing officer first.`}
         </p>
       )}
 
@@ -223,7 +229,7 @@ export default function ReviewCommentsPanel({
         </p>
       )}
 
-      {canResubmit && (
+      {canResubmit && !readOnly && (
         <button
           type="button"
           onClick={() => void handleResubmit()}

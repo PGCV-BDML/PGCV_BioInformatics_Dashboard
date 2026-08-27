@@ -35,6 +35,45 @@ export function canEnrollParticipants(
   return role === "team_lead";
 }
 
+/** Staff may create and edit sequence analysis records. */
+export function canEditSequenceAnalysis(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role);
+}
+
+/**
+ * Staff and reviewing officers may open Sequence Analysis (dashboard,
+ * tracker, and analysis detail). Approving officers do not.
+ */
+export function canViewSequenceAnalysis(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role) || role === "reviewing_officer";
+}
+
+const SEQUENCE_ANALYSIS_STAFF_ONLY_SLUGS = new Set([
+  "report-generator",
+  "covid-sample-tracker",
+]);
+
+/** Dashboard, tracker, and `/dashboard/services/:id` — not generator or COVID. */
+export function isSequenceAnalysisReadPath(pathname: string): boolean {
+  if (pathname === "/dashboard/services" || pathname === "/dashboard/services/") {
+    return true;
+  }
+  if (
+    pathname === "/dashboard/services/tracker" ||
+    pathname.startsWith("/dashboard/services/tracker/")
+  ) {
+    return true;
+  }
+  const match = /^\/dashboard\/services\/([^/]+)\/?$/.exec(pathname);
+  const slug = match?.[1];
+  if (!slug) return false;
+  return !SEQUENCE_ANALYSIS_STAFF_ONLY_SLUGS.has(slug);
+}
+
 /** Role used for UI chrome (nav, tabs). Preview only affects staff. */
 export function getEffectiveRole(
   realRole: UserRole | null,
@@ -101,10 +140,13 @@ export function isPathAllowedForRole(
   }
 
   if (isOfficerRole(role)) {
-    return (
+    const notificationsOk =
       pathname === "/dashboard/notifications" ||
-      pathname.startsWith("/dashboard/notifications/")
-    );
+      pathname.startsWith("/dashboard/notifications/");
+    if (role === "reviewing_officer" && isSequenceAnalysisReadPath(pathname)) {
+      return true;
+    }
+    return notificationsOk;
   }
 
   return true;

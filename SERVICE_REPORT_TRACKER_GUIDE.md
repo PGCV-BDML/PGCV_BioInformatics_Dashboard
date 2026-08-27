@@ -13,14 +13,15 @@ review of the PDF and approving-officer sign-off.
 | You are… | You do |
 |---|---|
 | Bioinformatician / analyst | Create the record, run the analysis, upload the PDF, assign officers, address revision/change comments and resubmit |
-| Reviewing officer (`reviewing_officer`, or staff) | Peer-review the PDF from **Notifications** only; complete review or request a revision with comments |
+| Reviewing officer (`reviewing_officer`, or staff) | Browse **Sequence Analysis** (dashboard, tracker, detail) view-only; peer-review the PDF from **Notifications** (complete review or request a revision) |
 | Approving officer (`approving_officer`, or `team_lead`) | Approve the report after peer review from **Notifications**, or send it back with comments |
 | Either staff role | Mark the report **Submitted** once it has gone out to the client |
 
-External reviewing/approving officers are **not** bioinformatics staff. After sign-in they
-only see the **Notifications** tab (same scoped-portal pattern as trainees/interns). They
-open the PDF, e-sign, and act from the notification card — they cannot open the Service
-Report Tracker.
+External reviewing officers are **not** bioinformatics staff. After sign-in they
+land on **Notifications**, and they can also open **Sequence Analysis** (dashboard,
+tracker, and analysis detail) as **view-only**: open links and download PDFs, but
+not add, edit, or delete records. Complete review and request revision stay on
+the notification card. Approving officers still only see **Notifications**.
 
 Rules that decide whether the workflow works:
 
@@ -76,9 +77,10 @@ Rules that decide whether the workflow works:
 
 - **Assignee** — required for the record to appear on the Tasks board.
 - **Reviewing Officer** — peer who reads the PDF before approval (`reviewing_officer` or
-  staff). Not the assignee. External officers work from Notifications only.
+  staff). Not the assignee. Reviewing officers can browse Sequence Analysis view-only;
+  they complete review from Notifications.
 - **Approving Officer** — `approving_officer` or team lead; notified only after peer review
-  is done. External officers work from Notifications only.
+  is done. External approving officers work from Notifications only.
 
 3. Click **Save Record**.
 

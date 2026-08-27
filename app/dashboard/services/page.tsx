@@ -20,12 +20,15 @@ import {
   type AnalysisDashboardRow,
 } from "@/lib/analysis-dashboard-stats";
 import { servicesDashboardBreadcrumbs } from "@/lib/breadcrumbs";
+import { usePortal } from "../../components/portal-context";
 import type { Analysis } from "@/types/database";
 
 const ALL_TIME = "all";
 const CURRENT_YEAR = String(new Date().getFullYear());
 
 export default function ServicesDashboardPage() {
+  const { effectiveRole } = usePortal();
+  const isReadOnly = effectiveRole === "reviewing_officer";
   const [rows, setRows] = useState<AnalysisDashboardRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -136,6 +139,9 @@ export default function ServicesDashboardPage() {
           </h1>
           <p className="text-xs md:text-[13px] text-slate-400 font-normal tracking-wide mt-0.5">
             Sequence Analysis · Volume, types, client IDs, and service reports by year
+            {isReadOnly
+              ? " · View only. Complete review from Notifications."
+              : ""}
           </p>
         </div>
 

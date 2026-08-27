@@ -242,11 +242,13 @@ export default function ServiceReportTrackerProtocol() {
             </tbody>
           </table>
         </div>
-        <Callout title="External officers stay in Notifications">
-          Reviewing and approving officers who are not bioinformatics staff only
-          see the Notifications tab after sign-in. They open the PDF, e-sign, and
-          act from the notification card — they cannot open the Service Report
-          Tracker.
+        <Callout title="External reviewing officers can browse Sequence Analysis">
+          Reviewing officers who are not bioinformatics staff still land on
+          Notifications after sign-in. They can also open Sequence Analysis
+          (dashboard, tracker, and analysis detail) as <strong className="text-[#172126]">view-only</strong>:
+          search records, open links, and download PDFs. They cannot add, edit,
+          or delete records. Complete review and request revision stay on the
+          notification card. Approving officers remain on Notifications only.
         </Callout>
       </Section>
 

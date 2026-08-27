@@ -29,6 +29,7 @@ interface ReviewCommentsModalProps {
     statusOfReview: string | null;
     notes: string | null;
   }) => void;
+  readOnly?: boolean;
 }
 
 export default function ReviewCommentsModal({
@@ -36,6 +37,7 @@ export default function ReviewCommentsModal({
   onClose,
   onResubmitted,
   onPdfReplaced,
+  readOnly = false,
 }: ReviewCommentsModalProps) {
   if (!row) return null;
 
@@ -88,9 +90,10 @@ export default function ReviewCommentsModal({
           onResubmitted={onResubmitted}
           forceVisible
           bare
+          readOnly={readOnly}
         />
 
-        {awaitingSendBack ? (
+        {awaitingSendBack && !readOnly ? (
           <ServiceReportReplace
             analysisId={row.id}
             filePath={row.service_report_file_path}

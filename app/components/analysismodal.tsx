@@ -683,7 +683,8 @@ export default function AnalysisSidebar({
           ) : (
             <p className="text-[10px] text-slate-400 ml-1 font-aileron">
               Accounts with the reviewing officer or team lead role. Cannot be
-              the assignee. External officers work from Notifications only.
+              the assignee. Reviewing officers can browse Sequence Analysis
+              view-only; they complete review from Notifications.
             </p>
           )}
         </div>
