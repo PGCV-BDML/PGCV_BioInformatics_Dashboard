@@ -17,6 +17,14 @@ import {
   requireMySignaturePath,
 } from "@/lib/user-signature";
 import { isReviewComplete } from "@/lib/analysis-tracker";
+import {
+  clampSignatureRect,
+  readPngSize,
+  type PageSize,
+  type SignatureRect,
+} from "@/lib/signature-placement";
+
+export type { PageSize, SignatureRect } from "@/lib/signature-placement";
 
 /**
  * Signature image placement on the last page of a PGCV service report.
@@ -380,7 +388,7 @@ export function resolveSignatureRect(
   slot: SignatureSlot,
   imageWidth: number,
   imageHeight: number,
-): { x: number; y: number; width: number; height: number } {
+): SignatureRect {
   const fallback = SIGNATURE_SLOTS[slot];
   const size = fitSignatureSize(imageWidth, imageHeight, fallback);
   const runs = extractTextRuns(page);
@@ -392,6 +400,33 @@ export function resolveSignatureRect(
   const name = findNameBelow(runs, label);
   const y = (name ? name.y : label.y - LABEL_CLEARANCE - size.height) - STAMP_DROP_PT;
   return { x: label.x, y, ...size };
+}
+
+export function pageSizeOf(page: PDFPage): PageSize {
+  return { width: page.getWidth(), height: page.getHeight() };
+}
+
+/**
+ * Stamp rectangle used when drawing. An officer-chosen override wins;
+ * otherwise the label-based default. Always clamped to the page.
+ */
+export function rectForStamp(
+  page: PDFPage,
+  slot: SignatureSlot,
+  imageWidth: number,
+  imageHeight: number,
+  override?: SignatureRect | null,
+): SignatureRect {
+  const pageSize = pageSizeOf(page);
+  const ratio = imageWidth / Math.max(imageHeight, 1);
+  if (override) {
+    return clampSignatureRect(override, pageSize, ratio);
+  }
+  return clampSignatureRect(
+    resolveSignatureRect(page, slot, imageWidth, imageHeight),
+    pageSize,
+    ratio,
+  );
 }
 
 async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
@@ -407,30 +442,18 @@ async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await data.arrayBuffer());
 }
 
-function fitSignatureSize(
-  imageWidth: number,
-  imageHeight: number,
-  slot: SlotPlacement,
-): { width: number; height: number } {
-  const ratio = imageWidth / Math.max(imageHeight, 1);
-  let width = slot.maxWidth;
-  let height = width / ratio;
-  if (height > slot.maxHeight) {
-    height = slot.maxHeight;
-    width = height * ratio;
-  }
-  return { width, height };
-}
+type SigningContext = {
+  analysisId: string;
+  fileName: string | null;
+  reportPath: string;
+  signaturePath: string;
+  slot: SignatureSlot;
+};
 
-/**
- * Draw the current user's e-signature into the named slot on the last
- * page of the analysis PDF, upload a new version, and point the analysis
- * row at it. Does not change review/approval status — callers do that.
- */
-export async function stampServiceReportSignature(
+async function loadSigningContext(
   analysisId: string,
   slot: SignatureSlot,
-): Promise<{ filePath: string; fileName: string; fileSize: number }> {
+): Promise<SigningContext> {
   const signaturePath = await requireMySignaturePath();
 
   const { data: analysis, error } = await supabase
@@ -471,9 +494,110 @@ export async function stampServiceReportSignature(
     throw new MissingReportPdfError();
   }
 
+  return {
+    analysisId,
+    fileName: analysis.service_report_file_name,
+    reportPath,
+    signaturePath,
+    slot,
+  };
+}
+
+function signatureImageSize(bytes: Uint8Array): {
+  width: number;
+  height: number;
+} {
+  return readPngSize(bytes) ?? { width: 400, height: 100 };
+}
+
+function fitSignatureSize(
+  imageWidth: number,
+  imageHeight: number,
+  slot: SlotPlacement,
+): { width: number; height: number } {
+  const ratio = imageWidth / Math.max(imageHeight, 1);
+  let width = slot.maxWidth;
+  let height = width / ratio;
+  if (height > slot.maxHeight) {
+    height = slot.maxHeight;
+    width = height * ratio;
+  }
+  return { width, height };
+}
+
+export type SignaturePreview = {
+  analysisId: string;
+  slot: SignatureSlot;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+  defaultRect: SignatureRect;
+  pdfBytes: Uint8Array;
+  signatureBytes: Uint8Array;
+  imageWidth: number;
+  imageHeight: number;
+};
+
+/**
+ * Load the last page and the officer's PNG, and compute the default stamp
+ * rectangle. Does not write the PDF. Used by the confirm-signature modal.
+ */
+export async function prepareSignaturePreview(
+  analysisId: string,
+  slot: SignatureSlot,
+): Promise<SignaturePreview> {
+  const ctx = await loadSigningContext(analysisId, slot);
   const [pdfBytes, signatureBytes] = await Promise.all([
-    downloadReportPdfBytes(reportPath),
-    downloadSignatureBytes(signaturePath),
+    downloadReportPdfBytes(ctx.reportPath),
+    downloadSignatureBytes(ctx.signaturePath),
+  ]);
+
+  const pdf = await PDFDocument.load(pdfBytes);
+  const pages = pdf.getPages();
+  if (pages.length === 0) {
+    throw new Error("That PDF has no pages to sign.");
+  }
+  const page = pages[pages.length - 1]!;
+  const image = signatureImageSize(signatureBytes);
+  const defaultRect = rectForStamp(
+    page,
+    slot,
+    image.width,
+    image.height,
+  );
+  const pageSize = pageSizeOf(page);
+
+  return {
+    analysisId,
+    slot,
+    pageWidth: pageSize.width,
+    pageHeight: pageSize.height,
+    pageCount: pages.length,
+    defaultRect,
+    pdfBytes,
+    signatureBytes,
+    imageWidth: image.width,
+    imageHeight: image.height,
+  };
+}
+
+/**
+ * Draw the current user's e-signature into the named slot on the last
+ * page of the analysis PDF, upload a new version, and point the analysis
+ * row at it. Does not change review/approval status — callers do that.
+ *
+ * Pass `rect` when the officer confirmed a placement in the preview modal.
+ */
+export async function stampServiceReportSignature(
+  analysisId: string,
+  slot: SignatureSlot,
+  rect?: SignatureRect | null,
+): Promise<{ filePath: string; fileName: string; fileSize: number }> {
+  const ctx = await loadSigningContext(analysisId, slot);
+
+  const [pdfBytes, signatureBytes] = await Promise.all([
+    downloadReportPdfBytes(ctx.reportPath),
+    downloadSignatureBytes(ctx.signaturePath),
   ]);
 
   const pdf = await PDFDocument.load(pdfBytes);
@@ -497,20 +621,21 @@ export async function stampServiceReportSignature(
     }
   }
 
-  const rect = resolveSignatureRect(
+  const stampRect = rectForStamp(
     page,
-    slot,
+    ctx.slot,
     embedded.width,
     embedded.height,
+    rect,
   );
 
-  page.drawImage(embedded, rect);
+  page.drawImage(embedded, stampRect);
 
   const stamped = await pdf.save();
   const stampedBytes = new Uint8Array(stamped);
   const stampedName = stampedServiceReportFileName(
-    analysis.service_report_file_name,
-    slot,
+    ctx.fileName,
+    ctx.slot,
   );
   const newPath = buildServiceReportPath(analysisId, stampedName);
 

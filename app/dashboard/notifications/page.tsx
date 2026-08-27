@@ -42,9 +42,11 @@ import {
 } from "@/lib/notifications";
 import { resolveReportUrl } from "@/lib/service-report-file";
 import { isMissingSignatureError } from "@/lib/user-signature";
+import type { SignatureRect } from "@/lib/signature-placement";
 import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
 import MySignatureModal from "../../components/my-signature-modal";
+import SignatureConfirmModal from "../../components/signature-confirm-modal";
 
 type FilterMode = "unread" | "all";
 
@@ -114,6 +116,10 @@ export default function NotificationsPage() {
   );
   const [signaturePrompt, setSignaturePrompt] = useState<{
     analysisId: string;
+    action: "review" | "approve";
+  } | null>(null);
+  const [signOff, setSignOff] = useState<{
+    notification: AppNotification;
     action: "review" | "approve";
   } | null>(null);
   const [isClearPromptOpen, setIsClearPromptOpen] = useState(false);
@@ -281,96 +287,69 @@ export default function NotificationsPage() {
     }
   }
 
-  async function handleCompleteReview(notification: AppNotification) {
-    const analysisId = notification.payload.analysis_id;
-    if (!analysisId) {
+  function openSignOff(
+    notification: AppNotification,
+    action: "review" | "approve",
+  ) {
+    if (!notification.payload.analysis_id) {
       setActionError("Missing analysis reference for this notification.");
       return;
     }
+    setActionError(null);
+    setActionNotice(null);
+    setSignOff({ notification, action });
+  }
+
+  async function submitSignOff(rect: SignatureRect) {
+    const target = signOff;
+    const analysisId = target?.notification.payload.analysis_id;
+    if (!target || !analysisId) {
+      throw new Error("Missing analysis reference for this notification.");
+    }
 
     setActionError(null);
-    setBusyId(notification.id);
+    setBusyId(target.notification.id);
     try {
-      const result = await completeAnalysisReview(analysisId);
-      await markNotificationRead(notification.id);
-      patchLocal(
-        notification.id,
-        { is_read: true, review_status: "Reviewed" },
-        { removeIfUnreadFilter: true },
-      );
-      setActionNotice(
-        result.approverAssigned
-          ? "Review complete. Signature applied and the approving officer has been notified."
-          : "Review complete. Signature applied. Assign an approving officer to continue.",
-      );
+      if (target.action === "review") {
+        const result = await completeAnalysisReview(analysisId, undefined, rect);
+        await markNotificationRead(target.notification.id);
+        patchLocal(
+          target.notification.id,
+          { is_read: true, review_status: "Reviewed" },
+          { removeIfUnreadFilter: true },
+        );
+        setActionNotice(
+          result.approverAssigned
+            ? "Review complete. Signature applied and the approving officer has been notified."
+            : "Review complete. Signature applied. Assign an approving officer to continue.",
+        );
+      } else {
+        await approveAnalysis(analysisId, rect);
+        await markNotificationRead(target.notification.id);
+        patchLocal(
+          target.notification.id,
+          {
+            is_read: true,
+            submission_status: "Approved",
+          },
+          { removeIfUnreadFilter: true },
+        );
+        setActionNotice("Approved. Your signature was applied to the PDF.");
+      }
+      setSignOff(null);
     } catch (error) {
       console.error(error);
       if (isMissingSignatureError(error)) {
-        setSignaturePrompt({ analysisId, action: "review" });
-        setActionError("Upload your electronic signature to complete this review.");
-      } else {
+        setSignaturePrompt({ analysisId, action: target.action });
         setActionError(
-          error instanceof Error
-            ? error.message
-            : "Couldn't complete this review.",
+          target.action === "review"
+            ? "Upload your electronic signature to complete this review."
+            : "Upload your electronic signature to approve this report.",
         );
       }
+      throw error;
     } finally {
       setBusyId(null);
-    }
-  }
-
-  async function handleApprove(notification: AppNotification) {
-    const analysisId = notification.payload.analysis_id;
-    if (!analysisId) {
-      setActionError("Missing analysis reference for this notification.");
-      return;
-    }
-
-    setActionError(null);
-    setBusyId(notification.id);
-    try {
-      await approveAnalysis(analysisId);
-      await markNotificationRead(notification.id);
-      patchLocal(
-        notification.id,
-        {
-          is_read: true,
-          submission_status: "Approved",
-        },
-        { removeIfUnreadFilter: true },
-      );
-      setActionNotice("Approved. Your signature was applied to the PDF.");
-    } catch (error) {
-      console.error(error);
-      if (isMissingSignatureError(error)) {
-        setSignaturePrompt({ analysisId, action: "approve" });
-        setActionError("Upload your electronic signature to approve this report.");
-      } else {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : "Couldn't approve this report.",
-        );
-      }
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function retryAfterSignatureUpload() {
-    const prompt = signaturePrompt;
-    if (!prompt) return;
-    setSignaturePrompt(null);
-    setActionError(null);
-    const notification = notifications.find(
-      (item) => item.payload.analysis_id === prompt.analysisId,
-    );
-    if (!notification) return;
-    if (prompt.action === "review") {
-      await handleCompleteReview(notification);
-    } else {
-      await handleApprove(notification);
     }
   }
 
@@ -671,9 +650,7 @@ export default function NotificationsPage() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() =>
-                                void handleCompleteReview(notification)
-                              }
+                              onClick={() => openSignOff(notification, "review")}
                               className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
                             >
                               <BadgeCheck className="w-3.5 h-3.5" />
@@ -695,7 +672,7 @@ export default function NotificationsPage() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => void handleApprove(notification)}
+                              onClick={() => openSignOff(notification, "approve")}
                               className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
                             >
                               <BadgeCheck className="w-3.5 h-3.5" />
@@ -770,12 +747,42 @@ export default function NotificationsPage() {
         onSubmit={handleSendBack}
       />
 
+      {signOff && signaturePrompt === null ? (
+        <SignatureConfirmModal
+          key={`${signOff.notification.id}-${signOff.action}`}
+          isOpen
+          analysisId={signOff.notification.payload.analysis_id ?? null}
+          action={signOff.action}
+          reportLabel={
+            signOff.notification.payload.service_report_number ||
+            signOff.notification.payload.client_name ||
+            "Service report"
+          }
+          onClose={() => setSignOff(null)}
+          onMissingSignature={() => {
+            const analysisId = signOff.notification.payload.analysis_id;
+            if (!analysisId) return;
+            setSignaturePrompt({ analysisId, action: signOff.action });
+            setActionError(
+              signOff.action === "review"
+                ? "Upload your electronic signature to complete this review."
+                : "Upload your electronic signature to approve this report.",
+            );
+          }}
+          onConfirm={submitSignOff}
+        />
+      ) : null}
+
       <MySignatureModal
         isOpen={signaturePrompt !== null}
-        onClose={() => setSignaturePrompt(null)}
+        onClose={() => {
+          setSignaturePrompt(null);
+          setSignOff(null);
+        }}
         requiredForAction
         onUploaded={() => {
-          void retryAfterSignatureUpload();
+          setSignaturePrompt(null);
+          setActionError(null);
         }}
       />
     </div>

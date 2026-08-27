@@ -5,7 +5,10 @@ import {
   serviceReportDownloadFileName,
   stampedServiceReportFileName,
 } from "./service-report-file";
-import { resolveSignatureRect } from "./service-report-signature";
+import {
+  rectForStamp,
+  resolveSignatureRect,
+} from "./service-report-signature";
 
 describe("originalServiceReportBaseName", () => {
   it("returns the upload basename without the extension", () => {
@@ -207,5 +210,28 @@ describe("resolveSignatureRect", () => {
     const rect = resolveSignatureRect(reloaded, "reviewed_by", 400, 100);
     expect(rect.y).toBeCloseTo(356 - 0.25 * (72 / 2.54), 0);
     expect(rect.y + rect.height).toBeLessThan(446);
+  });
+
+  it("lets an officer override win over the auto placement", async () => {
+    const page = await pgcvSignatoryPage();
+    const override = { x: 90, y: 140, width: 180, height: 45 };
+    const rect = rectForStamp(page, "approved_by", 400, 100, override);
+    expect(rect.x).toBe(90);
+    expect(rect.y).toBe(140);
+    expect(rect.width).toBe(180);
+    expect(rect.height).toBe(45);
+  });
+
+  it("clamps an override that hangs off the page", async () => {
+    const page = await pgcvSignatoryPage();
+    const rect = rectForStamp(
+      page,
+      "reviewed_by",
+      400,
+      100,
+      { x: 900, y: -40, width: 160, height: 40 },
+    );
+    expect(rect.x + rect.width).toBeCloseTo(page.getWidth(), 5);
+    expect(rect.y).toBe(0);
   });
 });

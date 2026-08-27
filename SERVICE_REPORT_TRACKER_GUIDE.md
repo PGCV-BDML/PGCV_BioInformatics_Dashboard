@@ -131,7 +131,7 @@ Officer, Status of Review opens as **For review** and that person is notified.
 Reviewer actions (bell / Notifications page):
 
 - **Open Report** → marks In review and opens the PDF (signed URL) or legacy link
-- **Complete review** → sets Reviewed; notifies the approving officer if assigned
+- **Complete review** → last-page preview of your e-signature under **Reviewed by**; confirm (drag/resize if needed) to stamp and set Reviewed; notifies the approving officer if assigned
 - **Request revision** → requires a comment; notifies the assignee
 
 Assignee response to a revision:
@@ -159,7 +159,7 @@ not earlier.
 Officer actions:
 
 - **Open Report** → Under review + open PDF/link
-- **Approve** → Approved; notifies the assignee when one is set
+- **Approve** → last-page preview of your e-signature under **Approved for Release**; confirm (drag/resize if needed) to stamp and set Approved; notifies the assignee when one is set
 - **Request changes** → requires a comment; notifies the assignee
 
 Assignee response to changes:
@@ -200,8 +200,9 @@ Reviewing and approving officers must upload a PNG of their handwritten signatur
 before they can complete review or approve a report.
 
 - **Where:** sidebar profile menu → **My signature** (any logged-in staff user)
-- **On Complete review:** the reviewer’s signature is stamped under **Reviewed by**
-- **On Approve:** the approving officer’s signature is stamped under **Approved for Release**
+- **On Complete review:** a last-page preview opens; after you confirm, the reviewer’s signature is stamped under **Reviewed by**
+- **On Approve:** the same preview for **Approved for Release** (the reviewer stamp is already on the page and cannot be moved)
+- Drag or resize your own stamp in that preview. Nothing is written to the stored PDF until you confirm.
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
 - Replacing the PDF after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. Officer signature stamps (Complete review / Approve) do not.
@@ -216,7 +217,7 @@ before they can complete review or approve a report.
 | Approving officer never notified | Status of Review is not Reviewed yet |
 | Can't pick someone as reviewer | They are the assignee, or they are already the approving officer |
 | Can't complete review / approve | No e-signature uploaded yet (profile menu → My signature) |
-| Signature looks misplaced | Template margins differ — adjust `SIGNATURE_SLOTS` in `lib/service-report-signature.ts` |
+| Signature looks misplaced | Drag or resize the stamp in the confirm-signature preview before you complete review or approve |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
 | Replacing the PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |

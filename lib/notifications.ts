@@ -7,6 +7,7 @@ import {
   submissionStatusRank,
 } from "@/lib/analysis-tracker";
 import type { AnalysisReviewComment, ReviewCommentStage } from "@/types/database";
+import type { SignatureRect } from "@/lib/signature-placement";
 
 /* ------------------------------------------------------------------ */
 /*  Notification types                                                */
@@ -448,6 +449,7 @@ export type CompleteReviewResult = {
 export async function completeAnalysisReview(
   analysisId: string,
   body?: string,
+  rect?: SignatureRect | null,
 ): Promise<CompleteReviewResult> {
   const trimmed = body?.trim() ?? "";
 
@@ -456,7 +458,7 @@ export async function completeAnalysisReview(
   const { stampServiceReportSignature } = await import(
     "@/lib/service-report-signature"
   );
-  await stampServiceReportSignature(analysisId, "reviewed_by");
+  await stampServiceReportSignature(analysisId, "reviewed_by", rect);
 
   const { data, error } = await supabase.rpc("complete_analysis_review", {
     p_analysis_id: analysisId,
@@ -586,11 +588,14 @@ export async function markAnalysisUnderReview(
 }
 
 /** Set submission status to Approved + append a system note (no backwards move). */
-export async function approveAnalysis(analysisId: string): Promise<void> {
+export async function approveAnalysis(
+  analysisId: string,
+  rect?: SignatureRect | null,
+): Promise<void> {
   const { stampServiceReportSignature } = await import(
     "@/lib/service-report-signature"
   );
-  await stampServiceReportSignature(analysisId, "approved_by");
+  await stampServiceReportSignature(analysisId, "approved_by", rect);
   await applyApprovalAction(analysisId, "Approved");
 }
 

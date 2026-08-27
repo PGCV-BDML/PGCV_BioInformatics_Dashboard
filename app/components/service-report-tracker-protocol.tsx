@@ -216,7 +216,8 @@ export default function ServiceReportTrackerProtocol() {
                 </td>
                 <td className="px-4 py-3">
                   Peer-review the PDF from <strong>Notifications</strong> only.
-                  Complete review (e-sign) or request a revision with comments.
+                  Complete review (preview and e-sign) or request a revision
+                  with comments.
                 </td>
               </tr>
               <tr>
@@ -226,7 +227,7 @@ export default function ServiceReportTrackerProtocol() {
                 <td className="px-4 py-3">
                   Approve the report after peer review from{" "}
                   <strong>Notifications</strong>, or send it back with comments.
-                  Approve stamps the e-signature for release.
+                  Approve previews the e-signature, then stamps it for release.
                 </td>
               </tr>
               <tr>
@@ -451,9 +452,10 @@ export default function ServiceReportTrackerProtocol() {
               review and opens the PDF (signed URL) or legacy link.
             </li>
             <li>
-              <strong className="text-[#172126]">Complete review</strong> sets
-              Reviewed, stamps the e-signature, and notifies the approving
-              officer if assigned.
+              <strong className="text-[#172126]">Complete review</strong> opens
+              a last-page preview of your e-signature. Confirm the placement
+              (you can drag or resize it), then it stamps the PDF, sets
+              Reviewed, and notifies the approving officer if assigned.
             </li>
             <li>
               <strong className="text-[#172126]">Request revision</strong>{" "}
@@ -473,7 +475,8 @@ export default function ServiceReportTrackerProtocol() {
           Reviewing and approving officers must have a PNG of their handwritten
           signature on file before they can complete review or approve a report.
           The stamp is placed on the last page of the PDF; printed names are not
-          changed.
+          changed. Before the stamp is written, officers preview that last page
+          and can drag or resize their signature so it sits on the printed name.
         </p>
         <ol className="list-decimal pl-5 space-y-2">
           <li>
@@ -485,12 +488,15 @@ export default function ServiceReportTrackerProtocol() {
             transparent or light background so it sits cleanly under the label.
           </li>
           <li>
-            On <strong className="text-[#172126]">Complete review</strong>, the
-            reviewer’s signature is stamped under <em>Reviewed by</em>.
+            On <strong className="text-[#172126]">Complete review</strong>, a
+            preview of the last page opens with the reviewer&apos;s signature
+            over <em>Reviewed by</em>. Confirm placement (drag or resize if
+            needed) to stamp it.
           </li>
           <li>
-            On <strong className="text-[#172126]">Approve</strong>, the approving
-            officer’s signature is stamped under <em>Approved for Release</em>.
+            On <strong className="text-[#172126]">Approve</strong>, the same
+            preview opens for <em>Approved for Release</em>. The reviewer stamp
+            is already on that page and cannot be moved.
           </li>
         </ol>
         <div className="grid gap-3 md:grid-cols-2">
@@ -500,7 +506,8 @@ export default function ServiceReportTrackerProtocol() {
               Reviewed by
             </p>
             <p className="text-xs">
-              Applied when the reviewing officer completes review. If no
+              Applied when the reviewing officer completes review. They first
+              see it on the last page and can adjust position or size. If no
               signature is on file, the action is blocked and an upload prompt
               appears.
             </p>
@@ -512,7 +519,8 @@ export default function ServiceReportTrackerProtocol() {
             </p>
             <p className="text-xs">
               Applied when the approving officer approves. Same rule: a
-              signature PNG must already be uploaded.
+              signature PNG must already be uploaded, and they confirm placement
+              before it is written.
             </p>
           </div>
         </div>
@@ -573,8 +581,9 @@ export default function ServiceReportTrackerProtocol() {
             review and opens the PDF or link.
           </li>
           <li>
-            <strong className="text-[#172126]">Approve</strong> → Approved;
-            stamps the signature; notifies the assignee when one is set.
+            <strong className="text-[#172126]">Approve</strong> → last-page
+            preview, then Approved; stamps the signature; notifies the assignee
+            when one is set.
           </li>
           <li>
             <strong className="text-[#172126]">Request changes</strong> →
@@ -655,8 +664,9 @@ export default function ServiceReportTrackerProtocol() {
                   Signature looks misplaced
                 </td>
                 <td className="px-4 py-3">
-                  Template margins differ from the usual A4 service-report
-                  layout. Ask a maintainer to check signature placement.
+                  Drag or resize the stamp in the confirm-signature preview
+                  before you complete review or approve. The stored PDF is not
+                  changed until you confirm.
                 </td>
               </tr>
               <tr>

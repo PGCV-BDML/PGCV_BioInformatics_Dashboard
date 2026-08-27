@@ -4,6 +4,7 @@ import { join } from "path";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  transpilePackages: ["pdfjs-dist"],
   turbopack: {
     root: join(__dirname),
   },
