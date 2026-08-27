@@ -57,6 +57,17 @@ export function PdfLastPageCanvas({
     let cancelled = false;
     let generation = 0;
     let renderTask: { cancel: () => void } | null = null;
+    let loadingTask: ReturnType<PdfjsModule["getDocument"]> | null = null;
+
+    async function releasePdf() {
+      const task = loadingTask;
+      loadingTask = null;
+      try {
+        await task?.destroy();
+      } catch {
+        /* already torn down */
+      }
+    }
 
     async function paint() {
       const myGen = ++generation;
@@ -65,13 +76,15 @@ export function PdfLastPageCanvas({
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      await releasePdf();
+
       try {
         const pdfjs = await loadPdfjs();
         if (cancelled || myGen !== generation) return;
-        const task = pdfjs.getDocument({ data: pdfBytes.slice() });
-        const pdf = await task.promise;
+        loadingTask = pdfjs.getDocument({ data: pdfBytes.slice() });
+        const pdf = await loadingTask.promise;
         if (cancelled || myGen !== generation) {
-          void pdf.destroy();
+          await releasePdf();
           return;
         }
         const pdfPage = await pdf.getPage(pdf.numPages);
@@ -87,13 +100,14 @@ export function PdfLastPageCanvas({
         renderTask?.cancel();
         renderTask = pdfPage.render({ canvas, viewport });
         await renderTask.promise;
-        await pdf.destroy();
         if (!cancelled && myGen === generation) {
           setRenderError(null);
           setPageReady(true);
         }
+        await releasePdf();
       } catch (error) {
         console.error(error);
+        await releasePdf();
         if (!cancelled && myGen === generation) {
           setRenderError(
             "Couldn't draw the last page. You can still place your signature on the outline.",
@@ -118,6 +132,7 @@ export function PdfLastPageCanvas({
       cancelled = true;
       renderTask?.cancel();
       observer.disconnect();
+      void releasePdf();
     };
   }, [fit, pageHeight, pageWidth, pdfBytes]);
 
