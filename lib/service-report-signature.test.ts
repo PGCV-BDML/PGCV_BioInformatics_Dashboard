@@ -6,6 +6,7 @@ import {
   stampedServiceReportFileName,
 } from "./service-report-file";
 import {
+  extractLastPagePdf,
   rectForStamp,
   resolveSignatureRect,
 } from "./service-report-signature";
@@ -82,6 +83,24 @@ describe("serviceReportDownloadFileName", () => {
     expect(
       serviceReportDownloadFileName("PGCV-Bioinfo-SR-2026-272-Penuela.pdf"),
     ).toBe("PGCV-Bioinfo-SR-2026-272-Penuela.pdf");
+  });
+});
+
+describe("extractLastPagePdf", () => {
+  it("keeps only the last page of a multi-page report", async () => {
+    const src = await PDFDocument.create();
+    src.addPage([200, 300]);
+    src.addPage([400, 500]);
+    const extracted = await extractLastPagePdf(await src.save());
+
+    expect(extracted.pageCount).toBe(2);
+    expect(extracted.pageWidth).toBe(400);
+    expect(extracted.pageHeight).toBe(500);
+
+    const loaded = await PDFDocument.load(extracted.pdfBytes);
+    expect(loaded.getPageCount()).toBe(1);
+    expect(loaded.getPage(0).getWidth()).toBe(400);
+    expect(loaded.getPage(0).getHeight()).toBe(500);
   });
 });
 

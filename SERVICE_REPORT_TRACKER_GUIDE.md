@@ -130,8 +130,8 @@ Officer, Status of Review opens as **For review** and that person is notified.
 
 Reviewer actions (bell / Notifications page):
 
-- **Open Report** → marks In review and opens the PDF (signed URL) or legacy link
-- **Complete review** → last-page preview of your e-signature under **Reviewed by**; confirm (drag/resize if needed) to stamp and set Reviewed; notifies the approving officer if assigned
+- **Open Report** → marks In review and opens the full PDF (signed URL) or legacy link. After you have signed, Open Report shows the **last page** of the stamped PDF so you can check the signature.
+- **Complete review** → last-page preview of your e-signature under **Reviewed by**; confirm (drag/resize if needed) to stamp and set Reviewed; notifies the approving officer if assigned. The notification then stores that signed PDF.
 - **Request revision** → requires a comment; notifies the assignee
 
 Assignee response to a revision:
@@ -158,8 +158,8 @@ not earlier.
 
 Officer actions:
 
-- **Open Report** → Under review + open PDF/link
-- **Approve** → last-page preview of your e-signature under **Approved for Release**; confirm (drag/resize if needed) to stamp and set Approved; notifies the assignee when one is set
+- **Open Report** → Under review + open the full PDF/link. After you have approved, Open Report shows the **last page** of the signed PDF.
+- **Approve** → last-page preview of your e-signature under **Approved for Release**; confirm (drag/resize if needed) to stamp and set Approved; notifies the assignee when one is set. The notification then stores the signed PDF.
 - **Request changes** → requires a comment; notifies the assignee
 
 Assignee response to changes:
@@ -168,7 +168,9 @@ Assignee response to changes:
 2. If you **replace the PDF**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file. After they **Complete review**, the approving officer is notified again (**For approval**).
 
 When approval completes, the assignee receives a **Report approved** notification
-with the signed PDF. Mark **Submitted** in the tracker once the client has the report.
+with the signed PDF (last page on Open Report). The reviewing and approving
+officers' stored notification attachments are updated to that same signed file.
+Mark **Submitted** in the tracker once the client has the report.
 
 ---
 
@@ -200,8 +202,8 @@ Reviewing and approving officers must upload a PNG of their handwritten signatur
 before they can complete review or approve a report.
 
 - **Where:** sidebar profile menu → **My signature** (any logged-in staff user)
-- **On Complete review:** a last-page preview opens; after you confirm, the reviewer’s signature is stamped under **Reviewed by**
-- **On Approve:** the same preview for **Approved for Release** (the reviewer stamp is already on the page and cannot be moved)
+- **On Complete review:** a last-page preview opens so you can see the stamp on the signature page; after you confirm, the reviewer’s signature is stamped under **Reviewed by**
+- **On Approve:** the same last-page preview for **Approved for Release** (the reviewer stamp is already on the page and cannot be moved)
 - Drag or resize your own stamp in that preview. Nothing is written to the stored PDF until you confirm.
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
@@ -218,6 +220,7 @@ before they can complete review or approve a report.
 | Can't pick someone as reviewer | They are the assignee, or they are already the approving officer |
 | Can't complete review / approve | No e-signature uploaded yet (profile menu → My signature) |
 | Signature looks misplaced | Drag or resize the stamp in the confirm-signature preview before you complete review or approve |
+| Notification still has the unsigned PDF | After sign-off, Open Report uses the current stamped file and shows its last page. Apply `20260827120000_sync_notification_signed_report.sql` so stored payloads are updated too |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
 | Replacing the PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |

@@ -37,6 +37,7 @@ import {
   openReportForReview,
   requestAnalysisChanges,
   requestAnalysisRevision,
+  shouldPreviewSignedLastPage,
   type AppNotification,
   type NotificationKind,
 } from "@/lib/notifications";
@@ -47,6 +48,7 @@ import { notificationsBreadcrumbs } from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
 import MySignatureModal from "../../components/my-signature-modal";
 import SignatureConfirmModal from "../../components/signature-confirm-modal";
+import ReportLastPageModal from "../../components/report-last-page-modal";
 
 type FilterMode = "unread" | "all";
 
@@ -122,6 +124,9 @@ export default function NotificationsPage() {
     notification: AppNotification;
     action: "review" | "approve";
   } | null>(null);
+  const [lastPageTarget, setLastPageTarget] = useState<AppNotification | null>(
+    null,
+  );
   const [isClearPromptOpen, setIsClearPromptOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -260,6 +265,11 @@ export default function NotificationsPage() {
     setActionError(null);
     setBusyId(notification.id);
     try {
+      if (shouldPreviewSignedLastPage(notification)) {
+        setLastPageTarget(notification);
+        return;
+      }
+
       if (kind === "review_request") {
         await openReportForReview(notification);
         patchLocal(notification.id, { review_status: "In review" });
@@ -315,7 +325,15 @@ export default function NotificationsPage() {
         await markNotificationRead(target.notification.id);
         patchLocal(
           target.notification.id,
-          { is_read: true, review_status: "Reviewed" },
+          {
+            is_read: true,
+            review_status: "Reviewed",
+            payload: {
+              ...target.notification.payload,
+              service_report_file_path: result.filePath,
+              service_report_file_name: result.fileName,
+            },
+          },
           { removeIfUnreadFilter: true },
         );
         setActionNotice(
@@ -324,13 +342,18 @@ export default function NotificationsPage() {
             : "Review complete. Signature applied. Assign an approving officer to continue.",
         );
       } else {
-        await approveAnalysis(analysisId, rect);
+        const stamped = await approveAnalysis(analysisId, rect);
         await markNotificationRead(target.notification.id);
         patchLocal(
           target.notification.id,
           {
             is_read: true,
             submission_status: "Approved",
+            payload: {
+              ...target.notification.payload,
+              service_report_file_path: stamped.filePath,
+              service_report_file_name: stamped.fileName,
+            },
           },
           { removeIfUnreadFilter: true },
         );
@@ -746,6 +769,22 @@ export default function NotificationsPage() {
         }
         onSubmit={handleSendBack}
       />
+
+      {lastPageTarget ? (
+        <ReportLastPageModal
+          isOpen
+          analysisId={lastPageTarget.payload.analysis_id ?? null}
+          reportLabel={
+            lastPageTarget.payload.service_report_number ||
+            lastPageTarget.payload.client_name ||
+            "Service report"
+          }
+          filePath={lastPageTarget.payload.service_report_file_path}
+          fileName={lastPageTarget.payload.service_report_file_name}
+          fileLink={lastPageTarget.payload.service_report_link}
+          onClose={() => setLastPageTarget(null)}
+        />
+      ) : null}
 
       {signOff && signaturePrompt === null ? (
         <SignatureConfirmModal

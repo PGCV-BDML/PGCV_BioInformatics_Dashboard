@@ -449,7 +449,8 @@ export default function ServiceReportTrackerProtocol() {
           <ul className="list-disc pl-5 space-y-1 text-xs">
             <li>
               <strong className="text-[#172126]">Open Report</strong> marks In
-              review and opens the PDF (signed URL) or legacy link.
+              review and opens the full PDF (signed URL) or legacy link. After
+              you have signed, it shows the last page of the stamped PDF.
             </li>
             <li>
               <strong className="text-[#172126]">Complete review</strong> opens
@@ -578,7 +579,8 @@ export default function ServiceReportTrackerProtocol() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <strong className="text-[#172126]">Open Report</strong> → Under
-            review and opens the PDF or link.
+            review and opens the full PDF or link. After you have approved, it
+            shows the last page of the signed PDF.
           </li>
           <li>
             <strong className="text-[#172126]">Approve</strong> → last-page
@@ -602,7 +604,8 @@ export default function ServiceReportTrackerProtocol() {
           <li>
             After approval, the assignee receives a{" "}
             <strong className="text-[#172126]">Report approved</strong>{" "}
-            notification with the signed PDF.
+            notification with the signed PDF. Reviewing and approving officers
+            also keep that signed file on their notification cards.
           </li>
           <li>
             Set Status of Submission to{" "}
@@ -666,7 +669,18 @@ export default function ServiceReportTrackerProtocol() {
                 <td className="px-4 py-3">
                   Drag or resize the stamp in the confirm-signature preview
                   before you complete review or approve. The stored PDF is not
-                  changed until you confirm.
+                  changed until you confirm. That preview is always the last
+                  page.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-[#172126] align-top">
+                  Notification still has the unsigned PDF
+                </td>
+                <td className="px-4 py-3">
+                  After you sign, Open Report uses the current stamped file and
+                  shows its last page. Refresh Notifications if an old card
+                  still looks unsigned.
                 </td>
               </tr>
               <tr>

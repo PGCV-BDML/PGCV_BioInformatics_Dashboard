@@ -30,6 +30,7 @@ import {
   openReportForReview,
   requestAnalysisChanges,
   requestAnalysisRevision,
+  shouldPreviewSignedLastPage,
   subscribeToNotifications,
   type AppNotification,
   type NotificationKind,
@@ -42,6 +43,7 @@ import { routes } from "@/lib/routes";
 import RequestChangesModal from "./request-changes-modal";
 import MySignatureModal from "./my-signature-modal";
 import SignatureConfirmModal from "./signature-confirm-modal";
+import ReportLastPageModal from "./report-last-page-modal";
 
 function kindTitle(kind: NotificationKind, n: AppNotification): string {
   switch (kind) {
@@ -76,6 +78,9 @@ export function NotificationBell() {
     notification: AppNotification;
     action: "review" | "approve";
   } | null>(null);
+  const [lastPageTarget, setLastPageTarget] = useState<AppNotification | null>(
+    null,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -169,6 +174,11 @@ export function NotificationBell() {
       if (!n.is_read) {
         void markOneReadLocal(n.id);
       }
+      if (shouldPreviewSignedLastPage(n)) {
+        setIsOpen(false);
+        setLastPageTarget(n);
+        return;
+      }
       if (kind === "review_request") {
         await openReportForReview(n);
         setNotifications((prev) =>
@@ -209,6 +219,11 @@ export function NotificationBell() {
     try {
       if (!n.is_read) {
         void markOneReadLocal(n.id);
+      }
+      if (shouldPreviewSignedLastPage(n)) {
+        setIsOpen(false);
+        setLastPageTarget(n);
+        return;
       }
       const url = await resolveReportUrl(
         n.payload.service_report_file_path,
@@ -591,6 +606,22 @@ export function NotificationBell() {
         }
         onSubmit={handleSendBack}
       />
+
+      {lastPageTarget ? (
+        <ReportLastPageModal
+          isOpen
+          analysisId={lastPageTarget.payload.analysis_id ?? null}
+          reportLabel={
+            lastPageTarget.payload.service_report_number ||
+            lastPageTarget.payload.client_name ||
+            "Service report"
+          }
+          filePath={lastPageTarget.payload.service_report_file_path}
+          fileName={lastPageTarget.payload.service_report_file_name}
+          fileLink={lastPageTarget.payload.service_report_link}
+          onClose={() => setLastPageTarget(null)}
+        />
+      ) : null}
 
       {signOff && signaturePrompt === null ? (
         <SignatureConfirmModal

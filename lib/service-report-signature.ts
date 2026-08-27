@@ -538,6 +538,113 @@ export type SignaturePreview = {
   imageHeight: number;
 };
 
+export type LastPagePreview = {
+  analysisId: string;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+  pdfBytes: Uint8Array;
+  filePath: string | null;
+  fileName: string | null;
+};
+
+/**
+ * Copy only the last page into a new PDF. Signature stamps live there, so
+ * previews should never open on page 1 of a multi-page report.
+ */
+async function copyLastPage(src: PDFDocument): Promise<{
+  pdfBytes: Uint8Array;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+}> {
+  const pageCount = src.getPageCount();
+  if (pageCount === 0) {
+    throw new Error("That PDF has no pages to sign.");
+  }
+
+  const lastIndex = pageCount - 1;
+  const lastPage = src.getPages()[lastIndex]!;
+  const dest = await PDFDocument.create();
+  const [copied] = await dest.copyPages(src, [lastIndex]);
+  dest.addPage(copied);
+
+  return {
+    pdfBytes: new Uint8Array(await dest.save()),
+    pageWidth: lastPage.getWidth(),
+    pageHeight: lastPage.getHeight(),
+    pageCount,
+  };
+}
+
+export async function extractLastPagePdf(pdfBytes: Uint8Array): Promise<{
+  pdfBytes: Uint8Array;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+}> {
+  const copied = await copyLastPage(await PDFDocument.load(pdfBytes));
+  return {
+    pdfBytes: copied.pdfBytes,
+    pageWidth: copied.pageWidth,
+    pageHeight: copied.pageHeight,
+    pageCount: copied.pageCount,
+  };
+}
+
+async function lastPageFromStoredReport(analysisId: string): Promise<{
+  lastPage: Awaited<ReturnType<typeof extractLastPagePdf>>;
+  filePath: string;
+  fileName: string | null;
+}> {
+  const { data: analysis, error } = await supabase
+    .from("analysis")
+    .select("id, service_report_file_path, service_report_file_name")
+    .eq("id", analysisId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load analysis for last-page preview:", error);
+    throw error;
+  }
+  if (!analysis) {
+    throw new Error("Analysis not found.");
+  }
+
+  const reportPath = analysis.service_report_file_path?.trim();
+  if (!reportPath) {
+    throw new MissingReportPdfError();
+  }
+
+  const pdfBytes = await downloadReportPdfBytes(reportPath);
+  return {
+    lastPage: await extractLastPagePdf(pdfBytes),
+    filePath: reportPath,
+    fileName: analysis.service_report_file_name,
+  };
+}
+
+/**
+ * Last page of the current stored PDF, with no signature overlay.
+ * Used after sign-off so officers can check the stamped attachment.
+ */
+export async function prepareReportLastPagePreview(
+  analysisId: string,
+): Promise<LastPagePreview> {
+  const { lastPage, filePath, fileName } = await lastPageFromStoredReport(
+    analysisId,
+  );
+  return {
+    analysisId,
+    pageWidth: lastPage.pageWidth,
+    pageHeight: lastPage.pageHeight,
+    pageCount: lastPage.pageCount,
+    pdfBytes: lastPage.pdfBytes,
+    filePath,
+    fileName,
+  };
+}
+
 /**
  * Load the last page and the officer's PNG, and compute the default stamp
  * rectangle. Does not write the PDF. Used by the confirm-signature modal.
@@ -565,16 +672,16 @@ export async function prepareSignaturePreview(
     image.width,
     image.height,
   );
-  const pageSize = pageSizeOf(page);
+  const copied = await copyLastPage(pdf);
 
   return {
     analysisId,
     slot,
-    pageWidth: pageSize.width,
-    pageHeight: pageSize.height,
-    pageCount: pages.length,
+    pageWidth: copied.pageWidth,
+    pageHeight: copied.pageHeight,
+    pageCount: copied.pageCount,
     defaultRect,
-    pdfBytes,
+    pdfBytes: copied.pdfBytes,
     signatureBytes,
     imageWidth: image.width,
     imageHeight: image.height,

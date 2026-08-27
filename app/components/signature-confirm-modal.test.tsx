@@ -54,9 +54,14 @@ describe("SignatureConfirmModal", () => {
       />,
     );
 
+    await waitFor(() => {
+      expect(screen.getByText(/last page/i)).toBeInTheDocument();
+    });
+
     expect(
       await screen.findByTestId("signature-page-preview"),
     ).toBeInTheDocument();
+    expect(screen.getByText(/page 2 of 2/i)).toBeInTheDocument();
 
     const submit = screen.getByRole("button", { name: "Complete review" });
     expect(submit).toBeDisabled();

@@ -104,6 +104,75 @@ export function isApprovalCompleteNotification(n: AppNotification): boolean {
   return getNotificationKind(n) === "approval_complete";
 }
 
+/**
+ * Review/approval cards should follow the current stamped PDF so
+ * Open Report after sign-off is not stuck on the unsigned snapshot.
+ * Revision/change-request cards keep the file that was sent back.
+ */
+const LIVE_REPORT_NOTIFICATION_TYPES = new Set([
+  NOTIFICATION_READY_FOR_REVIEW,
+  NOTIFICATION_READY_FOR_APPROVAL,
+  NOTIFICATION_APPROVED,
+]);
+
+export type LiveAnalysisReport = {
+  review: string | null;
+  submission: string | null;
+  filePath: string | null;
+  fileName: string | null;
+};
+
+export function overlayLiveAnalysisOnNotifications(
+  notifications: AppNotification[],
+  byId: Map<string, LiveAnalysisReport>,
+): AppNotification[] {
+  return notifications.map((n) => {
+    const found = n.payload.analysis_id
+      ? byId.get(n.payload.analysis_id)
+      : undefined;
+    if (!found) {
+      return {
+        ...n,
+        review_status: n.review_status ?? null,
+        submission_status: n.submission_status ?? null,
+      };
+    }
+
+    const liveFile =
+      LIVE_REPORT_NOTIFICATION_TYPES.has(n.type) && found.filePath?.trim();
+    return {
+      ...n,
+      payload: liveFile
+        ? {
+            ...n.payload,
+            service_report_file_path: found.filePath,
+            service_report_file_name:
+              found.fileName ?? n.payload.service_report_file_name,
+          }
+        : n.payload,
+      review_status: found.review,
+      submission_status: found.submission,
+    };
+  });
+}
+
+/**
+ * After an officer has signed, opening the stored attachment should
+ * land on the last (signature) page rather than page 1 of the full PDF.
+ */
+export function shouldPreviewSignedLastPage(n: AppNotification): boolean {
+  const kind = getNotificationKind(n);
+  if (kind === "approval_complete") return true;
+  if (kind === "review_request") {
+    return getReviewStageUiState(n.review_status) === "reviewed";
+  }
+  if (kind === "approval_request") {
+    const state = getApprovalUiState(n.submission_status);
+    return state === "approved" || state === "submitted";
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Stage UI state                                                    */
 /* ------------------------------------------------------------------ */
@@ -195,7 +264,9 @@ async function enrichWithStageStatus(
 
   const { data, error } = await supabase
     .from("analysis")
-    .select("id, status_of_review, status_of_submission")
+    .select(
+      "id, status_of_review, status_of_submission, service_report_file_path, service_report_file_name",
+    )
     .in("id", analysisIds);
 
   if (error) {
@@ -203,24 +274,19 @@ async function enrichWithStageStatus(
     return notifications;
   }
 
-  const byId = new Map(
+  const byId = new Map<string, LiveAnalysisReport>(
     (data ?? []).map((row) => [
       row.id as string,
       {
         review: row.status_of_review as string | null,
         submission: row.status_of_submission as string | null,
+        filePath: row.service_report_file_path as string | null,
+        fileName: row.service_report_file_name as string | null,
       },
     ]),
   );
 
-  return notifications.map((n) => {
-    const found = n.payload.analysis_id ? byId.get(n.payload.analysis_id) : undefined;
-    return {
-      ...n,
-      review_status: found ? found.review : (n.review_status ?? null),
-      submission_status: found ? found.submission : (n.submission_status ?? null),
-    };
-  });
+  return overlayLiveAnalysisOnNotifications(notifications, byId);
 }
 
 /** Fetch notifications for the currently authenticated user. */
@@ -443,6 +509,8 @@ export type CompleteReviewResult = {
   /** False when nobody has been named yet — the sign-off stands, no alert went out. */
   approverAssigned: boolean;
   alreadyReviewed: boolean;
+  filePath: string;
+  fileName: string;
 };
 
 /** Reviewing officer signs the report off, which opens the approval stage. */
@@ -458,7 +526,11 @@ export async function completeAnalysisReview(
   const { stampServiceReportSignature } = await import(
     "@/lib/service-report-signature"
   );
-  await stampServiceReportSignature(analysisId, "reviewed_by", rect);
+  const stamped = await stampServiceReportSignature(
+    analysisId,
+    "reviewed_by",
+    rect,
+  );
 
   const { data, error } = await supabase.rpc("complete_analysis_review", {
     p_analysis_id: analysisId,
@@ -477,6 +549,8 @@ export async function completeAnalysisReview(
   return {
     approverAssigned: Boolean(result.approver_assigned),
     alreadyReviewed: Boolean(result.already_reviewed),
+    filePath: stamped.filePath,
+    fileName: stamped.fileName,
   };
 }
 
@@ -591,12 +665,17 @@ export async function markAnalysisUnderReview(
 export async function approveAnalysis(
   analysisId: string,
   rect?: SignatureRect | null,
-): Promise<void> {
+): Promise<{ filePath: string; fileName: string }> {
   const { stampServiceReportSignature } = await import(
     "@/lib/service-report-signature"
   );
-  await stampServiceReportSignature(analysisId, "approved_by", rect);
+  const stamped = await stampServiceReportSignature(
+    analysisId,
+    "approved_by",
+    rect,
+  );
   await applyApprovalAction(analysisId, "Approved");
+  return { filePath: stamped.filePath, fileName: stamped.fileName };
 }
 
 /** Officer opens the report: mark it as being looked at. Safe to repeat. */
