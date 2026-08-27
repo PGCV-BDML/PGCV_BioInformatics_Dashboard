@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, MessageSquareWarning, Send } from "lucide-react";
+import { CheckCircle2, ExternalLink, MessageSquareWarning, Send } from "lucide-react";
 import {
   getReviewComments,
   resubmitForApproval,
@@ -13,11 +13,15 @@ import {
   isRevisionRequestedLabel,
   needsReReviewAfterPdfReplace,
 } from "@/lib/analysis-tracker";
+import { getServiceReportSignedUrl } from "@/lib/service-report-file";
+import { useToast } from "./toast";
 
 interface ReviewCommentsPanelProps {
   analysisId: string;
   statusOfReview: string | null;
   statusOfSubmission: string | null;
+  /** Current PDF path — hide the comment's file link when it still matches. */
+  currentFilePath?: string | null;
   /** Called after a successful resubmission so the parent can refresh status. */
   onResubmitted?: (stage: "review" | "approval") => void;
   /**
@@ -37,15 +41,26 @@ function formatDate(value: string): string {
   return date.toLocaleString();
 }
 
+function commentedPdfPath(
+  comment: ReviewCommentWithAuthor,
+  currentFilePath: string | null,
+): string | null {
+  const path = comment.file_path?.trim() ?? "";
+  if (!path || path === (currentFilePath ?? "").trim()) return null;
+  return path;
+}
+
 export default function ReviewCommentsPanel({
   analysisId,
   statusOfReview,
   statusOfSubmission,
+  currentFilePath = null,
   onResubmitted,
   forceVisible = false,
   bare = false,
   readOnly = false,
 }: ReviewCommentsPanelProps) {
+  const { showToast } = useToast();
   const [comments, setComments] = useState<ReviewCommentWithAuthor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isResubmitting, setIsResubmitting] = useState(false);
@@ -81,6 +96,15 @@ export default function ReviewCommentsPanel({
   );
   const awaitingSendBack = awaitingRevision || awaitingChanges;
   const canResubmit = awaitingRevision || (awaitingChanges && !waitingOnReReview);
+
+  async function openCommentedPdf(path: string, fileName: string | null) {
+    const url = await getServiceReportSignedUrl(path, fileName);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      showToast("Couldn't open that PDF.", "error");
+    }
+  }
 
   async function handleResubmit() {
     if (isResubmitting) return;
@@ -150,8 +174,8 @@ export default function ReviewCommentsPanel({
             ? "This report was sent back to the assignee for revision."
             : `The reviewing officer sent this back. Address the comment below,${
                 bare
-                  ? " replace the PDF below if needed,"
-                  : " replace the PDF under Service Report Delivery if needed,"
+                  ? " upload a new version below if needed,"
+                  : " upload a new version under Service Report Delivery if needed,"
               } then resubmit to notify them for another peer review.`}
         </p>
       )}
@@ -167,9 +191,9 @@ export default function ReviewCommentsPanel({
             ? "This report was sent back to the assignee after approval review."
             : `The approving officer sent this back. Address the comment below,${
                 bare
-                  ? " replace the PDF below if needed,"
-                  : " replace the PDF under Service Report Delivery if needed,"
-              } then resubmit to notify them for another review. Replacing the PDF sends it back to the reviewing officer first.`}
+                  ? " upload a new version below if needed,"
+                  : " upload a new version under Service Report Delivery if needed,"
+              } then resubmit to notify them for another review. A new PDF version goes back to the reviewing officer first.`}
         </p>
       )}
 
@@ -183,7 +207,12 @@ export default function ReviewCommentsPanel({
         </p>
       ) : (
         <ul className="space-y-3">
-          {comments.map((comment) => (
+          {comments.map((comment) => {
+            const previousCommentedPath = commentedPdfPath(
+              comment,
+              currentFilePath,
+            );
+            return (
             <li
               key={comment.id}
               className={`rounded-xl border px-3 py-2.5 ${
@@ -215,11 +244,29 @@ export default function ReviewCommentsPanel({
               <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                 {comment.body}
               </p>
-              <p className="mt-1.5 text-[10px] text-slate-400">
-                {formatDate(comment.created_at)}
-              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-[10px] text-slate-400">
+                  {formatDate(comment.created_at)}
+                </p>
+                {previousCommentedPath ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void openCommentedPdf(
+                        previousCommentedPath,
+                        comment.file_name,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1f5c76] underline decoration-dotted"
+                  >
+                    <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                    Open the PDF this comment referred to
+                  </button>
+                ) : null}
+              </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

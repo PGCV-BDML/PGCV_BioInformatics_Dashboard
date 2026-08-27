@@ -167,7 +167,7 @@ Officer actions:
 Assignee response to changes:
 
 1. Fix the comments. If the PDF itself does not change, click **Resubmit for approval**.
-2. If you **replace the PDF**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file. After they **Complete review**, the approving officer is notified again (**For approval**).
+2. If you **upload a new PDF version**, Status of Review goes back to **For review** and the reviewing officer is notified immediately — the previous e-signature lived on the old file, which stays under Previous versions. After they **Complete review**, the approving officer is notified again (**For approval**).
 
 When approval completes, the assignee receives a **Report approved** notification
 with the signed PDF (last page on Open Report). The reviewing and approving
@@ -209,7 +209,7 @@ before they can complete review or approve a report.
 - Drag or resize your own stamp in that preview. Nothing is written to the stored PDF until you confirm.
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
-- Replacing the PDF after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. Officer signature stamps (Complete review / Approve) do not.
+- Uploading a new PDF version after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. The previous file stays under **Previous versions**. Officer signature stamps (Complete review / Approve) do not void review.
 
 ---
 
@@ -225,4 +225,5 @@ before they can complete review or approve a report.
 | Notification still has the unsigned PDF | After sign-off, Open Report uses the current stamped file and shows its last page. Apply `20260827120000_sync_notification_signed_report.sql` so stored payloads are updated too |
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
-| Replacing the PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
+| Uploading a new PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
+| Previous versions missing after a new upload | Apply `20260827180000_service_report_versions.sql`. Replacements made before that deleted the previous file. |

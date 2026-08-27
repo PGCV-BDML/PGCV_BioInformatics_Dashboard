@@ -800,6 +800,8 @@ export async function getReviewComments(
     return {
       ...rest,
       stage: rest.stage ?? "approval",
+      file_path: rest.file_path ?? null,
+      file_name: rest.file_name ?? null,
       author_name: author?.name?.trim() || null,
     };
   });

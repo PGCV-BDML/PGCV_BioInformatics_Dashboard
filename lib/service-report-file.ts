@@ -270,9 +270,9 @@ export async function resolveReportUrl(
 }
 
 /**
- * Remove a stored PDF. Failures are logged rather than thrown: the record
- * pointing at the file is what the workflow reads, and leaving an orphaned
- * object behind is preferable to blocking the user's edit.
+ * Remove a stored PDF. Revisions no longer call this — previous versions
+ * stay on file. Failures are logged rather than thrown: leaving an
+ * orphaned object behind is preferable to blocking the user's edit.
  */
 export async function deleteServiceReportPdf(
   path: string | null | undefined,

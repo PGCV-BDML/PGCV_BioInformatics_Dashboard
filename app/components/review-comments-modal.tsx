@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ExternalLink, MessageSquareWarning, X } from "lucide-react";
 import ReviewCommentsPanel from "./review-comments-panel";
 import ServiceReportReplace from "./service-report-replace";
+import ServiceReportVersions from "./service-report-versions";
 import {
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
@@ -87,10 +88,16 @@ export default function ReviewCommentsModal({
           analysisId={row.id}
           statusOfReview={row.status_of_review}
           statusOfSubmission={row.status_of_submission}
+          currentFilePath={row.service_report_file_path}
           onResubmitted={onResubmitted}
           forceVisible
           bare
           readOnly={readOnly}
+        />
+
+        <ServiceReportVersions
+          analysisId={row.id}
+          currentPath={row.service_report_file_path}
         />
 
         {awaitingSendBack && !readOnly ? (

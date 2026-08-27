@@ -527,12 +527,13 @@ export default function ServiceReportTrackerProtocol() {
             </p>
           </div>
         </div>
-        <Callout tone="warning" title="Replacing the PDF after review voids the reviewer stamp">
-          If you replace the PDF after Status of Review is Reviewed, the
-          reviewer stamp on the old file no longer applies. Status of Review
-          returns to For review and the reviewing officer must Complete review
-          again on the new file. The approving officer is only notified after
-          that second review.
+        <Callout tone="warning" title="A new PDF version after review voids the reviewer stamp">
+          If you upload a new PDF version after Status of Review is Reviewed,
+          the reviewer stamp on the old file no longer applies. Status of
+          Review returns to For review and the reviewing officer must Complete
+          review again on the new file. The previous PDF stays under Previous
+          versions. The approving officer is only notified after that second
+          review.
         </Callout>
       </Section>
 
@@ -597,7 +598,8 @@ export default function ServiceReportTrackerProtocol() {
         <p>
           If comments come back and the PDF itself does not change, click{" "}
           <strong className="text-[#172126]">Resubmit for approval</strong>. If
-          you replace the PDF, it goes back through peer review first.
+          you upload a new PDF version, it goes back through peer review first.
+          The earlier file stays on Previous versions.
         </p>
       </Section>
 

@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Upload } from "lucide-react";
 import { getCurrentUser, saveDataToDB } from "@/lib/supabase";
-import {
-  deleteServiceReportPdf,
-  uploadServiceReportPdf,
-} from "@/lib/service-report-file";
+import { uploadServiceReportPdf } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
 import { useToast } from "./toast";
 
@@ -26,8 +23,9 @@ interface ServiceReportReplaceProps {
 }
 
 /**
- * Lets the assignee replace the service-report PDF on the detail page
+ * Lets the assignee upload a new service-report PDF on the detail page
  * after a reviewer or approver sends the record back — without resubmitting.
+ * The previous file stays in version history.
  */
 export default function ServiceReportReplace({
   analysisId,
@@ -57,7 +55,6 @@ export default function ServiceReportReplace({
 
     try {
       const user = await getCurrentUser();
-      const previousPath = filePath.trim();
       const uploaded = await uploadServiceReportPdf({
         analysisId,
         file: pendingFile,
@@ -71,13 +68,6 @@ export default function ServiceReportReplace({
         service_report_uploaded_at: uploaded.service_report_uploaded_at,
         service_report_uploaded_by: uploaded.service_report_uploaded_by,
       });
-
-      if (
-        previousPath &&
-        previousPath !== uploaded.service_report_file_path
-      ) {
-        await deleteServiceReportPdf(previousPath);
-      }
 
       const statusOfReview =
         typeof saved.status_of_review === "string"
@@ -95,8 +85,8 @@ export default function ServiceReportReplace({
       setIsReplacing(false);
       showToast(
         String(statusOfReview ?? "").trim().toLowerCase() === "for review"
-          ? "PDF updated. The reviewing officer will sign this version again."
-          : "PDF updated. Resubmit when ready.",
+          ? "New version uploaded. The reviewing officer will sign this version again."
+          : "New version uploaded. Resubmit when ready.",
         "success",
       );
     } catch (err) {
@@ -116,7 +106,7 @@ export default function ServiceReportReplace({
     <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
       <p className="text-[11px] text-amber-900 leading-relaxed">
         {hasStoredFile
-          ? "Replace the PDF if the comments require a new file. A new file after peer review goes back to the reviewing officer to sign again."
+          ? "Upload a new version if the comments require a new file. The previous PDF stays on file. A new file after peer review goes back to the reviewing officer to sign again."
           : "Upload the corrected service report PDF, then resubmit."}
       </p>
 
@@ -131,7 +121,7 @@ export default function ServiceReportReplace({
           className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
         >
           <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-          Replace with a new PDF
+          Upload a new version
         </button>
       ) : (
         <div className="space-y-2">

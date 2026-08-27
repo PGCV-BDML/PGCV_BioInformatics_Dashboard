@@ -35,7 +35,6 @@ import {
 } from "@/lib/analysis-tracker";
 import {
   deleteAllServiceReportPdfs,
-  deleteServiceReportPdf,
   getServiceReportSignedUrl,
   uploadServiceReportPdf,
   type ServiceReportFileMeta,
@@ -707,12 +706,6 @@ export default function ServiceReportTrackerPage() {
         }
 
         const saved = await saveDataToDB("analysis", targetId, payload);
-
-        if (fileMeta && previousPath && previousPath !== fileMeta.service_report_file_path) {
-          await deleteServiceReportPdf(previousPath);
-        } else if (pathCleared && previousPath) {
-          await deleteServiceReportPdf(previousPath);
-        }
 
         const targetProject = availableProjects.find((p) => p.id === formState.project_id);
 

@@ -64,7 +64,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Address comments and resubmit",
     actor: "Analyst",
     detail:
-      "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval. Replacing the PDF after peer review notifies the reviewing officer again — they must sign the new file before approval can continue.",
+      "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval. Uploading a new PDF version after peer review notifies the reviewing officer again — they must sign the new file before approval can continue. Previous versions stay on the record.",
   },
   {
     title: "Submit and close out",

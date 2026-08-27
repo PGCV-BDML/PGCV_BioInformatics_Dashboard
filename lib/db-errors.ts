@@ -15,6 +15,14 @@ const TABLE_LABELS: Partial<
   sample: { one: "sample", many: "samples" },
   task: { one: "task", many: "tasks" },
   service_report: { one: "service report", many: "service reports" },
+  analysis_review_comment: {
+    one: "review comment",
+    many: "review comments",
+  },
+  analysis_service_report_version: {
+    one: "service report version",
+    many: "service report versions",
+  },
   project: { one: "project", many: "projects" },
   client: { one: "client", many: "clients" },
   service: { one: "service", many: "services" },

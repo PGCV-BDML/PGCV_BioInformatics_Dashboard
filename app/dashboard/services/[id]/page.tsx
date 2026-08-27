@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
+import ServiceReportVersions from "../../../components/service-report-versions";
 import {
   getRowsFromDB,
   getNameIdFromDB,
@@ -451,6 +452,7 @@ export default function AnalysisDetailPage({
             analysisId={record.id}
             statusOfReview={record.status_of_review}
             statusOfSubmission={record.status_of_submission}
+            currentFilePath={record.service_report_file_path}
             readOnly={isReadOnly}
             onResubmitted={(stage) =>
               setRecord((prev) =>
@@ -642,6 +644,10 @@ export default function AnalysisDetailPage({
                   }
                 />
                 ) : null}
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
+                />
                 <div>
                   <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                     Report Link
@@ -687,31 +693,43 @@ export default function AnalysisDetailPage({
             ) : !isReadOnly &&
               (isRevisionRequestedLabel(record.status_of_review) ||
                 isChangesRequestedLabel(record.status_of_submission)) ? (
-              <ServiceReportReplace
-                analysisId={record.id}
-                filePath={record.service_report_file_path}
-                enabled
-                onReplaced={(next) =>
-                  setRecord((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          service_report_file_path: next.path,
-                          service_report_file_name: next.name,
-                          status_of_review:
-                            next.statusOfReview ?? prev.status_of_review,
-                          notes: next.notes ?? prev.notes,
-                        }
-                      : prev,
-                  )
-                }
-              />
+              <>
+                <ServiceReportReplace
+                  analysisId={record.id}
+                  filePath={record.service_report_file_path}
+                  enabled
+                  onReplaced={(next) =>
+                    setRecord((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            service_report_file_path: next.path,
+                            service_report_file_name: next.name,
+                            status_of_review:
+                              next.statusOfReview ?? prev.status_of_review,
+                            notes: next.notes ?? prev.notes,
+                          }
+                        : prev,
+                    )
+                  }
+                />
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
+                />
+              </>
             ) : (
-              <p className="text-sm text-slate-500 italic">
-                {isReadOnly
-                  ? "No service report has been uploaded yet."
-                  : 'No report link yet. Paste one when creating the record, or use "Generate Report" once completion status is Completed.'}
-              </p>
+              <>
+                <p className="text-sm text-slate-500 italic">
+                  {isReadOnly
+                    ? "No service report has been uploaded yet."
+                    : 'No report link yet. Paste one when creating the record, or use "Generate Report" once completion status is Completed.'}
+                </p>
+                <ServiceReportVersions
+                  analysisId={record.id}
+                  currentPath={record.service_report_file_path}
+                />
+              </>
             )}
           </div>
         </div>
