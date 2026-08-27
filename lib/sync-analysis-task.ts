@@ -183,6 +183,7 @@ async function runAnalysisSync(
     priority: options?.priority ?? existing?.priority ?? "medium",
     linked_project_id: analysis.project_id,
     linked_analysis_id: analysis.id,
+    is_personal: false,
     updated_at: new Date().toISOString(),
   };
 

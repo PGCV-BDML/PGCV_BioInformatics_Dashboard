@@ -21,6 +21,7 @@ export type CalendarTask = {
   categories: TaskCategory[];
   projectName: string | null;
   assigneeName: string;
+  is_personal?: boolean;
 };
 
 type TaskDateFields = {
@@ -296,6 +297,7 @@ export function mapTasksForCalendar(
         ? (projectNameById.get(projectId) ?? null)
         : null,
       assigneeName: formatAssigneeNames(assigneeIds, assigneeNameById),
+      is_personal: Boolean(t.is_personal),
     });
   }
 

@@ -905,11 +905,18 @@ export default function TaskCalendar() {
                       >
                         {task.title}
                       </Link>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {task.is_personal ? (
+                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand text-slate-700 bg-slate-100 border-slate-200">
+                            Personal
+                          </span>
+                        ) : null}
                       <span
                         className={`shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border font-quicksand ${priority.chip}`}
                       >
                         {priority.label}
                       </span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1 text-[11px] text-slate-500 font-aileron">
                       <CategoryChips categories={task.categories} maxVisible={3} />

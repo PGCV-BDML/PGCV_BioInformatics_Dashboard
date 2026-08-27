@@ -46,6 +46,11 @@ import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
+import {
+  matchesVisibilityFilter,
+  VISIBILITY_FILTER_OPTIONS,
+  type VisibilityFilter,
+} from "@/lib/personal-items";
 
 const KIND_FILTERS: { value: RepositoryKind | "All"; label: string }[] = [
   { value: "All", label: "All" },
@@ -75,6 +80,7 @@ function buildRepositoryPayload(formData: RepositoryFormData) {
     description: formData.description.trim() || null,
     category: categories[0] ?? ("other" as const),
     run_id: formData.run_id.trim() || null,
+    is_personal: formData.is_personal,
   };
 }
 
@@ -84,6 +90,8 @@ export default function RepositoriesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<RepositoryKind | "All">("All");
+  const [visibilityFilter, setVisibilityFilter] =
+    useState<VisibilityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<
     RepositoryCategory | "All"
   >("All");
@@ -141,6 +149,9 @@ export default function RepositoriesPage() {
   const filtered = useMemo(() => {
     return repositories.filter((row) => {
       if (kindFilter !== "All" && row.kind !== kindFilter) return false;
+      if (!matchesVisibilityFilter(row.is_personal, visibilityFilter)) {
+        return false;
+      }
       const tags = resolveRepositoryCategories(row);
       if (categoryFilter !== "All" && !tags.includes(categoryFilter)) {
         return false;
@@ -159,7 +170,7 @@ export default function RepositoriesPage() {
         categoryText.toLowerCase().includes(q)
       );
     });
-  }, [repositories, kindFilter, categoryFilter, searchQuery]);
+  }, [repositories, kindFilter, visibilityFilter, categoryFilter, searchQuery]);
 
   const {
     sortConfig,
@@ -170,7 +181,7 @@ export default function RepositoriesPage() {
   } = useTableState<Repository>({
     items: filtered,
     itemsPerPage,
-    resetKey: `${searchQuery}-${kindFilter}-${categoryFilter}`,
+    resetKey: `${searchQuery}-${kindFilter}-${visibilityFilter}-${categoryFilter}`,
     initialSort: { key: "title", direction: "asc" },
     customSorters: {
       kind: (a, b) => kindLabel(a.kind).localeCompare(kindLabel(b.kind)),
@@ -186,6 +197,7 @@ export default function RepositoriesPage() {
       description: selected.description || "",
       categories: resolveRepositoryCategories(selected),
       run_id: selected.run_id || "",
+      is_personal: Boolean(selected.is_personal),
     };
   }, [selected]);
 
@@ -292,6 +304,11 @@ export default function RepositoriesPage() {
             text={row.title}
             className="font-bold text-[#11161a] leading-snug"
           />
+          {row.is_personal ? (
+            <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md font-quicksand">
+              Personal
+            </span>
+          ) : null}
           {row.description?.trim() ? (
             <TruncatedText
               text={row.description}
@@ -444,6 +461,22 @@ export default function RepositoriesPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
+              {VISIBILITY_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVisibilityFilter(opt.value)}
+                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                    visibilityFilter === opt.value
+                      ? "bg-white text-[#2a7797] shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
               {KIND_FILTERS.map((opt) => (
                 <button

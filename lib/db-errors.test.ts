@@ -106,6 +106,14 @@ describe("describeSaveError", () => {
     expect(message).toContain("apply the latest Supabase migration");
   });
 
+  it("explains a personal sequence-analysis task", () => {
+    const message = describeSaveError(
+      { message: "Sequence analysis tasks cannot be personal" },
+      "task",
+    );
+    expect(message).toContain("cannot be marked personal");
+  });
+
   it("explains a point-person column restriction", () => {
     const message = describeSaveError(
       { message: "Point person may only update status and follow-up notes" },

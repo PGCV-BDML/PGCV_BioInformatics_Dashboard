@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  listedServiceReportVersions,
   previousServiceReportVersions,
   serviceReportVersionLabel,
   type ServiceReportVersion,
@@ -83,5 +84,38 @@ describe("previousServiceReportVersions", () => {
       revision.file_path,
     );
     expect(previous.map((row) => row.kind)).toEqual(["reviewed", "upload"]);
+  });
+});
+
+describe("listedServiceReportVersions", () => {
+  it("puts the current file first", () => {
+    const original = version({
+      id: "v-1",
+      file_path: "a-1/1/report.pdf",
+      kind: "upload",
+      uploaded_at: "2026-08-01T10:00:00.000Z",
+    });
+    const revision = version({
+      id: "v-2",
+      file_path: "a-1/2/report.pdf",
+      kind: "revision",
+      uploaded_at: "2026-08-04T10:00:00.000Z",
+    });
+    const listed = listedServiceReportVersions(
+      [original, revision],
+      revision.file_path,
+    );
+    expect(listed.map((row) => row.id)).toEqual(["v-2", "v-1"]);
+  });
+
+  it("still lists a single current file", () => {
+    const original = version({
+      id: "v-1",
+      file_path: "a-1/1/report.pdf",
+      kind: "upload",
+      uploaded_at: "2026-08-01T10:00:00.000Z",
+    });
+    const listed = listedServiceReportVersions([original], original.file_path);
+    expect(listed.map((row) => row.id)).toEqual(["v-1"]);
   });
 });

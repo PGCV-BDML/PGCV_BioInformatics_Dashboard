@@ -34,6 +34,7 @@ interface TaskModalProps {
   ) => void;
   onCategoriesChange: (categories: TaskCategory[]) => void;
   onAssigneesChange: (assigneeIds: string[]) => void;
+  onPersonalChange: (isPersonal: boolean) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -50,6 +51,7 @@ export default function TaskModal({
   onInputChange,
   onCategoriesChange,
   onAssigneesChange,
+  onPersonalChange,
   onClose,
   onSubmit,
 }: TaskModalProps) {
@@ -107,6 +109,20 @@ export default function TaskModal({
   };
 
   const linkedAnalysisId = formState.linked_analysis_id;
+  const isPersonal = Boolean(formState.is_personal) && !linkedAnalysisId;
+
+  function handlePersonalToggle(checked: boolean) {
+    if (linkedAnalysisId) return;
+    if (!isAdding && Boolean(formState.is_personal) !== checked) {
+      const ok = window.confirm(
+        checked
+          ? "This will hide it from the team. Only you will be able to see it."
+          : "This will make it visible to the team.",
+      );
+      if (!ok) return;
+    }
+    onPersonalChange(checked);
+  }
 
   return (
     <SlideOverModal
@@ -144,6 +160,24 @@ export default function TaskModal({
               <p className="text-red-500 text-xs ml-1 mt-0.5 font-aileron" role="alert">{errors.title}</p>
             )}
           </div>
+
+          <label className="ml-1 inline-flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isPersonal}
+              disabled={Boolean(linkedAnalysisId)}
+              onChange={(e) => handlePersonalToggle(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb] disabled:opacity-50"
+            />
+            <span>
+              <span className="text-xs font-bold text-slate-800">Personal</span>
+              <span className="block text-[10px] font-medium text-slate-500 leading-snug">
+                {linkedAnalysisId
+                  ? "Sequence analysis tasks stay on the team board."
+                  : "Only you can see this. It will not appear for teammates on Tasks or Calendar."}
+              </span>
+            </span>
+          </label>
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="task-details" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
@@ -230,12 +264,15 @@ export default function TaskModal({
               selected={resolveTaskAssigneeIds(formState)}
               users={availableUsers}
               onChange={handleAssigneesChange}
-              max={linkedAnalysisId ? 1 : undefined}
+              max={linkedAnalysisId || isPersonal ? 1 : undefined}
+              disabled={isPersonal}
               error={errors.assignee_ids}
               hint={
                 linkedAnalysisId
                   ? "Sequence analysis tasks can have only one assignee. Leave empty to unassign."
-                  : "Select one or more people, or leave unassigned."
+                  : isPersonal
+                    ? "Personal tasks stay assigned to you."
+                    : "Select one or more people, or leave unassigned."
               }
             />
           </div>

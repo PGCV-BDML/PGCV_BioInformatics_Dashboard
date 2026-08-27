@@ -33,6 +33,7 @@ export function buildTaskRecordPayload(
     status: record.status,
     priority: record.priority,
     linked_project_id: record.linked_project_id || null,
+    is_personal: Boolean(record.is_personal) && !record.linked_analysis_id,
     updated_at: new Date().toISOString(),
   };
 }

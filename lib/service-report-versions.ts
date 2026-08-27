@@ -65,6 +65,20 @@ export function previousServiceReportVersions(
     });
 }
 
+/** History list including the current file, newest first. */
+export function listedServiceReportVersions(
+  versions: ServiceReportVersion[],
+  currentPath: string | null | undefined,
+): ServiceReportVersion[] {
+  const current = currentPath?.trim() ?? "";
+  const previous = previousServiceReportVersions(versions, currentPath);
+  const currentRow = versions.find(
+    (version) => version.file_path.trim() === current,
+  );
+  if (currentRow) return [currentRow, ...previous];
+  return previous;
+}
+
 /** History rows for one analysis, newest first. Empty if the table is missing. */
 export async function getServiceReportVersions(
   analysisId: string,

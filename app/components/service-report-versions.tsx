@@ -5,7 +5,7 @@ import { ExternalLink, History } from "lucide-react";
 import { getServiceReportSignedUrl } from "@/lib/service-report-file";
 import {
   getServiceReportVersions,
-  previousServiceReportVersions,
+  listedServiceReportVersions,
   serviceReportVersionLabel,
   type ServiceReportVersion,
 } from "@/lib/service-report-versions";
@@ -46,7 +46,7 @@ export default function ServiceReportVersions({
     };
   }, [analysisId, currentPath]);
 
-  const previous = previousServiceReportVersions(versions, currentPath);
+  const listed = listedServiceReportVersions(versions, currentPath);
 
   async function openVersion(version: ServiceReportVersion) {
     const url = await getServiceReportSignedUrl(
@@ -60,16 +60,21 @@ export default function ServiceReportVersions({
     }
   }
 
-  if (isLoading || previous.length === 0) return null;
+  if (isLoading || listed.length === 0) return null;
+
+  const current = currentPath?.trim() ?? "";
 
   return (
     <div className="space-y-2">
       <h4 className="text-[10px] text-slate-400 font-bold uppercase tracking-wide flex items-center gap-1.5">
         <History className="w-3 h-3" aria-hidden="true" />
-        Previous versions
+        Version history
       </h4>
       <ul className="space-y-1.5">
-        {previous.map((version) => (
+        {listed.map((version) => {
+          const isCurrent =
+            current !== "" && version.file_path.trim() === current;
+          return (
           <li
             key={version.id}
             className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
@@ -77,6 +82,11 @@ export default function ServiceReportVersions({
             <div className="min-w-0">
               <p className="truncate text-[11px] font-bold text-slate-700">
                 {version.file_name || "Service report.pdf"}
+                {isCurrent ? (
+                  <span className="ml-1.5 text-[9px] font-extrabold uppercase tracking-wider text-teal-700">
+                    Current
+                  </span>
+                ) : null}
               </p>
               <p className="text-[10px] text-slate-400">
                 <span className="font-semibold text-slate-500">
@@ -95,7 +105,8 @@ export default function ServiceReportVersions({
               Open
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
