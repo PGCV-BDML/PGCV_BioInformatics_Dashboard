@@ -24,7 +24,7 @@ import { getServiceReportVersions } from "@/lib/service-report-versions";
 const mockGetVersions = vi.mocked(getServiceReportVersions);
 
 describe("ServiceReportVersions", () => {
-  it("lists older files and hides the current one", async () => {
+  it("lists the current file and older files", async () => {
     mockGetVersions.mockResolvedValue([
       {
         id: "v-2",
@@ -55,9 +55,36 @@ describe("ServiceReportVersions", () => {
       />,
     );
 
-    expect(await screen.findByText("Previous versions")).toBeInTheDocument();
+    expect(await screen.findByText("Version history")).toBeInTheDocument();
     expect(screen.getByText("original.pdf")).toBeInTheDocument();
-    expect(screen.queryByText("current.pdf")).not.toBeInTheDocument();
+    expect(screen.getByText("current.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Current")).toBeInTheDocument();
     expect(screen.getByText(/Original/)).toBeInTheDocument();
+  });
+
+  it("shows history when only the current file has been recorded", async () => {
+    mockGetVersions.mockResolvedValue([
+      {
+        id: "v-1",
+        analysis_id: "a-1",
+        file_path: "a-1/1/report.pdf",
+        file_name: "report.pdf",
+        file_size: 10,
+        kind: "upload",
+        uploaded_by: null,
+        uploaded_at: "2026-08-01T10:00:00.000Z",
+      },
+    ]);
+
+    render(
+      <ServiceReportVersions
+        analysisId="a-1"
+        currentPath="a-1/1/report.pdf"
+      />,
+    );
+
+    expect(await screen.findByText("Version history")).toBeInTheDocument();
+    expect(screen.getByText("report.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Current")).toBeInTheDocument();
   });
 });

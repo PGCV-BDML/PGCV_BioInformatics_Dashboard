@@ -99,6 +99,9 @@ export type Task = {
   categories?: TaskCategory[];
   /** Client-enriched from task_assignee; not a column on task. */
   assignee_ids?: string[];
+  /** Owner-only visibility. Shared (false) is the default. */
+  is_personal?: boolean;
+  owner_id?: string | null;
   updated_at?: string;
 };
 
@@ -564,6 +567,8 @@ export type Repository = {
   categories?: RepositoryCategory[];
   /** Sequencer run ID; deep-links to Service Report Tracker RUN ID. */
   run_id: string | null;
+  is_personal?: boolean;
+  owner_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -584,6 +589,7 @@ export type RepositoryFormData = {
   description: string;
   categories: RepositoryCategory[];
   run_id: string;
+  is_personal: boolean;
 };
 
 // ============================================================

@@ -159,6 +159,14 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     return `Failed to save ${subject}: sequence analysis tasks can have only one assignee.`;
   }
 
+  if (message.includes("cannot be personal")) {
+    return `Failed to save ${subject}: sequence analysis tasks cannot be marked personal.`;
+  }
+
+  if (message.includes("Only the owner can change Personal")) {
+    return `Failed to save ${subject}: only you can change the Personal setting on this record.`;
+  }
+
   if (
     message.includes("incident_report_title_chk") ||
     message.includes("incident_report_description_chk")

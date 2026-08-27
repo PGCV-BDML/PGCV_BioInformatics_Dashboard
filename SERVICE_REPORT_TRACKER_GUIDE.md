@@ -226,4 +226,4 @@ before they can complete review or approve a report.
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
 | Uploading a new PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
-| Previous versions missing after a new upload | Apply `20260827180000_service_report_versions.sql`. Replacements made before that deleted the previous file. |
+| Previous versions missing after a new upload | Apply `20260827180000_service_report_versions.sql` and `20260827180100_service_report_version_grants.sql`. Version history lists the current PDF once those run; replacements made before 180000 deleted the previous file. |

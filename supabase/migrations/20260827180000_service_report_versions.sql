@@ -461,3 +461,6 @@ $$;
 
 REVOKE ALL ON FUNCTION public.complete_analysis_review(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.complete_analysis_review(uuid, text) TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON TABLE public.analysis_service_report_version TO authenticated;
