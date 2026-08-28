@@ -927,30 +927,25 @@ function TasksPageContent() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
-                Mine
-              </span>
-              <div
-                role="group"
-                aria-label="Filter by assignment"
-                className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
-              >
-                {TASK_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setInvolvementFilter(opt.value)}
-                    className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
-                      involvementFilter === opt.value
-                        ? "bg-white text-[#2a7797] shadow-sm"
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+            <div
+              role="group"
+              aria-label="Filter by assigned or created"
+              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
+            >
+              {TASK_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setInvolvementFilter(opt.value)}
+                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                    involvementFilter === opt.value
+                      ? "bg-white text-[#2a7797] shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>

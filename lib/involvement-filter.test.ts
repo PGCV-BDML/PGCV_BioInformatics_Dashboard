@@ -14,7 +14,7 @@ describe("matchesInvolvementFilter", () => {
     ).toBe(true);
   });
 
-  it("Assigned to me keeps rows where the current user is an assignee", () => {
+  it("Assigned keeps rows where the current user is an assignee", () => {
     expect(
       matchesInvolvementFilter("assigned", me, {
         ownerId: other,
@@ -29,7 +29,7 @@ describe("matchesInvolvementFilter", () => {
     ).toBe(false);
   });
 
-  it("Made by me keeps rows owned by the current user", () => {
+  it("Created keeps rows owned by the current user", () => {
     expect(
       matchesInvolvementFilter("created", me, {
         ownerId: me,

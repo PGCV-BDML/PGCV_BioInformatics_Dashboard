@@ -5,8 +5,8 @@ export const TASK_INVOLVEMENT_FILTER_OPTIONS: {
   label: string;
 }[] = [
   { value: "all", label: "All" },
-  { value: "assigned", label: "Assigned to me" },
-  { value: "created", label: "Made by me" },
+  { value: "assigned", label: "Assigned" },
+  { value: "created", label: "Created" },
 ];
 
 export const REPOSITORY_INVOLVEMENT_FILTER_OPTIONS: {
@@ -14,7 +14,7 @@ export const REPOSITORY_INVOLVEMENT_FILTER_OPTIONS: {
   label: string;
 }[] = [
   { value: "all", label: "All" },
-  { value: "created", label: "Made by me" },
+  { value: "created", label: "Created" },
 ];
 
 export function matchesInvolvementFilter(
