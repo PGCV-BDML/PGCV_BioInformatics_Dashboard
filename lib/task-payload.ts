@@ -15,7 +15,7 @@ export function buildTaskRecordPayload(
   const {
     categories: _categories,
     assignee_ids: _assigneeIds,
-    linked_analysis_id: linkedAnalysisId,
+    linked_analysis_id: _linkedAnalysisId,
     ...record
   } = form;
 
@@ -33,7 +33,7 @@ export function buildTaskRecordPayload(
     status: record.status,
     priority: record.priority,
     linked_project_id: record.linked_project_id || null,
-    is_personal: Boolean(record.is_personal) && !linkedAnalysisId,
+    is_personal: false,
     updated_at: new Date().toISOString(),
   };
 }

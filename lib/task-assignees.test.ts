@@ -83,6 +83,17 @@ describe("buildTaskRecordPayload", () => {
     });
     expect(unassigned.assignee_id).toBeNull();
   });
+
+  it("never marks a task personal from the form", () => {
+    const payload = buildTaskRecordPayload({
+      ...baseTask,
+      assignee_id: null,
+      assignee_ids: ["u1"],
+      categories: ["meeting"],
+      is_personal: true,
+    });
+    expect(payload.is_personal).toBe(false);
+  });
 });
 
 describe("primaryAssigneeId", () => {

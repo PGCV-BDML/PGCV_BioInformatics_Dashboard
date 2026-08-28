@@ -60,11 +60,6 @@ import {
   resolveTaskAssigneeIds,
 } from "@/lib/task-assignees";
 import {
-  matchesVisibilityFilter,
-  VISIBILITY_FILTER_OPTIONS,
-  type VisibilityFilter,
-} from "@/lib/personal-items";
-import {
   matchesInvolvementFilter,
   TASK_INVOLVEMENT_FILTER_OPTIONS,
   type InvolvementFilter,
@@ -126,8 +121,6 @@ function TasksPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [visibilityFilter, setVisibilityFilter] =
-    useState<VisibilityFilter>("all");
   const [involvementFilter, setInvolvementFilter] =
     useState<InvolvementFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
@@ -363,9 +356,6 @@ function TasksPageContent() {
   const filteredTasks = useMemo(() => {
     return tasksList.filter((task) => {
       if (activeFilter !== "All" && task.status !== activeFilter) return false;
-      if (!matchesVisibilityFilter(task.is_personal, visibilityFilter)) {
-        return false;
-      }
       if (
         !matchesInvolvementFilter(involvementFilter, currentUserId, {
           ownerId: task.owner_id,
@@ -409,7 +399,6 @@ function TasksPageContent() {
     searchQuery,
     tasksList,
     activeFilter,
-    visibilityFilter,
     involvementFilter,
     categoryFilter,
     availableProjects,
@@ -427,7 +416,7 @@ function TasksPageContent() {
   } = useTableState<Task>({
     items: filteredTasks,
     itemsPerPage,
-    resetKey: `${searchQuery}-${activeFilter}-${visibilityFilter}-${involvementFilter}-${categoryFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${involvementFilter}-${categoryFilter}`,
     // Keep open work visible; completed and cancelled tasks sink below.
     pinToBottom: isClosedTask,
     customSorters: {
@@ -486,27 +475,6 @@ function TasksPageContent() {
     }));
   }, []);
 
-  const handlePersonalChange = useCallback(
-    (isPersonal: boolean) => {
-      setFormState((prev) => {
-        if (prev.linked_analysis_id) {
-          return { ...prev, is_personal: false };
-        }
-        if (!isPersonal) {
-          return { ...prev, is_personal: false };
-        }
-        const self = currentUserId ? [currentUserId] : [];
-        return {
-          ...prev,
-          is_personal: true,
-          assignee_ids: self,
-          assignee_id: currentUserId,
-        };
-      });
-    },
-    [currentUserId],
-  );
-
   const handleAddSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; // prevent double-submit
@@ -514,10 +482,7 @@ function TasksPageContent() {
 
     const generatedId = crypto.randomUUID();
     const categories = formState.categories ?? [];
-    const assignee_ids =
-      formState.is_personal && currentUserId
-        ? [currentUserId]
-        : resolveTaskAssigneeIds(formState);
+    const assignee_ids = resolveTaskAssigneeIds(formState);
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
     const task_time = normalizeTaskTime(formState.task_time);
     const newTask: Task = {
@@ -528,6 +493,7 @@ function TasksPageContent() {
       assignee_id: primaryAssigneeId(assignee_ids),
       assignee_ids,
       categories,
+      is_personal: false,
       owner_id: currentUserId,
     };
 
@@ -556,10 +522,7 @@ function TasksPageContent() {
     setIsSubmitting(true);
 
     const categories = formState.categories ?? [];
-    const assignee_ids =
-      formState.is_personal && currentUserId
-        ? [currentUserId]
-        : resolveTaskAssigneeIds(formState);
+    const assignee_ids = resolveTaskAssigneeIds(formState);
     const dates = normalizeTaskDateRange(formState.start_date, formState.end_date);
     const task_time = normalizeTaskTime(formState.task_time);
 
@@ -578,6 +541,7 @@ function TasksPageContent() {
                 assignee_id: primaryAssigneeId(assignee_ids),
                 assignee_ids,
                 categories,
+                is_personal: false,
               }
             : item,
         ),
@@ -592,7 +556,7 @@ function TasksPageContent() {
     }
 
     setIsEditing(false);
-  }, [formState, selectedTask, showToast, isSubmitting, currentUserId]);
+  }, [formState, selectedTask, showToast, isSubmitting]);
   const handleDeleteRecord = useCallback(() => {
     if (!selectedTask) return;
     deleteRecord(selectedTask, () => {
@@ -650,18 +614,11 @@ function TasksPageContent() {
             text={t.title}
             className="font-bold text-[#11161a] leading-snug"
           />
-          <div className="flex flex-wrap gap-1">
-            {t.is_personal ? (
-              <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md font-quicksand">
-                Personal
-              </span>
-            ) : null}
-            {t.linked_analysis_id && (
-              <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200/70 px-1.5 py-0.5 rounded-md font-quicksand">
-                Sequence analysis
-              </span>
-            )}
-          </div>
+          {t.linked_analysis_id && (
+            <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200/70 px-1.5 py-0.5 rounded-md font-quicksand">
+              Sequence analysis
+            </span>
+          )}
         </div>
       ),
     },
@@ -906,47 +863,25 @@ function TasksPageContent() {
             <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div
-              role="group"
-              aria-label="Filter by visibility"
-              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
-            >
-              {VISIBILITY_FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setVisibilityFilter(opt.value)}
-                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
-                    visibilityFilter === opt.value
-                      ? "bg-white text-[#2a7797] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <div
-              role="group"
-              aria-label="Filter by assigned or created"
-              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
-            >
-              {TASK_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setInvolvementFilter(opt.value)}
-                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
-                    involvementFilter === opt.value
-                      ? "bg-white text-[#2a7797] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div
+            role="group"
+            aria-label="Filter by assigned or created"
+            className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
+          >
+            {TASK_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setInvolvementFilter(opt.value)}
+                className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                  involvementFilter === opt.value
+                    ? "bg-white text-[#2a7797] shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1051,7 +986,6 @@ function TasksPageContent() {
         onInputChange={handleInputChange}
         onCategoriesChange={handleCategoriesChange}
         onAssigneesChange={handleAssigneesChange}
-        onPersonalChange={handlePersonalChange}
         onClose={handleCloseTaskModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
       />

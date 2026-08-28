@@ -81,7 +81,7 @@ function buildRepositoryPayload(formData: RepositoryFormData) {
     description: formData.description.trim() || null,
     category: categories[0] ?? ("other" as const),
     run_id: formData.run_id.trim() || null,
-    is_personal: formData.is_personal,
+    is_personal: false,
   };
 }
 
@@ -311,11 +311,6 @@ export default function RepositoriesPage() {
             text={row.title}
             className="font-bold text-[#11161a] leading-snug"
           />
-          {row.is_personal ? (
-            <span className="inline-flex text-[9px] font-extrabold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md font-quicksand">
-              Personal
-            </span>
-          ) : null}
           {row.description?.trim() ? (
             <TruncatedText
               text={row.description}

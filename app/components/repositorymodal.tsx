@@ -131,33 +131,6 @@ export default function RepositoryModal({
             )}
           </div>
 
-          <label className="ml-1 inline-flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formState.is_personal}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                if (!isAdding && formState.is_personal !== checked) {
-                  const ok = window.confirm(
-                    checked
-                      ? "This will hide it from the team. Only you will be able to see it."
-                      : "This will make it visible to the team.",
-                  );
-                  if (!ok) return;
-                }
-                handleInputChange("is_personal", checked);
-              }}
-              className="mt-0.5 rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb]"
-            />
-            <span>
-              <span className="text-xs font-bold text-slate-800">Personal</span>
-              <span className="block text-[10px] font-medium text-slate-500 leading-snug">
-                Only you can see this. It will not appear for teammates on
-                Repositories or Tracker run-ID links.
-              </span>
-            </span>
-          </label>
-
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="repo-url"
