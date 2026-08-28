@@ -64,6 +64,11 @@ import {
   VISIBILITY_FILTER_OPTIONS,
   type VisibilityFilter,
 } from "@/lib/personal-items";
+import {
+  matchesInvolvementFilter,
+  TASK_INVOLVEMENT_FILTER_OPTIONS,
+  type InvolvementFilter,
+} from "@/lib/involvement-filter";
 import { usePortal } from "../../components/portal-context";
 import { AnalysisStatus } from "../../../types/database";
 import { tasksBreadcrumbs } from "@/lib/breadcrumbs";
@@ -123,6 +128,8 @@ function TasksPageContent() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>("all");
+  const [involvementFilter, setInvolvementFilter] =
+    useState<InvolvementFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "All">("All");
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -360,6 +367,14 @@ function TasksPageContent() {
         return false;
       }
       if (
+        !matchesInvolvementFilter(involvementFilter, currentUserId, {
+          ownerId: task.owner_id,
+          assigneeIds: resolveTaskAssigneeIds(task),
+        })
+      ) {
+        return false;
+      }
+      if (
         categoryFilter !== "All" &&
         !(task.categories ?? []).includes(categoryFilter)
       ) {
@@ -395,9 +410,11 @@ function TasksPageContent() {
     tasksList,
     activeFilter,
     visibilityFilter,
+    involvementFilter,
     categoryFilter,
     availableProjects,
     assigneeNameById,
+    currentUserId,
   ]);
 
   const { 
@@ -410,7 +427,7 @@ function TasksPageContent() {
   } = useTableState<Task>({
     items: filteredTasks,
     itemsPerPage,
-    resetKey: `${searchQuery}-${activeFilter}-${visibilityFilter}-${categoryFilter}`,
+    resetKey: `${searchQuery}-${activeFilter}-${visibilityFilter}-${involvementFilter}-${categoryFilter}`,
     // Keep open work visible; completed and cancelled tasks sink below.
     pinToBottom: isClosedTask,
     customSorters: {
@@ -511,6 +528,7 @@ function TasksPageContent() {
       assignee_id: primaryAssigneeId(assignee_ids),
       assignee_ids,
       categories,
+      owner_id: currentUserId,
     };
 
     try {
@@ -888,21 +906,52 @@ function TasksPageContent() {
             <h2 className="text-2xl font-bold text-[#333333]">List of Tasks</h2>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
-            {VISIBILITY_FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setVisibilityFilter(opt.value)}
-                className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
-                  visibilityFilter === opt.value
-                    ? "bg-white text-[#2a7797] shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="group"
+              aria-label="Filter by visibility"
+              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
+            >
+              {VISIBILITY_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVisibilityFilter(opt.value)}
+                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                    visibilityFilter === opt.value
+                      ? "bg-white text-[#2a7797] shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+                Mine
+              </span>
+              <div
+                role="group"
+                aria-label="Filter by assignment"
+                className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
               >
-                {opt.label}
-              </button>
-            ))}
+                {TASK_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setInvolvementFilter(opt.value)}
+                    className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                      involvementFilter === opt.value
+                        ? "bg-white text-[#2a7797] shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

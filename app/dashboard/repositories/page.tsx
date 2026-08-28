@@ -46,11 +46,17 @@ import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
+import { usePortal } from "../../components/portal-context";
 import {
   matchesVisibilityFilter,
   VISIBILITY_FILTER_OPTIONS,
   type VisibilityFilter,
 } from "@/lib/personal-items";
+import {
+  matchesInvolvementFilter,
+  REPOSITORY_INVOLVEMENT_FILTER_OPTIONS,
+  type InvolvementFilter,
+} from "@/lib/involvement-filter";
 
 const KIND_FILTERS: { value: RepositoryKind | "All"; label: string }[] = [
   { value: "All", label: "All" },
@@ -92,6 +98,8 @@ export default function RepositoriesPage() {
   const [kindFilter, setKindFilter] = useState<RepositoryKind | "All">("All");
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>("all");
+  const [involvementFilter, setInvolvementFilter] =
+    useState<InvolvementFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<
     RepositoryCategory | "All"
   >("All");
@@ -107,6 +115,8 @@ export default function RepositoriesPage() {
   const isPanelOpen = isAdding || isEditing;
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
+  const { profile } = usePortal();
+  const currentUserId = profile?.id ?? null;
 
   useEffect(() => {
     toggleSidebar(isPanelOpen);
@@ -152,6 +162,13 @@ export default function RepositoriesPage() {
       if (!matchesVisibilityFilter(row.is_personal, visibilityFilter)) {
         return false;
       }
+      if (
+        !matchesInvolvementFilter(involvementFilter, currentUserId, {
+          ownerId: row.owner_id,
+        })
+      ) {
+        return false;
+      }
       const tags = resolveRepositoryCategories(row);
       if (categoryFilter !== "All" && !tags.includes(categoryFilter)) {
         return false;
@@ -170,7 +187,7 @@ export default function RepositoriesPage() {
         categoryText.toLowerCase().includes(q)
       );
     });
-  }, [repositories, kindFilter, visibilityFilter, categoryFilter, searchQuery]);
+  }, [repositories, kindFilter, visibilityFilter, involvementFilter, categoryFilter, searchQuery, currentUserId]);
 
   const {
     sortConfig,
@@ -181,7 +198,7 @@ export default function RepositoriesPage() {
   } = useTableState<Repository>({
     items: filtered,
     itemsPerPage,
-    resetKey: `${searchQuery}-${kindFilter}-${visibilityFilter}-${categoryFilter}`,
+    resetKey: `${searchQuery}-${kindFilter}-${visibilityFilter}-${involvementFilter}-${categoryFilter}`,
     initialSort: { key: "title", direction: "asc" },
     customSorters: {
       kind: (a, b) => kindLabel(a.kind).localeCompare(kindLabel(b.kind)),
@@ -460,8 +477,12 @@ export default function RepositoriesPage() {
             </h2>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+            <div
+              role="group"
+              aria-label="Filter by visibility"
+              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
+            >
               {VISIBILITY_FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -476,6 +497,31 @@ export default function RepositoriesPage() {
                   {opt.label}
                 </button>
               ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
+                Mine
+              </span>
+              <div
+                role="group"
+                aria-label="Filter by creator"
+                className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
+              >
+                {REPOSITORY_INVOLVEMENT_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setInvolvementFilter(opt.value)}
+                    className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
+                      involvementFilter === opt.value
+                        ? "bg-white text-[#2a7797] shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full">
               {KIND_FILTERS.map((opt) => (
