@@ -1,4 +1,7 @@
-import type { AnalysisStatus } from "@/types/database";
+import type {
+  AnalysisStatus,
+  AnalysisStatusEvent,
+} from "@/types/database";
 
 /** Canonical analysis classification options (Sequence Analysis form). */
 export const ANALYSIS_OPTIONS = [
@@ -317,4 +320,71 @@ export function labelFromAnalysisStatus(status: AnalysisStatus): string {
     default:
       return status;
   }
+}
+
+function formatStatusEventWhen(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function sameStatusLabel(
+  value: string | null | undefined,
+  expected: string,
+): boolean {
+  return String(value ?? "").trim().toLowerCase() === expected.toLowerCase();
+}
+
+/**
+ * One-line description of a tracker workflow event, matching incident
+ * case activity (who did what, when).
+ */
+export function analysisStatusEventLabel(
+  event: AnalysisStatusEvent,
+  actorName: string | null | undefined,
+): string {
+  const name = actorName?.trim() || event.note?.trim() || "Unknown";
+  const when = formatStatusEventWhen(event.changed_at) || "an unknown time";
+  const from = event.from_value?.trim() || "";
+  const to = event.to_value?.trim() || "";
+
+  if (event.field === "file") {
+    if (!from && to) return `${name} uploaded the service report PDF on ${when}`;
+    if (from && !to) return `${name} removed the service report PDF on ${when}`;
+    return `${name} replaced the service report PDF on ${when}`;
+  }
+
+  const field =
+    event.field === "completion"
+      ? "completion"
+      : event.field === "review"
+        ? "review"
+        : "submission";
+
+  if (!from && to) {
+    return `${name} logged ${field} as ${to} on ${when}`;
+  }
+  if (from && !to) {
+    return `${name} cleared ${field} on ${when}`;
+  }
+  if (event.field === "review" && sameStatusLabel(to, REVIEWED)) {
+    return `${name} marked this Reviewed on ${when}`;
+  }
+  if (event.field === "review" && sameStatusLabel(to, REVISION_REQUESTED)) {
+    return `${name} requested a revision on ${when}`;
+  }
+  if (event.field === "submission" && sameStatusLabel(to, "Approved")) {
+    return `${name} approved this report on ${when}`;
+  }
+  if (event.field === "submission" && sameStatusLabel(to, CHANGES_REQUESTED)) {
+    return `${name} requested changes on ${when}`;
+  }
+  return `${name} changed ${field} from ${from} to ${to} on ${when}`;
 }

@@ -17,6 +17,7 @@ import {
   getCurrentUser,
   getRowsFromDB,
   getUsersFromDB,
+  getAnalysisStatusEvents,
   saveDataToDB,
   deleteDataFromDB,
   supabase,
@@ -42,6 +43,7 @@ import {
 import {
   Analysis,
   AnalysisStatus,
+  AnalysisStatusEvent,
   Project,
   User,
   Service,
@@ -309,6 +311,10 @@ export default function ServiceReportTrackerPage() {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusEvents, setStatusEvents] = useState<AnalysisStatusEvent[]>([]);
+  const [statusEventsLoadedFor, setStatusEventsLoadedFor] = useState<
+    string | null
+  >(null);
 
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [slideStyle, setSlideStyle] = useState({ left: 0, width: 0 });
@@ -867,6 +873,41 @@ export default function ServiceReportTrackerPage() {
     },
     [],
   );
+
+  const userNames = useMemo(
+    () => Object.fromEntries(personnelDirectory.map((u) => [u.id, u.name])),
+    [personnelDirectory],
+  );
+
+  const statusEventsLoading = Boolean(
+    isSidebarOpen &&
+      isEditing &&
+      selectedAnalysis &&
+      statusEventsLoadedFor !== selectedAnalysis.id,
+  );
+
+  useEffect(() => {
+    if (!isSidebarOpen || !isEditing || !selectedAnalysis?.id) return;
+    const analysisId = selectedAnalysis.id;
+    let cancelled = false;
+
+    getAnalysisStatusEvents(analysisId)
+      .then((rows) => {
+        if (cancelled) return;
+        setStatusEvents(rows);
+        setStatusEventsLoadedFor(analysisId);
+      })
+      .catch((error) => {
+        console.error("Failed to load report activity:", error);
+        if (cancelled) return;
+        setStatusEvents([]);
+        setStatusEventsLoadedFor(analysisId);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSidebarOpen, isEditing, selectedAnalysis?.id]);
 
   const availableYears = useMemo(
     () =>
@@ -1724,6 +1765,9 @@ export default function ServiceReportTrackerPage() {
         )}
         pendingFile={pendingFile}
         onPendingFileChange={setPendingFile}
+        statusEvents={statusEvents}
+        statusEventsLoading={statusEventsLoading}
+        userNames={userNames}
         onClose={closeSidebar}
         onChange={handleInputChange}
         onSubmit={handleSaveAnalysis}

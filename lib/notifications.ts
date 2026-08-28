@@ -442,50 +442,6 @@ export function subscribeToNotificationChanges(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shared helpers                                                    */
-/* ------------------------------------------------------------------ */
-
-async function getActorDisplayName(
-  fallback = "Approving officer",
-): Promise<string> {
-  const user = await getCurrentUser();
-  if (!user) return fallback;
-
-  const { data } = await supabase
-    .from("users")
-    .select("name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const name = data?.name?.trim();
-  if (name) return name;
-
-  const meta = user.user_metadata as
-    | { full_name?: string; name?: string }
-    | undefined;
-  return (
-    meta?.full_name?.trim() || meta?.name?.trim() || user.email || fallback
-  );
-}
-
-function buildSystemNote(action: string, actor: string): string {
-  const date = new Date().toISOString().slice(0, 10);
-  return `System: ${action} by ${actor} on ${date}`;
-}
-
-function appendSystemNote(
-  existing: string | null | undefined,
-  line: string,
-): string {
-  const current = (existing ?? "").trim();
-  if (current.includes(line)) return current;
-  // Avoid repeating the same action type on the same day if wording drifts.
-  const actionPrefix = line.split(" by ")[0];
-  if (actionPrefix && current.includes(actionPrefix)) return current;
-  return current ? `${current}\n${line}` : line;
-}
-
-/* ------------------------------------------------------------------ */
 /*  Review stage — the reviewing officer                              */
 /* ------------------------------------------------------------------ */
 
@@ -590,7 +546,7 @@ export async function requestAnalysisRevision(
 export async function resubmitForReview(analysisId: string): Promise<void> {
   const { data: analysis, error } = await supabase
     .from("analysis")
-    .select("id, status_of_review, notes")
+    .select("id, status_of_review")
     .eq("id", analysisId)
     .maybeSingle();
 
@@ -605,15 +561,8 @@ export async function resubmitForReview(analysisId: string): Promise<void> {
     throw new Error("This report has no outstanding revision request.");
   }
 
-  const actor = await getActorDisplayName("Assignee");
-  const nextNotes = appendSystemNote(
-    analysis.notes,
-    buildSystemNote("Resubmitted for review", actor),
-  );
-
   await saveDataToDB("analysis", analysisId, {
     status_of_review: "For review",
-    notes: nextNotes || null,
   });
 
   const user = await getCurrentUser();
@@ -654,14 +603,14 @@ async function applyApprovalAction(
   }
 }
 
-/** Set submission status to Under review + append a system note (no backwards move). */
+/** Set submission status to Under review (no backwards move). */
 export async function markAnalysisUnderReview(
   analysisId: string,
 ): Promise<void> {
   await applyApprovalAction(analysisId, "Under review");
 }
 
-/** Set submission status to Approved + append a system note (no backwards move). */
+/** Set submission status to Approved (no backwards move). */
 export async function approveAnalysis(
   analysisId: string,
   rect?: SignatureRect | null,
@@ -729,9 +678,7 @@ export async function requestAnalysisChanges(
 export async function resubmitForApproval(analysisId: string): Promise<void> {
   const { data: analysis, error } = await supabase
     .from("analysis")
-    .select(
-      "id, status_of_completion, status_of_review, status_of_submission, notes",
-    )
+    .select("id, status_of_completion, status_of_review, status_of_submission")
     .eq("id", analysisId)
     .maybeSingle();
 
@@ -751,19 +698,12 @@ export async function resubmitForApproval(analysisId: string): Promise<void> {
     );
   }
 
-  const actor = await getActorDisplayName("Assignee");
-  const nextNotes = appendSystemNote(
-    analysis.notes,
-    buildSystemNote("Resubmitted for approval", actor),
-  );
-
   await saveDataToDB("analysis", analysisId, {
     status_of_submission: "For approval",
     status: deriveLegacyStatus({
       status_of_completion: analysis.status_of_completion,
       status_of_submission: "For approval",
     }),
-    notes: nextNotes || null,
   });
 
   const user = await getCurrentUser();

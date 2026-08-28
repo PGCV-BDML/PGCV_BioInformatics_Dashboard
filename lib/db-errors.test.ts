@@ -77,6 +77,9 @@ describe("describeDeleteError", () => {
     expect(describeDeleteError(new Error(""), "incident_report")).toBe(
       "Failed to delete this incident report.",
     );
+    expect(describeDeleteError(new Error(""), "analysis_status_event")).toBe(
+      "Failed to delete this report activity event.",
+    );
     expect(
       describeDeleteError(new Error(""), "analysis_service_report_version"),
     ).toBe("Failed to delete this service report version.");

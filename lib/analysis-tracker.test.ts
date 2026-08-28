@@ -6,10 +6,14 @@ import {
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   mapLabelToAnalysisStatus,
   needsReReviewAfterPdfReplace,
+  REVISION_REQUESTED,
+  REVIEWED,
   shouldAdvanceSubmissionStatus,
   STATUS_OF_SUBMISSION_OPTIONS,
   submissionStatusRank,
+  analysisStatusEventLabel,
 } from "./analysis-tracker";
+import type { AnalysisStatusEvent } from "@/types/database";
 
 describe("isChangesRequestedLabel", () => {
   it("matches the label in both spaced and underscored form", () => {
@@ -110,5 +114,67 @@ describe("needsReReviewAfterPdfReplace", () => {
     expect(needsReReviewAfterPdfReplace("Reviewed", "For approval")).toBe(
       false,
     );
+  });
+});
+
+describe("analysisStatusEventLabel", () => {
+  function event(
+    overrides: Partial<AnalysisStatusEvent> = {},
+  ): AnalysisStatusEvent {
+    return {
+      id: "evt-1",
+      analysis_id: "a-1",
+      field: "review",
+      from_value: "For review",
+      to_value: REVIEWED,
+      changed_by: "user-2",
+      changed_at: "2026-08-28T08:12:00.000Z",
+      note: null,
+      ...overrides,
+    };
+  }
+
+  it("names who marked the report Reviewed and when", () => {
+    const label = analysisStatusEventLabel(event(), "Alex Cruz");
+    expect(label.startsWith("Alex Cruz marked this Reviewed on ")).toBe(true);
+    expect(label).toContain("2026");
+  });
+
+  it("describes a revision request", () => {
+    const label = analysisStatusEventLabel(
+      event({ to_value: REVISION_REQUESTED }),
+      "Jane Doe",
+    );
+    expect(label.startsWith("Jane Doe requested a revision on ")).toBe(true);
+  });
+
+  it("describes a PDF replace", () => {
+    const label = analysisStatusEventLabel(
+      event({
+        field: "file",
+        from_value: "old.pdf",
+        to_value: "new.pdf",
+      }),
+      "Micah Lojera",
+    );
+    expect(
+      label.startsWith("Micah Lojera replaced the service report PDF on "),
+    ).toBe(true);
+  });
+
+  it("uses the stored note when the actor name is missing", () => {
+    const label = analysisStatusEventLabel(
+      event({ changed_by: null, note: "Pat Reyes" }),
+      "  ",
+    );
+    expect(label.startsWith("Pat Reyes marked this Reviewed on ")).toBe(true);
+  });
+
+  it("falls back when both actor and note are missing", () => {
+    const label = analysisStatusEventLabel(
+      event({ changed_by: null, note: null }),
+      "  ",
+    );
+    expect(label.startsWith("Unknown marked this Reviewed on ")).toBe(true);
   });
 });

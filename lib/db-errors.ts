@@ -23,6 +23,10 @@ const TABLE_LABELS: Partial<
     one: "service report version",
     many: "service report versions",
   },
+  analysis_status_event: {
+    one: "report activity event",
+    many: "report activity events",
+  },
   project: { one: "project", many: "projects" },
   client: { one: "client", many: "clients" },
   service: { one: "service", many: "services" },

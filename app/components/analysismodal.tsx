@@ -23,6 +23,8 @@ import {
   getServiceReportSignedUrl,
 } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
+import { ReportActivitySection } from "./report-activity";
+import type { AnalysisStatusEvent } from "../../types/database";
 
 export { ANALYSIS_OPTIONS, ANALYSIS_OTHER };
 
@@ -107,6 +109,9 @@ interface AnalysisSidebarProps {
   /** PDF staged for upload on save. The parent performs the upload. */
   pendingFile: File | null;
   onPendingFileChange: (file: File | null) => void;
+  statusEvents?: AnalysisStatusEvent[];
+  statusEventsLoading?: boolean;
+  userNames?: Record<string, string>;
   onClose: () => void;
   onChange: (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -126,6 +131,9 @@ export default function AnalysisSidebar({
   availableApprovers,
   pendingFile,
   onPendingFileChange,
+  statusEvents = [],
+  statusEventsLoading = false,
+  userNames = {},
   onClose,
   onChange,
   onSubmit,
@@ -619,6 +627,12 @@ export default function AnalysisSidebar({
             placeholder="Optional notes"
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-y"
           />
+          {isEditing ? (
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              Staff remarks only. Review and approval history is under Report
+              activity.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -720,6 +734,14 @@ export default function AnalysisSidebar({
           )}
         </div>
       </div>
+
+      {isEditing ? (
+        <ReportActivitySection
+          events={statusEvents}
+          loading={statusEventsLoading}
+          userNames={userNames}
+        />
+      ) : null}
     </SlideOverModal>
   );
 }

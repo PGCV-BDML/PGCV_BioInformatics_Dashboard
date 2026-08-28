@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { use } from "react";
 import {
@@ -14,10 +14,12 @@ import {
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
 import ServiceReportVersions from "../../../components/service-report-versions";
+import { ReportActivityList } from "../../../components/report-activity";
 import {
   getRowsFromDB,
   getNameIdFromDB,
   getUsersFromDB,
+  getAnalysisStatusEvents,
   saveDataToDB,
   supabase,
 } from "@/lib/supabase";
@@ -43,7 +45,7 @@ import {
 import { routes } from "@/lib/routes";
 import { usePortal } from "../../../components/portal-context";
 import { canEditSequenceAnalysis } from "@/lib/portal";
-import { AnalysisStatus, Analysis, Project, ServiceReport, User, Repository } from "../../../../types/database";
+import { AnalysisStatus, Analysis, AnalysisStatusEvent, Project, ServiceReport, User, Repository } from "../../../../types/database";
 
 interface ServiceProjectRow {
   id: string;
@@ -91,6 +93,26 @@ export default function AnalysisDetailPage({
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [runIdRepoUrl, setRunIdRepoUrl] = useState<string | null>(null);
+  const [statusEvents, setStatusEvents] = useState<AnalysisStatusEvent[]>([]);
+  const [statusEventsLoading, setStatusEventsLoading] = useState(true);
+
+  const userNames = useMemo(
+    () => Object.fromEntries(userMap),
+    [userMap],
+  );
+
+  const loadActivity = useCallback(async (analysisId: string) => {
+    setStatusEventsLoading(true);
+    try {
+      const rows = await getAnalysisStatusEvents(analysisId);
+      setStatusEvents(rows);
+    } catch (error) {
+      console.error("Failed to load report activity:", error);
+      setStatusEvents([]);
+    } finally {
+      setStatusEventsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -103,7 +125,12 @@ export default function AnalysisDetailPage({
             getRowsFromDB<SupabaseClientRow>("client"),
             getNameIdFromDB("service"),
             getRowsFromDB<ServiceReport>("service_report"),
-            getUsersFromDB(["team_lead", "team_member"]),
+            getUsersFromDB([
+              "team_lead",
+              "team_member",
+              "reviewing_officer",
+              "approving_officer",
+            ]),
             getRowsFromDB<Repository>("repository"),
           ]);
 
@@ -123,6 +150,8 @@ export default function AnalysisDetailPage({
         if (!analysis) {
           setRecord(null);
           setRunIdRepoUrl(null);
+          setStatusEvents([]);
+          setStatusEventsLoading(false);
           return;
         }
 
@@ -198,13 +227,15 @@ export default function AnalysisDetailPage({
           notes: analysis.notes ?? "",
         };
         setRecord(displayRecord);
+        await loadActivity(analysis.id);
       } catch (err) {
         console.error("Error loading analysis detail:", err);
         setLoadError("Failed to load analysis details. Please try again.");
+        setStatusEventsLoading(false);
       }
     };
     loadData();
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, loadActivity]);
 
   const handleStatusChange = async (
     newStatus: "for_approval" | "ongoing" | "on_hold" | "submitted" | "completed",
@@ -233,6 +264,7 @@ export default function AnalysisDetailPage({
             }
           : null,
       );
+      void loadActivity(record.id);
       const syncResult = await syncAnalysisToTaskSafe({
         id: updated.id,
         project_id: updated.project_id,
@@ -444,6 +476,17 @@ export default function AnalysisDetailPage({
               <p className="text-sm text-slate-700 whitespace-pre-wrap">{record.notes}</p>
             </div>
           ) : null}
+
+          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+              Report activity
+            </span>
+            <ReportActivityList
+              events={statusEvents}
+              loading={statusEventsLoading}
+              userNames={userNames}
+            />
+          </div>
         </div>
 
         {/* Deliverables Right Block */}
@@ -618,7 +661,7 @@ export default function AnalysisDetailPage({
                     isRevisionRequestedLabel(record.status_of_review) ||
                     isChangesRequestedLabel(record.status_of_submission)
                   }
-                  onReplaced={(next) =>
+                  onReplaced={(next) => {
                     setRecord((prev) =>
                       prev
                         ? {
@@ -630,9 +673,10 @@ export default function AnalysisDetailPage({
                             notes: next.notes ?? prev.notes,
                           }
                         : prev,
-                    )
-                  }
-                  onResubmitted={(stage) =>
+                    );
+                    void loadActivity(record.id);
+                  }}
+                  onResubmitted={(stage) => {
                     setRecord((prev) =>
                       prev
                         ? {
@@ -642,8 +686,9 @@ export default function AnalysisDetailPage({
                               : { status_of_submission: "For approval" }),
                           }
                         : prev,
-                    )
-                  }
+                    );
+                    void loadActivity(record.id);
+                  }}
                 />
                 ) : null}
                 <ServiceReportVersions
@@ -702,7 +747,7 @@ export default function AnalysisDetailPage({
                   statusOfReview={record.status_of_review}
                   statusOfSubmission={record.status_of_submission}
                   enabled
-                  onReplaced={(next) =>
+                  onReplaced={(next) => {
                     setRecord((prev) =>
                       prev
                         ? {
@@ -714,9 +759,10 @@ export default function AnalysisDetailPage({
                             notes: next.notes ?? prev.notes,
                           }
                         : prev,
-                    )
-                  }
-                  onResubmitted={(stage) =>
+                    );
+                    void loadActivity(record.id);
+                  }}
+                  onResubmitted={(stage) => {
                     setRecord((prev) =>
                       prev
                         ? {
@@ -726,8 +772,9 @@ export default function AnalysisDetailPage({
                               : { status_of_submission: "For approval" }),
                           }
                         : prev,
-                    )
-                  }
+                    );
+                    void loadActivity(record.id);
+                  }}
                 />
                 <ServiceReportVersions
                   analysisId={record.id}

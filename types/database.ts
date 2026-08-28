@@ -221,6 +221,25 @@ export interface AnalysisReviewComment {
   created_at: string;
 }
 
+/** Which tracker field a workflow event belongs to. */
+export type AnalysisStatusEventField =
+  | "completion"
+  | "review"
+  | "submission"
+  | "file";
+
+/** One status or PDF change on a sequence analysis, newest-first in the UI. */
+export type AnalysisStatusEvent = {
+  id: string;
+  analysis_id: string;
+  field: AnalysisStatusEventField;
+  from_value: string | null;
+  to_value: string | null;
+  changed_by: string | null;
+  changed_at: string;
+  note: string | null;
+};
+
 /** One stored PDF that has been current on an analysis. */
 export type ServiceReportVersionKind =
   | "upload"

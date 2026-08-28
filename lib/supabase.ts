@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type {
+  AnalysisStatusEvent,
   IncidentStatusEvent,
   RepositoryCategory,
   TaskCategory,
@@ -99,6 +100,7 @@ export type TableNames =
   | "analysis"
   | "analysis_review_comment"
   | "analysis_service_report_version"
+  | "analysis_status_event"
   | "sample"
   | "service_report"
   | "training_program"
@@ -187,6 +189,23 @@ export async function getRowsFromDB<T = any>(table: TableNames): Promise<T[]> {
   }
 
   return (rows ?? []) as T[];
+}
+
+export async function getAnalysisStatusEvents(
+  analysisId: string,
+): Promise<AnalysisStatusEvent[]> {
+  const { data, error } = await supabase
+    .from("analysis_status_event")
+    .select("*")
+    .eq("analysis_id", analysisId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    console.error("Error retrieving analysis status events:", error);
+    throw error;
+  }
+
+  return (data ?? []) as AnalysisStatusEvent[];
 }
 
 export async function getIncidentStatusEvents(
