@@ -3,9 +3,11 @@ import {
   buildClientIdLookup,
   buildClientPayload,
   buildClientProfilePatch,
+  buildClientUpdatePayload,
   buildCoreClientInsert,
   buildLegacyClientPayload,
   extractEmailAddress,
+  formFromClientRecord,
   mapClientRowToRecord,
   matchClientByExternalId,
   compareClientIds,
@@ -13,6 +15,8 @@ import {
   normalizeClientIdKey,
   parseGeneratedClientId,
   parseExternalClientIds,
+  projectIdFromNotes,
+  saveExistingClient,
   saveNewClient,
   unknownColumnFromError,
   type ClientFormState,
@@ -82,6 +86,33 @@ describe("mapClientRowToRecord", () => {
         contact_info: "PGC Visayas",
       }).emailAddress,
     ).toBe("");
+  });
+
+  it("reads Project ID from the dedicated column", () => {
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-1",
+        project_id: "PRJ-204",
+        notes: "Project ID: stale",
+      }).projectId,
+    ).toBe("PRJ-204");
+  });
+
+  it("falls back to notes when project_id was never persisted", () => {
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-1",
+        notes: "Project ID: PRJ-204",
+      }).projectId,
+    ).toBe("PRJ-204");
+  });
+});
+
+describe("projectIdFromNotes", () => {
+  it("parses the core-insert notes format", () => {
+    expect(projectIdFromNotes("Project ID: PRJ-204")).toBe("PRJ-204");
+    expect(projectIdFromNotes("unrelated")).toBe("");
+    expect(projectIdFromNotes(null)).toBe("");
   });
 });
 
@@ -247,14 +278,13 @@ describe("buildClientProfilePatch", () => {
 });
 
 describe("saveNewClient", () => {
-  it("inserts core columns then patches profile fields", async () => {
+  it("inserts profile fields with the core row so the table can show them", async () => {
     const inserts: Array<Record<string, unknown>> = [];
     const updates: Array<Record<string, unknown>> = [];
 
     const saved = await saveNewClient(makeForm(), [], {
       insert: async (row) => {
         inserts.push(row);
-        expect(row).not.toHaveProperty("email_address");
         return { id: row.id as string, ...row };
       },
       update: async (id, patch) => {
@@ -264,30 +294,76 @@ describe("saveNewClient", () => {
     });
 
     expect(inserts).toHaveLength(1);
-    expect(updates).toEqual([
-      {
-        project_id: "P-1",
-        email_address: "ada@example.org",
-        designation: "PI",
-      },
-    ]);
+    expect(inserts[0]).toMatchObject({
+      project_id: "P-1",
+      email_address: "ada@example.org",
+      designation: "PI",
+    });
+    expect(updates).toEqual([]);
+    expect(saved.project_id).toBe("P-1");
     expect(saved.email_address).toBe("ada@example.org");
+    expect(saved.designation).toBe("PI");
   });
 
-  it("still succeeds when the profile patch is rejected", async () => {
+  it("keeps project_id when a drifted DB rejects email_address", async () => {
+    const inserts: Array<Record<string, unknown>> = [];
+
     const saved = await saveNewClient(makeForm(), [], {
-      insert: async (row) => ({ id: row.id as string, ...row }),
-      update: async () => {
-        throw {
-          code: "PGRST204",
-          message:
-            "Could not find the 'email_address' column of 'client' in the schema cache",
-        };
+      insert: async (row) => {
+        inserts.push(row);
+        if ("email_address" in row) {
+          throw {
+            code: "PGRST204",
+            message:
+              "Could not find the 'email_address' column of 'client' in the schema cache",
+          };
+        }
+        return { id: row.id as string, ...row };
+      },
+      update: async (id, patch) => {
+        if ("email_address" in patch) {
+          throw {
+            code: "PGRST204",
+            message:
+              "Could not find the 'email_address' column of 'client' in the schema cache",
+          };
+        }
+        return { id, ...patch };
+      },
+    });
+
+    expect(inserts[inserts.length - 1]).toHaveProperty("project_id", "P-1");
+    expect(inserts[inserts.length - 1]).toHaveProperty("designation", "PI");
+    expect(inserts[inserts.length - 1]).not.toHaveProperty("email_address");
+    expect(saved.project_id).toBe("P-1");
+    expect(saved.designation).toBe("PI");
+    expect(mapClientRowToRecord(saved).projectId).toBe("P-1");
+  });
+
+  it("still shows Project ID from notes when profile columns are missing", async () => {
+    const unknown = (column: string) => ({
+      code: "PGRST204",
+      message: `Could not find the '${column}' column of 'client' in the schema cache`,
+    });
+
+    const saved = await saveNewClient(makeForm(), [], {
+      insert: async (row) => {
+        for (const column of ["email_address", "project_id", "designation"]) {
+          if (column in row) throw unknown(column);
+        }
+        return { id: row.id as string, ...row };
+      },
+      update: async (_id, patch) => {
+        for (const column of ["email_address", "project_id", "designation"]) {
+          if (column in patch) throw unknown(column);
+        }
+        return null;
       },
     });
 
     expect(saved.name).toBe("Ada Lovelace");
     expect(saved.contact_info).toBe("ada@example.org | PGCV");
+    expect(mapClientRowToRecord(saved).projectId).toBe("P-1");
   });
 
   it("retries the insert without unknown optional columns", async () => {
@@ -310,6 +386,124 @@ describe("saveNewClient", () => {
     expect(inserts).toHaveLength(2);
     expect(inserts[0]).toHaveProperty("notes");
     expect(inserts[1]).not.toHaveProperty("notes");
+  });
+});
+
+describe("formFromClientRecord", () => {
+  it("copies table fields into the slide-over form", () => {
+    expect(formFromClientRecord(makeClient())).toEqual({
+      clientId: "CL-2024-128",
+      clientName: "Ada Lovelace",
+      projectId: "P-1",
+      emailAddress: "ada@example.org",
+      affiliation: "PGCV",
+      designation: "PI",
+    });
+  });
+});
+
+describe("buildClientUpdatePayload", () => {
+  it("sends nulls so an edit can clear optional profile fields", () => {
+    const payload = buildClientUpdatePayload(
+      makeForm({
+        projectId: "",
+        emailAddress: "",
+        designation: "",
+      }),
+      { clientId: "CL-2024-128" },
+    );
+    expect(payload.project_id).toBeNull();
+    expect(payload.email_address).toBeNull();
+    expect(payload.designation).toBeNull();
+    expect(payload.notes).toBeNull();
+    expect(payload.client_id).toBe("CL-2024-128");
+  });
+
+  it("keeps the existing Client ID when the form leaves it blank", () => {
+    const payload = buildClientUpdatePayload(
+      makeForm({ clientId: "  " }),
+      { clientId: "CL-2024-128" },
+    );
+    expect(payload.client_id).toBe("CL-2024-128");
+  });
+});
+
+describe("saveExistingClient", () => {
+  it("updates core and profile fields", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const saved = await saveExistingClient(
+      "uuid-1",
+      makeForm({
+        clientName: "Ada L.",
+        projectId: "PRJ-204",
+        designation: "Lead PI",
+      }),
+      { clientId: "CL-2024-128" },
+      {
+        update: async (id, patch) => {
+          updates.push(patch);
+          return { id, ...patch };
+        },
+      },
+    );
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({
+      name: "Ada L.",
+      project_id: "PRJ-204",
+      designation: "Lead PI",
+      notes: "Project ID: PRJ-204",
+    });
+    expect(mapClientRowToRecord(saved).projectId).toBe("PRJ-204");
+    expect(mapClientRowToRecord(saved).clientName).toBe("Ada L.");
+  });
+
+  it("keeps project_id when email_address is missing from the schema", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const saved = await saveExistingClient(
+      "uuid-1",
+      makeForm({ projectId: "PRJ-204" }),
+      { clientId: "CL-2024-128" },
+      {
+        update: async (id, patch) => {
+          updates.push(patch);
+          if ("email_address" in patch) {
+            throw {
+              code: "PGRST204",
+              message:
+                "Could not find the 'email_address' column of 'client' in the schema cache",
+            };
+          }
+          return { id, ...patch };
+        },
+      },
+    );
+
+    expect(updates[updates.length - 1]).toHaveProperty("project_id", "PRJ-204");
+    expect(updates[updates.length - 1]).not.toHaveProperty("email_address");
+    expect(mapClientRowToRecord(saved).projectId).toBe("PRJ-204");
+  });
+
+  it("still shows Project ID from notes when the project_id column is missing", async () => {
+    const saved = await saveExistingClient(
+      "uuid-1",
+      makeForm({ projectId: "PRJ-204" }),
+      { clientId: "CL-2024-128" },
+      {
+        update: async (id, patch) => {
+          if ("project_id" in patch) {
+            throw {
+              code: "PGRST204",
+              message:
+                "Could not find the 'project_id' column of 'client' in the schema cache",
+            };
+          }
+          return { id, ...patch };
+        },
+      },
+    );
+
+    expect(mapClientRowToRecord(saved).projectId).toBe("PRJ-204");
   });
 });
 

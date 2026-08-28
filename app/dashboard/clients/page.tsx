@@ -13,8 +13,10 @@ import {
   FolderOpen,
   Users,
   ChevronDown,
+  ChevronRight,
   SlidersHorizontal,
   Inbox,
+  Edit3,
 } from "lucide-react";
 import {
   LoadingState,
@@ -29,7 +31,9 @@ import Pagination from "../../components/pagination";
 import {
   compareClientIds,
   createEmptyClientForm,
+  formFromClientRecord,
   mapClientRowToRecord,
+  saveExistingClient,
   saveNewClient,
   type ClientFormState,
   type ClientRecord,
@@ -109,6 +113,7 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<ClientRecord | null>(null);
   const { toggleSidebar } = useDashboardUI();
   const { showToast } = useToast();
 
@@ -149,6 +154,49 @@ export default function ClientsPage() {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  const clientWriter = useMemo(
+    () => ({
+      insert: async (row: Record<string, unknown>) => {
+        const { data, error } = await supabase
+          .from("client")
+          .insert(row)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+        return (data ?? row) as SupabaseClientRow;
+      },
+      update: async (id: string, patch: Record<string, unknown>) => {
+        const { data, error } = await supabase
+          .from("client")
+          .update(patch)
+          .eq("id", id)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+        return data as SupabaseClientRow | null;
+      },
+    }),
+    [],
+  );
+
+  const closePanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setEditingClient(null);
+    setFormState(createEmptyClientForm());
+  }, []);
+
+  const openAddPanel = useCallback(() => {
+    setEditingClient(null);
+    setFormState(createEmptyClientForm());
+    setIsPanelOpen(true);
+  }, []);
+
+  const openEditPanel = useCallback((client: ClientRecord) => {
+    setEditingClient(client);
+    setFormState(formFromClientRecord(client));
+    setIsPanelOpen(true);
   }, []);
 
   const filteredClients = useMemo(() => {
@@ -233,12 +281,30 @@ export default function ClientsPage() {
       {
         key: "designation",
         label: "Designation",
-        width: "16%",
+        width: "14%",
         sortable: true,
         render: (c) => <TruncatedText text={c.designation} multiline />,
       },
+      {
+        key: "actions",
+        label: "Actions",
+        width: "8%",
+        render: (c) => (
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => openEditPanel(c)}
+              className="group/btn flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded-lg text-gray-600 transition-all duration-200 shadow-sm"
+              title="Edit client"
+            >
+              <Edit3 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-105" />
+              <ChevronRight className="w-3 h-3 opacity-0 max-w-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:max-w-[12px] group-hover/btn:translate-x-0 transition-all duration-200 text-slate-400" />
+            </button>
+          </div>
+        ),
+      },
     ],
-    [],
+    [openEditPanel],
   );
 
   const handleInputChange = useCallback(
@@ -265,6 +331,7 @@ export default function ClientsPage() {
         typedClientId &&
         clients.some(
           (client) =>
+            client.id !== editingClient?.id &&
             client.clientId.trim().toLowerCase() === typedClientId.toLowerCase(),
         )
       ) {
@@ -275,46 +342,50 @@ export default function ClientsPage() {
       setIsSaving(true);
 
       try {
+        if (editingClient) {
+          const savedRow = await saveExistingClient(
+            editingClient.id,
+            formState,
+            editingClient,
+            clientWriter,
+          );
+          const nextClient = {
+            ...mapClientRowToRecord(savedRow),
+            id: editingClient.id,
+            createdAt: editingClient.createdAt,
+          };
+          setClients((prev) =>
+            prev.map((client) =>
+              client.id === editingClient.id ? nextClient : client,
+            ),
+          );
+          closePanel();
+          showToast("Client updated successfully.", "success");
+          return;
+        }
+
         const savedRow = await saveNewClient(
           formState,
           clients.map((client) => client.clientId),
-          {
-            insert: async (row) => {
-              const { data, error } = await supabase
-                .from("client")
-                .insert(row)
-                .select()
-                .maybeSingle();
-              if (error) throw error;
-              return (data ?? row) as SupabaseClientRow;
-            },
-            update: async (id, patch) => {
-              const { data, error } = await supabase
-                .from("client")
-                .update(patch)
-                .eq("id", id)
-                .select()
-                .maybeSingle();
-              if (error) throw error;
-              return data as SupabaseClientRow | null;
-            },
-          },
+          clientWriter,
         );
 
         const nextClient = mapClientRowToRecord(savedRow);
 
         setClients((prev) => [nextClient, ...prev]);
-        setFormState(createEmptyClientForm());
-        setIsPanelOpen(false);
+        closePanel();
         showToast("Client added successfully.", "success");
       } catch (error) {
-        console.error("Failed to add client", error);
+        console.error(
+          editingClient ? "Failed to update client" : "Failed to add client",
+          error,
+        );
         showToast(describeSaveError(error, "client"), "error");
       } finally {
         setIsSaving(false);
       }
     },
-    [clients, formState, showToast],
+    [clients, clientWriter, closePanel, editingClient, formState, showToast],
   );
 
   return (
@@ -367,10 +438,7 @@ export default function ClientsPage() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              setFormState(createEmptyClientForm());
-              setIsPanelOpen(true);
-            }}
+            onClick={openAddPanel}
             className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Client
@@ -424,11 +492,15 @@ export default function ClientsPage() {
 
       <SlideOverModal
         isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        title="Add New Client"
-        subtitle="Capture client registration details and project affiliation information."
+        onClose={closePanel}
+        title={editingClient ? "Edit Client" : "Add New Client"}
+        subtitle={
+          editingClient
+            ? "Update this client's registration details and project affiliation."
+            : "Capture client registration details and project affiliation information."
+        }
         onSubmit={handleSubmit}
-        submitLabel="Save"
+        submitLabel={editingClient ? "Save Changes" : "Save"}
         isSaving={isSaving}
         submitDisabled={isSaving}
       >
@@ -465,7 +537,11 @@ export default function ClientsPage() {
                     type={type}
                     value={formState[key]}
                     onChange={handleInputChange}
-                    placeholder={placeholder}
+                    placeholder={
+                      key === "clientId" && editingClient
+                        ? "Existing Client ID"
+                        : placeholder
+                    }
                     className="w-full h-10 pl-9 pr-3 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
                     required={required}
                   />

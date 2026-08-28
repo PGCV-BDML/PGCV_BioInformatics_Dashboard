@@ -24,6 +24,7 @@ export interface SupabaseClientRow {
   affiliation_address?: string | null;
   designation?: string | null;
   contact_info?: string | null;
+  notes?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -36,6 +37,17 @@ export function createEmptyClientForm(): ClientFormState {
     emailAddress: "",
     affiliation: "",
     designation: "",
+  };
+}
+
+export function formFromClientRecord(client: ClientRecord): ClientFormState {
+  return {
+    clientId: client.clientId,
+    clientName: client.clientName,
+    projectId: client.projectId,
+    emailAddress: client.emailAddress,
+    affiliation: client.affiliation,
+    designation: client.designation,
   };
 }
 
@@ -61,6 +73,14 @@ export function extractEmailAddress(value: string | null | undefined): string {
   return match ? match[0] : "";
 }
 
+/** Core insert stores `Project ID: …` in legacy `notes` when `project_id` may be missing. */
+const PROJECT_ID_IN_NOTES = /Project ID:\s*(.+)/i;
+
+export function projectIdFromNotes(value: string | null | undefined): string {
+  const match = (value ?? "").match(PROJECT_ID_IN_NOTES);
+  return match?.[1]?.trim() ?? "";
+}
+
 export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
   const email = row.email_address?.trim() ?? "";
 
@@ -69,7 +89,7 @@ export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
     createdAt: row.created_at ?? new Date().toISOString(),
     clientId: row.client_id ?? "",
     clientName: row.name ?? "",
-    projectId: row.project_id ?? "",
+    projectId: row.project_id?.trim() || projectIdFromNotes(row.notes),
     emailAddress: email || extractEmailAddress(row.contact_info),
     affiliation: row.affiliation ?? "",
     designation: row.designation ?? "",
@@ -184,6 +204,35 @@ export function buildClientProfilePatch(
 }
 
 /**
+ * Full update payload. Empty optional fields are sent as `null` so an
+ * edit can clear Project ID / email / designation. `notes` stays in
+ * sync for databases that never grew a `project_id` column.
+ */
+export function buildClientUpdatePayload(
+  form: ClientFormState,
+  current: Pick<ClientRecord, "clientId">,
+): Record<string, unknown> {
+  const trimmed = trimClientForm(form);
+  const clientId = trimmed.clientId || current.clientId.trim();
+
+  return {
+    client_id: clientId,
+    name: trimmed.clientName,
+    affiliation: trimmed.affiliation,
+    contact_info: packedContactInfo(
+      trimmed.emailAddress,
+      trimmed.affiliation,
+      trimmed.clientName,
+    ),
+    project_id: trimmed.projectId || null,
+    email_address: trimmed.emailAddress || null,
+    designation: trimmed.designation || null,
+    notes: trimmed.projectId ? `Project ID: ${trimmed.projectId}` : null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
  * Payload for `public.client`.
  *
  * `name`, `affiliation`, and `contact_info` are NOT NULL. Empty optional
@@ -289,9 +338,56 @@ export interface ClientWriter {
   ) => Promise<SupabaseClientRow | null>;
 }
 
+function hasOwnColumn(
+  payload: Record<string, unknown>,
+  column: string,
+): boolean {
+  return Object.prototype.hasOwnProperty.call(payload, column);
+}
+
+function overlayWrittenClientFields(
+  row: SupabaseClientRow,
+  written: Record<string, unknown>,
+): SupabaseClientRow {
+  const next: SupabaseClientRow = { ...row };
+
+  if (!next.client_id && typeof written.client_id === "string") {
+    next.client_id = written.client_id;
+  }
+  if (!next.project_id && typeof written.project_id === "string") {
+    next.project_id = written.project_id;
+  }
+  if (!next.email_address && typeof written.email_address === "string") {
+    next.email_address = written.email_address;
+  }
+  if (!next.designation && typeof written.designation === "string") {
+    next.designation = written.designation;
+  }
+  if (!next.notes && typeof written.notes === "string") {
+    next.notes = written.notes;
+  }
+  if (!next.project_id) {
+    next.project_id = projectIdFromNotes(next.notes) || null;
+  }
+
+  return next;
+}
+
+function remainingProfilePatch(
+  form: ClientFormState,
+  saved: SupabaseClientRow,
+): Record<string, unknown> {
+  const patch = buildClientProfilePatch(form);
+  if (saved.project_id) delete patch.project_id;
+  if (saved.email_address) delete patch.email_address;
+  if (saved.designation) delete patch.designation;
+  return patch;
+}
+
 /**
- * Insert the original client columns, then best-effort patch profile
- * fields. A missing `email_address` (PGRST204) no longer blocks create.
+ * Insert core columns plus any filled profile fields, stripping unknown
+ * optional columns (PGRST204) so a missing `email_address` cannot drop
+ * `project_id` / `designation`. Then best-effort patch whatever is left.
  */
 export async function saveNewClient(
   form: ClientFormState,
@@ -299,37 +395,40 @@ export async function saveNewClient(
   db: ClientWriter,
 ): Promise<SupabaseClientRow> {
   const rowId = crypto.randomUUID();
-  let core = buildCoreClientInsert(rowId, form, existingClientIds);
+  let payload: Record<string, unknown> = {
+    ...buildCoreClientInsert(rowId, form, existingClientIds),
+    ...buildClientProfilePatch(form),
+  };
   let saved: SupabaseClientRow | null = null;
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     try {
-      saved = await db.insert(core);
+      saved = await db.insert(payload);
       break;
     } catch (error) {
       lastError = error;
       const column = unknownColumnFromError(error);
       if (
         column &&
-        Object.prototype.hasOwnProperty.call(core, column) &&
+        hasOwnColumn(payload, column) &&
         !CORE_REQUIRED_COLUMNS.has(column)
       ) {
-        const next = { ...core };
+        const next = { ...payload };
         delete next[column];
-        core = next;
+        payload = next;
         continue;
       }
       if (
         isUniqueClientIdError(error) &&
         !form.clientId.trim() &&
-        typeof core.client_id === "string"
+        typeof payload.client_id === "string"
       ) {
-        core = {
-          ...core,
+        payload = {
+          ...payload,
           client_id: nextGeneratedClientId([
             ...existingClientIds,
-            core.client_id,
+            payload.client_id,
           ]),
         };
         continue;
@@ -340,15 +439,84 @@ export async function saveNewClient(
 
   if (!saved) throw lastError;
 
-  const patch = buildClientProfilePatch(form);
+  saved = overlayWrittenClientFields(saved, payload);
+
+  let patch = remainingProfilePatch(form, saved);
   if (Object.keys(patch).length === 0) return saved;
 
-  try {
-    const patched = await db.update(saved.id, patch);
-    return patched ?? saved;
-  } catch {
-    return saved;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const patched = await db.update(saved.id, patch);
+      return overlayWrittenClientFields(
+        { ...saved, ...(patched ?? {}) },
+        patch,
+      );
+    } catch (error) {
+      const column = unknownColumnFromError(error);
+      if (column && hasOwnColumn(patch, column)) {
+        const next = { ...patch };
+        delete next[column];
+        patch = next;
+        if (Object.keys(patch).length === 0) return saved;
+        continue;
+      }
+      return overlayWrittenClientFields(saved, payload);
+    }
   }
+
+  return saved;
+}
+
+const UPDATE_REQUIRED_COLUMNS = new Set([
+  "client_id",
+  "name",
+  "affiliation",
+  "contact_info",
+]);
+
+/**
+ * Update an existing client, stripping unknown optional columns so a
+ * missing `email_address` cannot block Project ID / designation.
+ */
+export async function saveExistingClient(
+  id: string,
+  form: ClientFormState,
+  current: Pick<ClientRecord, "clientId">,
+  db: Pick<ClientWriter, "update">,
+): Promise<SupabaseClientRow> {
+  let payload = buildClientUpdatePayload(form, current);
+  let saved: SupabaseClientRow | null = null;
+  let wrote = false;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      saved = await db.update(id, payload);
+      wrote = true;
+      break;
+    } catch (error) {
+      lastError = error;
+      const column = unknownColumnFromError(error);
+      if (
+        column &&
+        hasOwnColumn(payload, column) &&
+        !UPDATE_REQUIRED_COLUMNS.has(column)
+      ) {
+        const next = { ...payload };
+        delete next[column];
+        payload = next;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!wrote) throw lastError;
+
+  return overlayWrittenClientFields(
+    { id, ...(saved ?? {}), ...payload } as SupabaseClientRow,
+    payload,
+  );
 }
 
 /* ------------------------------------------------------------------ */
