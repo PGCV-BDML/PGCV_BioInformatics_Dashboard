@@ -48,11 +48,6 @@ import { useDashboardUI } from "../../components/dashboard-ui-context";
 import { useToast } from "../../components/toast";
 import { usePortal } from "../../components/portal-context";
 import {
-  matchesVisibilityFilter,
-  VISIBILITY_FILTER_OPTIONS,
-  type VisibilityFilter,
-} from "@/lib/personal-items";
-import {
   matchesInvolvementFilter,
   REPOSITORY_INVOLVEMENT_FILTER_OPTIONS,
   type InvolvementFilter,
@@ -96,8 +91,6 @@ export default function RepositoriesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<RepositoryKind | "All">("All");
-  const [visibilityFilter, setVisibilityFilter] =
-    useState<VisibilityFilter>("all");
   const [involvementFilter, setInvolvementFilter] =
     useState<InvolvementFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<
@@ -159,9 +152,6 @@ export default function RepositoriesPage() {
   const filtered = useMemo(() => {
     return repositories.filter((row) => {
       if (kindFilter !== "All" && row.kind !== kindFilter) return false;
-      if (!matchesVisibilityFilter(row.is_personal, visibilityFilter)) {
-        return false;
-      }
       if (
         !matchesInvolvementFilter(involvementFilter, currentUserId, {
           ownerId: row.owner_id,
@@ -187,7 +177,7 @@ export default function RepositoriesPage() {
         categoryText.toLowerCase().includes(q)
       );
     });
-  }, [repositories, kindFilter, visibilityFilter, involvementFilter, categoryFilter, searchQuery, currentUserId]);
+  }, [repositories, kindFilter, involvementFilter, categoryFilter, searchQuery, currentUserId]);
 
   const {
     sortConfig,
@@ -198,7 +188,7 @@ export default function RepositoriesPage() {
   } = useTableState<Repository>({
     items: filtered,
     itemsPerPage,
-    resetKey: `${searchQuery}-${kindFilter}-${visibilityFilter}-${involvementFilter}-${categoryFilter}`,
+    resetKey: `${searchQuery}-${kindFilter}-${involvementFilter}-${categoryFilter}`,
     initialSort: { key: "title", direction: "asc" },
     customSorters: {
       kind: (a, b) => kindLabel(a.kind).localeCompare(kindLabel(b.kind)),
@@ -478,26 +468,6 @@ export default function RepositoriesPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-            <div
-              role="group"
-              aria-label="Filter by visibility"
-              className="flex items-center gap-1 p-1 bg-slate-100 rounded-full overflow-x-auto max-w-full"
-            >
-              {VISIBILITY_FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setVisibilityFilter(opt.value)}
-                  className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors ${
-                    visibilityFilter === opt.value
-                      ? "bg-white text-[#2a7797] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-quicksand">
                 Mine
