@@ -18,6 +18,8 @@ export interface SupabaseClientRow {
   name?: string | null;
   project_id?: string | null;
   email_address?: string | null;
+  /** Some live / imported tables used `email` instead of `email_address`. */
+  email?: string | null;
   sex?: string | null;
   mobile_number?: string | null;
   affiliation?: string | null;
@@ -73,6 +75,25 @@ export function extractEmailAddress(value: string | null | undefined): string {
   return match ? match[0] : "";
 }
 
+/**
+ * Older client rows predates `email_address`. The address may live in
+ * `contact_info` ("email | affiliation"), a column named `email`, or notes.
+ * Only values that look like an address are used, so names/institutions
+ * packed into `contact_info` never appear under Email.
+ */
+export function clientEmailFromRow(row: SupabaseClientRow): string {
+  for (const value of [
+    row.email_address,
+    row.email,
+    row.contact_info,
+    row.notes,
+  ]) {
+    const extracted = extractEmailAddress(value);
+    if (extracted) return extracted;
+  }
+  return "";
+}
+
 /** Core insert stores `Project ID: …` in legacy `notes` when `project_id` may be missing. */
 const PROJECT_ID_IN_NOTES = /Project ID:\s*(.+)/i;
 
@@ -82,15 +103,13 @@ export function projectIdFromNotes(value: string | null | undefined): string {
 }
 
 export function mapClientRowToRecord(row: SupabaseClientRow): ClientRecord {
-  const email = row.email_address?.trim() ?? "";
-
   return {
     id: row.id,
     createdAt: row.created_at ?? new Date().toISOString(),
     clientId: row.client_id ?? "",
     clientName: row.name ?? "",
     projectId: row.project_id?.trim() || projectIdFromNotes(row.notes),
-    emailAddress: email || extractEmailAddress(row.contact_info),
+    emailAddress: clientEmailFromRow(row),
     affiliation: row.affiliation ?? "",
     designation: row.designation ?? "",
   };

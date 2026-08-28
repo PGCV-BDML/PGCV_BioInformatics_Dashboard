@@ -88,6 +88,26 @@ describe("mapClientRowToRecord", () => {
     ).toBe("");
   });
 
+  it("recovers an address from a column named email", () => {
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-1",
+        email: "ada@example.org",
+        contact_info: "Ada Lovelace",
+      }).emailAddress,
+    ).toBe("ada@example.org");
+  });
+
+  it("recovers an address stored in notes", () => {
+    expect(
+      mapClientRowToRecord({
+        id: "uuid-1",
+        contact_info: "PGCV",
+        notes: "Email: ada@example.org",
+      }).emailAddress,
+    ).toBe("ada@example.org");
+  });
+
   it("reads Project ID from the dedicated column", () => {
     expect(
       mapClientRowToRecord({
