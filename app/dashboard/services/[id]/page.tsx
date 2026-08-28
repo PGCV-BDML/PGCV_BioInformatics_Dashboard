@@ -454,18 +454,6 @@ export default function AnalysisDetailPage({
             statusOfSubmission={record.status_of_submission}
             currentFilePath={record.service_report_file_path}
             readOnly={isReadOnly}
-            onResubmitted={(stage) =>
-              setRecord((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      ...(stage === "review"
-                        ? { status_of_review: "For review" }
-                        : { status_of_submission: "For approval" }),
-                    }
-                  : prev,
-              )
-            }
           />
 
           <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl shadow-slate-400/10 space-y-4">
@@ -624,6 +612,8 @@ export default function AnalysisDetailPage({
                 <ServiceReportReplace
                   analysisId={record.id}
                   filePath={record.service_report_file_path}
+                  statusOfReview={record.status_of_review}
+                  statusOfSubmission={record.status_of_submission}
                   enabled={
                     isRevisionRequestedLabel(record.status_of_review) ||
                     isChangesRequestedLabel(record.status_of_submission)
@@ -638,6 +628,18 @@ export default function AnalysisDetailPage({
                             status_of_review:
                               next.statusOfReview ?? prev.status_of_review,
                             notes: next.notes ?? prev.notes,
+                          }
+                        : prev,
+                    )
+                  }
+                  onResubmitted={(stage) =>
+                    setRecord((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            ...(stage === "review"
+                              ? { status_of_review: "For review" }
+                              : { status_of_submission: "For approval" }),
                           }
                         : prev,
                     )
@@ -697,6 +699,8 @@ export default function AnalysisDetailPage({
                 <ServiceReportReplace
                   analysisId={record.id}
                   filePath={record.service_report_file_path}
+                  statusOfReview={record.status_of_review}
+                  statusOfSubmission={record.status_of_submission}
                   enabled
                   onReplaced={(next) =>
                     setRecord((prev) =>
@@ -708,6 +712,18 @@ export default function AnalysisDetailPage({
                             status_of_review:
                               next.statusOfReview ?? prev.status_of_review,
                             notes: next.notes ?? prev.notes,
+                          }
+                        : prev,
+                    )
+                  }
+                  onResubmitted={(stage) =>
+                    setRecord((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            ...(stage === "review"
+                              ? { status_of_review: "For review" }
+                              : { status_of_submission: "For approval" }),
                           }
                         : prev,
                     )

@@ -89,25 +89,27 @@ export default function ReviewCommentsModal({
           statusOfReview={row.status_of_review}
           statusOfSubmission={row.status_of_submission}
           currentFilePath={row.service_report_file_path}
-          onResubmitted={onResubmitted}
           forceVisible
           bare
           readOnly={readOnly}
-        />
-
-        <ServiceReportVersions
-          analysisId={row.id}
-          currentPath={row.service_report_file_path}
         />
 
         {awaitingSendBack && !readOnly ? (
           <ServiceReportReplace
             analysisId={row.id}
             filePath={row.service_report_file_path}
+            statusOfReview={row.status_of_review}
+            statusOfSubmission={row.status_of_submission}
             enabled
             onReplaced={(next) => onPdfReplaced?.(next)}
+            onResubmitted={onResubmitted}
           />
         ) : null}
+
+        <ServiceReportVersions
+          analysisId={row.id}
+          currentPath={row.service_report_file_path}
+        />
 
         <Link
           href={routes.services.detail(row.id)}

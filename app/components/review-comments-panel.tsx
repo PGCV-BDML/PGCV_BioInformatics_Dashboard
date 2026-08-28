@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ExternalLink, MessageSquareWarning, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, ExternalLink, MessageSquareWarning } from "lucide-react";
 import {
   getReviewComments,
-  resubmitForApproval,
-  resubmitForReview,
   type ReviewCommentWithAuthor,
 } from "@/lib/notifications";
 import {
@@ -22,8 +20,6 @@ interface ReviewCommentsPanelProps {
   statusOfSubmission: string | null;
   /** Current PDF path — hide the comment's file link when it still matches. */
   currentFilePath?: string | null;
-  /** Called after a successful resubmission so the parent can refresh status. */
-  onResubmitted?: (stage: "review" | "approval") => void;
   /**
    * When true, render an empty state instead of hiding the panel.
    * Used in the tracker modal where the column always opens this UI.
@@ -31,7 +27,7 @@ interface ReviewCommentsPanelProps {
   forceVisible?: boolean;
   /** Drop the outer card chrome when the parent already provides a shell. */
   bare?: boolean;
-  /** Hide resubmit; reviewing officers browse comments from the tracker. */
+  /** Officer-facing copy; reviewing officers browse comments from the tracker. */
   readOnly?: boolean;
 }
 
@@ -55,7 +51,6 @@ export default function ReviewCommentsPanel({
   statusOfReview,
   statusOfSubmission,
   currentFilePath = null,
-  onResubmitted,
   forceVisible = false,
   bare = false,
   readOnly = false,
@@ -63,14 +58,6 @@ export default function ReviewCommentsPanel({
   const { showToast } = useToast();
   const [comments, setComments] = useState<ReviewCommentWithAuthor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isResubmitting, setIsResubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    const rows = await getReviewComments(analysisId);
-    setComments(rows);
-    setIsLoading(false);
-  }, [analysisId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +73,7 @@ export default function ReviewCommentsPanel({
     return () => {
       cancelled = true;
     };
-  }, [analysisId]);
+  }, [analysisId, statusOfReview, statusOfSubmission]);
 
   const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
@@ -95,7 +82,6 @@ export default function ReviewCommentsPanel({
     statusOfSubmission,
   );
   const awaitingSendBack = awaitingRevision || awaitingChanges;
-  const canResubmit = awaitingRevision || (awaitingChanges && !waitingOnReReview);
 
   async function openCommentedPdf(path: string, fileName: string | null) {
     const url = await getServiceReportSignedUrl(path, fileName);
@@ -103,32 +89,6 @@ export default function ReviewCommentsPanel({
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
       showToast("Couldn't open that PDF.", "error");
-    }
-  }
-
-  async function handleResubmit() {
-    if (isResubmitting) return;
-    setIsResubmitting(true);
-    setError(null);
-    try {
-      if (awaitingRevision) {
-        await resubmitForReview(analysisId);
-        await load();
-        onResubmitted?.("review");
-      } else {
-        await resubmitForApproval(analysisId);
-        await load();
-        onResubmitted?.("approval");
-      }
-    } catch (err) {
-      console.error(err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't resubmit this report. Please try again.",
-      );
-    } finally {
-      setIsResubmitting(false);
     }
   }
 
@@ -172,11 +132,11 @@ export default function ReviewCommentsPanel({
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           {readOnly
             ? "This report was sent back to the assignee for revision."
-            : `The reviewing officer sent this back. Address the comment below,${
+            : `The reviewing officer sent this back. Address the comment below, then ${
                 bare
-                  ? " upload a new version below if needed,"
-                  : " upload a new version under Service Report Delivery if needed,"
-              } then resubmit to notify them for another peer review.`}
+                  ? "upload a new version if needed and resubmit below"
+                  : "upload a new version if needed and resubmit under Service Report Delivery"
+              } to notify them for another peer review.`}
         </p>
       )}
       {waitingOnReReview && !awaitingRevision && (
@@ -189,11 +149,11 @@ export default function ReviewCommentsPanel({
         <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
           {readOnly
             ? "This report was sent back to the assignee after approval review."
-            : `The approving officer sent this back. Address the comment below,${
+            : `The approving officer sent this back. Address the comment below, then ${
                 bare
-                  ? " upload a new version below if needed,"
-                  : " upload a new version under Service Report Delivery if needed,"
-              } then resubmit to notify them for another review. A new PDF version goes back to the reviewing officer first.`}
+                  ? "upload a new version if needed and resubmit below"
+                  : "upload a new version if needed and resubmit under Service Report Delivery"
+              } to notify them for another review. A new PDF version goes back to the reviewing officer first.`}
         </p>
       )}
 
@@ -268,28 +228,6 @@ export default function ReviewCommentsPanel({
             );
           })}
         </ul>
-      )}
-
-      {error && (
-        <p role="alert" className="text-xs text-red-600 font-semibold">
-          {error}
-        </p>
-      )}
-
-      {canResubmit && !readOnly && (
-        <button
-          type="button"
-          onClick={() => void handleResubmit()}
-          disabled={isResubmitting}
-          className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-[#2a7797] hover:bg-[#1f5c76] disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-sm"
-        >
-          <Send className="w-3.5 h-3.5" aria-hidden="true" />
-          {isResubmitting
-            ? "Resubmitting…"
-            : awaitingRevision
-              ? "Resubmit for review"
-              : "Resubmit for approval"}
-        </button>
       )}
     </div>
   );

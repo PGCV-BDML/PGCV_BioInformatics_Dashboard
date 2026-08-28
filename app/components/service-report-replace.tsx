@@ -1,8 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Upload } from "lucide-react";
+import { Send, Upload } from "lucide-react";
 import { getCurrentUser, saveDataToDB } from "@/lib/supabase";
+import {
+  isChangesRequestedLabel,
+  isRevisionRequestedLabel,
+  needsReReviewAfterPdfReplace,
+} from "@/lib/analysis-tracker";
+import {
+  resubmitForApproval,
+  resubmitForReview,
+} from "@/lib/notifications";
 import { uploadServiceReportPdf } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
 import { useToast } from "./toast";
@@ -17,21 +26,28 @@ export type ServiceReportReplaceResult = {
 interface ServiceReportReplaceProps {
   analysisId: string;
   filePath: string;
+  statusOfReview: string | null;
+  statusOfSubmission: string | null;
   /** Only show while the report is awaiting revision or changes. */
   enabled: boolean;
   onReplaced: (next: ServiceReportReplaceResult) => void;
+  /** Called after a successful resubmission so the parent can refresh status. */
+  onResubmitted?: (stage: "review" | "approval") => void;
 }
 
 /**
- * Lets the assignee upload a new service-report PDF on the detail page
- * after a reviewer or approver sends the record back — without resubmitting.
+ * Lets the assignee upload a new service-report PDF and resubmit in one place
+ * after a reviewer or approver sends the record back.
  * The previous file stays in version history.
  */
 export default function ServiceReportReplace({
   analysisId,
   filePath,
+  statusOfReview,
+  statusOfSubmission,
   enabled,
   onReplaced,
+  onResubmitted,
 }: ServiceReportReplaceProps) {
   const { showToast } = useToast();
   const hasStoredFile = Boolean(filePath.trim());
@@ -39,6 +55,16 @@ export default function ServiceReportReplace({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isResubmitting, setIsResubmitting] = useState(false);
+  const [resubmitError, setResubmitError] = useState<string | null>(null);
+
+  const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
+  const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
+  const waitingOnReReview = needsReReviewAfterPdfReplace(
+    statusOfReview,
+    statusOfSubmission,
+  );
+  const canResubmit = awaitingRevision || (awaitingChanges && !waitingOnReReview);
 
   if (!enabled) return null;
 
@@ -69,7 +95,7 @@ export default function ServiceReportReplace({
         service_report_uploaded_by: uploaded.service_report_uploaded_by,
       });
 
-      const statusOfReview =
+      const nextStatusOfReview =
         typeof saved.status_of_review === "string"
           ? saved.status_of_review
           : null;
@@ -78,13 +104,13 @@ export default function ServiceReportReplace({
       onReplaced({
         path: uploaded.service_report_file_path,
         name: uploaded.service_report_file_name,
-        statusOfReview,
+        statusOfReview: nextStatusOfReview,
         notes,
       });
       setPendingFile(null);
       setIsReplacing(false);
       showToast(
-        String(statusOfReview ?? "").trim().toLowerCase() === "for review"
+        String(nextStatusOfReview ?? "").trim().toLowerCase() === "for review"
           ? "New version uploaded. The reviewing officer will sign this version again."
           : "New version uploaded. Resubmit when ready.",
         "success",
@@ -102,27 +128,85 @@ export default function ServiceReportReplace({
     }
   }
 
+  async function handleResubmit() {
+    if (isResubmitting) return;
+    setIsResubmitting(true);
+    setResubmitError(null);
+    try {
+      if (awaitingRevision) {
+        await resubmitForReview(analysisId);
+        onResubmitted?.("review");
+      } else {
+        await resubmitForApproval(analysisId);
+        onResubmitted?.("approval");
+      }
+    } catch (err) {
+      console.error(err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Couldn't resubmit this report. Please try again.";
+      setResubmitError(message);
+      showToast(message, "error");
+    } finally {
+      setIsResubmitting(false);
+    }
+  }
+
+  const resubmitLabel = isResubmitting
+    ? "Resubmitting…"
+    : awaitingRevision
+      ? "Resubmit for review"
+      : "Resubmit for approval";
+
+  const dropzoneOpen = !hasStoredFile || isReplacing;
+  const resubmitButton = canResubmit ? (
+    <button
+      type="button"
+      onClick={() => void handleResubmit()}
+      disabled={isResubmitting || isUploading || Boolean(pendingFile)}
+      title={
+        pendingFile
+          ? "Upload the new PDF first, then resubmit."
+          : undefined
+      }
+      className={
+        dropzoneOpen
+          ? "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 border border-[#2a7797] text-[#2a7797] bg-white hover:bg-[#2a7797]/5 disabled:opacity-60 disabled:cursor-not-allowed text-xs font-bold rounded-lg transition-all"
+          : "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#2a7797] hover:bg-[#1f5c76] disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-sm"
+      }
+    >
+      <Send className="w-3.5 h-3.5" aria-hidden="true" />
+      {resubmitLabel}
+    </button>
+  ) : null;
+
   return (
     <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
       <p className="text-[11px] text-amber-900 leading-relaxed">
-        {hasStoredFile
-          ? "Upload a new version if the comments require a new file. The previous PDF stays on file. A new file after peer review goes back to the reviewing officer to sign again."
-          : "Upload the corrected service report PDF, then resubmit."}
+        {waitingOnReReview
+          ? "Upload a new version if needed. The reviewing officer will sign this file again before approval can continue. The previous PDF stays on file."
+          : hasStoredFile
+            ? "Upload a new version if the comments require a new file, then resubmit. The previous PDF stays on file. A new file after peer review goes back to the reviewing officer to sign again."
+            : "Upload the corrected service report PDF, then resubmit."}
       </p>
 
       {hasStoredFile && !isReplacing ? (
-        <button
-          type="button"
-          onClick={() => {
-            setIsReplacing(true);
-            setPendingFile(null);
-            setFileError(null);
-          }}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
-        >
-          <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-          Upload a new version
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIsReplacing(true);
+              setPendingFile(null);
+              setFileError(null);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#2a7797] border border-[#2a7797]/30 rounded-lg hover:bg-white hover:border-[#2a7797] transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+            Upload a new version
+          </button>
+          {resubmitButton}
+        </div>
       ) : (
         <div className="space-y-2">
           <PdfDropzone
@@ -133,7 +217,7 @@ export default function ServiceReportReplace({
             disabled={isUploading}
             label={hasStoredFile ? "New Service Report PDF" : "Service Report PDF"}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void handleUpload()}
@@ -153,8 +237,15 @@ export default function ServiceReportReplace({
                 Cancel
               </button>
             ) : null}
+            {resubmitButton}
           </div>
         </div>
+      )}
+
+      {resubmitError && (
+        <p role="alert" className="text-xs text-red-600 font-semibold">
+          {resubmitError}
+        </p>
       )}
     </div>
   );
