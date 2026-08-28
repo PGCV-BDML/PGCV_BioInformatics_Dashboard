@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Dna,
   FolderGit2,
+  Plus,
 } from "lucide-react";
 import { DashboardBreadcrumbs } from "../components/dashboardbreadcrumbs";
 import { DashboardStatsCards } from "../components/dashboard-stat-cards";
@@ -310,7 +311,7 @@ export default function DashboardLandingPage() {
 
       <nav
         aria-label="Quick actions"
-        className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
       >
         {[
           {
@@ -318,18 +319,36 @@ export default function DashboardLandingPage() {
             label: "Add analysis",
             hint: "Open the tracker and start a new record",
             icon: Dna,
+            add: true,
+            tone: {
+              well: "bg-[#e6f4f8] text-[#2a7797] group-hover:bg-[#2a7797] group-hover:text-white",
+              plus: "bg-[#2a7797] text-white",
+              hover: "hover:border-[#2a7797]/50",
+            },
           },
           {
             href: routes.repositories.list,
             label: "Repositories",
             hint: "Browse pipeline, run, and document links",
             icon: FolderGit2,
+            add: false,
+            tone: {
+              well: "bg-[#eceaf5] text-[#282560] group-hover:bg-[#282560] group-hover:text-white",
+              plus: "",
+              hover: "hover:border-[#282560]/45",
+            },
           },
           {
             href: routes.tasks.add,
             label: "Add tasks",
             hint: "Open Tasks and start a new item",
             icon: CheckSquare,
+            add: true,
+            tone: {
+              well: "bg-[#eef7ea] text-[#4f8a3e] group-hover:bg-[#6bb155] group-hover:text-white",
+              plus: "bg-[#6bb155] text-white",
+              hover: "hover:border-[#6bb155]/55",
+            },
           },
         ].map((action) => {
           const Icon = action.icon;
@@ -337,16 +356,26 @@ export default function DashboardLandingPage() {
             <Link
               key={action.href}
               href={action.href}
-              className="group flex items-center gap-3 rounded-2xl border border-slate-300 bg-surface px-4 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:border-[#2a7797]/40 hover:shadow-[0_10px_22px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 transition-all"
+              className={`group flex items-center gap-4 rounded-2xl border border-slate-300 bg-surface px-5 py-4 shadow-[0_4px_12px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2a7797]/40 transition-all ${action.tone.hover}`}
             >
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#e6f4f8] text-[#2a7797] group-hover:bg-[#2a7797] group-hover:text-white transition-colors">
-                <Icon className="w-4 h-4" />
+              <span
+                className={`relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl transition-colors ${action.tone.well}`}
+              >
+                <Icon className="h-7 w-7" strokeWidth={1.75} />
+                {action.add ? (
+                  <span
+                    className={`absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${action.tone.plus}`}
+                    aria-hidden
+                  >
+                    <Plus className="h-3 w-3" strokeWidth={3} />
+                  </span>
+                ) : null}
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-bold text-slate-800 font-aileron">
+                <span className="block text-[15px] font-bold text-slate-800 font-aileron">
                   {action.label}
                 </span>
-                <span className="block text-[11px] text-slate-400 font-medium leading-snug font-aileron">
+                <span className="mt-0.5 block text-xs text-slate-400 font-medium leading-snug font-aileron">
                   {action.hint}
                 </span>
               </span>
