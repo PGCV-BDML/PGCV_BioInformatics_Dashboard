@@ -64,6 +64,7 @@ export const routes = {
     assessment: (id: string) => `/dashboard/training/${id}/assessment`,
     evaluation: (id: string) => `/dashboard/training/${id}/evaluation`,
     certificate: (id: string) => `/dashboard/training/${id}/certificate`,
+    prep: (id: string) => `/dashboard/training/${id}/prep`,
   },
   internship: {
     list: "/dashboard/internship",

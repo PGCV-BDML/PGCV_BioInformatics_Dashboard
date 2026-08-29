@@ -21,6 +21,7 @@ import {
 import { loadUserNameMap } from "@/lib/user-names";
 import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
+import { seedDefaultTrainingPrepItems } from "@/lib/training-prep-checklist";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
   TrainingProgram,
@@ -231,6 +232,13 @@ export default function ProgramDirectory({
           await ensureProgramEvaluation(saved.id);
         } catch (error) {
           console.error("Failed to attach evaluation form:", error);
+        }
+        if (programType === "training") {
+          try {
+            await seedDefaultTrainingPrepItems(saved.id);
+          } catch (error) {
+            console.error("Failed to seed training prep checklist:", error);
+          }
         }
         setRawPrograms((prev) => [saved, ...prev]);
         setIsAdding(false);

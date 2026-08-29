@@ -83,6 +83,9 @@ describe("describeDeleteError", () => {
     expect(
       describeDeleteError(new Error(""), "analysis_service_report_version"),
     ).toBe("Failed to delete this service report version.");
+    expect(describeDeleteError(new Error(""), "training_prep_item")).toBe(
+      "Failed to delete this prep checklist item.",
+    );
   });
 });
 
@@ -96,6 +99,17 @@ describe("describeSaveError", () => {
       "incident_report",
     );
     expect(message).toContain("title and description are required");
+  });
+
+  it("explains a missing prep checklist item name", () => {
+    const message = describeSaveError(
+      {
+        message:
+          'new row for relation "training_prep_item" violates check constraint "training_prep_item_label_chk"',
+      },
+      "training_prep_item",
+    );
+    expect(message).toContain("checklist item name");
   });
 
   it("points at a missing migration when the table is not in the schema cache", () => {

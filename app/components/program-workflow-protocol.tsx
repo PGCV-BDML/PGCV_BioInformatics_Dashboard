@@ -84,7 +84,7 @@ const COPY: Record<ProgramKind, ProgramCopy> = {
   },
 };
 
-const WORKFLOW_STAGES = [
+const INTERNSHIP_WORKFLOW_STAGES = [
   "Create",
   "Onboarding",
   "Modules",
@@ -94,12 +94,39 @@ const WORKFLOW_STAGES = [
   "Certificate",
 ] as const;
 
-const TOC = [
+const TRAINING_WORKFLOW_STAGES = [
+  "Create",
+  "Prep",
+  "Onboarding",
+  "Modules",
+  "Enroll",
+  "Pre/Post tests",
+  "Evaluate",
+  "Certificate",
+] as const;
+
+const INTERNSHIP_TOC = [
   { id: "purpose", label: "Purpose" },
   { id: "roles", label: "Roles" },
   { id: "before-you-start", label: "Before you start" },
   { id: "create", label: "1. Create the program" },
   { id: "workspace", label: "2. Open the workspace" },
+  { id: "onboarding", label: "3. Onboarding documents" },
+  { id: "modules", label: "4. Modules" },
+  { id: "enroll", label: "5. Enroll participants" },
+  { id: "assessments", label: "6. Pre/Post tests" },
+  { id: "evaluation", label: "7. Evaluation and certificates" },
+  { id: "closeout", label: "8. Close out the cohort" },
+  { id: "troubleshooting", label: "Troubleshooting" },
+] as const;
+
+const TRAINING_TOC = [
+  { id: "purpose", label: "Purpose" },
+  { id: "roles", label: "Roles" },
+  { id: "before-you-start", label: "Before you start" },
+  { id: "create", label: "1. Create the program" },
+  { id: "workspace", label: "2. Open the workspace" },
+  { id: "prep", label: "Prep checklist" },
   { id: "onboarding", label: "3. Onboarding documents" },
   { id: "modules", label: "4. Modules" },
   { id: "enroll", label: "5. Enroll participants" },
@@ -185,6 +212,9 @@ export default function ProgramWorkflowProtocol({
   const copy = COPY[kind];
   const otherKind: ProgramKind = kind === "training" ? "internship" : "training";
   const other = COPY[otherKind];
+  const workflowStages =
+    kind === "training" ? TRAINING_WORKFLOW_STAGES : INTERNSHIP_WORKFLOW_STAGES;
+  const toc = kind === "training" ? TRAINING_TOC : INTERNSHIP_TOC;
 
   return (
     <article className="bg-surface border border-slate-300/70 rounded-[24px] p-5 md:p-7 shadow-xl shadow-slate-400/20 space-y-8">
@@ -233,7 +263,7 @@ export default function ProgramWorkflowProtocol({
         className="flex flex-wrap items-center gap-2"
         aria-label="Workflow stages"
       >
-        {WORKFLOW_STAGES.map((stage, index) => (
+        {workflowStages.map((stage, index) => (
           <div key={stage} className="flex items-center gap-2">
             {index > 0 ? (
               <ArrowRight
@@ -248,7 +278,7 @@ export default function ProgramWorkflowProtocol({
         ))}
       </div>
 
-      <ProtocolPageNav items={TOC} />
+      <ProtocolPageNav items={toc} />
 
       <Section id="purpose" title="Purpose">
         <p>
@@ -256,7 +286,11 @@ export default function ProgramWorkflowProtocol({
           <strong className="text-[#172126]">{copy.moduleTitle.toLowerCase()}</strong>{" "}
           cohort in the dashboard. The program record is the system of record
           for the syllabus, onboarding files, modules, enrollments, tests,
-          evaluation, and certificates.
+          evaluation, and certificates
+          {kind === "training"
+            ? ", plus the staff prep checklist for venue gear and letters"
+            : ""}
+          .
         </p>
         <p>
           Location: sidebar →{" "}
@@ -315,8 +349,9 @@ export default function ProgramWorkflowProtocol({
         <Callout title="Staff can preview the learner portal">
           From the sidebar profile menu, choose{" "}
           <strong>{copy.previewLabel}</strong> to see the same tabs a{" "}
-          {copy.learner} sees. Participants stays hidden in that view. Exit
-          preview from the same menu.
+          {copy.learner} sees. Participants
+          {kind === "training" ? " and Prep" : ""} stay hidden in that view.
+          Exit preview from the same menu.
         </Callout>
       </Section>
 
@@ -345,6 +380,14 @@ export default function ProgramWorkflowProtocol({
             Participants: if Certificate stays Pending, a team lead still needs
             to issue the record.
           </li>
+          {kind === "training" ? (
+            <li>
+              Training programs also get a staff{" "}
+              <strong className="text-[#172126]">Prep</strong> checklist
+              (projector, letters, meals, and so on). Apply the latest
+              database migration before that tab can save.
+            </li>
+          ) : null}
         </ul>
       </Section>
 
@@ -455,6 +498,12 @@ export default function ProgramWorkflowProtocol({
           <li>
             <strong className="text-[#172126]">Onboarding Docs</strong>
           </li>
+          {kind === "training" ? (
+            <li>
+              <strong className="text-[#172126]">Prep</strong> — staff only;
+              venue, letters, and day-of logistics
+            </li>
+          ) : null}
           <li>
             <strong className="text-[#172126]">Participants</strong> — staff
             only; hidden from {copy.learners}
@@ -476,6 +525,25 @@ export default function ProgramWorkflowProtocol({
           should ask a team lead to enroll them.
         </p>
       </Section>
+
+      {kind === "training" ? (
+        <Section id="prep" title="Prep checklist">
+          <p>
+            Staff open the <strong className="text-[#172126]">Prep</strong> tab
+            to tick off what this cohort still needs before the training day:
+            projector, letters, attendance sheets, meals, and the rest. New
+            training programs get a default list; add notes, extra items, or
+            restore missing defaults if something was removed.
+          </p>
+          <p>
+            The checklist is internal. {copy.learnerTitle}s do not see it.
+          </p>
+          <Callout title="Prep does not block later tabs">
+            Leaving items unchecked does not stop enrollment, tests, or
+            certificates. Treat the list as a readiness board for the team.
+          </Callout>
+        </Section>
+      ) : null}
 
       <Section id="onboarding" title="3. Onboarding documents">
         <p>

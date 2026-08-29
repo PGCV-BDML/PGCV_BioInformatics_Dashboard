@@ -14,9 +14,10 @@ import {
   Users,
   ArrowLeft,
   AlertCircle,
+  ListChecks,
 } from "lucide-react";
 import type { ProgramType } from "@/lib/routes";
-import { programRoutes } from "@/lib/routes";
+import { programRoutes, routes as dashboardRoutes } from "@/lib/routes";
 import type { TrainingProgramStatus } from "@/types/database";
 import { usePortal } from "@/app/components/portal-context";
 
@@ -85,6 +86,17 @@ export default function ProgramWorkspaceLayout({
         icon: FileText,
         href: programPaths.onboarding(program.id),
       },
+      ...(isTraining
+        ? [
+            {
+              id: "prep",
+              label: "Prep",
+              icon: ListChecks,
+              href: dashboardRoutes.training.prep(program.id),
+              staffOnly: true as const,
+            },
+          ]
+        : []),
       {
         id: "participants",
         label: "Participants",
@@ -115,7 +127,7 @@ export default function ProgramWorkspaceLayout({
     return isLearnerView
       ? allTabs.filter((tab) => !("staffOnly" in tab && tab.staffOnly))
       : allTabs;
-  }, [program, programType, isLearnerView]);
+  }, [program, programType, isLearnerView, isTraining]);
 
   const tabCount = workspaceTabs.length || 1;
   const activeIndex = useMemo(() => {
@@ -206,7 +218,9 @@ export default function ProgramWorkspaceLayout({
 
       <div className="bg-surface border border-slate-200 rounded-[24px] p-1.5 shadow-sm overflow-x-auto whitespace-nowrap">
         <div
-          className="relative grid gap-1 min-w-[760px] md:min-w-full"
+          className={`relative grid gap-1 md:min-w-full ${
+            isTraining ? "min-w-[880px]" : "min-w-[760px]"
+          }`}
           style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
         >
           <div

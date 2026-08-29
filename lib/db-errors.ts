@@ -45,6 +45,10 @@ const TABLE_LABELS: Partial<
   },
   training_program: { one: "training program", many: "training programs" },
   training_session: { one: "training session", many: "training sessions" },
+  training_prep_item: {
+    one: "prep checklist item",
+    many: "prep checklist items",
+  },
   program_enrollment: { one: "enrollment", many: "enrollments" },
   module: { one: "module", many: "modules" },
   assessment: { one: "assessment", many: "assessments" },
@@ -153,6 +157,10 @@ export function describeSaveError(error: unknown, table: TableNames): string {
 
   if (message.includes("training_program_date_range_chk")) {
     return `Failed to save ${subject}: end date cannot be before start date.`;
+  }
+
+  if (message.includes("training_prep_item_label_chk")) {
+    return `Failed to save ${subject}: add a checklist item name.`;
   }
 
   if (message.includes("task_date_range_chk")) {

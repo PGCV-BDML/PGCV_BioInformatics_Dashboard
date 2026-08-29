@@ -9,7 +9,7 @@ export default function TrainingProgramsPage() {
       programType="training"
       breadcrumbTrail={trainingBreadcrumbs}
       title="Training"
-      subtitle="Manage training cohorts, modules, assessments, and certificates"
+      subtitle="Manage training cohorts, prep checklists, modules, assessments, and certificates"
       addButtonLabel="Add Training"
     />
   );

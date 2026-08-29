@@ -444,6 +444,26 @@ export interface TrainingSession {
   updated_at?: string;
 }
 
+export type TrainingPrepCategory =
+  | "venue"
+  | "documents"
+  | "hospitality"
+  | "day_of";
+
+export interface TrainingPrepItem {
+  id: string;
+  program_id: string;
+  /** Stable key for seeded defaults; null for custom items. */
+  item_key: string | null;
+  category: TrainingPrepCategory;
+  label: string;
+  is_done: boolean;
+  notes: string | null;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type EnrollmentStatus = "enrolled" | "completed" | "dropped";
 
 export interface ProgramEnrollment {
