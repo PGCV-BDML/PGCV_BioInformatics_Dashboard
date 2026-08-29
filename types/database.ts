@@ -339,13 +339,18 @@ export type AssessmentType = "pre_test" | "post_test" | "evaluation";
 
 export type EvaluationRatingValue = 5 | 4 | 3 | 2 | 1 | "N/A";
 
+export type QuestionSectionFields = {
+  section?: string;
+  sectionIntro?: string;
+};
+
 export type McqQuestion = {
   type: "mcq";
   id: string;
   question: string;
   options: string[];
   correct: number; // index into options
-};
+} & QuestionSectionFields;
 
 export type RatingQuestion = {
   type: "rating";
@@ -354,7 +359,7 @@ export type RatingQuestion = {
   scale: number; // e.g. 5 for 1-5 scale
   allowNA?: boolean;
   required?: boolean;
-};
+} & QuestionSectionFields;
 
 export type TextQuestion = {
   type: "text";
@@ -364,7 +369,7 @@ export type TextQuestion = {
   required?: boolean;
   input?: "text" | "email";
   placeholder?: string;
-};
+} & QuestionSectionFields;
 
 export type ChoiceQuestion = {
   type: "choice";
@@ -372,14 +377,15 @@ export type ChoiceQuestion = {
   question: string;
   options: string[];
   required?: boolean;
-};
+  multiple?: boolean;
+} & QuestionSectionFields;
 
 export type DateQuestion = {
   type: "date";
   id: string;
   question: string;
   required?: boolean;
-};
+} & QuestionSectionFields;
 
 export type RatingStatement = {
   id: string;
@@ -393,7 +399,7 @@ export type RatingGroupQuestion = {
   statements: RatingStatement[];
   required?: boolean;
   allowNA?: boolean;
-};
+} & QuestionSectionFields;
 
 export type Question =
   | McqQuestion

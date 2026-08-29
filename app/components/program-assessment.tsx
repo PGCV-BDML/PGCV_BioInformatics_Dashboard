@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Award,
@@ -11,9 +11,16 @@ import {
 import { usePortal } from "@/app/components/portal-context";
 import ProgramAssessmentSummary from "@/app/components/program-assessment-summary";
 import { useToast } from "@/app/components/toast";
+import {
+  asStringArray,
+  scoreMcqPercent,
+  toggleMultiChoiceOption,
+} from "@/lib/assessment-form";
 import type { ProgramType } from "@/lib/routes";
 import { getCurrentUser, getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import type { Assessment, AssessmentResponse, Question } from "@/types/database";
+
+type AssessmentAnswer = number | string | string[];
 
 type ProgramAssessmentProps = {
   programId: string;
@@ -58,7 +65,7 @@ function LearnerAssessmentForm({
   const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
   const [postTestQuestions, setPostTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, number | string>
+    Record<string, AssessmentAnswer>
   >({});
   const [scoreResult, setScoreResult] = useState<number | null>(null);
   const [existingResponses, setExistingResponses] = useState<
@@ -104,18 +111,26 @@ function LearnerAssessmentForm({
   };
 
   const renderQuestion = (question: Question, idx: number) => {
+    const heading = (
+      <div className="flex gap-2 items-start">
+        {question.type === "rating" ? (
+          <Star className="w-4 h-4 text-[#f57f17] shrink-0 mt-0.5" />
+        ) : (
+          <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
+        )}
+        <h4 className="text-sm font-bold text-slate-800 leading-snug">
+          {idx}. {question.question}
+        </h4>
+      </div>
+    );
+
     if (question.type === "mcq") {
       return (
         <div
           key={question.id}
           className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
         >
-          <div className="flex gap-2 items-start">
-            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
-            <h4 className="text-sm font-bold text-slate-800 leading-snug">
-              {idx + 1}. {question.question}
-            </h4>
-          </div>
+          {heading}
           <div className="grid grid-cols-1 gap-2 pl-6">
             {question.options.map((option, optionIndex) => (
               <label
@@ -146,6 +161,56 @@ function LearnerAssessmentForm({
       );
     }
 
+    if (question.type === "choice") {
+      const selected = question.multiple
+        ? asStringArray(selectedAnswers[question.id])
+        : selectedAnswers[question.id];
+      return (
+        <div
+          key={question.id}
+          className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
+        >
+          {heading}
+          <div className="grid grid-cols-1 gap-2 pl-6">
+            {question.options.map((option) => {
+              const isChecked = question.multiple
+                ? (selected as string[]).includes(option)
+                : selected === option;
+              return (
+                <label
+                  key={option}
+                  className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                    isChecked
+                      ? "border-[#4ec2bb] bg-[#f2fdfc]"
+                      : "border-slate-100 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type={question.multiple ? "checkbox" : "radio"}
+                    name={question.id}
+                    checked={isChecked}
+                    onChange={() =>
+                      setSelectedAnswers({
+                        ...selectedAnswers,
+                        [question.id]: question.multiple
+                          ? toggleMultiChoiceOption(
+                              asStringArray(selectedAnswers[question.id]),
+                              option,
+                            )
+                          : option,
+                      })
+                    }
+                    className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
+                  />
+                  <span>{option}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     if (question.type === "rating") {
       const scale = question.scale || 5;
       return (
@@ -153,12 +218,7 @@ function LearnerAssessmentForm({
           key={question.id}
           className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
         >
-          <div className="flex gap-2 items-start">
-            <Star className="w-4 h-4 text-[#f57f17] shrink-0 mt-0.5" />
-            <h4 className="text-sm font-bold text-slate-800 leading-snug">
-              {idx + 1}. {question.question}
-            </h4>
-          </div>
+          {heading}
           <div className="flex items-center gap-2 pl-6">
             {Array.from({ length: scale }, (_, i) => i + 1).map((val) => (
               <button
@@ -187,12 +247,7 @@ function LearnerAssessmentForm({
           key={question.id}
           className="bg-white border border-slate-200 p-5 rounded-[20px] space-y-4 shadow-sm"
         >
-          <div className="flex gap-2 items-start">
-            <HelpCircle className="w-4 h-4 text-[#2a7797] shrink-0 mt-0.5" />
-            <h4 className="text-sm font-bold text-slate-800 leading-snug">
-              {idx + 1}. {question.question}
-            </h4>
-          </div>
+          {heading}
           <div className="pl-6">
             {question.multiline ? (
               <textarea
@@ -204,7 +259,7 @@ function LearnerAssessmentForm({
                     [question.id]: event.target.value,
                   })
                 }
-                placeholder="Type your answer here..."
+                placeholder={question.placeholder ?? "Type your answer here..."}
                 className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
               />
             ) : (
@@ -217,7 +272,7 @@ function LearnerAssessmentForm({
                     [question.id]: event.target.value,
                   })
                 }
-                placeholder="Type your answer here..."
+                placeholder={question.placeholder ?? "Type your answer here..."}
                 className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
               />
             )}
@@ -227,6 +282,31 @@ function LearnerAssessmentForm({
     }
 
     return null;
+  };
+
+  const renderQuestionList = (questions: Question[]) => {
+    let number = 0;
+    return questions.map((question) => {
+      if (question.section) number = 0;
+      number += 1;
+      return (
+        <Fragment key={question.id}>
+          {question.section ? (
+            <div className="pt-2 space-y-2">
+              <h3 className="text-[11px] font-extrabold text-[#2a7797] uppercase tracking-[1.5px]">
+                {question.section}
+              </h3>
+              {question.sectionIntro ? (
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {question.sectionIntro}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {renderQuestion(question, number)}
+        </Fragment>
+      );
+    });
   };
 
   const calculateScore = async () => {
@@ -243,17 +323,7 @@ function LearnerAssessmentForm({
         return;
       }
 
-      const mcqQuestions = questions.filter(
-        (question): question is Question & { type: "mcq" } =>
-          question.type === "mcq",
-      );
-      const correctCount = mcqQuestions.filter(
-        (question) => selectedAnswers[question.id] === question.correct,
-      ).length;
-      const finalScore =
-        mcqQuestions.length > 0
-          ? Math.round((correctCount / mcqQuestions.length) * 100)
-          : 0;
+      const finalScore = scoreMcqPercent(questions, selectedAnswers);
 
       const typedAnswers: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(selectedAnswers)) {
@@ -402,8 +472,8 @@ function LearnerAssessmentForm({
 
           {scoreResult === null ? (
             <div className="space-y-6 max-w-3xl">
-              {(activeTest === "pre" ? preTestQuestions : postTestQuestions).map(
-                (question, idx) => renderQuestion(question, idx),
+              {renderQuestionList(
+                activeTest === "pre" ? preTestQuestions : postTestQuestions,
               )}
 
               <button

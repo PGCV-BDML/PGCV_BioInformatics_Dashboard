@@ -1,144 +1,446 @@
 {
-  "title": "16s rRNA Metabarcoding Training — Pre/Post Test",
+  "title": "16S Metagenomics Bioinformatics Workflow — Pre/Post Test",
   "program_title": "16s rRNA Metabarcoding Training",
   "notes": [
-    "Loaded via supabase/migrations/20260804130000_seed_16s_metabarcoding_assessments.sql",
-    "MCQ only contributes to auto-score; post-test free response is manual review.",
-    "Aligned with PGCV pipeline: FastQC → fastp → QIIME 2 → PICRUSt2; SILVA for taxonomy."
+    "Loaded via supabase/migrations/20260829150000_replace_16s_metabarcoding_assessments.sql",
+    "No participant code; pairing uses the signed-in dashboard account.",
+    "Only knowledge-check MCQs are auto-scored (I don't know yet = 0).",
+    "Background, confidence, and reflection items are stored but not scored."
   ],
   "pre_test": [
     {
-      "type": "mcq",
-      "id": "16s_pt1",
-      "question": "The 16S rRNA gene is most commonly used as a taxonomic marker for which group of organisms?",
-      "options": ["Animals", "Plants and algae", "Bacteria and Archaea", "Fungi"],
-      "correct": 2
-    },
-    {
-      "type": "mcq",
-      "id": "16s_pt2",
-      "question": "What is the primary goal of 16S rRNA amplicon sequencing (metabarcoding)?",
+      "type": "choice",
+      "id": "16s_pre_role",
+      "question": "Which best describes your current role?",
       "options": [
-        "To determine the complete genome sequence of a single organism",
-        "To profile the taxonomic composition of microbial communities in a sample",
-        "To measure which genes are actively expressed in a tissue",
-        "To assemble a full transcriptome de novo"
+        "Undergraduate student",
+        "Graduate student",
+        "Faculty member or instructor",
+        "Researcher or laboratory staff",
+        "Healthcare or public-health professional",
+        "Other"
       ],
-      "correct": 1
+      "section": "Getting to know you"
     },
     {
-      "type": "mcq",
-      "id": "16s_pt3",
-      "question": "In a typical 16S metagenomics pipeline, which tool is used first to inspect the quality of raw sequencing reads?",
-      "options": ["BLAST", "FastQC", "SPAdes", "PICRUSt2"],
-      "correct": 1
-    },
-    {
-      "type": "mcq",
-      "id": "16s_pt4",
-      "question": "Which reference database is commonly used for bacterial 16S rRNA taxonomy assignment?",
-      "options": ["UNITE", "BOLD", "SILVA", "PDB"],
-      "correct": 2
-    },
-    {
-      "type": "mcq",
-      "id": "16s_pt5",
-      "question": "In modern microbiome analysis, what does ASV stand for?",
+      "type": "choice",
+      "id": "16s_pre_exposure",
+      "question": "Before this training, how much exposure had you had to 16S metagenomics?",
       "options": [
-        "Amplicon Sequence Variant",
-        "Annotated Sequence Version",
-        "Alternative Sample Volume",
-        "Automated Species Verification"
-      ],
-      "correct": 0
+        "None—I am new to the topic",
+        "I have heard of it",
+        "I have read about it or attended a lecture",
+        "I have completed guided exercises",
+        "I have independently analyzed 16S data"
+      ]
     },
     {
-      "type": "mcq",
-      "id": "16s_pt6",
-      "question": "Alpha diversity describes:",
+      "type": "choice",
+      "id": "16s_pre_datasets",
+      "question": "How many 16S datasets have you analyzed before this training?",
       "options": [
-        "How different microbial communities are between two or more samples",
-        "The diversity of microbes within a single sample",
-        "The functional pathways predicted from 16S data",
-        "The quality score of individual sequencing reads"
+        "0",
+        "1",
+        "2–5",
+        "More than 5"
+      ]
+    },
+    {
+      "type": "choice",
+      "id": "16s_pre_tools",
+      "question": "Which tools have you used before? Select all that apply.",
+      "options": [
+        "Linux/Bash command line",
+        "FastQC or Cutadapt",
+        "QIIME 2",
+        "R or RStudio",
+        "phyloseq",
+        "PICRUSt2",
+        "None of these"
       ],
-      "correct": 1
+      "multiple": true
+    },
+    {
+      "type": "choice",
+      "id": "16s_pre_priority",
+      "question": "Which skill would you most like to develop during this training? Select one.",
+      "options": [
+        "Using the Linux command line",
+        "Understanding 16S sequencing and microbial profiles",
+        "Processing reads with QIIME 2 and DADA2",
+        "Analyzing alpha and beta diversity in R",
+        "Predicting and interpreting microbial functions"
+      ]
+    },
+    {
+      "type": "rating",
+      "id": "16s_pre_conf1",
+      "question": "I can navigate files and run basic commands in Linux/Bash.",
+      "scale": 5,
+      "section": "Current confidence",
+      "sectionIntro": "Rate your confidence before training using this scale: 1 = Not at all confident; 2 = Slightly confident; 3 = Moderately confident; 4 = Very confident; 5 = Extremely confident"
+    },
+    {
+      "type": "rating",
+      "id": "16s_pre_conf2",
+      "question": "I can explain why the 16S rRNA gene is used to profile microbial communities.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_pre_conf3",
+      "question": "I can describe and carry out the main QIIME 2 workflow from reads to taxonomy.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_pre_conf4",
+      "question": "I can analyze and interpret alpha and beta diversity using R/phyloseq.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_pre_conf5",
+      "question": "I can explain what PICRUSt2 predicts and recognize the limits of those predictions.",
+      "scale": 5
     },
     {
       "type": "mcq",
-      "id": "16s_pt7",
-      "question": "Which software platform is used as the end-to-end microbiome analysis pipeline in the PGCV 16S training materials?",
-      "options": ["Trinity", "QIIME 2", "BLAST", "SPAdes"],
-      "correct": 1
+      "question": "Why is the 16S rRNA gene useful for profiling bacteria and archaea?",
+      "options": [
+        "It is found only in organisms that can be cultured",
+        "It combines conserved regions with variable regions that help distinguish taxa",
+        "It directly measures all genes and pathways in a community",
+        "It changes completely from one cell to another",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k1",
+      "section": "Knowledge check",
+      "sectionIntro": "Choose the one best answer. Select \"I don't know yet\" instead of guessing if you are unsure."
+    },
+    {
+      "type": "mcq",
+      "question": "Which conclusion is most directly supported by a typical 16S rRNA amplicon dataset?",
+      "options": [
+        "The relative taxonomic composition of the sampled microbial community",
+        "The exact absolute number of every organism in the environment",
+        "The complete genome of every organism in the sample",
+        "The measured activity of every metabolic pathway",
+        "I don't know yet"
+      ],
+      "correct": 0,
+      "id": "16s_pre_k2"
+    },
+    {
+      "type": "mcq",
+      "question": "What information does a FASTQ file contain?",
+      "options": [
+        "Sample descriptions only",
+        "Taxonomic names and abundance percentages only",
+        "Sequence reads and their associated quality scores",
+        "Phylogenetic trees only",
+        "I don't know yet"
+      ],
+      "correct": 2,
+      "id": "16s_pre_k3"
+    },
+    {
+      "type": "mcq",
+      "question": "Which Linux command displays the current working directory?",
+      "options": [
+        "cd",
+        "ls",
+        "pwd",
+        "mkdir",
+        "I don't know yet"
+      ],
+      "correct": 2,
+      "id": "16s_pre_k4"
+    },
+    {
+      "type": "mcq",
+      "question": "Which sequence shows the most appropriate order for the main processing steps?",
+      "options": [
+        "Taxonomic classification → FastQC → DADA2 → trimming",
+        "FastQC → adapter/primer trimming → DADA2 denoising → taxonomic classification",
+        "DADA2 denoising → demultiplexing → FastQC → taxonomic classification",
+        "PICRUSt2 → FastQC → taxonomic classification → trimming",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k5"
+    },
+    {
+      "type": "mcq",
+      "question": "What is the main purpose of a manifest file when importing sequences into QIIME 2?",
+      "options": [
+        "To connect sample IDs to the locations of their sequence files",
+        "To store the taxonomic classification of each ASV",
+        "To calculate alpha diversity",
+        "To list predicted metabolic pathways",
+        "I don't know yet"
+      ],
+      "correct": 0,
+      "id": "16s_pre_k6"
+    },
+    {
+      "type": "mcq",
+      "question": "Which pair is a key output of DADA2 denoising in the module's QIIME 2 workflow?",
+      "options": [
+        "A metadata file and a bar plot",
+        "An ASV count table and representative sequences",
+        "A raw FASTQ file and a reference database",
+        "A pathway table and a PCoA plot",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k7"
+    },
+    {
+      "type": "mcq",
+      "question": "Which statement correctly distinguishes alpha diversity from beta diversity?",
+      "options": [
+        "Alpha diversity compares communities; beta diversity describes one community",
+        "Alpha diversity describes diversity within a sample; beta diversity compares composition among samples",
+        "Alpha diversity uses only taxonomy; beta diversity uses only phylogeny",
+        "They are two names for the same measurement",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k8"
+    },
+    {
+      "type": "mcq",
+      "question": "What does a plateau in a sample's alpha-rarefaction curve generally suggest?",
+      "options": [
+        "The sample contains no microorganisms",
+        "Sequencing depth likely captured most of the detectable taxa in that sample",
+        "All samples have identical community composition",
+        "Taxonomic classification was performed at 100% confidence",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k9"
+    },
+    {
+      "type": "mcq",
+      "question": "What does PICRUSt2 provide in this workflow?",
+      "options": [
+        "Direct measurements of gene expression",
+        "Predictions of gene-family and pathway abundances from marker-gene data",
+        "Removal of primers from raw reads",
+        "Assignment of reads to samples using barcodes",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_pre_k10"
+    },
+    {
+      "type": "text",
+      "id": "16s_pre_open",
+      "question": "In one sentence, what is your biggest question about analyzing 16S data?",
+      "multiline": true,
+      "section": "Starting point"
     }
   ],
   "post_test": [
     {
       "type": "mcq",
-      "id": "16s_pot1",
-      "question": "After inspecting reads with FastQC, which tool is commonly used to trim adapters and low-quality bases before importing data into QIIME 2?",
-      "options": ["MultiQC", "fastp", "SPAdes", "Trinity"],
-      "correct": 1
-    },
-    {
-      "type": "mcq",
-      "id": "16s_pot2",
-      "question": "What is the main purpose of MultiQC in the 16S metagenomics pipeline?",
+      "question": "Why is the 16S rRNA gene useful for profiling bacteria and archaea?",
       "options": [
-        "To denoise amplicon reads into exact sequence variants",
-        "To combine QC reports from multiple tools into a single summary report",
-        "To assign taxonomy to ASVs against a reference database",
-        "To predict metabolic pathways from 16S abundance tables"
+        "It is found only in organisms that can be cultured",
+        "It combines conserved regions with variable regions that help distinguish taxa",
+        "It directly measures all genes and pathways in a community",
+        "It changes completely from one cell to another",
+        "I don't know yet"
       ],
-      "correct": 1
+      "correct": 1,
+      "id": "16s_post_k1",
+      "section": "Knowledge check",
+      "sectionIntro": "Choose the one best answer. Select \"I don't know yet\" instead of guessing if you are unsure."
     },
     {
       "type": "mcq",
-      "id": "16s_pot3",
-      "question": "In QIIME 2, denoising with DADA2 primarily produces:",
+      "question": "Which conclusion is most directly supported by a typical 16S rRNA amplicon dataset?",
       "options": [
-        "A phylogenetic tree of animal COI barcodes",
-        "ASVs representing exact amplicon sequence variants",
-        "A whole-genome assembly in FASTA format",
-        "A list of differentially expressed genes"
+        "The relative taxonomic composition of the sampled microbial community",
+        "The exact absolute number of every organism in the environment",
+        "The complete genome of every organism in the sample",
+        "The measured activity of every metabolic pathway",
+        "I don't know yet"
       ],
-      "correct": 1
+      "correct": 0,
+      "id": "16s_post_k2"
     },
     {
       "type": "mcq",
-      "id": "16s_pot4",
-      "question": "PICRUSt2 is used to:",
+      "question": "What information does a FASTQ file contain?",
       "options": [
-        "Trim low-quality reads and remove adapters",
-        "Predict functional potential from 16S amplicon abundance data",
-        "Demultiplex indexed reads from raw sequencing output",
-        "Assemble long contigs from paired-end reads"
+        "Sample descriptions only",
+        "Taxonomic names and abundance percentages only",
+        "Sequence reads and their associated quality scores",
+        "Phylogenetic trees only",
+        "I don't know yet"
       ],
-      "correct": 1
+      "correct": 2,
+      "id": "16s_post_k3"
     },
     {
       "type": "mcq",
-      "id": "16s_pot5",
-      "question": "Beta diversity analysis is primarily used to:",
+      "question": "Which Linux command displays the current working directory?",
       "options": [
-        "Measure microbial richness and evenness within one sample",
-        "Compare microbial community composition between samples",
-        "Remove chimeric sequences from amplicon reads",
-        "Generate per-base quality plots for raw FASTQ files"
+        "cd",
+        "ls",
+        "pwd",
+        "mkdir",
+        "I don't know yet"
       ],
-      "correct": 1
+      "correct": 2,
+      "id": "16s_post_k4"
     },
     {
       "type": "mcq",
-      "id": "16s_pot6",
-      "question": "Which file format is the standard input for quality control and trimming steps in the 16S pipeline?",
-      "options": ["FASTA", "FASTQ", "BAM", "GFF"],
-      "correct": 1
+      "question": "Which sequence shows the most appropriate order for the main processing steps?",
+      "options": [
+        "Taxonomic classification → FastQC → DADA2 → trimming",
+        "FastQC → adapter/primer trimming → DADA2 denoising → taxonomic classification",
+        "DADA2 denoising → demultiplexing → FastQC → taxonomic classification",
+        "PICRUSt2 → FastQC → taxonomic classification → trimming",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_post_k5"
+    },
+    {
+      "type": "mcq",
+      "question": "What is the main purpose of a manifest file when importing sequences into QIIME 2?",
+      "options": [
+        "To connect sample IDs to the locations of their sequence files",
+        "To store the taxonomic classification of each ASV",
+        "To calculate alpha diversity",
+        "To list predicted metabolic pathways",
+        "I don't know yet"
+      ],
+      "correct": 0,
+      "id": "16s_post_k6"
+    },
+    {
+      "type": "mcq",
+      "question": "Which pair is a key output of DADA2 denoising in the module's QIIME 2 workflow?",
+      "options": [
+        "A metadata file and a bar plot",
+        "An ASV count table and representative sequences",
+        "A raw FASTQ file and a reference database",
+        "A pathway table and a PCoA plot",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_post_k7"
+    },
+    {
+      "type": "mcq",
+      "question": "Which statement correctly distinguishes alpha diversity from beta diversity?",
+      "options": [
+        "Alpha diversity compares communities; beta diversity describes one community",
+        "Alpha diversity describes diversity within a sample; beta diversity compares composition among samples",
+        "Alpha diversity uses only taxonomy; beta diversity uses only phylogeny",
+        "They are two names for the same measurement",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_post_k8"
+    },
+    {
+      "type": "mcq",
+      "question": "What does a plateau in a sample's alpha-rarefaction curve generally suggest?",
+      "options": [
+        "The sample contains no microorganisms",
+        "Sequencing depth likely captured most of the detectable taxa in that sample",
+        "All samples have identical community composition",
+        "Taxonomic classification was performed at 100% confidence",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_post_k9"
+    },
+    {
+      "type": "mcq",
+      "question": "What does PICRUSt2 provide in this workflow?",
+      "options": [
+        "Direct measurements of gene expression",
+        "Predictions of gene-family and pathway abundances from marker-gene data",
+        "Removal of primers from raw reads",
+        "Assignment of reads to samples using barcodes",
+        "I don't know yet"
+      ],
+      "correct": 1,
+      "id": "16s_post_k10"
+    },
+    {
+      "type": "rating",
+      "id": "16s_post_conf1",
+      "question": "I can navigate files and run basic commands in Linux/Bash.",
+      "scale": 5,
+      "section": "Confidence after training",
+      "sectionIntro": "Rate your confidence after training using this scale: 1 = Not at all confident; 2 = Slightly confident; 3 = Moderately confident; 4 = Very confident; 5 = Extremely confident"
+    },
+    {
+      "type": "rating",
+      "id": "16s_post_conf2",
+      "question": "I can explain why the 16S rRNA gene is used to profile microbial communities.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_post_conf3",
+      "question": "I can describe and carry out the main QIIME 2 workflow from reads to taxonomy.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_post_conf4",
+      "question": "I can analyze and interpret alpha and beta diversity using R/phyloseq.",
+      "scale": 5
+    },
+    {
+      "type": "rating",
+      "id": "16s_post_conf5",
+      "question": "I can explain what PICRUSt2 predicts and recognize the limits of those predictions.",
+      "scale": 5
+    },
+    {
+      "type": "choice",
+      "id": "16s_post_clearest",
+      "question": "Which part of the workflow is now clearest to you?",
+      "options": [
+        "Linux/Bash and file handling",
+        "16S sequencing concepts",
+        "Quality control, trimming, and DADA2",
+        "Taxonomic classification",
+        "Alpha and beta diversity analysis",
+        "Functional prediction with PICRUSt2"
+      ],
+      "section": "Brief reflection"
+    },
+    {
+      "type": "choice",
+      "id": "16s_post_support",
+      "question": "Which part do you still need the most support with?",
+      "options": [
+        "Linux/Bash and file handling",
+        "16S sequencing concepts",
+        "Quality control, trimming, and DADA2",
+        "Taxonomic classification",
+        "Alpha and beta diversity analysis",
+        "Functional prediction with PICRUSt2",
+        "None at this time"
+      ]
     },
     {
       "type": "text",
-      "id": "16s_pot7",
-      "question": "In your own words, describe the main steps of the 16S rRNA metagenomics workflow from raw sequencing reads through taxonomy assignment. Mention at least three tools or stages covered in this training.",
+      "id": "16s_post_ready",
+      "question": "What is one task you now feel ready to do?",
       "multiline": true
     }
   ]

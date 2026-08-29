@@ -1,0 +1,301 @@
+import type {
+  ChoiceQuestion,
+  McqQuestion,
+  Question,
+  RatingQuestion,
+  TextQuestion,
+} from "@/types/database";
+
+const DONT_KNOW = "I don't know yet";
+
+const KNOWLEDGE_INTRO =
+  'Choose the one best answer. Select "I don\'t know yet" instead of guessing if you are unsure.';
+
+const CONFIDENCE_SCALE =
+  "1 = Not at all confident; 2 = Slightly confident; 3 = Moderately confident; 4 = Very confident; 5 = Extremely confident";
+
+const KNOWLEDGE_ITEMS: Omit<McqQuestion, "id">[] = [
+  {
+    type: "mcq",
+    question:
+      "Why is the 16S rRNA gene useful for profiling bacteria and archaea?",
+    options: [
+      "It is found only in organisms that can be cultured",
+      "It combines conserved regions with variable regions that help distinguish taxa",
+      "It directly measures all genes and pathways in a community",
+      "It changes completely from one cell to another",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+  {
+    type: "mcq",
+    question:
+      "Which conclusion is most directly supported by a typical 16S rRNA amplicon dataset?",
+    options: [
+      "The relative taxonomic composition of the sampled microbial community",
+      "The exact absolute number of every organism in the environment",
+      "The complete genome of every organism in the sample",
+      "The measured activity of every metabolic pathway",
+      DONT_KNOW,
+    ],
+    correct: 0,
+  },
+  {
+    type: "mcq",
+    question: "What information does a FASTQ file contain?",
+    options: [
+      "Sample descriptions only",
+      "Taxonomic names and abundance percentages only",
+      "Sequence reads and their associated quality scores",
+      "Phylogenetic trees only",
+      DONT_KNOW,
+    ],
+    correct: 2,
+  },
+  {
+    type: "mcq",
+    question: "Which Linux command displays the current working directory?",
+    options: ["cd", "ls", "pwd", "mkdir", DONT_KNOW],
+    correct: 2,
+  },
+  {
+    type: "mcq",
+    question:
+      "Which sequence shows the most appropriate order for the main processing steps?",
+    options: [
+      "Taxonomic classification → FastQC → DADA2 → trimming",
+      "FastQC → adapter/primer trimming → DADA2 denoising → taxonomic classification",
+      "DADA2 denoising → demultiplexing → FastQC → taxonomic classification",
+      "PICRUSt2 → FastQC → taxonomic classification → trimming",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+  {
+    type: "mcq",
+    question:
+      "What is the main purpose of a manifest file when importing sequences into QIIME 2?",
+    options: [
+      "To connect sample IDs to the locations of their sequence files",
+      "To store the taxonomic classification of each ASV",
+      "To calculate alpha diversity",
+      "To list predicted metabolic pathways",
+      DONT_KNOW,
+    ],
+    correct: 0,
+  },
+  {
+    type: "mcq",
+    question:
+      "Which pair is a key output of DADA2 denoising in the module's QIIME 2 workflow?",
+    options: [
+      "A metadata file and a bar plot",
+      "An ASV count table and representative sequences",
+      "A raw FASTQ file and a reference database",
+      "A pathway table and a PCoA plot",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+  {
+    type: "mcq",
+    question:
+      "Which statement correctly distinguishes alpha diversity from beta diversity?",
+    options: [
+      "Alpha diversity compares communities; beta diversity describes one community",
+      "Alpha diversity describes diversity within a sample; beta diversity compares composition among samples",
+      "Alpha diversity uses only taxonomy; beta diversity uses only phylogeny",
+      "They are two names for the same measurement",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+  {
+    type: "mcq",
+    question:
+      "What does a plateau in a sample's alpha-rarefaction curve generally suggest?",
+    options: [
+      "The sample contains no microorganisms",
+      "Sequencing depth likely captured most of the detectable taxa in that sample",
+      "All samples have identical community composition",
+      "Taxonomic classification was performed at 100% confidence",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+  {
+    type: "mcq",
+    question: "What does PICRUSt2 provide in this workflow?",
+    options: [
+      "Direct measurements of gene expression",
+      "Predictions of gene-family and pathway abundances from marker-gene data",
+      "Removal of primers from raw reads",
+      "Assignment of reads to samples using barcodes",
+      DONT_KNOW,
+    ],
+    correct: 1,
+  },
+];
+
+const CONFIDENCE_ITEMS = [
+  "I can navigate files and run basic commands in Linux/Bash.",
+  "I can explain why the 16S rRNA gene is used to profile microbial communities.",
+  "I can describe and carry out the main QIIME 2 workflow from reads to taxonomy.",
+  "I can analyze and interpret alpha and beta diversity using R/phyloseq.",
+  "I can explain what PICRUSt2 predicts and recognize the limits of those predictions.",
+] as const;
+
+const WORKFLOW_AREAS = [
+  "Linux/Bash and file handling",
+  "16S sequencing concepts",
+  "Quality control, trimming, and DADA2",
+  "Taxonomic classification",
+  "Alpha and beta diversity analysis",
+  "Functional prediction with PICRUSt2",
+] as const;
+
+function knowledgeQuestions(
+  idPrefix: "16s_pre" | "16s_post",
+): McqQuestion[] {
+  return KNOWLEDGE_ITEMS.map((item, index) => ({
+    ...item,
+    id: `${idPrefix}_k${index + 1}`,
+    ...(index === 0
+      ? { section: "Knowledge check", sectionIntro: KNOWLEDGE_INTRO }
+      : {}),
+  }));
+}
+
+function confidenceQuestions(
+  idPrefix: "16s_pre" | "16s_post",
+  section: string,
+  sectionIntro: string,
+): RatingQuestion[] {
+  return CONFIDENCE_ITEMS.map((question, index) => ({
+    type: "rating" as const,
+    id: `${idPrefix}_conf${index + 1}`,
+    question,
+    scale: 5,
+    ...(index === 0 ? { section, sectionIntro } : {}),
+  }));
+}
+
+const PRE_BACKGROUND: ChoiceQuestion[] = [
+  {
+    type: "choice",
+    id: "16s_pre_role",
+    question: "Which best describes your current role?",
+    options: [
+      "Undergraduate student",
+      "Graduate student",
+      "Faculty member or instructor",
+      "Researcher or laboratory staff",
+      "Healthcare or public-health professional",
+      "Other",
+    ],
+    section: "Getting to know you",
+  },
+  {
+    type: "choice",
+    id: "16s_pre_exposure",
+    question:
+      "Before this training, how much exposure had you had to 16S metagenomics?",
+    options: [
+      "None—I am new to the topic",
+      "I have heard of it",
+      "I have read about it or attended a lecture",
+      "I have completed guided exercises",
+      "I have independently analyzed 16S data",
+    ],
+  },
+  {
+    type: "choice",
+    id: "16s_pre_datasets",
+    question: "How many 16S datasets have you analyzed before this training?",
+    options: ["0", "1", "2–5", "More than 5"],
+  },
+  {
+    type: "choice",
+    id: "16s_pre_tools",
+    question: "Which tools have you used before? Select all that apply.",
+    options: [
+      "Linux/Bash command line",
+      "FastQC or Cutadapt",
+      "QIIME 2",
+      "R or RStudio",
+      "phyloseq",
+      "PICRUSt2",
+      "None of these",
+    ],
+    multiple: true,
+  },
+  {
+    type: "choice",
+    id: "16s_pre_priority",
+    question:
+      "Which skill would you most like to develop during this training? Select one.",
+    options: [
+      "Using the Linux command line",
+      "Understanding 16S sequencing and microbial profiles",
+      "Processing reads with QIIME 2 and DADA2",
+      "Analyzing alpha and beta diversity in R",
+      "Predicting and interpreting microbial functions",
+    ],
+  },
+];
+
+const PRE_OPEN: TextQuestion = {
+  type: "text",
+  id: "16s_pre_open",
+  question: "In one sentence, what is your biggest question about analyzing 16S data?",
+  multiline: true,
+  section: "Starting point",
+};
+
+const POST_REFLECTION: Question[] = [
+  {
+    type: "choice",
+    id: "16s_post_clearest",
+    question: "Which part of the workflow is now clearest to you?",
+    options: [...WORKFLOW_AREAS],
+    section: "Brief reflection",
+  },
+  {
+    type: "choice",
+    id: "16s_post_support",
+    question: "Which part do you still need the most support with?",
+    options: [...WORKFLOW_AREAS, "None at this time"],
+  },
+  {
+    type: "text",
+    id: "16s_post_ready",
+    question: "What is one task you now feel ready to do?",
+    multiline: true,
+  },
+];
+
+export const SIXTEEN_S_PRE_QUESTIONS: Question[] = [
+  ...PRE_BACKGROUND,
+  ...confidenceQuestions(
+    "16s_pre",
+    "Current confidence",
+    `Rate your confidence before training using this scale: ${CONFIDENCE_SCALE}`,
+  ),
+  ...knowledgeQuestions("16s_pre"),
+  PRE_OPEN,
+];
+
+export const SIXTEEN_S_POST_QUESTIONS: Question[] = [
+  ...knowledgeQuestions("16s_post"),
+  ...confidenceQuestions(
+    "16s_post",
+    "Confidence after training",
+    `Rate your confidence after training using this scale: ${CONFIDENCE_SCALE}`,
+  ),
+  ...POST_REFLECTION,
+];
+
+export const SIXTEEN_S_KNOWLEDGE_ANSWER_KEY = KNOWLEDGE_ITEMS.map(
+  (item) => item.correct,
+);

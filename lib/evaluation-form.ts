@@ -54,6 +54,7 @@ export type PostActivityQuestion = (
 export type EvaluationAnswerValue =
   | string
   | number
+  | string[]
   | Record<string, string | number>;
 
 export type EvaluationAnswers = Record<string, EvaluationAnswerValue>;
@@ -331,7 +332,18 @@ export function missingRequiredAnswers(
 
     if (question.type === "choice") {
       const value = answers[question.id];
-      if (typeof value !== "string" || !question.options.includes(value)) {
+      if (question.multiple) {
+        if (
+          !Array.isArray(value) ||
+          value.length === 0 ||
+          value.some(
+            (item) =>
+              typeof item !== "string" || !question.options.includes(item),
+          )
+        ) {
+          missing.push(question.id);
+        }
+      } else if (typeof value !== "string" || !question.options.includes(value)) {
         missing.push(question.id);
       }
       continue;
