@@ -53,6 +53,12 @@ export const covidSampleTrackerBreadcrumbs: BreadcrumbItem[] = [
   { label: "COVID-19 Sample Tracker" },
 ];
 
+export const sequencingRunChecklistBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Sequence Analysis", href: "/dashboard/services" },
+  { label: "Sequencing Run Checklist" },
+];
+
 export const serviceReportGeneratorBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Sequence Analysis", href: "/dashboard/services" },

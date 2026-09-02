@@ -40,6 +40,8 @@ export const routes = {
     covidSampleTracker: "/dashboard/services/covid-sample-tracker",
     covidSampleTrackerByRunId: (runId: string) =>
       `/dashboard/services/covid-sample-tracker?run_id=${encodeURIComponent(runId.trim())}`,
+    /** Analyst reference board for incoming sequencing runs. */
+    sequencingRunChecklist: "/dashboard/services/sequencing-run-checklist",
     detail: (id: string) => `/dashboard/services/${id}`,
   },
   repositories: {

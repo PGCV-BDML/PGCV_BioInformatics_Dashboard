@@ -36,12 +36,15 @@ describe("isSequenceAnalysisReadPath", () => {
     ).toBe(true);
   });
 
-  it("blocks generator and COVID tracker", () => {
+  it("blocks generator, COVID tracker, and sequencing run checklist", () => {
     expect(
       isSequenceAnalysisReadPath("/dashboard/services/report-generator"),
     ).toBe(false);
     expect(
       isSequenceAnalysisReadPath("/dashboard/services/covid-sample-tracker"),
+    ).toBe(false);
+    expect(
+      isSequenceAnalysisReadPath("/dashboard/services/sequencing-run-checklist"),
     ).toBe(false);
   });
 });

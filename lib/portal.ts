@@ -55,6 +55,7 @@ export function canViewSequenceAnalysis(
 const SEQUENCE_ANALYSIS_STAFF_ONLY_SLUGS = new Set([
   "report-generator",
   "covid-sample-tracker",
+  "sequencing-run-checklist",
 ]);
 
 /** Dashboard, tracker, and `/dashboard/services/:id` — not generator or COVID. */

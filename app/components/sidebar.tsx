@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   BookOpen,
   FileOutput,
+  ClipboardCheck,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -102,6 +103,11 @@ const navItems: NavItem[] = [
         name: "Service Report Generator",
         href: "/dashboard/services/report-generator",
         icon: FileOutput,
+      },
+      {
+        name: "Sequencing Run Checklist",
+        href: "/dashboard/services/sequencing-run-checklist",
+        icon: ClipboardCheck,
       },
       {
         name: "COVID-19 Sample Tracker",

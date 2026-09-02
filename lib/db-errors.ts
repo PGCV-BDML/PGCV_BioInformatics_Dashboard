@@ -39,6 +39,15 @@ const TABLE_LABELS: Partial<
     many: "incident status events",
   },
   covid_sequencing_run: { one: "sequencing run", many: "sequencing runs" },
+  sequencing_run: { one: "sequencing run checklist", many: "sequencing run checklists" },
+  sequencing_run_checklist_item: {
+    one: "checklist row",
+    many: "checklist rows",
+  },
+  sequencing_run_checklist_analyst: {
+    one: "checklist analyst",
+    many: "checklist analysts",
+  },
   service_report_generator: {
     one: "generator address",
     many: "generator addresses",
@@ -206,6 +215,13 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     (message.includes("duplicate key") && message.includes("run_id"))
   ) {
     return `Failed to save ${subject}: that run ID is already in use.`;
+  }
+
+  if (
+    message.includes("sequencing_run_repository_id_key") ||
+    (message.includes("duplicate key") && message.includes("repository_id"))
+  ) {
+    return `Failed to save ${subject}: that repository link already has a checklist.`;
   }
 
   if (

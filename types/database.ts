@@ -688,6 +688,57 @@ export type CovidSequencingRunFormData = {
 };
 
 // ============================================================
+// Sequencing Run Checklist (analyst reference board)
+// ============================================================
+
+/** One whiteboard section per repository run. */
+export type SequencingRun = {
+  id: string;
+  repository_id: string;
+  date_received: string;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** One client job row on the sequencing run checklist. */
+export type SequencingRunChecklistItem = {
+  id: string;
+  sequencing_run_id: string;
+  client_name: string;
+  analysis_type: string;
+  sample_count: number;
+  is_complete: boolean;
+  sort_order: number;
+  /** Client-enriched from sequencing_run_checklist_analyst. */
+  analyst_ids?: string[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type SequencingRunFormData = {
+  repository_id: string;
+  date_received: string;
+  notes: string;
+};
+
+export type SequencingRunChecklistItemFormData = {
+  client_name: string;
+  analysis_type: string;
+  sample_count: string;
+  analyst_ids: string[];
+  is_complete: boolean;
+};
+
+/** Run card enriched with repository metadata for display. */
+export type SequencingRunWithRepository = SequencingRun & {
+  repository_title: string;
+  repository_url: string;
+  run_id: string | null;
+  items: SequencingRunChecklistItem[];
+};
+
+// ============================================================
 // Team presence / availability
 // ============================================================
 

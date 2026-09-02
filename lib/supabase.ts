@@ -120,6 +120,9 @@ export type TableNames =
   | "incident_report"
   | "incident_status_event"
   | "covid_sequencing_run"
+  | "sequencing_run"
+  | "sequencing_run_checklist_item"
+  | "sequencing_run_checklist_analyst"
   | "service_report_generator"
   | "user_presence"
   | "user_absence"
@@ -423,6 +426,82 @@ export async function replaceTaskAssignees(taskId: string, userIds: string[]) {
 
     if (insertError) {
       console.error("Error inserting task assignees:", insertError);
+      throw insertError;
+    }
+  }
+}
+
+/** Load all sequencing_run_checklist_analyst rows grouped by checklist_item_id. */
+export async function getChecklistAnalystsByItemId(): Promise<
+  Map<string, string[]>
+> {
+  const { data, error } = await supabase
+    .from("sequencing_run_checklist_analyst")
+    .select("checklist_item_id, user_id");
+  if (error) {
+    console.error("Error retrieving checklist analysts:", error);
+    throw error;
+  }
+
+  const map = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    const itemId = row.checklist_item_id as string;
+    const userId = row.user_id as string;
+    const list = map.get(itemId) ?? [];
+    list.push(userId);
+    map.set(itemId, list);
+  }
+  return map;
+}
+
+/** Replace all analysts for a checklist row. */
+export async function replaceChecklistAnalysts(
+  checklistItemId: string,
+  userIds: string[],
+) {
+  const unique = Array.from(new Set(userIds.filter(Boolean)));
+
+  const { data: currentRows, error: fetchError } = await supabase
+    .from("sequencing_run_checklist_analyst")
+    .select("user_id")
+    .eq("checklist_item_id", checklistItemId);
+
+  if (fetchError) {
+    console.error("Error reading checklist analysts:", fetchError);
+    throw fetchError;
+  }
+
+  const current = new Set(
+    (currentRows ?? []).map((row) => row.user_id as string),
+  );
+  const toAdd = unique.filter((userId) => !current.has(userId));
+  const toRemove = [...current].filter((userId) => !unique.includes(userId));
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("sequencing_run_checklist_analyst")
+      .delete()
+      .eq("checklist_item_id", checklistItemId)
+      .in("user_id", toRemove);
+
+    if (deleteError) {
+      console.error("Error clearing checklist analysts:", deleteError);
+      throw deleteError;
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase
+      .from("sequencing_run_checklist_analyst")
+      .insert(
+        toAdd.map((user_id) => ({
+          checklist_item_id: checklistItemId,
+          user_id,
+        })),
+      );
+
+    if (insertError) {
+      console.error("Error inserting checklist analysts:", insertError);
       throw insertError;
     }
   }
