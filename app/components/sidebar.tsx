@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { clearGoogleCalendarReconnectAttempt, clearGoogleCalendarToken } from "@/lib/google-calendar";
+import { disablePushNotifications } from "@/lib/push-client";
 import { useDashboardUI } from "./dashboard-ui-context";
 import { usePortal } from "./portal-context";
 import { getHomePathForRole } from "@/lib/portal";
@@ -275,6 +276,11 @@ export default function Sidebar({
     try {
       clearGoogleCalendarToken();
       clearGoogleCalendarReconnectAttempt();
+      try {
+        await disablePushNotifications();
+      } catch (error) {
+        console.error("Could not clear push subscription:", error);
+      }
       await supabase.auth.signOut();
       router.push("/login");
     } catch (err) {

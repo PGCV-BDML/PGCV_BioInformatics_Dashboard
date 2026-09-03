@@ -123,6 +123,8 @@ The app deploys automatically on Vercel when changes are pushed to the `main` br
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (primary — used by `lib/supabase.ts` and `lib/supabase-server.ts`)
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (optional legacy fallback)
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push; generate with `npm run vapid:generate`)
+   - `PUSH_DISPATCH_SECRET` (random secret, e.g. `openssl rand -hex 32`)
 3. Push to `main` — Vercel builds and deploys automatically.
 
 HTTPS is enforced by Vercel for the production domain.

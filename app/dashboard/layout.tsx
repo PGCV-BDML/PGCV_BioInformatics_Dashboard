@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "../components/sidebar";
 import { NotificationBell } from "../components/notification-bell";
+import { PushNotificationSetup } from "../components/push-notification-setup";
 import {
   DashboardUIProvider,
   useDashboardUI,
@@ -78,9 +79,12 @@ export default function DashboardLayout({
 }
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { isSidebarHidden, toggleSidebar } = useDashboardUI();
   const { loading: portalLoading, effectiveRole, isOfficerView } = usePortal();
   const hideChrome = !effectiveRole || effectiveRole === "none";
+  const showPushBanner =
+    !hideChrome && pathname !== "/dashboard/notifications";
 
   if (portalLoading) {
     return (
@@ -141,7 +145,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <NotificationBell />
           </header>
         )}
-        <div className="flex-1 p-4 md:p-8">{children}</div>
+        <div className="flex-1 p-4 md:p-8">
+          {showPushBanner ? (
+            <PushNotificationSetup variant="banner" />
+          ) : null}
+          {children}
+        </div>
         {!hideChrome && <DashboardFooter />}
       </main>
 
