@@ -50,7 +50,6 @@ import MySignatureModal from "../../components/my-signature-modal";
 import SignatureConfirmModal from "../../components/signature-confirm-modal";
 import ReportLastPageModal from "../../components/report-last-page-modal";
 import { PushNotificationSetup } from "../../components/push-notification-setup";
-import { PhoneAlertsGuide } from "../../components/phone-alerts-guide";
 
 type FilterMode = "unread" | "all";
 
@@ -468,7 +467,6 @@ export default function NotificationsPage() {
       />
 
       <PushNotificationSetup variant="card" />
-      <PhoneAlertsGuide />
 
       {actionError && (
         <p className="text-sm text-red-600 font-aileron" role="alert">
