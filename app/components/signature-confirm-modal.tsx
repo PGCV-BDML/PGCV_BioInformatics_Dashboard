@@ -30,14 +30,16 @@ import {
 import { isMissingSignatureError } from "@/lib/user-signature";
 import { SignaturePagePreview } from "./signature-page-preview";
 
-export type SignOffAction = "review" | "approve";
+export type SignOffAction = "review" | "approve" | "prepare";
 
 const SLOT_BY_ACTION: Record<SignOffAction, SignatureSlot> = {
   review: "reviewed_by",
   approve: "approved_by",
+  prepare: "prepared_by",
 };
 
 const SLOT_LABEL: Record<SignatureSlot, string> = {
+  prepared_by: "Prepared by",
   reviewed_by: "Reviewed by",
   approved_by: "Approved for Release",
 };
@@ -139,9 +141,18 @@ export default function SignatureConfirmModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, isSaving, onClose]);
 
-  const confirmLabel = action === "approve" ? "Approve report" : "Complete review";
+  const confirmLabel =
+    action === "approve"
+      ? "Approve report"
+      : action === "prepare"
+        ? "Attach signature"
+        : "Complete review";
   const title =
-    action === "approve" ? "Confirm approval signature" : "Confirm your signature";
+    action === "approve"
+      ? "Confirm approval signature"
+      : action === "prepare"
+        ? "Confirm Prepared by signature"
+        : "Confirm your signature";
 
   const canSubmit = Boolean(preview && rect && confirmed && !isSaving && !isLoading);
 
@@ -188,6 +199,14 @@ export default function SignatureConfirmModal({
           This stamp goes under <em>Approved for Release</em>. The reviewing
           officer&apos;s signature should already be on this last page. Drag to
           move, use the corner or +/− to resize.
+        </>
+      );
+    }
+    if (action === "prepare") {
+      return (
+        <>
+          This stamp goes under <em>Prepared by</em>. Drag to move, use the
+          corner or +/− to resize, then confirm it sits on the printed name.
         </>
       );
     }

@@ -8,11 +8,14 @@ import {
   type ServiceReportFileMeta,
 } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
+import { AssigneeSignatureOption } from "./assignee-signature-option";
 import { useToast } from "./toast";
+import { canStampPreparedBy } from "@/lib/service-report-signature";
 
 interface ServiceReportAnalysis {
   id: string;
   project_name: string;
+  assignee_id?: string | null;
 }
 
 export interface ServiceReportUploadResult {
@@ -29,7 +32,9 @@ interface ServiceReportModalProps {
   onReportUploaded: (
     analysisId: string,
     result: ServiceReportUploadResult,
-  ) => void;
+  ) => void | Promise<void>;
+  /** Opens the Prepared by signature placement modal after a successful save. */
+  onReadyToSign?: (analysisId: string) => void;
 }
 
 export default function ServiceReportModal({
@@ -38,11 +43,13 @@ export default function ServiceReportModal({
   analysis,
   currentUserId,
   onReportUploaded,
+  onReadyToSign,
 }: ServiceReportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [fallbackUrl, setFallbackUrl] = useState("");
   const [showFallback, setShowFallback] = useState(false);
   const [clientAck, setClientAck] = useState(false);
+  const [attachSignature, setAttachSignature] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
@@ -53,6 +60,7 @@ export default function ServiceReportModal({
     setFallbackUrl("");
     setShowFallback(false);
     setClientAck(false);
+    setAttachSignature(false);
     setError(null);
   }, [isOpen]);
 
@@ -87,9 +95,17 @@ export default function ServiceReportModal({
         client_acknowledged_at: clientAck ? new Date().toISOString() : null,
       });
 
-      onReportUploaded(analysis.id, { file: uploaded, link: trimmedUrl });
-      showToast("Report uploaded.", "success");
+      await onReportUploaded(analysis.id, { file: uploaded, link: trimmedUrl });
+      showToast(
+        attachSignature
+          ? "Report uploaded. Place your signature under Prepared by."
+          : "Report uploaded.",
+        "success",
+      );
+      const analysisId = analysis.id;
+      const shouldSign = attachSignature;
       onClose();
+      if (shouldSign) onReadyToSign?.(analysisId);
 
       supabase
         .rpc("audit_data_modification", {
@@ -144,10 +160,19 @@ export default function ServiceReportModal({
           />
 
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            This PDF is what the reviewing officer reads. Once it is attached
-            and both officers are assigned, the reviewer is notified
-            automatically.
+            This PDF is what the reviewing officer reads. Preview it first so
+            you can confirm it is the right file. Once it is attached and both
+            officers are assigned, the reviewer is notified automatically.
           </p>
+
+          {file ? (
+            <AssigneeSignatureOption
+              checked={attachSignature}
+              onChange={setAttachSignature}
+              disabled={isSubmitting}
+              visible={canStampPreparedBy(analysis.assignee_id, currentUserId)}
+            />
+          ) : null}
 
           {showFallback ? (
             <div>

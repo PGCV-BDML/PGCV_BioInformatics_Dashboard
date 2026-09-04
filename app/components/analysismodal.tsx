@@ -7,8 +7,8 @@ import {
   Activity,
   Layers,
   Dna,
+  Eye,
   FileText,
-  ExternalLink,
   Trash2,
 } from "lucide-react";
 import {
@@ -18,11 +18,13 @@ import {
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
-import {
-  formatFileSize,
-  getServiceReportSignedUrl,
-} from "@/lib/service-report-file";
+import { formatFileSize } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
+import PdfPreviewModal from "./pdf-preview-modal";
+import {
+  AssigneeSignatureOption,
+  AttachAssigneeSignatureButton,
+} from "./assignee-signature-option";
 import { ReportActivitySection } from "./report-activity";
 import type { AnalysisStatusEvent } from "../../types/database";
 
@@ -109,6 +111,11 @@ interface AnalysisSidebarProps {
   /** PDF staged for upload on save. The parent performs the upload. */
   pendingFile: File | null;
   onPendingFileChange: (file: File | null) => void;
+  canStampPreparedBy?: boolean;
+  attachAssigneeSignature?: boolean;
+  onAttachAssigneeSignatureChange?: (checked: boolean) => void;
+  /** Stamp Prepared by on the PDF already stored for this record. */
+  onRequestAssigneeSignature?: () => void;
   statusEvents?: AnalysisStatusEvent[];
   statusEventsLoading?: boolean;
   userNames?: Record<string, string>;
@@ -131,6 +138,10 @@ export default function AnalysisSidebar({
   availableApprovers,
   pendingFile,
   onPendingFileChange,
+  canStampPreparedBy = false,
+  attachAssigneeSignature = false,
+  onAttachAssigneeSignatureChange,
+  onRequestAssigneeSignature,
   statusEvents = [],
   statusEventsLoading = false,
   userNames = {},
@@ -142,7 +153,7 @@ export default function AnalysisSidebar({
   const [analysisSelection, setAnalysisSelection] = useState("");
   const [otherSpecify, setOtherSpecify] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
-  const [isOpeningFile, setIsOpeningFile] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -150,6 +161,7 @@ export default function AnalysisSidebar({
       setOtherSpecify("");
       setErrors({});
       setFileError(null);
+      setPreviewOpen(false);
       return;
     }
     const pipe = formState.pipeline;
@@ -216,25 +228,6 @@ export default function AnalysisSidebar({
 
   const storedFilePath = formState.service_report_file_path.trim();
   const storedFileSize = Number(formState.service_report_file_size);
-
-  const handleOpenStoredFile = async () => {
-    if (!storedFilePath || isOpeningFile) return;
-    setIsOpeningFile(true);
-    setFileError(null);
-    try {
-      const url = await getServiceReportSignedUrl(
-        storedFilePath,
-        formState.service_report_file_name,
-      );
-      if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      } else {
-        setFileError("Couldn't open that PDF. Try again in a moment.");
-      }
-    } finally {
-      setIsOpeningFile(false);
-    }
-  };
 
   // Clearing the path is all the sidebar does; the parent removes the stored
   // object on save, so cancelling out of the panel leaves the file untouched.
@@ -544,13 +537,12 @@ export default function AnalysisSidebar({
               </div>
               <button
                 type="button"
-                onClick={() => void handleOpenStoredFile()}
-                disabled={isOpeningFile}
-                className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-[#2a7797] disabled:opacity-50"
-                title="Open the PDF"
-                aria-label="Open the PDF"
+                onClick={() => setPreviewOpen(true)}
+                className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-[#2a7797]"
+                title="Preview this PDF"
+                aria-label="Preview this PDF"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <Eye className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
@@ -567,22 +559,48 @@ export default function AnalysisSidebar({
                 {fileError}
               </p>
             )}
-            <button
-              type="button"
-              onClick={handleRemoveStoredFile}
-              className="ml-1 self-start text-[10px] font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
-            >
-              Upload a new version
-            </button>
+            <div className="ml-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button
+                type="button"
+                onClick={handleRemoveStoredFile}
+                className="self-start text-[10px] font-bold text-[#2a7797] underline decoration-dotted hover:text-[#1f5c76]"
+              >
+                Upload a new version
+              </button>
+              {canStampPreparedBy && onRequestAssigneeSignature ? (
+                <AttachAssigneeSignatureButton
+                  onClick={onRequestAssigneeSignature}
+                  disabled={isSaving}
+                />
+              ) : null}
+            </div>
+            <PdfPreviewModal
+              isOpen={previewOpen}
+              filePath={storedFilePath}
+              fileName={formState.service_report_file_name}
+              onClose={() => setPreviewOpen(false)}
+            />
           </div>
         ) : (
-          <PdfDropzone
-            file={pendingFile}
-            onFileChange={onPendingFileChange}
-            error={fileError}
-            onError={setFileError}
-            disabled={isSaving}
-          />
+          <>
+            <PdfDropzone
+              file={pendingFile}
+              onFileChange={onPendingFileChange}
+              error={fileError}
+              onError={setFileError}
+              disabled={isSaving}
+            />
+            {pendingFile ? (
+              <AssigneeSignatureOption
+                checked={attachAssigneeSignature}
+                onChange={(checked) =>
+                  onAttachAssigneeSignatureChange?.(checked)
+                }
+                disabled={isSaving}
+                visible={canStampPreparedBy}
+              />
+            ) : null}
+          </>
         )}
 
         <div className="flex flex-col gap-1.5">

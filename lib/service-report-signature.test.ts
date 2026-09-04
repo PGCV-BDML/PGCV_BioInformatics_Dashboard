@@ -6,6 +6,7 @@ import {
   stampedServiceReportFileName,
 } from "./service-report-file";
 import {
+  canStampPreparedBy,
   extractLastPagePdf,
   rectForStamp,
   resolveSignatureRect,
@@ -48,6 +49,12 @@ describe("originalServiceReportBaseName", () => {
 });
 
 describe("stampedServiceReportFileName", () => {
+  it("keeps the original name when the assignee stamps Prepared by", () => {
+    expect(
+      stampedServiceReportFileName("ClientReport.pdf", "prepared_by"),
+    ).toBe("ClientReport.pdf");
+  });
+
   it("marks peer review with -reviewed on the original name", () => {
     expect(
       stampedServiceReportFileName("ClientReport.pdf", "reviewed_by"),
@@ -159,6 +166,13 @@ describe("resolveSignatureRect", () => {
     const page = await pgcvSignatoryPage();
     const drop = 0.25 * (72 / 2.54);
 
+    const prepared = resolveSignatureRect(page, "prepared_by", 400, 100);
+    expect(prepared.x).toBeCloseTo(72, 0);
+    expect(prepared.width).toBe(160);
+    expect(prepared.height).toBe(40);
+    expect(prepared.y).toBeCloseTo(592.5 - drop, 0);
+    expect(prepared.y + prepared.height).toBeCloseTo(632.5 - drop, 0);
+
     const reviewed = resolveSignatureRect(page, "reviewed_by", 400, 100);
     expect(reviewed.x).toBeCloseTo(72, 0);
     expect(reviewed.width).toBe(160);
@@ -178,6 +192,7 @@ describe("resolveSignatureRect", () => {
     const page = await pgcvSignatoryPage();
     const drop = 0.25 * (72 / 2.54);
     for (const [slot, label, nameBaseline] of [
+      ["prepared_by", 680.4, 592.5],
       ["reviewed_by", 445.1, 357.3],
       ["approved_by", 209.9, 122.0],
     ] as const) {
@@ -187,6 +202,15 @@ describe("resolveSignatureRect", () => {
       expect(rect.y + rect.height).toBeGreaterThan(nameBaseline);
       expect(rect.y + rect.height).toBeLessThan(label);
     }
+  });
+
+  it("puts the assignee stamp over the printed name under Prepared by", async () => {
+    const page = await signatoryPage();
+    const drop = 0.25 * (72 / 2.54);
+    const rect = resolveSignatureRect(page, "prepared_by", 400, 100);
+    expect(rect.height).toBe(40);
+    expect(rect.y).toBeCloseTo(561 - drop, 0);
+    expect(rect.y + rect.height).toBeLessThan(593);
   });
 
   it("puts the reviewing stamp over the printed name under Reviewed by", async () => {
@@ -252,5 +276,22 @@ describe("resolveSignatureRect", () => {
     );
     expect(rect.x + rect.width).toBeCloseTo(page.getWidth(), 5);
     expect(rect.y).toBe(0);
+  });
+});
+
+describe("canStampPreparedBy", () => {
+  it("allows the assigned person", () => {
+    expect(canStampPreparedBy("u-1", "u-1")).toBe(true);
+  });
+
+  it("allows the current user when no assignee is set", () => {
+    expect(canStampPreparedBy(null, "u-1")).toBe(true);
+    expect(canStampPreparedBy("", "u-1")).toBe(true);
+  });
+
+  it("blocks a different user and anyone who is signed out", () => {
+    expect(canStampPreparedBy("u-1", "u-2")).toBe(false);
+    expect(canStampPreparedBy("u-1", null)).toBe(false);
+    expect(canStampPreparedBy(null, null)).toBe(false);
   });
 });

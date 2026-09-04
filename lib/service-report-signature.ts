@@ -30,11 +30,12 @@ export type { PageSize, SignatureRect } from "@/lib/signature-placement";
  * Signature image placement on the last page of a PGCV service report.
  *
  * The Word template is A4. Stamps are placed from the actual
- * "Reviewed by:" / "Approved for Release:" text on the page — full size,
- * overlapping the printed name under that label, then shifted 0.25 cm down.
- * SIGNATURE_SLOTS is only the fallback if those labels cannot be read.
+ * "Prepared by:" / "Reviewed by:" / "Approved for Release:" text on the
+ * page — full size, overlapping the printed name under that label, then
+ * shifted 0.25 cm down. SIGNATURE_SLOTS is only the fallback if those
+ * labels cannot be read.
  */
-export type SignatureSlot = "reviewed_by" | "approved_by";
+export type SignatureSlot = "prepared_by" | "reviewed_by" | "approved_by";
 
 type SlotPlacement = {
   x: number;
@@ -51,6 +52,7 @@ type TextRun = {
 };
 
 const LABEL_NEEDLES: Record<SignatureSlot, string[]> = {
+  prepared_by: ["prepared by"],
   reviewed_by: ["reviewed by"],
   approved_by: ["approved for release"],
 };
@@ -75,10 +77,11 @@ const STAMP_DROP_PT = 0.25 * PT_PER_CM;
  * Calibrated from PGCV-BIOINFO-SR-2026-118 (A4, 595.28 x 841.89). On that
  * template the signatory page is the last page and holds only the three
  * blocks. y is 0.25 cm below the printed-name baseline so the full-size
- * stamp overlaps the name: Reviewed by name at y=357.3, Approved for
- * Release at y=122.0.
+ * stamp overlaps the name: Prepared by name at y=592.5, Reviewed by name
+ * at y=357.3, Approved for Release at y=122.0.
  */
 export const SIGNATURE_SLOTS: Record<SignatureSlot, SlotPlacement> = {
+  prepared_by: { x: 72, y: 593 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
   reviewed_by: { x: 72, y: 357 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
   approved_by: { x: 72, y: 122 - STAMP_DROP_PT, maxWidth: 160, maxHeight: 40 },
 };
@@ -107,6 +110,17 @@ export class MissingReportPdfError extends Error {
     super(message);
     this.name = "MissingReportPdfError";
   }
+}
+
+/** True when the signed-in user may stamp the Prepared by slot. */
+export function canStampPreparedBy(
+  assigneeId: string | null | undefined,
+  currentUserId: string | null | undefined,
+): boolean {
+  if (!currentUserId?.trim()) return false;
+  const assignee = assigneeId?.trim() ?? "";
+  if (!assignee) return true;
+  return assignee === currentUserId;
 }
 
 export function isMissingReportPdfError(
@@ -459,7 +473,7 @@ async function loadSigningContext(
   const { data: analysis, error } = await supabase
     .from("analysis")
     .select(
-      "id, service_report_file_path, service_report_file_name, reviewer_user_id, approver_user_id, status_of_review",
+      "id, service_report_file_path, service_report_file_name, assignee_id, reviewer_user_id, approver_user_id, status_of_review",
     )
     .eq("id", analysisId)
     .maybeSingle();
@@ -477,6 +491,9 @@ async function loadSigningContext(
     throw new MissingSignatureError("You must be signed in to sign a report.");
   }
 
+  if (slot === "prepared_by" && !canStampPreparedBy(analysis.assignee_id, user.id)) {
+    throw new Error("Only the assignee can stamp the Prepared by signature.");
+  }
   if (slot === "reviewed_by" && analysis.reviewer_user_id !== user.id) {
     throw new Error("Only the assigned reviewing officer can sign this report.");
   }

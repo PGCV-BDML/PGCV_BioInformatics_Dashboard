@@ -191,7 +191,7 @@ export default function MySignatureModal({
               <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                 {requiredForAction
                   ? "Upload your e-signature to finish this action."
-                  : "Used when you review or approve a service report PDF."}
+                  : "Used when you sign a service report PDF."}
               </p>
             </div>
           </div>

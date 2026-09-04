@@ -9,18 +9,23 @@ import {
   Dna,
   Building,
   Activity,
-  ExternalLink,
+  Eye,
 } from "lucide-react";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
 import ServiceReportVersions from "../../../components/service-report-versions";
 import { ReportActivityList } from "../../../components/report-activity";
+import PdfPreviewModal from "../../../components/pdf-preview-modal";
+import SignatureConfirmModal from "../../../components/signature-confirm-modal";
+import MySignatureModal from "../../../components/my-signature-modal";
+import { AttachAssigneeSignatureButton } from "../../../components/assignee-signature-option";
 import {
   getRowsFromDB,
   getNameIdFromDB,
   getUsersFromDB,
   getAnalysisStatusEvents,
   saveDataToDB,
+  getCurrentUser,
   supabase,
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
@@ -33,7 +38,11 @@ import {
   mapLabelToAnalysisStatus,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
-import { getServiceReportSignedUrl } from "@/lib/service-report-file";
+import {
+  canStampPreparedBy,
+  stampServiceReportSignature,
+} from "@/lib/service-report-signature";
+import type { SignatureRect } from "@/lib/signature-placement";
 import {
   buildClientIdLookup,
   mapClientRowToRecord,
@@ -64,6 +73,7 @@ interface ServiceProjectRow {
   client_match: ClientMatchStatus;
   matched_client: MatchedClientSummary | null;
   assignee: string;
+  assignee_id: string;
   started: string;
   completed: string;
   report_link: string;
@@ -95,6 +105,10 @@ export default function AnalysisDetailPage({
   const [runIdRepoUrl, setRunIdRepoUrl] = useState<string | null>(null);
   const [statusEvents, setStatusEvents] = useState<AnalysisStatusEvent[]>([]);
   const [statusEventsLoading, setStatusEventsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [assigneeSignOffOpen, setAssigneeSignOffOpen] = useState(false);
+  const [signaturePromptOpen, setSignaturePromptOpen] = useState(false);
 
   const userNames = useMemo(
     () => Object.fromEntries(userMap),
@@ -114,11 +128,35 @@ export default function AnalysisDetailPage({
     }
   }, []);
 
+  const submitAssigneeSignature = useCallback(
+    async (rect: SignatureRect) => {
+      if (!record) return;
+      const stamped = await stampServiceReportSignature(
+        record.id,
+        "prepared_by",
+        rect,
+      );
+      setRecord((prev) =>
+        prev
+          ? {
+              ...prev,
+              service_report_file_path: stamped.filePath,
+              service_report_file_name: stamped.fileName,
+            }
+          : prev,
+      );
+      setAssigneeSignOffOpen(false);
+      showToast("Prepared by signature added.", "success");
+      void loadActivity(record.id);
+    },
+    [loadActivity, record, showToast],
+  );
+
   useEffect(() => {
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [analyses, projects, clientRows, services, serviceReports, users, repositories] =
+        const [analyses, projects, clientRows, services, serviceReports, users, repositories, user] =
           await Promise.all([
             getRowsFromDB<Analysis>("analysis"),
             getRowsFromDB<Project>("project"),
@@ -132,7 +170,9 @@ export default function AnalysisDetailPage({
               "approving_officer",
             ]),
             getRowsFromDB<Repository>("repository"),
+            getCurrentUser(),
           ]);
+        setCurrentUserId(user?.id ?? null);
 
         // Build a user id → name map for resolving delivered_by
         const userMapData = new Map<string, string>();
@@ -210,6 +250,7 @@ export default function AnalysisDetailPage({
           assignee: analysis.assignee_id
             ? (userMapData.get(analysis.assignee_id) ?? "—")
             : "Unassigned",
+          assignee_id: analysis.assignee_id ?? "",
           started: analysis.service_report_date
             ? analysis.service_report_date
             : analysis.started_at
@@ -321,6 +362,9 @@ export default function AnalysisDetailPage({
 
   if (!record)
     return <div className="text-center py-24">Loading Workspace Record...</div>;
+
+  const canAttachAssigneeSignature =
+    !isReadOnly && canStampPreparedBy(record.assignee_id, currentUserId);
 
   const getBadgeStyle = (status: string) => {
     if (status === "completed")
@@ -625,30 +669,23 @@ export default function AnalysisDetailPage({
                   </>
                 ) : null}
                 {record.service_report_file_path ? (
-                  <div>
+                  <div className="space-y-1.5">
                     <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                       Service Report PDF
                     </h4>
                     <button
                       type="button"
-                      onClick={() => {
-                        void (async () => {
-                          const url = await getServiceReportSignedUrl(
-                            record.service_report_file_path,
-                            record.service_report_file_name,
-                          );
-                          if (url) {
-                            window.open(url, "_blank", "noopener,noreferrer");
-                          } else {
-                            showToast("Couldn't open that PDF.", "error");
-                          }
-                        })();
-                      }}
+                      onClick={() => setPreviewOpen(true)}
                       className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
                     >
-                      <ExternalLink className="w-3 h-3" />
-                      {record.service_report_file_name || "Open PDF"}
+                      <Eye className="w-3 h-3" />
+                      {record.service_report_file_name || "Preview PDF"}
                     </button>
+                    {canAttachAssigneeSignature ? (
+                      <AttachAssigneeSignatureButton
+                        onClick={() => setAssigneeSignOffOpen(true)}
+                      />
+                    ) : null}
                   </div>
                 ) : null}
                 {!isReadOnly ? (
@@ -689,6 +726,8 @@ export default function AnalysisDetailPage({
                     );
                     void loadActivity(record.id);
                   }}
+                  canStampPreparedBy={canAttachAssigneeSignature}
+                  onReadyToSign={() => setAssigneeSignOffOpen(true)}
                 />
                 ) : null}
                 <ServiceReportVersions
@@ -775,6 +814,8 @@ export default function AnalysisDetailPage({
                     );
                     void loadActivity(record.id);
                   }}
+                  canStampPreparedBy={canAttachAssigneeSignature}
+                  onReadyToSign={() => setAssigneeSignOffOpen(true)}
                 />
                 <ServiceReportVersions
                   analysisId={record.id}
@@ -797,6 +838,35 @@ export default function AnalysisDetailPage({
           </div>
         </div>
       </div>
+
+      <PdfPreviewModal
+        isOpen={previewOpen}
+        filePath={record.service_report_file_path}
+        fileName={record.service_report_file_name}
+        onClose={() => setPreviewOpen(false)}
+      />
+
+      {assigneeSignOffOpen && !signaturePromptOpen ? (
+        <SignatureConfirmModal
+          isOpen
+          analysisId={record.id}
+          action="prepare"
+          reportLabel={record.project_name}
+          onClose={() => setAssigneeSignOffOpen(false)}
+          onMissingSignature={() => setSignaturePromptOpen(true)}
+          onConfirm={submitAssigneeSignature}
+        />
+      ) : null}
+
+      <MySignatureModal
+        isOpen={signaturePromptOpen}
+        onClose={() => {
+          setSignaturePromptOpen(false);
+          setAssigneeSignOffOpen(false);
+        }}
+        requiredForAction
+        onUploaded={() => setSignaturePromptOpen(false)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   Search,
   Dna,
   FileText,
+  Eye,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -36,10 +37,15 @@ import {
 } from "@/lib/analysis-tracker";
 import {
   deleteAllServiceReportPdfs,
-  getServiceReportSignedUrl,
   uploadServiceReportPdf,
   type ServiceReportFileMeta,
 } from "@/lib/service-report-file";
+import {
+  canStampPreparedBy,
+  stampServiceReportSignature,
+} from "@/lib/service-report-signature";
+import { isMissingSignatureError } from "@/lib/user-signature";
+import type { SignatureRect } from "@/lib/signature-placement";
 import {
   Analysis,
   AnalysisStatus,
@@ -66,6 +72,9 @@ import ServiceReportModal, {
 } from "../../../components/service-report-modal";
 import ReviewCommentsModal from "../../../components/review-comments-modal";
 import { ServiceReportWorkflowInfoButton } from "../../../components/service-report-workflow-modal";
+import PdfPreviewModal from "../../../components/pdf-preview-modal";
+import SignatureConfirmModal from "../../../components/signature-confirm-modal";
+import MySignatureModal from "../../../components/my-signature-modal";
 import { PageHeader } from "../../../components/pageheader";
 import { LoadingState, ErrorState, EmptyState } from "../../../components/state-views";
 import { useTableState } from "@/hooks/useTableState";
@@ -125,6 +134,7 @@ interface ServiceProjectRow {
   analysis_pipeline: string;
   status: AnalysisStatus;
   assignee: string;
+  assignee_id: string;
   started: string;
   completed: string;
   service_name: string | null;
@@ -252,6 +262,7 @@ function analysisToRow(
     analysis_pipeline: displayAnalysisLabel(a.pipeline, a.application),
     status: a.status as AnalysisStatus,
     assignee: opts.assigneeName,
+    assignee_id: a.assignee_id ?? "",
     started: srDate || "—",
     completed: a.completed_at ? (a.completed_at.split("T")[0] ?? "—") : "—",
     service_name: opts.serviceName ?? null,
@@ -310,6 +321,19 @@ export default function ServiceReportTrackerPage() {
   const [commentsRow, setCommentsRow] = useState<ServiceProjectRow | null>(
     null,
   );
+  const [previewReport, setPreviewReport] = useState<{
+    path: string;
+    name: string;
+  } | null>(null);
+  const [attachAssigneeSignature, setAttachAssigneeSignature] = useState(false);
+  const [assigneeSignOff, setAssigneeSignOff] = useState<{
+    analysisId: string;
+    reportLabel: string;
+  } | null>(null);
+  const [signaturePrompt, setSignaturePrompt] = useState<{
+    analysisId: string;
+    reportLabel: string;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusEvents, setStatusEvents] = useState<AnalysisStatusEvent[]>([]);
   const [statusEventsLoadedFor, setStatusEventsLoadedFor] = useState<
@@ -564,6 +588,7 @@ export default function ServiceReportTrackerPage() {
     setIsEditing(false);
     setSelectedAnalysis(null);
     setPendingFile(null);
+    setAttachAssigneeSignature(false);
     setFormState(EMPTY_ANALYSIS_FORM);
   }, []);
 
@@ -574,6 +599,7 @@ export default function ServiceReportTrackerPage() {
     setIsEditing(false);
     setSelectedAnalysis(null);
     setPendingFile(null);
+    setAttachAssigneeSignature(false);
     setFormState({
       ...EMPTY_ANALYSIS_FORM,
       service_report_number: nextServiceReportNumber(
@@ -607,6 +633,7 @@ export default function ServiceReportTrackerPage() {
     setSelectedAnalysis(row);
     setIsEditing(true);
     setPendingFile(null);
+    setAttachAssigneeSignature(false);
     setFormState(rowToFormState(row));
     setIsSidebarOpen(true);
   }, [isReadOnly]);
@@ -781,7 +808,16 @@ export default function ServiceReportTrackerPage() {
             "success",
           );
         }
+        const shouldSign = Boolean(fileMeta) && attachAssigneeSignature;
+        const reportLabel =
+          saved.service_report_number || formState.service_report_number || "";
         closeSidebar();
+        if (shouldSign) {
+          setAssigneeSignOff({
+            analysisId: saved.id,
+            reportLabel: reportLabel || "Service report",
+          });
+        }
       } catch (err) {
         console.error(err);
         showToast(
@@ -801,6 +837,7 @@ export default function ServiceReportTrackerPage() {
       availableProjects,
       personnelDirectory,
       pendingFile,
+      attachAssigneeSignature,
       currentUserId,
       showToast,
       isSubmitting,
@@ -844,7 +881,7 @@ export default function ServiceReportTrackerPage() {
   }, [isReadOnly, selectedAnalysis, showToast]);
 
   const handleReportUploaded = useCallback(
-    (analysisId: string, result: ServiceReportUploadResult) => {
+    async (analysisId: string, result: ServiceReportUploadResult) => {
       setServicesList((prev) =>
         prev.map((item) => {
           if (item.id !== analysisId) return item;
@@ -867,11 +904,89 @@ export default function ServiceReportTrackerPage() {
 
       if (Object.keys(payload).length === 0) return;
 
-      void saveDataToDB("analysis", analysisId, payload).catch((err) =>
-        console.error("Failed to save report on analysis:", err),
-      );
+      try {
+        await saveDataToDB("analysis", analysisId, payload);
+      } catch (err) {
+        console.error("Failed to save report on analysis:", err);
+        throw err instanceof Error
+          ? err
+          : new Error("Couldn't save the report on this record.");
+      }
     },
     [],
+  );
+
+  const applyStampedReport = useCallback(
+    (analysisId: string, filePath: string, fileName: string) => {
+      const patch = {
+        service_report_file_path: filePath,
+        service_report_file_name: fileName,
+      };
+      setServicesList((prev) =>
+        prev.map((item) =>
+          item.id === analysisId ? { ...item, ...patch } : item,
+        ),
+      );
+      setCommentsRow((prev) =>
+        prev?.id === analysisId ? { ...prev, ...patch } : prev,
+      );
+      setSelectedAnalysis((prev) =>
+        prev?.id === analysisId ? { ...prev, ...patch } : prev,
+      );
+      setSelectedReportRow((prev) =>
+        prev?.id === analysisId ? { ...prev, ...patch } : prev,
+      );
+      setFormState((prev) =>
+        selectedAnalysis?.id === analysisId
+          ? {
+              ...prev,
+              service_report_file_path: filePath,
+              service_report_file_name: fileName,
+            }
+          : prev,
+      );
+    },
+    [selectedAnalysis?.id],
+  );
+
+  const openAssigneeSignature = useCallback(
+    (analysisId: string, reportLabel?: string) => {
+      setAssigneeSignOff({
+        analysisId,
+        reportLabel: reportLabel?.trim() || "Service report",
+      });
+    },
+    [],
+  );
+
+  const submitAssigneeSignature = useCallback(
+    async (rect: SignatureRect) => {
+      if (!assigneeSignOff) return;
+      const stamped = await stampServiceReportSignature(
+        assigneeSignOff.analysisId,
+        "prepared_by",
+        rect,
+      );
+      applyStampedReport(
+        assigneeSignOff.analysisId,
+        stamped.filePath,
+        stamped.fileName,
+      );
+      setAssigneeSignOff(null);
+      showToast("Prepared by signature added.", "success");
+    },
+    [applyStampedReport, assigneeSignOff, showToast],
+  );
+
+  const formAssigneeId = useMemo(() => {
+    const name = formState.assignee.trim();
+    if (!name) return "";
+    return personnelDirectory.find((u) => u.name === name)?.id ?? "";
+  }, [formState.assignee, personnelDirectory]);
+
+  const sidebarCanStampPreparedBy = canStampPreparedBy(
+    formAssigneeId,
+    currentUserId,
   );
 
   const userNames = useMemo(
@@ -1417,24 +1532,17 @@ export default function ServiceReportTrackerPage() {
             <button
               type="button"
               onClick={() => {
-                void (async () => {
-                  const url = await getServiceReportSignedUrl(
-                    s.service_report_file_path,
-                    s.service_report_file_name,
-                  );
-                  if (url) {
-                    window.open(url, "_blank", "noopener,noreferrer");
-                  } else {
-                    showToast("Couldn't open that PDF.", "error");
-                  }
-                })();
+                setPreviewReport({
+                  path: s.service_report_file_path,
+                  name: s.service_report_file_name || "Service report.pdf",
+                });
               }}
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2a7797] hover:text-[#1f5c76]"
             >
-              <FileText className="w-3 h-3" />
+              <Eye className="w-3 h-3" />
               <TruncatedText
                 text={s.service_report_file_name || "PDF"}
-                display="PDF"
+                display="Preview"
                 force
                 className="text-[#2a7797]"
               />
@@ -1667,10 +1775,25 @@ export default function ServiceReportTrackerPage() {
       {!isReadOnly ? (
       <ServiceReportModal
         isOpen={!!selectedReportRow}
-        analysis={selectedReportRow}
+        analysis={
+          selectedReportRow
+            ? {
+                id: selectedReportRow.id,
+                project_name: selectedReportRow.project_name,
+                assignee_id: selectedReportRow.assignee_id,
+              }
+            : null
+        }
         currentUserId={currentUserId}
         onClose={() => setSelectedReportRow(null)}
         onReportUploaded={handleReportUploaded}
+        onReadyToSign={(analysisId) =>
+          openAssigneeSignature(
+            analysisId,
+            selectedReportRow?.service_report_number ||
+              selectedReportRow?.project_name,
+          )
+        }
       />
       ) : null}
 
@@ -1743,6 +1866,16 @@ export default function ServiceReportTrackerPage() {
               : prev,
           );
         }}
+        canStampPreparedBy={canStampPreparedBy(
+          commentsRow?.assignee_id,
+          currentUserId,
+        )}
+        onReadyToSign={(analysisId) =>
+          openAssigneeSignature(
+            analysisId,
+            commentsRow?.service_report_number || commentsRow?.project_name,
+          )
+        }
       />
 
       {!isReadOnly ? (
@@ -1765,6 +1898,19 @@ export default function ServiceReportTrackerPage() {
         )}
         pendingFile={pendingFile}
         onPendingFileChange={setPendingFile}
+        canStampPreparedBy={sidebarCanStampPreparedBy}
+        attachAssigneeSignature={attachAssigneeSignature}
+        onAttachAssigneeSignatureChange={setAttachAssigneeSignature}
+        onRequestAssigneeSignature={
+          selectedAnalysis
+            ? () =>
+                openAssigneeSignature(
+                  selectedAnalysis.id,
+                  selectedAnalysis.service_report_number ||
+                    selectedAnalysis.project_name,
+                )
+            : undefined
+        }
         statusEvents={statusEvents}
         statusEventsLoading={statusEventsLoading}
         userNames={userNames}
@@ -1773,6 +1919,40 @@ export default function ServiceReportTrackerPage() {
         onSubmit={handleSaveAnalysis}
       />
       ) : null}
+
+      <PdfPreviewModal
+        isOpen={Boolean(previewReport)}
+        filePath={previewReport?.path}
+        fileName={previewReport?.name}
+        onClose={() => setPreviewReport(null)}
+      />
+
+      {assigneeSignOff && signaturePrompt === null ? (
+        <SignatureConfirmModal
+          key={assigneeSignOff.analysisId}
+          isOpen
+          analysisId={assigneeSignOff.analysisId}
+          action="prepare"
+          reportLabel={assigneeSignOff.reportLabel}
+          onClose={() => setAssigneeSignOff(null)}
+          onMissingSignature={() => {
+            setSignaturePrompt(assigneeSignOff);
+          }}
+          onConfirm={submitAssigneeSignature}
+        />
+      ) : null}
+
+      <MySignatureModal
+        isOpen={signaturePrompt !== null}
+        onClose={() => {
+          setSignaturePrompt(null);
+          setAssigneeSignOff(null);
+        }}
+        requiredForAction
+        onUploaded={() => {
+          setSignaturePrompt(null);
+        }}
+      />
 
       {!isReadOnly ? (
       <DeleteModal

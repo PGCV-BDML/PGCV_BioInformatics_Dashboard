@@ -31,6 +31,8 @@ interface ReviewCommentsModalProps {
     notes: string | null;
   }) => void;
   readOnly?: boolean;
+  canStampPreparedBy?: boolean;
+  onReadyToSign?: (analysisId: string) => void;
 }
 
 export default function ReviewCommentsModal({
@@ -39,6 +41,8 @@ export default function ReviewCommentsModal({
   onResubmitted,
   onPdfReplaced,
   readOnly = false,
+  canStampPreparedBy = false,
+  onReadyToSign,
 }: ReviewCommentsModalProps) {
   if (!row) return null;
 
@@ -103,6 +107,8 @@ export default function ReviewCommentsModal({
             enabled
             onReplaced={(next) => onPdfReplaced?.(next)}
             onResubmitted={onResubmitted}
+            canStampPreparedBy={canStampPreparedBy}
+            onReadyToSign={onReadyToSign}
           />
         ) : null}
 

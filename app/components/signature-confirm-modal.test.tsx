@@ -77,6 +77,42 @@ describe("SignatureConfirmModal", () => {
     expect(onConfirm).toHaveBeenCalledWith(preview.defaultRect);
   });
 
+  it("lets the assignee confirm a Prepared by stamp", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    vi.mocked(prepareSignaturePreview).mockResolvedValueOnce({
+      ...preview,
+      slot: "prepared_by",
+      defaultRect: { x: 72, y: 560, width: 160, height: 40 },
+    });
+
+    render(
+      <SignatureConfirmModal
+        isOpen
+        analysisId="a-1"
+        action="prepare"
+        reportLabel="PGCV-BIOINFO-SR-2026-001"
+        onClose={vi.fn()}
+        onMissingSignature={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Confirm Prepared by signature",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /my signature is on the correct line/i,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Attach signature" }));
+    expect(onConfirm).toHaveBeenCalled();
+  });
+
   it("asks for a signature upload when none is on file", async () => {
     vi.mocked(prepareSignaturePreview).mockRejectedValueOnce(
       new MissingSignatureError(),

@@ -67,18 +67,26 @@ export function originalServiceReportBaseName(
 
 /**
  * Display name written after a signature stamp.
- * Review keeps a temporary `-reviewed` marker; approval restores the
- * original upload name and appends `_signed`.
+ * Prepared by keeps the original upload name; review adds a temporary
+ * `-reviewed` marker; approval restores the original and appends `_signed`.
  */
+export type ServiceReportStampSlot =
+  | "prepared_by"
+  | "reviewed_by"
+  | "approved_by";
+
 export function stampedServiceReportFileName(
   currentFileName: string | null | undefined,
-  slot: "reviewed_by" | "approved_by",
+  slot: ServiceReportStampSlot,
 ): string {
   const original = originalServiceReportBaseName(currentFileName);
   if (slot === "approved_by") {
     return `${original}_signed.pdf`;
   }
-  return `${original}-reviewed.pdf`;
+  if (slot === "reviewed_by") {
+    return `${original}-reviewed.pdf`;
+  }
+  return `${original}.pdf`;
 }
 
 /**
@@ -231,19 +239,23 @@ function resolveDownloadFileName(
 export async function getServiceReportSignedUrl(
   path: string | null | undefined,
   fileName?: string | null,
+  options?: { disposition?: "attachment" | "inline" },
 ): Promise<string | null> {
   const key = path?.trim();
   if (!key) return null;
 
   const downloadName = resolveDownloadFileName(key, fileName);
+  const bucket = supabase.storage.from(SERVICE_REPORT_BUCKET);
 
   // `download` sets Content-Disposition so Save/Open uses the display name
   // instead of the storage object key (e.g. `1735…-slug-reviewed-approved`).
-  const { data, error } = await supabase.storage
-    .from(SERVICE_REPORT_BUCKET)
-    .createSignedUrl(key, SIGNED_URL_TTL_SECONDS, {
-      download: downloadName,
-    });
+  // Omit it for in-app preview so the browser can render the PDF inline.
+  const { data, error } =
+    options?.disposition === "inline"
+      ? await bucket.createSignedUrl(key, SIGNED_URL_TTL_SECONDS)
+      : await bucket.createSignedUrl(key, SIGNED_URL_TTL_SECONDS, {
+          download: downloadName,
+        });
 
   if (error) {
     console.error("Failed to sign service report URL:", error);

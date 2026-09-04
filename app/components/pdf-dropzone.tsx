@@ -1,12 +1,13 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { Eye, FileText, Upload, X } from "lucide-react";
 import {
   MAX_REPORT_BYTES,
   formatFileSize,
   validateServiceReportPdf,
 } from "@/lib/service-report-file";
+import PdfPreviewModal from "./pdf-preview-modal";
 
 interface PdfDropzoneProps {
   /** The file staged for upload, or null when nothing is selected. */
@@ -29,6 +30,7 @@ export default function PdfDropzone({
 }: PdfDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const inputId = useId();
 
   async function accept(candidate: File | undefined) {
@@ -46,6 +48,7 @@ export default function PdfDropzone({
   function clear() {
     onError?.(null);
     onFileChange(null);
+    setPreviewOpen(false);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -69,6 +72,16 @@ export default function PdfDropzone({
               {formatFileSize(file.size)}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            disabled={disabled}
+            title="Preview this PDF"
+            aria-label="Preview this PDF"
+            className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-[#2a7797] disabled:opacity-50"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={clear}
@@ -131,6 +144,13 @@ export default function PdfDropzone({
           {error}
         </p>
       )}
+
+      <PdfPreviewModal
+        isOpen={previewOpen && Boolean(file)}
+        file={file}
+        fileName={file?.name}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 }

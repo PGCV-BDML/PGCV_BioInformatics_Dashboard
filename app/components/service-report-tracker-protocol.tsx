@@ -397,7 +397,14 @@ export default function ServiceReportTrackerProtocol() {
             Click <strong className="text-[#172126]">Upload</strong> in the
             Service Report column, or attach the PDF in the edit panel.
           </li>
-          <li>Drop or browse for a PDF (max 25 MB). Optionally add a Drive or share URL.</li>
+          <li>
+            Drop or browse for a PDF (max 25 MB). Use{" "}
+            <strong className="text-[#172126]">Preview</strong> to confirm it
+            is the right file. Optionally stamp your e-signature under{" "}
+            <strong className="text-[#172126]">Prepared by</strong> (assignee
+            only — upload it first under the profile menu → My signature).
+            Optionally add a Drive or share URL.
+          </li>
           <li>Saving stores the file in private storage and writes the delivery row.</li>
         </ol>
         <p>

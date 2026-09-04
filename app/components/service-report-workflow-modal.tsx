@@ -34,7 +34,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     title: "Upload the PDF",
     actor: "Analyst",
     detail:
-      "Click Upload in the Service Report column and attach the PDF. You can optionally add a Drive or share link alongside it. The PDF is what goes through review.",
+      "Click Upload in the Service Report column and attach the PDF. Preview it to confirm it is the right file, then optionally stamp your e-signature under Prepared by. You can add a Drive or share link alongside it. The PDF is what goes through review.",
   },
   {
     title: "Assign the Reviewing Officer",

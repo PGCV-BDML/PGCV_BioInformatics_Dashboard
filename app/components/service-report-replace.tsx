@@ -14,6 +14,10 @@ import {
 } from "@/lib/notifications";
 import { uploadServiceReportPdf } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
+import {
+  AssigneeSignatureOption,
+  AttachAssigneeSignatureButton,
+} from "./assignee-signature-option";
 import { useToast } from "./toast";
 
 export type ServiceReportReplaceResult = {
@@ -33,6 +37,8 @@ interface ServiceReportReplaceProps {
   onReplaced: (next: ServiceReportReplaceResult) => void;
   /** Called after a successful resubmission so the parent can refresh status. */
   onResubmitted?: (stage: "review" | "approval") => void;
+  canStampPreparedBy?: boolean;
+  onReadyToSign?: (analysisId: string) => void;
 }
 
 /**
@@ -48,6 +54,8 @@ export default function ServiceReportReplace({
   enabled,
   onReplaced,
   onResubmitted,
+  canStampPreparedBy = false,
+  onReadyToSign,
 }: ServiceReportReplaceProps) {
   const { showToast } = useToast();
   const hasStoredFile = Boolean(filePath.trim());
@@ -57,6 +65,7 @@ export default function ServiceReportReplace({
   const [isUploading, setIsUploading] = useState(false);
   const [isResubmitting, setIsResubmitting] = useState(false);
   const [resubmitError, setResubmitError] = useState<string | null>(null);
+  const [attachSignature, setAttachSignature] = useState(false);
 
   const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
@@ -110,11 +119,17 @@ export default function ServiceReportReplace({
       setPendingFile(null);
       setIsReplacing(false);
       showToast(
-        String(nextStatusOfReview ?? "").trim().toLowerCase() === "for review"
-          ? "New version uploaded. The reviewing officer will sign this version again."
-          : "New version uploaded. Resubmit when ready.",
+        attachSignature
+          ? "New version uploaded. Place your signature under Prepared by."
+          : String(nextStatusOfReview ?? "").trim().toLowerCase() === "for review"
+            ? "New version uploaded. The reviewing officer will sign this version again."
+            : "New version uploaded. Resubmit when ready.",
         "success",
       );
+      if (attachSignature) {
+        setAttachSignature(false);
+        onReadyToSign?.(analysisId);
+      }
     } catch (err) {
       console.error(err);
       const message =
@@ -205,6 +220,12 @@ export default function ServiceReportReplace({
             <Upload className="w-3.5 h-3.5" aria-hidden="true" />
             Upload a new version
           </button>
+          {canStampPreparedBy && onReadyToSign ? (
+            <AttachAssigneeSignatureButton
+              onClick={() => onReadyToSign(analysisId)}
+              disabled={isUploading || isResubmitting}
+            />
+          ) : null}
           {resubmitButton}
         </div>
       ) : (
@@ -216,6 +237,12 @@ export default function ServiceReportReplace({
             onError={setFileError}
             disabled={isUploading}
             label={hasStoredFile ? "New Service Report PDF" : "Service Report PDF"}
+          />
+          <AssigneeSignatureOption
+            checked={attachSignature}
+            onChange={setAttachSignature}
+            disabled={isUploading}
+            visible={Boolean(pendingFile) && canStampPreparedBy}
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
