@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink, Eye, X } from "lucide-react";
+import { Download, ExternalLink, Eye, X } from "lucide-react";
 import { getServiceReportSignedUrl } from "@/lib/service-report-file";
 
 interface PdfPreviewModalProps {
@@ -200,15 +200,25 @@ export default function PdfPreviewModal({
             Close
           </button>
           {url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-black"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open in new tab
-            </a>
+            <>
+              <a
+                href={url}
+                download={displayName}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </a>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-black"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in new tab
+              </a>
+            </>
           ) : null}
         </div>
       </div>

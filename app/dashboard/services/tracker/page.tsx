@@ -4,7 +4,6 @@ import {
   Search,
   Dna,
   FileText,
-  Eye,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -73,6 +72,7 @@ import ServiceReportModal, {
 import ReviewCommentsModal from "../../../components/review-comments-modal";
 import { ServiceReportWorkflowInfoButton } from "../../../components/service-report-workflow-modal";
 import PdfPreviewModal from "../../../components/pdf-preview-modal";
+import { ServiceReportFileActions } from "../../../components/service-report-file-actions";
 import SignatureConfirmModal from "../../../components/signature-confirm-modal";
 import MySignatureModal from "../../../components/my-signature-modal";
 import { PageHeader } from "../../../components/pageheader";
@@ -1529,24 +1529,16 @@ export default function ServiceReportTrackerPage() {
         const hasLink = Boolean(s.report_link?.trim());
         if (hasPdf) {
           return (
-            <button
-              type="button"
-              onClick={() => {
+            <ServiceReportFileActions
+              filePath={s.service_report_file_path}
+              fileName={s.service_report_file_name}
+              onPreview={() => {
                 setPreviewReport({
                   path: s.service_report_file_path,
                   name: s.service_report_file_name || "Service report.pdf",
                 });
               }}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2a7797] hover:text-[#1f5c76]"
-            >
-              <Eye className="w-3 h-3" />
-              <TruncatedText
-                text={s.service_report_file_name || "PDF"}
-                display="Preview"
-                force
-                className="text-[#2a7797]"
-              />
-            </button>
+            />
           );
         }
         if (hasLink) {

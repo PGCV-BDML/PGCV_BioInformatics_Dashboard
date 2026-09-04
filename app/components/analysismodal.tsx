@@ -7,7 +7,6 @@ import {
   Activity,
   Layers,
   Dna,
-  Eye,
   FileText,
   Trash2,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import {
 import { formatFileSize } from "@/lib/service-report-file";
 import PdfDropzone from "./pdf-dropzone";
 import PdfPreviewModal from "./pdf-preview-modal";
+import { ServiceReportFileActions } from "./service-report-file-actions";
 import {
   AssigneeSignatureOption,
   AttachAssigneeSignatureButton,
@@ -535,16 +535,11 @@ export default function AnalysisSidebar({
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-[#2a7797] shadow-sm ring-1 ring-[#2a7797]/20 transition-colors hover:bg-[#e6f4f8]"
-                title="Preview this PDF"
-                aria-label="Preview this PDF"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                Preview
-              </button>
+              <ServiceReportFileActions
+                filePath={storedFilePath}
+                fileName={formState.service_report_file_name}
+                onPreview={() => setPreviewOpen(true)}
+              />
               <button
                 type="button"
                 onClick={handleRemoveStoredFile}

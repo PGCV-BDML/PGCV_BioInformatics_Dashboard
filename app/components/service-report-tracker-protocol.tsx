@@ -396,6 +396,8 @@ export default function ServiceReportTrackerProtocol() {
           <li>
             Click <strong className="text-[#172126]">Upload</strong> in the
             Service Report column, or attach the PDF in the edit panel.
+            After it is stored, the eye previews the PDF and the download
+            button saves a copy.
           </li>
           <li>
             Drop or browse for a PDF (max 25 MB). Use{" "}
@@ -403,7 +405,9 @@ export default function ServiceReportTrackerProtocol() {
             is the right file. Optionally stamp your e-signature under{" "}
             <strong className="text-[#172126]">Prepared by</strong> (assignee
             only — upload it first under the profile menu → My signature).
-            Optionally add a Drive or share URL.
+            You can drag or resize that stamp on the last page, the same way
+            reviewing and approving officers do. Optionally add a Drive or
+            share URL.
           </li>
           <li>Saving stores the file in private storage and writes the delivery row.</li>
         </ol>

@@ -9,7 +9,6 @@ import {
   Dna,
   Building,
   Activity,
-  Eye,
   ExternalLink,
 } from "lucide-react";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
@@ -20,6 +19,7 @@ import PdfPreviewModal from "../../../components/pdf-preview-modal";
 import SignatureConfirmModal from "../../../components/signature-confirm-modal";
 import MySignatureModal from "../../../components/my-signature-modal";
 import { AttachAssigneeSignatureButton } from "../../../components/assignee-signature-option";
+import { ServiceReportFileActions } from "../../../components/service-report-file-actions";
 import {
   getRowsFromDB,
   getNameIdFromDB,
@@ -674,14 +674,15 @@ export default function AnalysisDetailPage({
                     <h4 className="text-[10px] text-slate-400 font-bold uppercase">
                       Service Report PDF
                     </h4>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewOpen(true)}
-                      className="inline-flex items-center gap-1 text-xs text-[#2a7797] hover:text-[#4ec2bb] font-bold underline decoration-dotted"
-                    >
-                      <Eye className="w-3 h-3" />
-                      {record.service_report_file_name || "Preview PDF"}
-                    </button>
+                    <p className="truncate text-xs font-semibold text-slate-700">
+                      {record.service_report_file_name || "Service report.pdf"}
+                    </p>
+                    <ServiceReportFileActions
+                      filePath={record.service_report_file_path}
+                      fileName={record.service_report_file_name}
+                      variant="labeled"
+                      onPreview={() => setPreviewOpen(true)}
+                    />
                     {canAttachAssigneeSignature ? (
                       <AttachAssigneeSignatureButton
                         onClick={() => setAssigneeSignOffOpen(true)}
