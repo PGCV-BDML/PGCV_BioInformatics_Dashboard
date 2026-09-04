@@ -43,6 +43,11 @@ const SLOT_LABEL: Record<SignatureSlot, string> = {
   approved_by: "Approved for Release",
 };
 
+/** TS 5.9 BlobPart rejects Uint8Array<ArrayBufferLike>; slice() is ArrayBuffer-backed. */
+function bytesForBlob(bytes: Uint8Array): BlobPart {
+  return bytes.slice();
+}
+
 interface PdfPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -156,7 +161,7 @@ export default function PdfPreviewModal({
         setLastPage(extracted);
 
         objectUrl = URL.createObjectURL(
-          new Blob([bytes], { type: "application/pdf" }),
+          new Blob([bytesForBlob(bytes)], { type: "application/pdf" }),
         );
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
@@ -172,7 +177,9 @@ export default function PdfPreviewModal({
             );
             if (cancelled) return;
             stampUrl = URL.createObjectURL(
-              new Blob([next.signatureBytes.slice()], { type: "image/png" }),
+              new Blob([bytesForBlob(next.signatureBytes)], {
+                type: "image/png",
+              }),
             );
             if (cancelled) {
               URL.revokeObjectURL(stampUrl);
@@ -262,7 +269,9 @@ export default function PdfPreviewModal({
         rect,
       );
       onSignatureApplied(
-        new File([stamped], displayName, { type: "application/pdf" }),
+        new File([bytesForBlob(stamped)], displayName, {
+          type: "application/pdf",
+        }),
       );
       onClose();
     } catch (err) {
