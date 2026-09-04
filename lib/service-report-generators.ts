@@ -18,6 +18,11 @@ export type ServiceReportGenerator = {
   href: string;
   accent: string;
   tint: string;
+  /**
+   * When false, the shared lab-host field leaves this address unchanged.
+   * Use for generators that do not run on the lab machine.
+   */
+  shareHost?: boolean;
 };
 
 export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
@@ -48,7 +53,23 @@ export const SERVICE_REPORT_GENERATORS: readonly ServiceReportGenerator[] = [
     accent: "#6bb155",
     tint: "#eef7ea",
   },
+  {
+    id: "custom-service-report",
+    title: "Custom Service Report Generator",
+    description:
+      "Open the custom service report generator for reports that do not use a standard analysis template.",
+    href: "http://127.0.0.1:8000",
+    accent: "#8b6bb1",
+    tint: "#f1eef8",
+    shareHost: false,
+  },
 ];
+
+function generatorsSharingHost(): readonly ServiceReportGenerator[] {
+  return SERVICE_REPORT_GENERATORS.filter(
+    (generator) => generator.shareHost !== false,
+  );
+}
 
 /** Catalog fallbacks keyed by generator id. */
 export function catalogHrefById(): Record<string, string> {
@@ -128,7 +149,7 @@ export function hostFromHref(href: string | null | undefined): string {
 
 /** Shared hostname when every address points at the same machine. */
 export function sharedGeneratorHost(hrefs: Record<string, string>): string {
-  const hosts = SERVICE_REPORT_GENERATORS.map((generator) =>
+  const hosts = generatorsSharingHost().map((generator) =>
     hostFromHref(hrefs[generator.id] ?? ""),
   );
   const first = hosts[0];
@@ -162,6 +183,10 @@ export function applySharedHost(
 ): Record<string, string> {
   const next: Record<string, string> = { ...hrefs };
   for (const generator of SERVICE_REPORT_GENERATORS) {
+    if (generator.shareHost === false) {
+      next[generator.id] = hrefs[generator.id] ?? generator.href;
+      continue;
+    }
     next[generator.id] = replaceGeneratorHost(
       hrefs[generator.id] ?? "",
       nextHost,

@@ -41,6 +41,8 @@ describe("ServiceReportGeneratorGrid", () => {
 
     expect(await screen.findByRole("button", { name: "Edit addresses" })).toBeInTheDocument();
     expect(screen.getByText("10.49.42.113:5050")).toBeInTheDocument();
+    expect(screen.getByText("Custom Service Report Generator")).toBeInTheDocument();
+    expect(screen.getByText("127.0.0.1:8000")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit addresses" }));
 
@@ -57,6 +59,7 @@ describe("ServiceReportGeneratorGrid", () => {
           "amplicon-assembly": "http://10.49.42.200:5050",
           "whole-genome-assembly": "http://10.49.42.200:5051",
           "16s-metabarcoding": "http://10.49.42.200:5070",
+          "custom-service-report": "http://127.0.0.1:8000",
         },
         "user-1",
       );

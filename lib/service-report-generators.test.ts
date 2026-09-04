@@ -19,6 +19,7 @@ describe("SERVICE_REPORT_GENERATORS", () => {
       "amplicon-assembly",
       "whole-genome-assembly",
       "16s-metabarcoding",
+      "custom-service-report",
     ]);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -45,6 +46,15 @@ describe("SERVICE_REPORT_GENERATORS", () => {
     );
     expect(metabarcoding?.href).toBe("http://10.49.42.113:5070");
     expect(isGeneratorHrefReady(metabarcoding?.href)).toBe(true);
+  });
+
+  it("points Custom Service Report Generator at localhost", () => {
+    const custom = SERVICE_REPORT_GENERATORS.find(
+      (g) => g.id === "custom-service-report",
+    );
+    expect(custom?.href).toBe("http://127.0.0.1:8000");
+    expect(custom?.shareHost).toBe(false);
+    expect(isGeneratorHrefReady(custom?.href)).toBe(true);
   });
 });
 
@@ -133,6 +143,7 @@ describe("shared generator host", () => {
     expect(next["amplicon-assembly"]).toBe("http://10.49.42.200:5050");
     expect(next["whole-genome-assembly"]).toBe("http://10.49.42.200:5051");
     expect(next["16s-metabarcoding"]).toBe("http://10.49.42.200:5070");
+    expect(next["custom-service-report"]).toBe("http://127.0.0.1:8000");
   });
 });
 

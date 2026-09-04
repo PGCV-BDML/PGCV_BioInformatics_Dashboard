@@ -8,6 +8,7 @@ import {
   FileOutput,
   Layers3,
   Pencil,
+  SlidersHorizontal,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +55,7 @@ const GENERATOR_ICONS: Record<string, LucideIcon | typeof BacteriaIcon> = {
   "amplicon-assembly": Layers3,
   "whole-genome-assembly": Dna,
   "16s-metabarcoding": BacteriaIcon,
+  "custom-service-report": SlidersHorizontal,
 };
 
 function GeneratorCard({
