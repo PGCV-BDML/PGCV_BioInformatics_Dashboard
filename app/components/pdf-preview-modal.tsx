@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, Eye, X } from "lucide-react";
 import { getServiceReportSignedUrl } from "@/lib/service-report-file";
+import { PdfDocumentPages } from "./pdf-document-pages";
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -24,7 +25,8 @@ export default function PdfPreviewModal({
   fileName = null,
   title = "Preview service report",
 }: PdfPreviewModalProps) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
+  const [openUrl, setOpenUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,37 +41,44 @@ export default function PdfPreviewModal({
     void (async () => {
       setIsLoading(true);
       setError(null);
-      setUrl(null);
+      setPdfBytes(null);
+      setOpenUrl(null);
 
       try {
+        let bytes: Uint8Array | null = null;
+
         if (file) {
-          objectUrl = URL.createObjectURL(file);
-          if (cancelled) {
-            URL.revokeObjectURL(objectUrl);
+          bytes = new Uint8Array(await file.arrayBuffer());
+        } else {
+          const path = filePath?.trim();
+          if (!path) {
+            setError("There is no PDF to preview.");
+            setIsLoading(false);
             return;
           }
-          setUrl(objectUrl);
-          setIsLoading(false);
-          return;
+          const signed = await getServiceReportSignedUrl(path, fileName, {
+            disposition: "inline",
+          });
+          if (cancelled) return;
+          if (!signed) {
+            setError("Couldn't open that PDF. Try again in a moment.");
+            setIsLoading(false);
+            return;
+          }
+          const response = await fetch(signed);
+          if (!response.ok) {
+            throw new Error("Couldn't download that PDF for preview.");
+          }
+          bytes = new Uint8Array(await response.arrayBuffer());
         }
 
-        const path = filePath?.trim();
-        if (!path) {
-          setError("There is no PDF to preview.");
-          setIsLoading(false);
-          return;
-        }
+        if (cancelled || !bytes) return;
 
-        const signed = await getServiceReportSignedUrl(path, fileName, {
-          disposition: "inline",
-        });
-        if (cancelled) return;
-        if (!signed) {
-          setError("Couldn't open that PDF. Try again in a moment.");
-          setIsLoading(false);
-          return;
-        }
-        setUrl(signed);
+        objectUrl = URL.createObjectURL(
+          new Blob([bytes.slice()], { type: "application/pdf" }),
+        );
+        setPdfBytes(bytes);
+        setOpenUrl(objectUrl);
         setIsLoading(false);
       } catch (err) {
         console.error(err);
@@ -147,19 +156,15 @@ export default function PdfPreviewModal({
             <div className="flex min-h-[360px] items-center justify-center rounded-2xl bg-slate-100 text-xs italic text-slate-400">
               Loading preview…
             </div>
-          ) : url ? (
-            <iframe
-              title={displayName}
-              src={url}
-              className="min-h-[360px] w-full flex-1 rounded-2xl border border-slate-200 bg-slate-100"
-            />
+          ) : pdfBytes ? (
+            <PdfDocumentPages pdfBytes={pdfBytes} />
           ) : (
             <div className="flex min-h-[160px] items-center justify-center rounded-2xl bg-slate-50 text-xs text-slate-400">
               {error ?? "Nothing to preview."}
             </div>
           )}
 
-          {error && url ? (
+          {error && pdfBytes ? (
             <p role="alert" className="mt-3 text-xs font-semibold text-red-600">
               {error}
             </p>
@@ -174,9 +179,9 @@ export default function PdfPreviewModal({
           >
             Close
           </button>
-          {url ? (
+          {openUrl ? (
             <a
-              href={url}
+              href={openUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-black"

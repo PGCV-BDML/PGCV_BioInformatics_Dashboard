@@ -78,9 +78,10 @@ export default function PdfDropzone({
             disabled={disabled}
             title="Preview this PDF"
             aria-label="Preview this PDF"
-            className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-[#2a7797] disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-[#2a7797] shadow-sm ring-1 ring-[#2a7797]/20 transition-colors hover:bg-[#e6f4f8] disabled:opacity-50"
           >
             <Eye className="w-3.5 h-3.5" />
+            Preview
           </button>
           <button
             type="button"
