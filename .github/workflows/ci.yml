@@ -19,9 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Node 24 ships npm 11. npm 10 (bundled with Node 20 and 22) rejects the
-      # lockfile over the optional peer @emnapi/runtime, and Node 24 also meets
-      # the >=22 engine requirement of @supabase/supabase-js.
+      # Node 24 meets @supabase/supabase-js (>=22). @emnapi/core and
+      # @emnapi/runtime are declared in package.json so npm ci does not reject
+      # the lockfile over those optional wasm peers.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
