@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, Eye, X } from "lucide-react";
 import { getServiceReportSignedUrl } from "@/lib/service-report-file";
-import { PdfDocumentPages } from "./pdf-document-pages";
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -25,15 +24,19 @@ export default function PdfPreviewModal({
   fileName = null,
   title = "Preview service report",
 }: PdfPreviewModalProps) {
-  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
-  const [openUrl, setOpenUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const displayName = file?.name || fileName || "Service report.pdf";
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setUrl(null);
+      setError(null);
+      setIsLoading(true);
+      return;
+    }
 
     let cancelled = false;
     let objectUrl: string | null = null;
@@ -41,19 +44,18 @@ export default function PdfPreviewModal({
     void (async () => {
       setIsLoading(true);
       setError(null);
-      setPdfBytes(null);
-      setOpenUrl(null);
+      setUrl(null);
 
       try {
-        let bytes: Uint8Array | null = null;
-
         if (file) {
-          bytes = new Uint8Array(await file.arrayBuffer());
+          objectUrl = URL.createObjectURL(file);
         } else {
           const path = filePath?.trim();
           if (!path) {
-            setError("There is no PDF to preview.");
-            setIsLoading(false);
+            if (!cancelled) {
+              setError("There is no PDF to preview.");
+              setIsLoading(false);
+            }
             return;
           }
           const signed = await getServiceReportSignedUrl(path, fileName, {
@@ -69,19 +71,21 @@ export default function PdfPreviewModal({
           if (!response.ok) {
             throw new Error("Couldn't download that PDF for preview.");
           }
-          bytes = new Uint8Array(await response.arrayBuffer());
+          const bytes = await response.blob();
+          objectUrl = URL.createObjectURL(
+            bytes.type ? bytes : new Blob([bytes], { type: "application/pdf" }),
+          );
         }
 
-        if (cancelled || !bytes) return;
-
-        objectUrl = URL.createObjectURL(
-          new Blob([bytes.slice()], { type: "application/pdf" }),
-        );
-        setPdfBytes(bytes);
-        setOpenUrl(objectUrl);
+        if (cancelled) {
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setUrl(objectUrl);
         setIsLoading(false);
       } catch (err) {
         console.error(err);
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
         if (!cancelled) {
           setError(
             err instanceof Error
@@ -102,17 +106,20 @@ export default function PdfPreviewModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      onClose();
     };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex w-screen h-screen items-center justify-center bg-black/40 p-3 backdrop-blur-xs sm:p-4"
+      className="fixed inset-0 z-[400] flex w-screen h-screen items-center justify-center bg-black/50 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
@@ -120,7 +127,7 @@ export default function PdfPreviewModal({
         aria-modal="true"
         aria-labelledby="pdf-preview-title"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-[960px] flex-col overflow-hidden rounded-[24px] border border-gray-100 bg-surface shadow-xl animate-in fade-in zoom-in-95 duration-150"
+        className="flex h-[90vh] w-full max-w-[960px] flex-col overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-xl"
       >
         <div className="h-1.5 w-full shrink-0 bg-[#4ec2bb]" />
 
@@ -151,24 +158,37 @@ export default function PdfPreviewModal({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-5 py-4 sm:px-6">
+        <div className="flex min-h-0 flex-1 flex-col bg-slate-100">
           {isLoading ? (
-            <div className="flex min-h-[360px] items-center justify-center rounded-2xl bg-slate-100 text-xs italic text-slate-400">
+            <div className="flex flex-1 items-center justify-center text-xs italic text-slate-400">
               Loading preview…
             </div>
-          ) : pdfBytes ? (
-            <PdfDocumentPages pdfBytes={pdfBytes} />
+          ) : url ? (
+            <object
+              key={url}
+              data={url}
+              type="application/pdf"
+              title={displayName}
+              className="h-full w-full flex-1 bg-slate-100"
+            >
+              <p className="p-6 text-center text-sm text-slate-600">
+                This browser could not embed the PDF.{" "}
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-[#2a7797] underline"
+                >
+                  Open it in a new tab
+                </a>
+                .
+              </p>
+            </object>
           ) : (
-            <div className="flex min-h-[160px] items-center justify-center rounded-2xl bg-slate-50 text-xs text-slate-400">
+            <div className="flex flex-1 items-center justify-center px-6 text-center text-xs font-semibold text-slate-500">
               {error ?? "Nothing to preview."}
             </div>
           )}
-
-          {error && pdfBytes ? (
-            <p role="alert" className="mt-3 text-xs font-semibold text-red-600">
-              {error}
-            </p>
-          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 sm:px-6">
@@ -179,9 +199,9 @@ export default function PdfPreviewModal({
           >
             Close
           </button>
-          {openUrl ? (
+          {url ? (
             <a
-              href={openUrl}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-black"

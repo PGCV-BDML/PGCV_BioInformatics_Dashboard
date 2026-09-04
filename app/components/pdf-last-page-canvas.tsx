@@ -6,7 +6,7 @@ type PdfjsModule = typeof import("pdfjs-dist");
 
 let pdfjsWorkerReady = false;
 
-export async function loadPdfjs(): Promise<PdfjsModule> {
+async function loadPdfjs(): Promise<PdfjsModule> {
   const pdfjs = await import("pdfjs-dist");
   if (!pdfjsWorkerReady) {
     pdfjs.GlobalWorkerOptions.workerSrc = new URL(

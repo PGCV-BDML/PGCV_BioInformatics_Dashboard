@@ -43,6 +43,14 @@ export default function PdfDropzone({
     }
     onError?.(null);
     onFileChange(candidate);
+    setPreviewOpen(true);
+  }
+
+  function openNativePreview() {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const tab = window.open(url, "_blank");
+    if (!tab) setPreviewOpen(true);
   }
 
   function clear() {
@@ -62,36 +70,43 @@ export default function PdfDropzone({
       </label>
 
       {file ? (
-        <div className="flex items-center gap-3 rounded-xl border border-[#4ec2bb]/50 bg-[#e6f7f5] px-3.5 py-2.5">
-          <FileText className="w-4 h-4 shrink-0 text-[#2a7797]" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-slate-800">
-              {file.name}
-            </p>
-            <p className="text-[10px] text-slate-500">
-              {formatFileSize(file.size)}
-            </p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 rounded-xl border border-[#4ec2bb]/50 bg-[#e6f7f5] px-3.5 py-2.5">
+            <FileText className="w-4 h-4 shrink-0 text-[#2a7797]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-slate-800">
+                {file.name}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {formatFileSize(file.size)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clear}
+              disabled={disabled}
+              aria-label="Remove selected file"
+              className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-700 disabled:opacity-50"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            disabled={disabled}
-            title="Preview this PDF"
-            aria-label="Preview this PDF"
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-[#2a7797] shadow-sm ring-1 ring-[#2a7797]/20 transition-colors hover:bg-[#e6f4f8] disabled:opacity-50"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={clear}
-            disabled={disabled}
-            aria-label="Remove selected file"
-            className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-700 disabled:opacity-50"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                openNativePreview();
+                setPreviewOpen(true);
+              }}
+              disabled={disabled}
+              title="Preview this PDF"
+              aria-label="Preview this PDF"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#2a7797] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#1f5c76] disabled:opacity-50"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Preview PDF
+            </button>
+          </div>
         </div>
       ) : (
         <div
