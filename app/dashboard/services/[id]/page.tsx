@@ -10,6 +10,7 @@ import {
   Building,
   Activity,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 import ReviewCommentsPanel from "../../../components/review-comments-panel";
 import ServiceReportReplace from "../../../components/service-report-replace";
