@@ -8,8 +8,10 @@ import {
 import {
   canStampPreparedBy,
   extractLastPagePdf,
+  prepareSignaturePreviewFromPdf,
   rectForStamp,
   resolveSignatureRect,
+  stampPdfBytes,
 } from "./service-report-signature";
 
 describe("originalServiceReportBaseName", () => {
@@ -92,6 +94,16 @@ describe("serviceReportDownloadFileName", () => {
     ).toBe("PGCV-Bioinfo-SR-2026-272-Penuela.pdf");
   });
 });
+
+/** 1×1 transparent PNG. */
+function tinyPng(): Uint8Array {
+  return Uint8Array.from(
+    atob(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    ),
+    (ch) => ch.charCodeAt(0),
+  );
+}
 
 describe("extractLastPagePdf", () => {
   it("keeps only the last page of a multi-page report", async () => {
@@ -276,6 +288,46 @@ describe("resolveSignatureRect", () => {
     );
     expect(rect.x + rect.width).toBeCloseTo(page.getWidth(), 5);
     expect(rect.y).toBe(0);
+  });
+});
+
+describe("prepareSignaturePreviewFromPdf", () => {
+  it("uses the last page and a provided signature without hitting storage", async () => {
+    const src = await PDFDocument.create();
+    src.addPage([200, 300]);
+    src.addPage([400, 500]);
+    const preview = await prepareSignaturePreviewFromPdf(
+      await src.save(),
+      "prepared_by",
+      tinyPng(),
+    );
+
+    expect(preview.pageCount).toBe(2);
+    expect(preview.pageWidth).toBe(400);
+    expect(preview.pageHeight).toBe(500);
+    expect(preview.slot).toBe("prepared_by");
+    expect(preview.defaultRect.width).toBeGreaterThan(0);
+    const lastPageOnly = await PDFDocument.load(preview.pdfBytes);
+    expect(lastPageOnly.getPageCount()).toBe(1);
+  });
+});
+
+describe("stampPdfBytes", () => {
+  it("keeps earlier pages and stamps only the last page", async () => {
+    const src = await PDFDocument.create();
+    src.addPage([200, 300]);
+    src.addPage([400, 500]);
+    const stamped = await stampPdfBytes(
+      await src.save(),
+      tinyPng(),
+      "prepared_by",
+      { x: 10, y: 20, width: 80, height: 20 },
+    );
+
+    const loaded = await PDFDocument.load(stamped);
+    expect(loaded.getPageCount()).toBe(2);
+    expect(loaded.getPage(0).getWidth()).toBe(200);
+    expect(loaded.getPage(1).getWidth()).toBe(400);
   });
 });
 

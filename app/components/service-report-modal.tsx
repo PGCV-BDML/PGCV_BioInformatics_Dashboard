@@ -50,6 +50,8 @@ export default function ServiceReportModal({
   const [showFallback, setShowFallback] = useState(false);
   const [clientAck, setClientAck] = useState(false);
   const [attachSignature, setAttachSignature] = useState(false);
+  const [preparedByAlreadyStamped, setPreparedByAlreadyStamped] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
@@ -61,6 +63,7 @@ export default function ServiceReportModal({
     setShowFallback(false);
     setClientAck(false);
     setAttachSignature(false);
+    setPreparedByAlreadyStamped(false);
     setError(null);
   }, [isOpen]);
 
@@ -103,7 +106,7 @@ export default function ServiceReportModal({
         "success",
       );
       const analysisId = analysis.id;
-      const shouldSign = attachSignature;
+      const shouldSign = attachSignature && !preparedByAlreadyStamped;
       onClose();
       if (shouldSign) onReadyToSign?.(analysisId);
 
@@ -153,10 +156,22 @@ export default function ServiceReportModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <PdfDropzone
             file={file}
-            onFileChange={setFile}
+            onFileChange={(next) => {
+              setFile(next);
+              setPreparedByAlreadyStamped(false);
+            }}
             error={error}
             onError={setError}
             disabled={isSubmitting}
+            enableSignaturePlacement={canStampPreparedBy(
+              analysis.assignee_id,
+              currentUserId,
+            )}
+            onSignatureApplied={(stamped) => {
+              setFile(stamped);
+              setPreparedByAlreadyStamped(true);
+              setAttachSignature(false);
+            }}
           />
 
           <p className="text-[11px] text-slate-500 leading-relaxed">
@@ -165,13 +180,18 @@ export default function ServiceReportModal({
             officers are assigned, the reviewer is notified automatically.
           </p>
 
-          {file ? (
+          {file && !preparedByAlreadyStamped ? (
             <AssigneeSignatureOption
               checked={attachSignature}
               onChange={setAttachSignature}
               disabled={isSubmitting}
               visible={canStampPreparedBy(analysis.assignee_id, currentUserId)}
             />
+          ) : null}
+          {file && preparedByAlreadyStamped ? (
+            <p className="text-[11px] font-semibold text-slate-500">
+              Prepared by signature is on the last page of this PDF.
+            </p>
           ) : null}
 
           {showFallback ? (

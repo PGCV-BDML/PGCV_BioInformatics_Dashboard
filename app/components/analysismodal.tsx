@@ -116,6 +116,9 @@ interface AnalysisSidebarProps {
   onAttachAssigneeSignatureChange?: (checked: boolean) => void;
   /** Stamp Prepared by on the PDF already stored for this record. */
   onRequestAssigneeSignature?: () => void;
+  /** The pending file already has a Prepared by stamp from preview. */
+  preparedByAlreadyStamped?: boolean;
+  onSignatureApplied?: (file: File) => void;
   statusEvents?: AnalysisStatusEvent[];
   statusEventsLoading?: boolean;
   userNames?: Record<string, string>;
@@ -142,6 +145,8 @@ export default function AnalysisSidebar({
   attachAssigneeSignature = false,
   onAttachAssigneeSignatureChange,
   onRequestAssigneeSignature,
+  preparedByAlreadyStamped = false,
+  onSignatureApplied,
   statusEvents = [],
   statusEventsLoading = false,
   userNames = {},
@@ -585,8 +590,10 @@ export default function AnalysisSidebar({
               error={fileError}
               onError={setFileError}
               disabled={isSaving}
+              enableSignaturePlacement={canStampPreparedBy}
+              onSignatureApplied={onSignatureApplied}
             />
-            {pendingFile ? (
+            {pendingFile && !preparedByAlreadyStamped ? (
               <AssigneeSignatureOption
                 checked={attachAssigneeSignature}
                 onChange={(checked) =>
@@ -595,6 +602,11 @@ export default function AnalysisSidebar({
                 disabled={isSaving}
                 visible={canStampPreparedBy}
               />
+            ) : null}
+            {pendingFile && preparedByAlreadyStamped ? (
+              <p className="ml-1 text-[11px] font-semibold text-slate-500">
+                Prepared by signature is on the last page of this PDF.
+              </p>
             ) : null}
           </>
         )}
