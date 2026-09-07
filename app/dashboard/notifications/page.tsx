@@ -537,8 +537,6 @@ export default function NotificationsPage() {
 
       <ComingUpReminders />
 
-      <PushNotificationSetup variant="card" />
-
       {actionError && (
         <p className="text-sm text-red-600 font-aileron" role="alert">
           {actionError}
@@ -888,6 +886,8 @@ export default function NotificationsPage() {
         </div>
       )}
       </section>
+
+      <PushNotificationSetup variant="card" />
 
       <ConfirmModal
         isOpen={isClearPromptOpen}
