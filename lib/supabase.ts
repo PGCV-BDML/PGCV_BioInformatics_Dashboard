@@ -106,6 +106,7 @@ export type TableNames =
   | "training_program"
   | "training_session"
   | "training_prep_item"
+  | "training_prep_link"
   | "module"
   | "onboarding_document"
   | "assessment"

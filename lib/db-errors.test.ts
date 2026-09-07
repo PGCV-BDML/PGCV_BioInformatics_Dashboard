@@ -86,6 +86,9 @@ describe("describeDeleteError", () => {
     expect(describeDeleteError(new Error(""), "training_prep_item")).toBe(
       "Failed to delete this prep checklist item.",
     );
+    expect(describeDeleteError(new Error(""), "training_prep_link")).toBe(
+      "Failed to delete this prep link.",
+    );
   });
 });
 
@@ -110,6 +113,28 @@ describe("describeSaveError", () => {
       "training_prep_item",
     );
     expect(message).toContain("checklist item name");
+  });
+
+  it("explains a missing prep link title", () => {
+    const message = describeSaveError(
+      {
+        message:
+          'new row for relation "training_prep_link" violates check constraint "training_prep_link_title_chk"',
+      },
+      "training_prep_link",
+    );
+    expect(message).toContain("link title");
+  });
+
+  it("explains an invalid prep link URL", () => {
+    const message = describeSaveError(
+      {
+        message:
+          'new row for relation "training_prep_link" violates check constraint "training_prep_link_url_chk"',
+      },
+      "training_prep_link",
+    );
+    expect(message).toContain("http");
   });
 
   it("points at a missing migration when the table is not in the schema cache", () => {

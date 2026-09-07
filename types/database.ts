@@ -470,6 +470,16 @@ export interface TrainingPrepItem {
   updated_at?: string;
 }
 
+export interface TrainingPrepLink {
+  id: string;
+  program_id: string;
+  title: string;
+  url: string;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type EnrollmentStatus = "enrolled" | "completed" | "dropped";
 
 export interface ProgramEnrollment {
