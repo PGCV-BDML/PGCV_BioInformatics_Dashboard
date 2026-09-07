@@ -5,6 +5,7 @@ import {
   NOTIFICATION_READY_FOR_REVIEW,
   NOTIFICATION_REVISION_REQUESTED,
   NOTIFICATION_TASK_COMING_UP,
+  NOTIFICATION_TASK_PAST_DUE,
 } from "./notifications";
 import { buildWebPushPayload } from "./push-payload";
 import { getPushSetupState, isIosUserAgent } from "./push-support";
@@ -50,6 +51,21 @@ describe("buildWebPushPayload", () => {
     });
     expect(payload.path).toBe("/dashboard/incidents?id=inc-9");
     expect(payload.body).toContain("Freezer alarm");
+  });
+
+  it("asks if a past-due task is already completed", () => {
+    const payload = buildWebPushPayload({
+      id: "n-7",
+      type: NOTIFICATION_TASK_PAST_DUE,
+      payload: {
+        task_id: "task-2",
+        title: "Finish primer set",
+        due_date: "2020-01-01",
+      },
+    });
+    expect(payload.title).toBe("Past due: Finish primer set");
+    expect(payload.body).toContain("Is this task completed already?");
+    expect(payload.path).toContain("task=task-2");
   });
 
   it("deep-links upcoming task reminders", () => {

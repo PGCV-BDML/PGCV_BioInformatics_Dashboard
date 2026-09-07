@@ -9,6 +9,7 @@ import {
   NOTIFICATION_READY_FOR_REVIEW,
   NOTIFICATION_REVISION_REQUESTED,
   NOTIFICATION_TASK_COMING_UP,
+  NOTIFICATION_TASK_PAST_DUE,
   overlayLiveAnalysisOnNotifications,
   shouldPreviewSignedLastPage,
   type AppNotification,
@@ -44,6 +45,9 @@ describe("getNotificationKind", () => {
     expect(getNotificationKind(notification(NOTIFICATION_TASK_COMING_UP))).toBe(
       "task_coming_up",
     );
+    expect(getNotificationKind(notification(NOTIFICATION_TASK_PAST_DUE))).toBe(
+      "task_past_due",
+    );
   });
 
   it("does not treat incident notifications as review requests", () => {
@@ -56,6 +60,9 @@ describe("getNotificationKind", () => {
     const reminder = notification(NOTIFICATION_TASK_COMING_UP);
     expect(isTaskComingUpNotification(reminder)).toBe(true);
     expect(getNotificationKind(reminder)).not.toBe("review_request");
+    expect(getNotificationKind(notification(NOTIFICATION_TASK_PAST_DUE))).not.toBe(
+      "review_request",
+    );
   });
 });
 

@@ -11,16 +11,29 @@ async function run(request: Request) {
   }
 
   const supabase = createAnonSupabaseClient();
-  const { data, error } = await supabase.rpc(
-    "enqueue_task_coming_up_notifications",
-  );
+  const comingUp = await supabase.rpc("enqueue_task_coming_up_notifications");
 
-  if (error) {
-    console.error("enqueue_task_coming_up_notifications failed:", error);
+  if (comingUp.error) {
+    console.error("enqueue_task_coming_up_notifications failed:", comingUp.error);
     return NextResponse.json({ error: "Enqueue failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, inserted: data ?? 0 });
+  const pastDue = await supabase.rpc("enqueue_task_past_due_notifications");
+
+  if (pastDue.error) {
+    console.error("enqueue_task_past_due_notifications failed:", pastDue.error);
+    return NextResponse.json({ error: "Enqueue failed" }, { status: 500 });
+  }
+
+  const comingUpInserted = comingUp.data ?? 0;
+  const pastDueInserted = pastDue.data ?? 0;
+
+  return NextResponse.json({
+    ok: true,
+    inserted: comingUpInserted + pastDueInserted,
+    coming_up: comingUpInserted,
+    past_due: pastDueInserted,
+  });
 }
 
 export async function GET(request: Request) {

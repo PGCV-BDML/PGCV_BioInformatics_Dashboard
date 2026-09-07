@@ -13,6 +13,8 @@ import {
   Trash2,
   ShieldAlert,
   Calendar,
+  Check,
+  Clock,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
@@ -33,6 +35,7 @@ import {
   isIncidentAssignedNotification,
   isSentBackNotification,
   isTaskComingUpNotification,
+  isTaskPastDueNotification,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForApproval,
@@ -53,11 +56,16 @@ import SignatureConfirmModal from "../../components/signature-confirm-modal";
 import ReportLastPageModal from "../../components/report-last-page-modal";
 import { PushNotificationSetup } from "../../components/push-notification-setup";
 import { ComingUpReminders } from "../../components/coming-up-reminders";
+import { PastDueReminders } from "../../components/past-due-reminders";
 import {
   comingUpWhenLabel,
+  markReminderTaskCompleted,
+  onTaskCompleted,
   taskComingUpHref,
   taskComingUpNotificationCopy,
   taskComingUpWhen,
+  taskPastDueNotificationCopy,
+  taskReminderHref,
 } from "@/lib/task-reminders";
 
 type FilterMode = "unread" | "all";
@@ -86,6 +94,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       const when = taskComingUpWhen(n.payload);
       return when ? comingUpWhenLabel(when) : "Upcoming";
     }
+    case "task_past_due":
+      return "Past due";
   }
 }
 
@@ -98,6 +108,7 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
       ? "bg-amber-100 text-amber-900"
       : "bg-sky-100 text-sky-800";
   }
+  if (kind === "task_past_due") return "bg-rose-100 text-rose-900";
   if (kind === "review_request") {
     const state = getReviewStageUiState(n.review_status);
     if (state === "reviewed") return "bg-teal-100 text-teal-800";
@@ -116,6 +127,7 @@ function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (kind === "approval_complete") return BadgeCheck;
   if (kind === "incident_assigned") return ShieldAlert;
   if (kind === "task_coming_up") return Calendar;
+  if (kind === "task_past_due") return Clock;
   if (kind === "review_request") {
     return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
   }
@@ -175,6 +187,20 @@ export default function NotificationsPage() {
     };
   }, [filter]);
 
+  useEffect(() => {
+    return onTaskCompleted((taskId) => {
+      setNotifications((prev) =>
+        prev.filter(
+          (item) =>
+            !(
+              isTaskPastDueNotification(item) &&
+              item.payload.task_id === taskId
+            ),
+        ),
+      );
+    });
+  }, []);
+
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.is_read).length,
     [notifications],
@@ -222,6 +248,28 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error(error);
       setActionError("Couldn't mark notification as read.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleMarkTaskComplete(notification: AppNotification) {
+    const taskId = notification.payload.task_id?.trim();
+    if (!taskId) {
+      setActionError("This reminder is missing its task.");
+      return;
+    }
+    setActionError(null);
+    setActionNotice(null);
+    setBusyId(notification.id);
+    try {
+      await markReminderTaskCompleted(taskId);
+      await markNotificationRead(notification.id);
+      dismissLocally(notification.id);
+      setActionNotice("Marked as completed.");
+    } catch (error) {
+      console.error(error);
+      setActionError("Couldn't mark that task complete. Try opening it instead.");
     } finally {
       setBusyId(null);
     }
@@ -432,7 +480,7 @@ export default function NotificationsPage() {
       <PageHeader
         breadcrumbTrail={notificationsBreadcrumbs}
         title="Notifications"
-        subtitle="Peer review, approval alerts, incident assignments, and upcoming tours, events, meetings, and training"
+        subtitle="Peer review, approval alerts, incident assignments, upcoming dates, and past-due tasks"
         actions={
           <>
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-surface p-1 shadow-sm">
@@ -485,6 +533,8 @@ export default function NotificationsPage() {
         }
       />
 
+      <PastDueReminders />
+
       <ComingUpReminders />
 
       <PushNotificationSetup variant="card" />
@@ -529,6 +579,9 @@ export default function NotificationsPage() {
             const taskComingUp =
               isTaskComingUpNotification(notification) ||
               kind === "task_coming_up";
+            const taskPastDue =
+              isTaskPastDueNotification(notification) ||
+              kind === "task_past_due";
             const sentBack = isSentBackNotification(notification);
             const approvalComplete = isApprovalCompleteNotification(notification);
             const reviewState = getReviewStageUiState(notification.review_status);
@@ -554,6 +607,7 @@ export default function NotificationsPage() {
               (taskComingUp && taskComingUpWhen(notification.payload) === "today") ||
               reviewState === "in_review" ||
               approvalState === "under_review";
+            const isRose = taskPastDue;
 
             return (
               <div
@@ -561,6 +615,8 @@ export default function NotificationsPage() {
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
                   sentBack || incidentAssigned
                     ? "border-amber-200 bg-amber-50/40"
+                    : taskPastDue
+                      ? "border-rose-200 bg-rose-50/40"
                     : taskComingUp &&
                         taskComingUpWhen(notification.payload) === "today"
                       ? "border-amber-200 bg-amber-50/40"
@@ -581,7 +637,9 @@ export default function NotificationsPage() {
                   <div className="flex items-start gap-3 min-w-0">
                     <div
                       className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-                        isAmber
+                        isRose
+                          ? "bg-rose-100"
+                          : isAmber
                           ? "bg-amber-100"
                           : taskComingUp
                             ? "bg-sky-100"
@@ -590,7 +648,9 @@ export default function NotificationsPage() {
                     >
                       <StatusIcon
                         className={`h-4 w-4 ${
-                          isAmber
+                          isRose
+                            ? "text-rose-800"
+                            : isAmber
                             ? "text-amber-800"
                             : taskComingUp
                               ? "text-sky-800"
@@ -607,7 +667,7 @@ export default function NotificationsPage() {
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
                         {incidentAssigned
                           ? notification.payload.title || "Incident report"
-                          : taskComingUp
+                          : taskComingUp || taskPastDue
                             ? notification.payload.title || "Untitled task"
                           : notification.payload.client_name || "Unnamed analysis"}
                       </h2>
@@ -623,6 +683,9 @@ export default function NotificationsPage() {
                             ]
                               .filter(Boolean)
                               .join(" · ") || "You were assigned as the point person."
+                          : taskPastDue
+                            ? taskPastDueNotificationCopy(notification.payload)
+                                .body
                           : taskComingUp
                             ? taskComingUpNotificationCopy(notification.payload)
                                 .body
@@ -672,6 +735,25 @@ export default function NotificationsPage() {
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open incident
                       </Link>
+                    ) : taskPastDue ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => void handleMarkTaskComplete(notification)}
+                          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Yes, mark complete
+                        </button>
+                        <Link
+                          href={taskReminderHref(notification.payload)}
+                          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open task
+                        </Link>
+                      </>
                     ) : taskComingUp ? (
                       <Link
                         href={taskComingUpHref(notification.payload)}

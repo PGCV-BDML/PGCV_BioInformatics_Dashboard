@@ -2,6 +2,8 @@ import {
   formatTaskDateRange,
   formatTaskTimeForInput,
   isClosedTaskStatus,
+  parseLocalDate,
+  resolveTaskEndDate,
   resolveTaskStartDate,
   taskHref,
   toDateKey,
@@ -12,7 +14,9 @@ import {
   getRowsFromDB,
   getTaskAssigneesByTaskId,
   getTaskCategoriesByTaskId,
+  saveDataToDB,
 } from "@/lib/supabase";
+import { formatDate } from "@/lib/utils";
 import type { Task, TaskCategory } from "@/types/database";
 
 /** Calendar-shaped tags: the date means “be there,” not “work started.” */
@@ -107,13 +111,22 @@ export function showUpCategoriesFromPayload(
   );
 }
 
-export function taskComingUpHref(payload: TaskComingUpPayload): string {
+export type TaskReminderPayload = {
+  task_id?: string;
+  title?: string | null;
+};
+
+export function taskReminderHref(payload: TaskReminderPayload): string {
   const taskId = payload.task_id?.trim();
   if (!taskId) return "/dashboard/tasks";
   return taskHref({
     id: taskId,
     title: payload.title?.trim() || "Untitled task",
   });
+}
+
+export function taskComingUpHref(payload: TaskComingUpPayload): string {
+  return taskReminderHref(payload);
 }
 
 export function taskComingUpWhen(
@@ -145,8 +158,108 @@ export function taskComingUpNotificationCopy(
   return {
     title: `${whenLabel}: ${name}`,
     body: bodyParts.join(" · ") || name,
-    path: taskComingUpHref(payload),
+    path: taskReminderHref(payload),
   };
+}
+
+export type TaskPastDuePayload = {
+  task_id?: string;
+  title?: string | null;
+  due_date?: string | null;
+  end_date?: string | null;
+  start_date?: string | null;
+  details?: string | null;
+  categories?: unknown;
+};
+
+export type PastDueReminder = {
+  id: string;
+  title: string;
+  due_date: string;
+  details: string | null;
+  categories: TaskCategory[];
+  daysOverdue: number;
+  dateLabel: string;
+  href: string;
+};
+
+export function isPastDueEnd(
+  endKey: string,
+  now: Date = new Date(),
+): boolean {
+  return endKey < comingUpWindow(now).todayKey;
+}
+
+export function pastDueDays(
+  endKey: string,
+  now: Date = new Date(),
+): number {
+  const today = comingUpWindow(now).todayKey;
+  return Math.max(
+    0,
+    Math.round(
+      (parseLocalDate(today).getTime() - parseLocalDate(endKey).getTime()) /
+        86_400_000,
+    ),
+  );
+}
+
+export function pastDueAgoLabel(days: number): string {
+  if (days <= 1) return "Due yesterday";
+  return `Due ${days} days ago`;
+}
+
+function pastDueDateFromPayload(payload: TaskPastDuePayload): string | null {
+  const raw = payload.due_date ?? payload.end_date ?? payload.start_date;
+  return raw?.trim() || null;
+}
+
+/** Inbox badge + Web Push copy for a stored task_past_due row. */
+export function taskPastDueNotificationCopy(
+  payload: TaskPastDuePayload,
+  now: Date = new Date(),
+): { title: string; body: string; path: string } {
+  const name = payload.title?.trim() || "Untitled task";
+  const due = pastDueDateFromPayload(payload);
+  const days = due && isPastDueEnd(due, now) ? pastDueDays(due, now) : 0;
+  const when = days > 0 ? pastDueAgoLabel(days) : due ? `Due ${formatDate(due)}` : null;
+  const question = "Is this task completed already?";
+  return {
+    title: `Past due: ${name}`,
+    body: when ? `${when}. ${question}` : question,
+    path: taskReminderHref(payload),
+  };
+}
+
+export async function markReminderTaskCompleted(taskId: string): Promise<void> {
+  const id = taskId.trim();
+  if (!id) throw new Error("Missing task id.");
+  await saveDataToDB("task", id, {
+    status: "completed",
+    updated_at: new Date().toISOString(),
+  });
+  emitTaskCompleted(id);
+}
+
+export const TASK_COMPLETED_EVENT = "pgcv-task-completed";
+
+export function emitTaskCompleted(taskId: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(TASK_COMPLETED_EVENT, { detail: { taskId } }),
+  );
+}
+
+export function onTaskCompleted(
+  handler: (taskId: string) => void,
+): () => void {
+  if (typeof window === "undefined") return () => {};
+  const listener = (event: Event) => {
+    const taskId = (event as CustomEvent<{ taskId?: string }>).detail?.taskId?.trim();
+    if (taskId) handler(taskId);
+  };
+  window.addEventListener(TASK_COMPLETED_EVENT, listener);
+  return () => window.removeEventListener(TASK_COMPLETED_EVENT, listener);
 }
 
 export function comingUpWindow(now: Date = new Date()): {
@@ -240,25 +353,72 @@ export function selectComingUpTasks(
   });
 }
 
-export async function getMyComingUpTasks(
-  userId: string,
-  now: Date = new Date(),
-): Promise<ComingUpReminder[]> {
-  if (!userId.trim()) return [];
-
+async function loadEnrichedTasks() {
   const [taskRows, categoriesByTask, assigneesByTask] = await Promise.all([
     getRowsFromDB<Task>("task"),
     getTaskCategoriesByTaskId(),
     getTaskAssigneesByTaskId(),
   ]);
 
-  const enriched = applyTaskAssignees(
+  return applyTaskAssignees(
     taskRows.map((task) => ({
       ...task,
       categories: categoriesByTask.get(task.id) ?? [],
     })),
     assigneesByTask,
   );
+}
 
-  return selectComingUpTasks(enriched, userId, now);
+export async function getMyComingUpTasks(
+  userId: string,
+  now: Date = new Date(),
+): Promise<ComingUpReminder[]> {
+  if (!userId.trim()) return [];
+  return selectComingUpTasks(await loadEnrichedTasks(), userId, now);
+}
+
+/**
+ * Open assigned tasks whose end/due date is before today.
+ * Linked sequence-analysis work is skipped — those already have review alerts.
+ */
+export function selectPastDueTasks(
+  tasks: ComingUpTaskInput[],
+  userId: string,
+  now: Date = new Date(),
+): PastDueReminder[] {
+  const reminders: PastDueReminder[] = [];
+
+  for (const task of tasks) {
+    if (isInactiveReminderStatus(task.status)) continue;
+    if (hasLinkedAnalysis(task)) continue;
+    if (!isComingUpAudience(task, userId)) continue;
+
+    const dueKey = resolveTaskEndDate(task);
+    if (!dueKey || !isPastDueEnd(dueKey, now)) continue;
+
+    const title = task.title?.trim() || "Untitled task";
+    reminders.push({
+      id: task.id,
+      title,
+      due_date: dueKey,
+      details: task.details?.trim() || null,
+      categories: task.categories ?? [],
+      daysOverdue: pastDueDays(dueKey, now),
+      dateLabel: formatTaskDateRange(task),
+      href: taskHref({ id: task.id, title }),
+    });
+  }
+
+  return reminders.sort((a, b) => {
+    if (a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+export async function getMyPastDueTasks(
+  userId: string,
+  now: Date = new Date(),
+): Promise<PastDueReminder[]> {
+  if (!userId.trim()) return [];
+  return selectPastDueTasks(await loadEnrichedTasks(), userId, now);
 }

@@ -5,10 +5,14 @@ import {
   comingUpWhenForStart,
   comingUpWhenLabel,
   isComingUpAudience,
+  isPastDueEnd,
+  pastDueAgoLabel,
   selectComingUpTasks,
+  selectPastDueTasks,
   showUpCategoriesOf,
   taskComingUpHref,
   taskComingUpNotificationCopy,
+  taskPastDueNotificationCopy,
   type ComingUpTaskInput,
 } from "./task-reminders";
 
@@ -289,5 +293,144 @@ describe("taskComingUpNotificationCopy", () => {
     expect(copy.title).toBe("Tomorrow: Campus tour");
     expect(copy.body).toBe("Tour · 09:00");
     expect(copy.path).toBe(taskComingUpHref({ task_id: "abc", title: "Campus tour" }));
+  });
+});
+
+describe("isPastDueEnd / pastDueAgoLabel", () => {
+  it("treats yesterday as past due and today as still on time", () => {
+    expect(isPastDueEnd("2026-09-06", NOW)).toBe(true);
+    expect(isPastDueEnd("2026-09-07", NOW)).toBe(false);
+    expect(isPastDueEnd("2026-09-08", NOW)).toBe(false);
+    expect(pastDueAgoLabel(1)).toBe("Due yesterday");
+    expect(pastDueAgoLabel(3)).toBe("Due 3 days ago");
+  });
+});
+
+describe("selectPastDueTasks", () => {
+  it("includes assigned open work that ended before today", () => {
+    const result = selectPastDueTasks(
+      [
+        task({
+          id: "late",
+          title: "Finish primer set",
+          start_date: "2026-09-05",
+          end_date: "2026-09-06",
+          due_date: "2026-09-06",
+          categories: ["projects"],
+        }),
+        task({
+          id: "due-today",
+          title: "Due today",
+          start_date: "2026-09-07",
+          end_date: "2026-09-07",
+          due_date: "2026-09-07",
+          categories: ["projects"],
+        }),
+        task({
+          id: "still-running",
+          title: "Multi-day",
+          start_date: "2026-09-06",
+          end_date: "2026-09-08",
+          due_date: "2026-09-08",
+          categories: ["projects"],
+        }),
+      ],
+      "me",
+      NOW,
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["late"]);
+    expect(result[0]?.daysOverdue).toBe(1);
+  });
+
+  it("skips closed, on-hold, unassigned, and linked analysis work", () => {
+    const result = selectPastDueTasks(
+      [
+        task({
+          id: "done",
+          title: "Done",
+          start_date: "2026-09-01",
+          end_date: "2026-09-01",
+          due_date: "2026-09-01",
+          status: "completed",
+          categories: ["projects"],
+        }),
+        task({
+          id: "hold",
+          title: "Hold",
+          start_date: "2026-09-01",
+          end_date: "2026-09-01",
+          due_date: "2026-09-01",
+          status: "on_hold",
+          categories: ["projects"],
+        }),
+        task({
+          id: "nobody",
+          title: "Nobody",
+          start_date: "2026-09-01",
+          end_date: "2026-09-01",
+          due_date: "2026-09-01",
+          assignee_id: null,
+          assignee_ids: [],
+          categories: ["projects"],
+        }),
+        task({
+          id: "analysis",
+          title: "WGS",
+          start_date: "2026-09-01",
+          end_date: "2026-09-01",
+          due_date: "2026-09-01",
+          categories: ["sequence_analysis"],
+          linked_analysis_id: "analysis-1",
+        }),
+      ],
+      "me",
+      NOW,
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("sorts the longest overdue first", () => {
+    const result = selectPastDueTasks(
+      [
+        task({
+          id: "newer",
+          title: "B newer",
+          start_date: "2026-09-06",
+          end_date: "2026-09-06",
+          due_date: "2026-09-06",
+          categories: ["projects"],
+        }),
+        task({
+          id: "older",
+          title: "A older",
+          start_date: "2026-09-04",
+          end_date: "2026-09-04",
+          due_date: "2026-09-04",
+          categories: ["projects"],
+        }),
+      ],
+      "me",
+      NOW,
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["older", "newer"]);
+  });
+});
+
+describe("taskPastDueNotificationCopy", () => {
+  it("asks whether the task is already done", () => {
+    const copy = taskPastDueNotificationCopy(
+      {
+        task_id: "abc",
+        title: "Finish primer set",
+        due_date: "2026-09-06",
+      },
+      NOW,
+    );
+    expect(copy.title).toBe("Past due: Finish primer set");
+    expect(copy.body).toBe("Due yesterday. Is this task completed already?");
+    expect(copy.path).toContain("task=abc");
   });
 });

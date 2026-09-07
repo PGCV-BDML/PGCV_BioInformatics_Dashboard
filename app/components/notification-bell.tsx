@@ -12,6 +12,8 @@ import {
   MessageSquareWarning,
   ShieldAlert,
   Calendar,
+  Check,
+  Clock,
 } from "lucide-react";
 import {
   approveAnalysis,
@@ -26,6 +28,7 @@ import {
   isIncidentAssignedNotification,
   isSentBackNotification,
   isTaskComingUpNotification,
+  isTaskPastDueNotification,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForApproval,
@@ -44,9 +47,13 @@ import { getCurrentUser } from "@/lib/supabase";
 import { routes } from "@/lib/routes";
 import {
   comingUpWhenLabel,
+  markReminderTaskCompleted,
+  onTaskCompleted,
   taskComingUpHref,
   taskComingUpNotificationCopy,
   taskComingUpWhen,
+  taskPastDueNotificationCopy,
+  taskReminderHref,
 } from "@/lib/task-reminders";
 import RequestChangesModal from "./request-changes-modal";
 import MySignatureModal from "./my-signature-modal";
@@ -71,6 +78,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       const when = taskComingUpWhen(n.payload);
       return when ? comingUpWhenLabel(when) : "Upcoming";
     }
+    case "task_past_due":
+      return "Past due";
   }
 }
 
@@ -101,6 +110,20 @@ export function NotificationBell() {
 
   useEffect(() => {
     getMyNotifications({ unreadOnly: true }).then(setNotifications);
+  }, []);
+
+  useEffect(() => {
+    return onTaskCompleted((taskId) => {
+      setNotifications((prev) =>
+        prev.filter(
+          (item) =>
+            !(
+              isTaskPastDueNotification(item) &&
+              item.payload.task_id === taskId
+            ),
+        ),
+      );
+    });
   }, []);
 
   useEffect(() => {
@@ -169,6 +192,21 @@ export function NotificationBell() {
     try {
       await markNotificationRead(id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleMarkTaskComplete(n: AppNotification) {
+    const taskId = n.payload.task_id?.trim();
+    if (!taskId) return;
+    setBusyId(n.id);
+    try {
+      await markReminderTaskCompleted(taskId);
+      await markNotificationRead(n.id);
+      setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+    } catch (error) {
+      console.error(error);
     } finally {
       setBusyId(null);
     }
@@ -381,6 +419,63 @@ export function NotificationBell() {
                           <div className="flex flex-wrap items-center gap-2 mt-2">
                             <Link
                               href={taskComingUpHref(n.payload)}
+                              onClick={() => {
+                                void markOneReadLocal(n.id);
+                                setIsOpen(false);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Open task
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleMarkRead(n.id)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 disabled:opacity-60 transition-colors font-aileron ml-auto"
+                            >
+                              <CheckCheck className="w-3 h-3" /> Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (isTaskPastDueNotification(n) || kind === "task_past_due") {
+                  const copy = taskPastDueNotificationCopy(n.payload);
+                  return (
+                    <div
+                      key={n.id}
+                      className={`px-4 py-3 hover:bg-slate-50 transition-colors ${
+                        n.is_read ? "opacity-70" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-rose-100">
+                          <Clock className="w-3.5 h-3.5 text-rose-800" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
+                            Past due
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
+                            {n.payload.title ?? "Untitled task"}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-aileron mt-0.5">
+                            {copy.body}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleMarkTaskComplete(n)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-60 transition-colors font-aileron"
+                            >
+                              <Check className="w-3 h-3" /> Mark complete
+                            </button>
+                            <Link
+                              href={taskReminderHref(n.payload)}
                               onClick={() => {
                                 void markOneReadLocal(n.id);
                                 setIsOpen(false);

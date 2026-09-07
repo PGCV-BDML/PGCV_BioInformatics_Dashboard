@@ -27,6 +27,8 @@ export const NOTIFICATION_APPROVED = "analysis_approved";
 export const NOTIFICATION_INCIDENT_ASSIGNED = "incident_assigned";
 /** Sent to assignees the calendar day before (or of) a show-up task. */
 export const NOTIFICATION_TASK_COMING_UP = "task_coming_up";
+/** Sent to assignees when an open task has passed its due date. */
+export const NOTIFICATION_TASK_PAST_DUE = "task_past_due";
 
 export type AppNotification = {
   id: string;
@@ -50,9 +52,10 @@ export type AppNotification = {
     category?: string | null;
     status?: string | null;
     reporter_name?: string | null;
-    /** Present on task_coming_up. */
+    /** Present on task_coming_up and task_past_due. */
     task_id?: string;
     start_date?: string | null;
+    due_date?: string | null;
     task_time?: string | null;
     details?: string | null;
     categories?: string[] | null;
@@ -70,7 +73,7 @@ export type AppNotification = {
 
 /**
  * Which card to render. Each notification belongs to exactly one stage and
- * one audience, and the actions differ across all five types.
+ * one audience, and the actions differ across types.
  */
 export type NotificationKind =
   | "review_request"
@@ -79,7 +82,8 @@ export type NotificationKind =
   | "change_request"
   | "approval_complete"
   | "incident_assigned"
-  | "task_coming_up";
+  | "task_coming_up"
+  | "task_past_due";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -95,6 +99,8 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "incident_assigned";
     case NOTIFICATION_TASK_COMING_UP:
       return "task_coming_up";
+    case NOTIFICATION_TASK_PAST_DUE:
+      return "task_past_due";
     case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
@@ -107,6 +113,10 @@ export function isIncidentAssignedNotification(n: AppNotification): boolean {
 
 export function isTaskComingUpNotification(n: AppNotification): boolean {
   return n.type === NOTIFICATION_TASK_COMING_UP;
+}
+
+export function isTaskPastDueNotification(n: AppNotification): boolean {
+  return n.type === NOTIFICATION_TASK_PAST_DUE;
 }
 
 /** True for notifications the assignee receives when a report is sent back. */
