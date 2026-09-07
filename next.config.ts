@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
+import { copyFileSync, existsSync } from "fs";
 import { join } from "path";
+
+const pdfWorkerSrc = join(
+  __dirname,
+  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
+);
+const pdfWorkerDest = join(__dirname, "public/pdf.worker.min.mjs");
+if (existsSync(pdfWorkerSrc)) {
+  copyFileSync(pdfWorkerSrc, pdfWorkerDest);
+}
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

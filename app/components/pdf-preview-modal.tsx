@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import {
   downloadReportPdfBytes,
-  extractLastPagePdf,
+  lastPageMetrics,
   prepareSignaturePreviewFromPdf,
   stampPdfBytes,
   type LocalSignaturePreview,
@@ -156,9 +156,9 @@ export default function PdfPreviewModal({
         if (cancelled) return;
         sourceBytesRef.current = bytes;
 
-        const extracted = await extractLastPagePdf(bytes);
+        const metrics = await lastPageMetrics(bytes);
         if (cancelled) return;
-        setLastPage(extracted);
+        setLastPage({ pdfBytes: bytes, ...metrics });
 
         objectUrl = URL.createObjectURL(
           new Blob([bytesForBlob(bytes)], { type: "application/pdf" }),

@@ -8,6 +8,7 @@ import {
 import {
   canStampPreparedBy,
   extractLastPagePdf,
+  lastPageMetrics,
   prepareSignaturePreviewFromPdf,
   rectForStamp,
   resolveSignatureRect,
@@ -104,6 +105,19 @@ function tinyPng(): Uint8Array {
     (ch) => ch.charCodeAt(0),
   );
 }
+
+describe("lastPageMetrics", () => {
+  it("reads the last page size from the original document", async () => {
+    const src = await PDFDocument.create();
+    src.addPage([200, 300]);
+    src.addPage([400, 500]);
+    await expect(lastPageMetrics(await src.save())).resolves.toEqual({
+      pageWidth: 400,
+      pageHeight: 500,
+      pageCount: 2,
+    });
+  });
+});
 
 describe("extractLastPagePdf", () => {
   it("keeps only the last page of a multi-page report", async () => {
@@ -307,8 +321,9 @@ describe("prepareSignaturePreviewFromPdf", () => {
     expect(preview.pageHeight).toBe(500);
     expect(preview.slot).toBe("prepared_by");
     expect(preview.defaultRect.width).toBeGreaterThan(0);
-    const lastPageOnly = await PDFDocument.load(preview.pdfBytes);
-    expect(lastPageOnly.getPageCount()).toBe(1);
+    const loaded = await PDFDocument.load(preview.pdfBytes);
+    expect(loaded.getPageCount()).toBe(2);
+    expect(loaded.getPage(1).getWidth()).toBe(400);
   });
 });
 

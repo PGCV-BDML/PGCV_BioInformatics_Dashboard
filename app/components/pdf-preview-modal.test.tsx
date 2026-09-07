@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PdfPreviewModal from "./pdf-preview-modal";
 import {
-  extractLastPagePdf,
+  lastPageMetrics,
   prepareSignaturePreviewFromPdf,
   stampPdfBytes,
 } from "@/lib/service-report-signature";
@@ -13,7 +13,7 @@ vi.mock("@/lib/service-report-signature", async (importOriginal) => {
     await importOriginal<typeof import("@/lib/service-report-signature")>();
   return {
     ...actual,
-    extractLastPagePdf: vi.fn(),
+    lastPageMetrics: vi.fn(),
     prepareSignaturePreviewFromPdf: vi.fn(),
     stampPdfBytes: vi.fn(),
     downloadReportPdfBytes: vi.fn(),
@@ -53,10 +53,14 @@ const signaturePreview = {
 
 describe("PdfPreviewModal", () => {
   beforeEach(() => {
-    vi.mocked(extractLastPagePdf).mockReset();
+    vi.mocked(lastPageMetrics).mockReset();
     vi.mocked(prepareSignaturePreviewFromPdf).mockReset();
     vi.mocked(stampPdfBytes).mockReset();
-    vi.mocked(extractLastPagePdf).mockResolvedValue(lastPage);
+    vi.mocked(lastPageMetrics).mockResolvedValue({
+      pageWidth: lastPage.pageWidth,
+      pageHeight: lastPage.pageHeight,
+      pageCount: lastPage.pageCount,
+    });
     vi.mocked(prepareSignaturePreviewFromPdf).mockResolvedValue(
       signaturePreview,
     );

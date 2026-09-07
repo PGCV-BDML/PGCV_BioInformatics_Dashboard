@@ -450,7 +450,7 @@ export async function downloadReportPdfBytes(path: string): Promise<Uint8Array> 
 
   if (error || !data) {
     console.error("Failed to download service report PDF:", error);
-    throw new Error("Couldn't open the service report PDF for signing.");
+    throw new Error("Couldn't open the service report PDF.");
   }
 
   return new Uint8Array(await data.arrayBuffer());
@@ -568,8 +568,31 @@ export type LastPagePreview = {
 };
 
 /**
- * Copy only the last page into a new PDF. Signature stamps live there, so
- * previews should never open on page 1 of a multi-page report.
+ * Size of the last page in the original PDF. Preview draws that page with
+ * pdf.js (`getPage(numPages)`); do not copyPages first — Word-exported
+ * reports often come out blank after a pdf-lib rewrite.
+ */
+export async function lastPageMetrics(pdfBytes: Uint8Array): Promise<{
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+}> {
+  const pdf = await PDFDocument.load(pdfBytes);
+  const pageCount = pdf.getPageCount();
+  if (pageCount === 0) {
+    throw new Error("That PDF has no pages to sign.");
+  }
+  const lastPage = pdf.getPages()[pageCount - 1]!;
+  return {
+    pageWidth: lastPage.getWidth(),
+    pageHeight: lastPage.getHeight(),
+    pageCount,
+  };
+}
+
+/**
+ * Copy only the last page into a new PDF. Kept for tests; UI previews
+ * render the original bytes instead.
  */
 async function copyLastPage(src: PDFDocument): Promise<{
   pdfBytes: Uint8Array;
@@ -612,7 +635,10 @@ export async function extractLastPagePdf(pdfBytes: Uint8Array): Promise<{
 }
 
 async function lastPageFromStoredReport(analysisId: string): Promise<{
-  lastPage: Awaited<ReturnType<typeof extractLastPagePdf>>;
+  pdfBytes: Uint8Array;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
   filePath: string;
   fileName: string | null;
 }> {
@@ -636,8 +662,10 @@ async function lastPageFromStoredReport(analysisId: string): Promise<{
   }
 
   const pdfBytes = await downloadReportPdfBytes(reportPath);
+  const metrics = await lastPageMetrics(pdfBytes);
   return {
-    lastPage: await extractLastPagePdf(pdfBytes),
+    pdfBytes,
+    ...metrics,
     filePath: reportPath,
     fileName: analysis.service_report_file_name,
   };
@@ -650,15 +678,14 @@ async function lastPageFromStoredReport(analysisId: string): Promise<{
 export async function prepareReportLastPagePreview(
   analysisId: string,
 ): Promise<LastPagePreview> {
-  const { lastPage, filePath, fileName } = await lastPageFromStoredReport(
-    analysisId,
-  );
+  const { pdfBytes, pageWidth, pageHeight, pageCount, filePath, fileName } =
+    await lastPageFromStoredReport(analysisId);
   return {
     analysisId,
-    pageWidth: lastPage.pageWidth,
-    pageHeight: lastPage.pageHeight,
-    pageCount: lastPage.pageCount,
-    pdfBytes: lastPage.pdfBytes,
+    pageWidth,
+    pageHeight,
+    pageCount,
+    pdfBytes,
     filePath,
     fileName,
   };
@@ -684,15 +711,14 @@ export async function prepareSignaturePreviewFromPdf(
   const page = pages[pages.length - 1]!;
   const image = signatureImageSize(stampBytes);
   const defaultRect = rectForStamp(page, slot, image.width, image.height);
-  const copied = await copyLastPage(pdf);
 
   return {
     slot,
-    pageWidth: copied.pageWidth,
-    pageHeight: copied.pageHeight,
-    pageCount: copied.pageCount,
+    pageWidth: page.getWidth(),
+    pageHeight: page.getHeight(),
+    pageCount: pages.length,
     defaultRect,
-    pdfBytes: copied.pdfBytes,
+    pdfBytes,
     signatureBytes: stampBytes,
     imageWidth: image.width,
     imageHeight: image.height,

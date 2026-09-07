@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { configurePdfjsWorker } from "@/lib/pdfjs-worker";
 
 type PdfjsModule = typeof import("pdfjs-dist");
 
@@ -9,10 +10,7 @@ let pdfjsWorkerReady = false;
 async function loadPdfjs(): Promise<PdfjsModule> {
   const pdfjs = await import("pdfjs-dist");
   if (!pdfjsWorkerReady) {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url,
-    ).toString();
+    configurePdfjsWorker(pdfjs);
     pdfjsWorkerReady = true;
   }
   return pdfjs;
