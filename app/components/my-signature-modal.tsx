@@ -21,6 +21,8 @@ interface MySignatureModalProps {
   requiredForAction?: boolean;
   /** Called after a successful upload (not after remove). */
   onUploaded?: () => void;
+  /** Stack above nested dialogs such as PDF preview (z-400). */
+  elevated?: boolean;
 }
 
 export default function MySignatureModal({
@@ -28,6 +30,7 @@ export default function MySignatureModal({
   onClose,
   requiredForAction = false,
   onUploaded,
+  elevated = false,
 }: MySignatureModalProps) {
   const [existingPath, setExistingPath] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -162,7 +165,7 @@ export default function MySignatureModal({
   // which would clip a fixed overlay rendered as a child.
   return createPortal(
     <div
-      className="fixed inset-0 w-screen h-screen z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+      className={`fixed inset-0 w-screen h-screen ${elevated ? "z-[500]" : "z-[200]"} flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs`}
       onClick={() => {
         if (!isSaving) onClose();
       }}

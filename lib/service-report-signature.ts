@@ -443,14 +443,14 @@ export function rectForStamp(
   );
 }
 
-async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
+export async function downloadReportPdfBytes(path: string): Promise<Uint8Array> {
   const { data, error } = await supabase.storage
     .from(SERVICE_REPORT_BUCKET)
     .download(path);
 
   if (error || !data) {
     console.error("Failed to download service report PDF:", error);
-    throw new Error("Couldn't open the service report PDF for signing.");
+    throw new Error("Couldn't open the service report PDF.");
   }
 
   return new Uint8Array(await data.arrayBuffer());
@@ -555,6 +555,8 @@ export type SignaturePreview = {
   imageHeight: number;
 };
 
+export type LocalSignaturePreview = Omit<SignaturePreview, "analysisId">;
+
 export type LastPagePreview = {
   analysisId: string;
   pageWidth: number;
@@ -566,8 +568,31 @@ export type LastPagePreview = {
 };
 
 /**
- * Copy only the last page into a new PDF. Signature stamps live there, so
- * previews should never open on page 1 of a multi-page report.
+ * Size of the last page in the original PDF. Preview draws that page with
+ * pdf.js (`getPage(numPages)`); do not copyPages first — Word-exported
+ * reports often come out blank after a pdf-lib rewrite.
+ */
+export async function lastPageMetrics(pdfBytes: Uint8Array): Promise<{
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
+}> {
+  const pdf = await PDFDocument.load(pdfBytes);
+  const pageCount = pdf.getPageCount();
+  if (pageCount === 0) {
+    throw new Error("That PDF has no pages to sign.");
+  }
+  const lastPage = pdf.getPages()[pageCount - 1]!;
+  return {
+    pageWidth: lastPage.getWidth(),
+    pageHeight: lastPage.getHeight(),
+    pageCount,
+  };
+}
+
+/**
+ * Copy only the last page into a new PDF. Kept for tests; UI previews
+ * render the original bytes instead.
  */
 async function copyLastPage(src: PDFDocument): Promise<{
   pdfBytes: Uint8Array;
@@ -610,7 +635,10 @@ export async function extractLastPagePdf(pdfBytes: Uint8Array): Promise<{
 }
 
 async function lastPageFromStoredReport(analysisId: string): Promise<{
-  lastPage: Awaited<ReturnType<typeof extractLastPagePdf>>;
+  pdfBytes: Uint8Array;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
   filePath: string;
   fileName: string | null;
 }> {
@@ -634,8 +662,10 @@ async function lastPageFromStoredReport(analysisId: string): Promise<{
   }
 
   const pdfBytes = await downloadReportPdfBytes(reportPath);
+  const metrics = await lastPageMetrics(pdfBytes);
   return {
-    lastPage: await extractLastPagePdf(pdfBytes),
+    pdfBytes,
+    ...metrics,
     filePath: reportPath,
     fileName: analysis.service_report_file_name,
   };
@@ -648,17 +678,50 @@ async function lastPageFromStoredReport(analysisId: string): Promise<{
 export async function prepareReportLastPagePreview(
   analysisId: string,
 ): Promise<LastPagePreview> {
-  const { lastPage, filePath, fileName } = await lastPageFromStoredReport(
-    analysisId,
-  );
+  const { pdfBytes, pageWidth, pageHeight, pageCount, filePath, fileName } =
+    await lastPageFromStoredReport(analysisId);
   return {
     analysisId,
-    pageWidth: lastPage.pageWidth,
-    pageHeight: lastPage.pageHeight,
-    pageCount: lastPage.pageCount,
-    pdfBytes: lastPage.pdfBytes,
+    pageWidth,
+    pageHeight,
+    pageCount,
+    pdfBytes,
     filePath,
     fileName,
+  };
+}
+
+/**
+ * Last page + default stamp rectangle for a PDF already in memory.
+ * Used when previewing a file that has not been stored yet.
+ */
+export async function prepareSignaturePreviewFromPdf(
+  pdfBytes: Uint8Array,
+  slot: SignatureSlot,
+  signatureBytes?: Uint8Array,
+): Promise<LocalSignaturePreview> {
+  const stampBytes =
+    signatureBytes ??
+    (await downloadSignatureBytes(await requireMySignaturePath()));
+  const pdf = await PDFDocument.load(pdfBytes);
+  const pages = pdf.getPages();
+  if (pages.length === 0) {
+    throw new Error("That PDF has no pages to sign.");
+  }
+  const page = pages[pages.length - 1]!;
+  const image = signatureImageSize(stampBytes);
+  const defaultRect = rectForStamp(page, slot, image.width, image.height);
+
+  return {
+    slot,
+    pageWidth: page.getWidth(),
+    pageHeight: page.getHeight(),
+    pageCount: pages.length,
+    defaultRect,
+    pdfBytes,
+    signatureBytes: stampBytes,
+    imageWidth: image.width,
+    imageHeight: image.height,
   };
 }
 
@@ -675,55 +738,23 @@ export async function prepareSignaturePreview(
     downloadReportPdfBytes(ctx.reportPath),
     downloadSignatureBytes(ctx.signaturePath),
   ]);
-
-  const pdf = await PDFDocument.load(pdfBytes);
-  const pages = pdf.getPages();
-  if (pages.length === 0) {
-    throw new Error("That PDF has no pages to sign.");
-  }
-  const page = pages[pages.length - 1]!;
-  const image = signatureImageSize(signatureBytes);
-  const defaultRect = rectForStamp(
-    page,
+  const preview = await prepareSignaturePreviewFromPdf(
+    pdfBytes,
     slot,
-    image.width,
-    image.height,
-  );
-  const copied = await copyLastPage(pdf);
-
-  return {
-    analysisId,
-    slot,
-    pageWidth: copied.pageWidth,
-    pageHeight: copied.pageHeight,
-    pageCount: copied.pageCount,
-    defaultRect,
-    pdfBytes: copied.pdfBytes,
     signatureBytes,
-    imageWidth: image.width,
-    imageHeight: image.height,
-  };
+  );
+  return { analysisId, ...preview };
 }
 
 /**
- * Draw the current user's e-signature into the named slot on the last
- * page of the analysis PDF, upload a new version, and point the analysis
- * row at it. Does not change review/approval status — callers do that.
- *
- * Pass `rect` when the officer confirmed a placement in the preview modal.
+ * Draw a signature onto the last page of an in-memory PDF. Does not upload.
  */
-export async function stampServiceReportSignature(
-  analysisId: string,
+export async function stampPdfBytes(
+  pdfBytes: Uint8Array,
+  signatureBytes: Uint8Array,
   slot: SignatureSlot,
   rect?: SignatureRect | null,
-): Promise<{ filePath: string; fileName: string; fileSize: number }> {
-  const ctx = await loadSigningContext(analysisId, slot);
-
-  const [pdfBytes, signatureBytes] = await Promise.all([
-    downloadReportPdfBytes(ctx.reportPath),
-    downloadSignatureBytes(ctx.signaturePath),
-  ]);
-
+): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(pdfBytes);
   const pages = pdf.getPages();
   if (pages.length === 0) {
@@ -747,16 +778,39 @@ export async function stampServiceReportSignature(
 
   const stampRect = rectForStamp(
     page,
-    ctx.slot,
+    slot,
     embedded.width,
     embedded.height,
     rect,
   );
-
   page.drawImage(embedded, stampRect);
+  return new Uint8Array(await pdf.save());
+}
 
-  const stamped = await pdf.save();
-  const stampedBytes = new Uint8Array(stamped);
+/**
+ * Draw the current user's e-signature into the named slot on the last
+ * page of the analysis PDF, upload a new version, and point the analysis
+ * row at it. Does not change review/approval status — callers do that.
+ *
+ * Pass `rect` when the officer confirmed a placement in the preview modal.
+ */
+export async function stampServiceReportSignature(
+  analysisId: string,
+  slot: SignatureSlot,
+  rect?: SignatureRect | null,
+): Promise<{ filePath: string; fileName: string; fileSize: number }> {
+  const ctx = await loadSigningContext(analysisId, slot);
+
+  const [pdfBytes, signatureBytes] = await Promise.all([
+    downloadReportPdfBytes(ctx.reportPath),
+    downloadSignatureBytes(ctx.signaturePath),
+  ]);
+  const stampedBytes = await stampPdfBytes(
+    pdfBytes,
+    signatureBytes,
+    ctx.slot,
+    rect,
+  );
   const stampedName = stampedServiceReportFileName(
     ctx.fileName,
     ctx.slot,

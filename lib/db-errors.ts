@@ -58,6 +58,10 @@ const TABLE_LABELS: Partial<
     one: "prep checklist item",
     many: "prep checklist items",
   },
+  training_prep_link: {
+    one: "prep link",
+    many: "prep links",
+  },
   program_enrollment: { one: "enrollment", many: "enrollments" },
   module: { one: "module", many: "modules" },
   assessment: { one: "assessment", many: "assessments" },
@@ -170,6 +174,14 @@ export function describeSaveError(error: unknown, table: TableNames): string {
 
   if (message.includes("training_prep_item_label_chk")) {
     return `Failed to save ${subject}: add a checklist item name.`;
+  }
+
+  if (message.includes("training_prep_link_title_chk")) {
+    return `Failed to save ${subject}: add a link title.`;
+  }
+
+  if (message.includes("training_prep_link_url_chk")) {
+    return `Failed to save ${subject}: use a valid http:// or https:// link.`;
   }
 
   if (message.includes("task_date_range_chk")) {

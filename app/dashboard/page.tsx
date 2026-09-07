@@ -7,6 +7,7 @@ import {
   CheckSquare,
   ChevronDown,
   Dna,
+  FileOutput,
   FolderGit2,
   Plus,
 } from "lucide-react";
@@ -311,7 +312,7 @@ export default function DashboardLandingPage() {
 
       <nav
         aria-label="Quick actions"
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
       >
         {[
           {
@@ -324,6 +325,18 @@ export default function DashboardLandingPage() {
               well: "bg-[#e6f4f8] text-[#2a7797] group-hover:bg-[#2a7797] group-hover:text-white",
               plus: "bg-[#2a7797] text-white",
               hover: "hover:border-[#2a7797]/50",
+            },
+          },
+          {
+            href: routes.services.reportGenerator,
+            label: "Report generators",
+            hint: "Open the service report generator launchpad",
+            icon: FileOutput,
+            add: false,
+            tone: {
+              well: "bg-[#fff6e8] text-[#b45309] group-hover:bg-[#b45309] group-hover:text-white",
+              plus: "",
+              hover: "hover:border-[#b45309]/45",
             },
           },
           {

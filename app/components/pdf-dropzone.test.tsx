@@ -26,8 +26,6 @@ describe("PdfDropzone", () => {
   it("offers a preview once a PDF is selected", async () => {
     const user = userEvent.setup();
     const onFileChange = vi.fn();
-    const open = vi.fn(() => null);
-    vi.stubGlobal("open", open);
 
     const { rerender } = render(
       <PdfDropzone file={null} onFileChange={onFileChange} />,
@@ -49,6 +47,8 @@ describe("PdfDropzone", () => {
     ).toHaveTextContent("Previewing report.pdf");
 
     await user.click(screen.getByRole("button", { name: "Preview this PDF" }));
-    expect(open).toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "PDF preview" }),
+    ).toBeInTheDocument();
   });
 });

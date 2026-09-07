@@ -66,6 +66,8 @@ export default function ServiceReportReplace({
   const [isResubmitting, setIsResubmitting] = useState(false);
   const [resubmitError, setResubmitError] = useState<string | null>(null);
   const [attachSignature, setAttachSignature] = useState(false);
+  const [preparedByAlreadyStamped, setPreparedByAlreadyStamped] =
+    useState(false);
 
   const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
@@ -80,6 +82,8 @@ export default function ServiceReportReplace({
   function resetStaging() {
     setPendingFile(null);
     setFileError(null);
+    setAttachSignature(false);
+    setPreparedByAlreadyStamped(false);
     setIsReplacing(!hasStoredFile);
   }
 
@@ -119,14 +123,14 @@ export default function ServiceReportReplace({
       setPendingFile(null);
       setIsReplacing(false);
       showToast(
-        attachSignature
+        attachSignature && !preparedByAlreadyStamped
           ? "New version uploaded. Place your signature under Prepared by."
           : String(nextStatusOfReview ?? "").trim().toLowerCase() === "for review"
             ? "New version uploaded. The reviewing officer will sign this version again."
             : "New version uploaded. Resubmit when ready.",
         "success",
       );
-      if (attachSignature) {
+      if (attachSignature && !preparedByAlreadyStamped) {
         setAttachSignature(false);
         onReadyToSign?.(analysisId);
       }
@@ -232,18 +236,36 @@ export default function ServiceReportReplace({
         <div className="space-y-2">
           <PdfDropzone
             file={pendingFile}
-            onFileChange={setPendingFile}
+            onFileChange={(next) => {
+              setPendingFile(next);
+              setPreparedByAlreadyStamped(false);
+            }}
             error={fileError}
             onError={setFileError}
             disabled={isUploading}
             label={hasStoredFile ? "New Service Report PDF" : "Service Report PDF"}
+            enableSignaturePlacement={canStampPreparedBy}
+            onSignatureApplied={(stamped) => {
+              setPendingFile(stamped);
+              setPreparedByAlreadyStamped(true);
+              setAttachSignature(false);
+            }}
           />
           <AssigneeSignatureOption
             checked={attachSignature}
             onChange={setAttachSignature}
             disabled={isUploading}
-            visible={Boolean(pendingFile) && canStampPreparedBy}
+            visible={
+              Boolean(pendingFile) &&
+              canStampPreparedBy &&
+              !preparedByAlreadyStamped
+            }
           />
+          {pendingFile && preparedByAlreadyStamped ? (
+            <p className="text-[11px] font-semibold text-slate-500">
+              Prepared by signature is on the last page of this PDF.
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

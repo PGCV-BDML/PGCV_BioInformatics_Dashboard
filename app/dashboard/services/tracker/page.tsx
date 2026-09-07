@@ -326,6 +326,8 @@ export default function ServiceReportTrackerPage() {
     name: string;
   } | null>(null);
   const [attachAssigneeSignature, setAttachAssigneeSignature] = useState(false);
+  const [preparedByAlreadyStamped, setPreparedByAlreadyStamped] =
+    useState(false);
   const [assigneeSignOff, setAssigneeSignOff] = useState<{
     analysisId: string;
     reportLabel: string;
@@ -589,6 +591,7 @@ export default function ServiceReportTrackerPage() {
     setSelectedAnalysis(null);
     setPendingFile(null);
     setAttachAssigneeSignature(false);
+    setPreparedByAlreadyStamped(false);
     setFormState(EMPTY_ANALYSIS_FORM);
   }, []);
 
@@ -600,6 +603,7 @@ export default function ServiceReportTrackerPage() {
     setSelectedAnalysis(null);
     setPendingFile(null);
     setAttachAssigneeSignature(false);
+    setPreparedByAlreadyStamped(false);
     setFormState({
       ...EMPTY_ANALYSIS_FORM,
       service_report_number: nextServiceReportNumber(
@@ -634,6 +638,7 @@ export default function ServiceReportTrackerPage() {
     setIsEditing(true);
     setPendingFile(null);
     setAttachAssigneeSignature(false);
+    setPreparedByAlreadyStamped(false);
     setFormState(rowToFormState(row));
     setIsSidebarOpen(true);
   }, [isReadOnly]);
@@ -808,7 +813,10 @@ export default function ServiceReportTrackerPage() {
             "success",
           );
         }
-        const shouldSign = Boolean(fileMeta) && attachAssigneeSignature;
+        const shouldSign =
+          Boolean(fileMeta) &&
+          attachAssigneeSignature &&
+          !preparedByAlreadyStamped;
         const reportLabel =
           saved.service_report_number || formState.service_report_number || "";
         closeSidebar();
@@ -838,6 +846,7 @@ export default function ServiceReportTrackerPage() {
       personnelDirectory,
       pendingFile,
       attachAssigneeSignature,
+      preparedByAlreadyStamped,
       currentUserId,
       showToast,
       isSubmitting,
@@ -1889,10 +1898,19 @@ export default function ServiceReportTrackerPage() {
           personnelDirectory,
         )}
         pendingFile={pendingFile}
-        onPendingFileChange={setPendingFile}
+        onPendingFileChange={(next) => {
+          setPendingFile(next);
+          setPreparedByAlreadyStamped(false);
+        }}
         canStampPreparedBy={sidebarCanStampPreparedBy}
         attachAssigneeSignature={attachAssigneeSignature}
         onAttachAssigneeSignatureChange={setAttachAssigneeSignature}
+        preparedByAlreadyStamped={preparedByAlreadyStamped}
+        onSignatureApplied={(stamped) => {
+          setPendingFile(stamped);
+          setPreparedByAlreadyStamped(true);
+          setAttachAssigneeSignature(false);
+        }}
         onRequestAssigneeSignature={
           selectedAnalysis
             ? () =>

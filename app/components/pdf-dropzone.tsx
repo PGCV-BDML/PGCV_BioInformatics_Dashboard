@@ -18,6 +18,13 @@ interface PdfDropzoneProps {
   onError?: (message: string | null) => void;
   disabled?: boolean;
   label?: string;
+  /**
+   * Overlay the current user's signature on the last-page preview so they
+   * can drag and resize it like reviewing/approving officers.
+   */
+  enableSignaturePlacement?: boolean;
+  /** Fired after the user confirms placement; the file is already stamped. */
+  onSignatureApplied?: (file: File) => void;
 }
 
 export default function PdfDropzone({
@@ -27,6 +34,8 @@ export default function PdfDropzone({
   onError,
   disabled = false,
   label = "Service Report PDF",
+  enableSignaturePlacement = false,
+  onSignatureApplied,
 }: PdfDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -44,13 +53,6 @@ export default function PdfDropzone({
     onError?.(null);
     onFileChange(candidate);
     setPreviewOpen(true);
-  }
-
-  function openNativePreview() {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const tab = window.open(url, "_blank");
-    if (!tab) setPreviewOpen(true);
   }
 
   function clear() {
@@ -94,10 +96,7 @@ export default function PdfDropzone({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                openNativePreview();
-                setPreviewOpen(true);
-              }}
+              onClick={() => setPreviewOpen(true)}
               disabled={disabled}
               title="Preview this PDF"
               aria-label="Preview this PDF"
@@ -165,6 +164,16 @@ export default function PdfDropzone({
         isOpen={previewOpen && Boolean(file)}
         file={file}
         fileName={file?.name}
+        signatureSlot={enableSignaturePlacement ? "prepared_by" : null}
+        onSignatureApplied={
+          enableSignaturePlacement
+            ? (stamped) => {
+                onFileChange(stamped);
+                onSignatureApplied?.(stamped);
+                setPreviewOpen(false);
+              }
+            : undefined
+        }
         onClose={() => setPreviewOpen(false)}
       />
     </div>
