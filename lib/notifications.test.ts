@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   getNotificationKind,
   isIncidentAssignedNotification,
+  isTaskComingUpNotification,
   NOTIFICATION_APPROVED,
   NOTIFICATION_INCIDENT_ASSIGNED,
   NOTIFICATION_READY_FOR_APPROVAL,
   NOTIFICATION_READY_FOR_REVIEW,
   NOTIFICATION_REVISION_REQUESTED,
+  NOTIFICATION_TASK_COMING_UP,
   overlayLiveAnalysisOnNotifications,
   shouldPreviewSignedLastPage,
   type AppNotification,
@@ -39,12 +41,21 @@ describe("getNotificationKind", () => {
     expect(getNotificationKind(notification(NOTIFICATION_APPROVED))).toBe(
       "approval_complete",
     );
+    expect(getNotificationKind(notification(NOTIFICATION_TASK_COMING_UP))).toBe(
+      "task_coming_up",
+    );
   });
 
   it("does not treat incident notifications as review requests", () => {
     const assigned = notification(NOTIFICATION_INCIDENT_ASSIGNED);
     expect(isIncidentAssignedNotification(assigned)).toBe(true);
     expect(getNotificationKind(assigned)).not.toBe("review_request");
+  });
+
+  it("does not treat task reminders as review requests", () => {
+    const reminder = notification(NOTIFICATION_TASK_COMING_UP);
+    expect(isTaskComingUpNotification(reminder)).toBe(true);
+    expect(getNotificationKind(reminder)).not.toBe("review_request");
   });
 });
 

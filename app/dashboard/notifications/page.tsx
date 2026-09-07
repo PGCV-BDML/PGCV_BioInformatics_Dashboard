@@ -12,6 +12,7 @@ import {
   MessageSquareWarning,
   Trash2,
   ShieldAlert,
+  Calendar,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
@@ -31,6 +32,7 @@ import {
   isApprovalCompleteNotification,
   isIncidentAssignedNotification,
   isSentBackNotification,
+  isTaskComingUpNotification,
   markAllNotificationsRead,
   markNotificationRead,
   openReportForApproval,
@@ -50,6 +52,13 @@ import MySignatureModal from "../../components/my-signature-modal";
 import SignatureConfirmModal from "../../components/signature-confirm-modal";
 import ReportLastPageModal from "../../components/report-last-page-modal";
 import { PushNotificationSetup } from "../../components/push-notification-setup";
+import { ComingUpReminders } from "../../components/coming-up-reminders";
+import {
+  comingUpWhenLabel,
+  taskComingUpHref,
+  taskComingUpNotificationCopy,
+  taskComingUpWhen,
+} from "@/lib/task-reminders";
 
 type FilterMode = "unread" | "all";
 
@@ -73,6 +82,10 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return getApprovalStatusLabel(getApprovalUiState(n.submission_status));
     case "incident_assigned":
       return "Incident assigned to you";
+    case "task_coming_up": {
+      const when = taskComingUpWhen(n.payload);
+      return when ? comingUpWhenLabel(when) : "Upcoming";
+    }
   }
 }
 
@@ -80,6 +93,11 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
   if (isSentBackNotification(n)) return "bg-amber-100 text-amber-900";
   if (kind === "approval_complete") return "bg-emerald-100 text-emerald-800";
   if (kind === "incident_assigned") return "bg-amber-100 text-amber-900";
+  if (kind === "task_coming_up") {
+    return taskComingUpWhen(n.payload) === "today"
+      ? "bg-amber-100 text-amber-900"
+      : "bg-sky-100 text-sky-800";
+  }
   if (kind === "review_request") {
     const state = getReviewStageUiState(n.review_status);
     if (state === "reviewed") return "bg-teal-100 text-teal-800";
@@ -97,6 +115,7 @@ function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (isSentBackNotification(n)) return MessageSquareWarning;
   if (kind === "approval_complete") return BadgeCheck;
   if (kind === "incident_assigned") return ShieldAlert;
+  if (kind === "task_coming_up") return Calendar;
   if (kind === "review_request") {
     return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
   }
@@ -413,7 +432,7 @@ export default function NotificationsPage() {
       <PageHeader
         breadcrumbTrail={notificationsBreadcrumbs}
         title="Notifications"
-        subtitle="Peer review, approval alerts, revision comments, and incident assignments"
+        subtitle="Peer review, approval alerts, incident assignments, and upcoming tours, events, meetings, and training"
         actions={
           <>
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-surface p-1 shadow-sm">
@@ -466,6 +485,8 @@ export default function NotificationsPage() {
         }
       />
 
+      <ComingUpReminders />
+
       <PushNotificationSetup variant="card" />
 
       {actionError && (
@@ -479,6 +500,14 @@ export default function NotificationsPage() {
           {actionNotice}
         </p>
       )}
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 text-[#2a7797] font-quicksand">
+          <Bell className="w-4 h-4" />
+          <h2 className="text-xs font-extrabold uppercase tracking-wider">
+            Needs action
+          </h2>
+        </div>
 
       {loadError ? (
         <ErrorState message={loadError} />
@@ -497,6 +526,9 @@ export default function NotificationsPage() {
             const incidentAssigned =
               isIncidentAssignedNotification(notification) ||
               kind === "incident_assigned";
+            const taskComingUp =
+              isTaskComingUpNotification(notification) ||
+              kind === "task_coming_up";
             const sentBack = isSentBackNotification(notification);
             const approvalComplete = isApprovalCompleteNotification(notification);
             const reviewState = getReviewStageUiState(notification.review_status);
@@ -519,6 +551,7 @@ export default function NotificationsPage() {
             const isAmber =
               sentBack ||
               incidentAssigned ||
+              (taskComingUp && taskComingUpWhen(notification.payload) === "today") ||
               reviewState === "in_review" ||
               approvalState === "under_review";
 
@@ -528,6 +561,11 @@ export default function NotificationsPage() {
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
                   sentBack || incidentAssigned
                     ? "border-amber-200 bg-amber-50/40"
+                    : taskComingUp &&
+                        taskComingUpWhen(notification.payload) === "today"
+                      ? "border-amber-200 bg-amber-50/40"
+                      : taskComingUp
+                        ? "border-sky-200 bg-white"
                     : approvalComplete
                       ? "border-emerald-200 bg-emerald-50/40"
                       : kind === "approval_request" &&
@@ -543,12 +581,20 @@ export default function NotificationsPage() {
                   <div className="flex items-start gap-3 min-w-0">
                     <div
                       className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-                        isAmber ? "bg-amber-100" : "bg-emerald-100"
+                        isAmber
+                          ? "bg-amber-100"
+                          : taskComingUp
+                            ? "bg-sky-100"
+                            : "bg-emerald-100"
                       }`}
                     >
                       <StatusIcon
                         className={`h-4 w-4 ${
-                          isAmber ? "text-amber-800" : "text-emerald-700"
+                          isAmber
+                            ? "text-amber-800"
+                            : taskComingUp
+                              ? "text-sky-800"
+                              : "text-emerald-700"
                         }`}
                       />
                     </div>
@@ -561,6 +607,8 @@ export default function NotificationsPage() {
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
                         {incidentAssigned
                           ? notification.payload.title || "Incident report"
+                          : taskComingUp
+                            ? notification.payload.title || "Untitled task"
                           : notification.payload.client_name || "Unnamed analysis"}
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
@@ -575,6 +623,9 @@ export default function NotificationsPage() {
                             ]
                               .filter(Boolean)
                               .join(" · ") || "You were assigned as the point person."
+                          : taskComingUp
+                            ? taskComingUpNotificationCopy(notification.payload)
+                                .body
                           : notification.payload.service_report_number
                             ? `Service report ${notification.payload.service_report_number}`
                             : notification.payload.service_report_file_name
@@ -620,6 +671,14 @@ export default function NotificationsPage() {
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open incident
+                      </Link>
+                    ) : taskComingUp ? (
+                      <Link
+                        href={taskComingUpHref(notification.payload)}
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open task
                       </Link>
                     ) : sentBack ? (
                       notification.payload.analysis_id && (
@@ -746,6 +805,7 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+      </section>
 
       <ConfirmModal
         isOpen={isClearPromptOpen}

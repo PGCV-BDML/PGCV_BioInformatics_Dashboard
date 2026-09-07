@@ -25,6 +25,8 @@ export const NOTIFICATION_CHANGES_REQUESTED = "analysis_changes_requested";
 export const NOTIFICATION_APPROVED = "analysis_approved";
 /** Sent to the point person when they are assigned an incident report. */
 export const NOTIFICATION_INCIDENT_ASSIGNED = "incident_assigned";
+/** Sent to assignees the calendar day before (or of) a show-up task. */
+export const NOTIFICATION_TASK_COMING_UP = "task_coming_up";
 
 export type AppNotification = {
   id: string;
@@ -48,6 +50,13 @@ export type AppNotification = {
     category?: string | null;
     status?: string | null;
     reporter_name?: string | null;
+    /** Present on task_coming_up. */
+    task_id?: string;
+    start_date?: string | null;
+    task_time?: string | null;
+    details?: string | null;
+    categories?: string[] | null;
+    when?: string | null;
   };
   target_user_id: string;
   is_read: boolean;
@@ -69,7 +78,8 @@ export type NotificationKind =
   | "approval_request"
   | "change_request"
   | "approval_complete"
-  | "incident_assigned";
+  | "incident_assigned"
+  | "task_coming_up";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -83,6 +93,8 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "approval_complete";
     case NOTIFICATION_INCIDENT_ASSIGNED:
       return "incident_assigned";
+    case NOTIFICATION_TASK_COMING_UP:
+      return "task_coming_up";
     case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
@@ -91,6 +103,10 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
 
 export function isIncidentAssignedNotification(n: AppNotification): boolean {
   return n.type === NOTIFICATION_INCIDENT_ASSIGNED;
+}
+
+export function isTaskComingUpNotification(n: AppNotification): boolean {
+  return n.type === NOTIFICATION_TASK_COMING_UP;
 }
 
 /** True for notifications the assignee receives when a report is sent back. */

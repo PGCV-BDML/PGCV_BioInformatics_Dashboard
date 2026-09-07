@@ -4,6 +4,7 @@ import {
   NOTIFICATION_INCIDENT_ASSIGNED,
   NOTIFICATION_READY_FOR_REVIEW,
   NOTIFICATION_REVISION_REQUESTED,
+  NOTIFICATION_TASK_COMING_UP,
 } from "./notifications";
 import { buildWebPushPayload } from "./push-payload";
 import { getPushSetupState, isIosUserAgent } from "./push-support";
@@ -49,6 +50,24 @@ describe("buildWebPushPayload", () => {
     });
     expect(payload.path).toBe("/dashboard/incidents?id=inc-9");
     expect(payload.body).toContain("Freezer alarm");
+  });
+
+  it("deep-links upcoming task reminders", () => {
+    const payload = buildWebPushPayload({
+      id: "n-6",
+      type: NOTIFICATION_TASK_COMING_UP,
+      payload: {
+        task_id: "task-1",
+        title: "Campus tour",
+        start_date: "2099-01-02",
+        when: "tomorrow",
+        categories: ["tour"],
+        task_time: "09:00:00",
+      },
+    });
+    expect(payload.title).toContain("Campus tour");
+    expect(payload.body).toContain("Tour");
+    expect(payload.path).toContain("task=task-1");
   });
 
   it("falls back for unknown types", () => {

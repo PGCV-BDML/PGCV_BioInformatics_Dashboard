@@ -5,7 +5,9 @@ import {
   NOTIFICATION_READY_FOR_APPROVAL,
   NOTIFICATION_READY_FOR_REVIEW,
   NOTIFICATION_REVISION_REQUESTED,
+  NOTIFICATION_TASK_COMING_UP,
 } from "@/lib/notifications";
+import { taskComingUpNotificationCopy } from "@/lib/task-reminders";
 
 export type PushNotificationInput = {
   id: string;
@@ -18,6 +20,11 @@ export type PushNotificationInput = {
     incident_id?: string;
     title?: string | null;
     severity?: string | null;
+    task_id?: string;
+    start_date?: string | null;
+    task_time?: string | null;
+    categories?: unknown;
+    when?: string | null;
   };
 };
 
@@ -102,6 +109,15 @@ export function buildWebPushPayload(
         path: incidentId
           ? `/dashboard/incidents?id=${encodeURIComponent(incidentId)}`
           : "/dashboard/incidents",
+        tag,
+      };
+    }
+    case NOTIFICATION_TASK_COMING_UP: {
+      const copy = taskComingUpNotificationCopy(notification.payload);
+      return {
+        title: copy.title,
+        body: clip(copy.body),
+        path: copy.path,
         tag,
       };
     }

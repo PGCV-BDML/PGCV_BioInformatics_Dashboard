@@ -66,7 +66,7 @@ function setupCopy(state: PushSetupState, isIos: boolean): {
     case "subscribed":
       return {
         title: "Lock-screen alerts are on",
-        body: "This device will notify you for review, approval, and incident assignments even when the dashboard is closed.",
+        body: "This device will notify you for review, approval, incident assignments, and upcoming tours or events even when the dashboard is closed.",
         action: "disable",
         actionLabel: "Turn off on this device",
       };
@@ -75,7 +75,7 @@ function setupCopy(state: PushSetupState, isIos: boolean): {
       return {
         title: isIos ? "Enable alerts on this iPhone" : "Enable phone alerts",
         body: isIos
-          ? "Allow notifications so review and incident assignments reach you when the app is closed."
+          ? "Allow notifications so review, incident, and event reminders reach you when the app is closed."
           : "Android and desktop browsers can receive alerts after you allow notifications. Adding the app to your home screen is optional but recommended.",
         action: "enable",
         actionLabel: "Enable alerts",
