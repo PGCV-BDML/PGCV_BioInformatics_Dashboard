@@ -20,6 +20,14 @@ import type { ProgramType } from "@/lib/routes";
 import { getCurrentUser, getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import type { Assessment, AssessmentResponse, Question } from "@/types/database";
 
+function suggestedTimeHint(questions: Question[]): string | null {
+  for (const question of questions) {
+    const match = question.sectionIntro?.match(/Suggested time: [^.]+\./);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 type AssessmentAnswer = number | string | string[];
 
 type ProgramAssessmentProps = {
@@ -386,6 +394,8 @@ function LearnerAssessmentForm({
   const emptyPostLabel = isTraining
     ? "No post-test configured for this program."
     : "No post-test configured for this internship.";
+  const preTimeHint = suggestedTimeHint(preTestQuestions);
+  const postTimeHint = suggestedTimeHint(postTestQuestions);
 
   return (
     <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
@@ -402,6 +412,10 @@ function LearnerAssessmentForm({
               Assessments Panel
             </span>
           </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Complete both tests while signed in. Your dashboard account identifies
+            you and pairs pre- and post-test responses.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
@@ -414,6 +428,9 @@ function LearnerAssessmentForm({
                   ? `${preTestQuestions.length} questions`
                   : emptyPreLabel}
               </p>
+              {preTimeHint ? (
+                <p className="text-xs text-slate-500">{preTimeHint}</p>
+              ) : null}
               {preTestQuestions.length > 0 && (
                 <button
                   type="button"
@@ -439,6 +456,9 @@ function LearnerAssessmentForm({
                   ? `${postTestQuestions.length} questions`
                   : emptyPostLabel}
               </p>
+              {postTimeHint ? (
+                <p className="text-xs text-slate-500">{postTimeHint}</p>
+              ) : null}
               {postTestQuestions.length > 0 && (
                 <button
                   type="button"

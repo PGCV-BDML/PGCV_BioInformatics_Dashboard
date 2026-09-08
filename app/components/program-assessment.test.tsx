@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import ProgramAssessment from "./program-assessment";
 import { getCurrentUser, getRowsFromDB, saveDataToDB } from "@/lib/supabase";
 import { SIXTEEN_S_PRE_QUESTIONS } from "@/lib/16s-assessments";
+import {
+  INTRO_BIOINFORMATICS_POST_QUESTIONS,
+  INTRO_BIOINFORMATICS_PRE_QUESTIONS,
+} from "@/lib/intro-bioinformatics-assessments";
 
 vi.mock("./portal-context", () => ({
   usePortal: () => ({
@@ -77,5 +81,50 @@ describe("ProgramAssessment", () => {
     await user.click(screen.getByRole("checkbox", { name: "None of these" }));
     expect(screen.getByRole("checkbox", { name: "QIIME 2" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "None of these" })).toBeChecked();
+  });
+
+  it("renders the Introduction to Bioinformatics pre-test without a participant code", async () => {
+    vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
+      if (table === "assessment") {
+        return [
+          {
+            id: "pre-id",
+            program_id: "prog-1",
+            type: "pre_test",
+            questions: INTRO_BIOINFORMATICS_PRE_QUESTIONS,
+          },
+          {
+            id: "post-id",
+            program_id: "prog-1",
+            type: "post_test",
+            questions: INTRO_BIOINFORMATICS_POST_QUESTIONS,
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const user = userEvent.setup();
+    render(<ProgramAssessment programId="prog-1" programType="training" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Start Pre-Test" })).toBeInTheDocument();
+    });
+    expect(screen.getAllByText("Suggested time: 10 minutes.")).toHaveLength(2);
+    expect(
+      screen.getByText(/Your dashboard account identifies you/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/participant code/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start Pre-Test" }));
+
+    expect(screen.getByText("Getting to know you")).toBeInTheDocument();
+    expect(screen.getByText("Knowledge check")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Which command-line skills have you used before/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Why is the command line especially useful/),
+    ).toBeInTheDocument();
   });
 });
