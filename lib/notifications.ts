@@ -595,6 +595,65 @@ export async function resubmitForReview(analysisId: string): Promise<void> {
   await resolveOpenReviewComments(analysisId, user?.id ?? null, "review");
 }
 
+export type RevisedSignedServiceReport = {
+  path: string;
+  name: string;
+  statusOfReview: string | null;
+  statusOfSubmission: string | null;
+  clientAcknowledgedCleared: boolean;
+};
+
+/**
+ * After Approved or Submitted: point the record at a new unsigned PDF,
+ * void both stamps, and notify the reviewing officer. Requires a reason.
+ */
+export async function reviseSignedServiceReport(options: {
+  analysisId: string;
+  filePath: string;
+  fileName: string;
+  fileSize: number;
+  reason: string;
+}): Promise<RevisedSignedServiceReport> {
+  const reason = options.reason.trim();
+  if (!reason) {
+    throw new Error(
+      "A reason is required when replacing a signed service report.",
+    );
+  }
+
+  const { data, error } = await supabase.rpc("revise_signed_service_report", {
+    p_analysis_id: options.analysisId,
+    p_file_path: options.filePath,
+    p_file_name: options.fileName,
+    p_file_size: options.fileSize,
+    p_reason: reason,
+  });
+
+  if (error) {
+    console.error("Failed to revise signed service report:", error);
+    throw new Error(
+      error.message?.trim() ||
+        "Couldn't replace this signed report. Please try again.",
+    );
+  }
+
+  const result = (data ?? {}) as {
+    status_of_review?: string | null;
+    status_of_submission?: string | null;
+    service_report_file_path?: string | null;
+    service_report_file_name?: string | null;
+    client_acknowledged_cleared?: boolean;
+  };
+
+  return {
+    path: result.service_report_file_path?.trim() || options.filePath,
+    name: result.service_report_file_name?.trim() || options.fileName,
+    statusOfReview: result.status_of_review ?? "For review",
+    statusOfSubmission: result.status_of_submission ?? null,
+    clientAcknowledgedCleared: Boolean(result.client_acknowledged_cleared),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Approval stage — the approving officer                            */
 /* ------------------------------------------------------------------ */

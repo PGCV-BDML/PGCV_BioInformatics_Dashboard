@@ -149,6 +149,26 @@ export function isRevisionRequestedLabel(
   return t === "revision requested" || t === "revision_requested";
 }
 
+/** True once the approving officer has signed off (Approved or Submitted). */
+export function isSignedOffSubmission(
+  label: string | null | undefined,
+): boolean {
+  const t = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  return t === "approved" || t === "submitted";
+}
+
+/**
+ * Assignee (or staff) may upload a new PDF after sign-off. That voids
+ * both e-signatures and restarts review, then approval.
+ */
+export function canReviseSignedReport(
+  statusOfSubmission: string | null | undefined,
+): boolean {
+  return isSignedOffSubmission(statusOfSubmission);
+}
+
 /** True once the reviewing officer has signed off — the approval gate. */
 export function isReviewComplete(label: string | null | undefined): boolean {
   return String(label ?? "").trim().toLowerCase() === "reviewed";
@@ -356,9 +376,16 @@ export function analysisStatusEventLabel(
   const to = event.to_value?.trim() || "";
 
   if (event.field === "file") {
-    if (!from && to) return `${name} uploaded the service report PDF on ${when}`;
-    if (from && !to) return `${name} removed the service report PDF on ${when}`;
-    return `${name} replaced the service report PDF on ${when}`;
+    const reason =
+      actorName?.trim() && event.note?.trim() ? event.note.trim() : "";
+    const suffix = reason ? `: ${reason}` : "";
+    if (!from && to) {
+      return `${name} uploaded the service report PDF on ${when}${suffix}`;
+    }
+    if (from && !to) {
+      return `${name} removed the service report PDF on ${when}${suffix}`;
+    }
+    return `${name} replaced the service report PDF on ${when}${suffix}`;
   }
 
   const field =

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import ServiceReportReplace from "./service-report-replace";
 
@@ -19,6 +19,7 @@ vi.mock("@/lib/service-report-file", () => ({
 vi.mock("@/lib/notifications", () => ({
   resubmitForApproval: vi.fn(),
   resubmitForReview: vi.fn(),
+  reviseSignedServiceReport: vi.fn(),
 }));
 
 vi.mock("./pdf-dropzone", () => ({
@@ -75,6 +76,44 @@ describe("ServiceReportReplace", () => {
 
     expect(
       screen.getByRole("button", { name: "Upload a new version" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Resubmit for/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets the assignee upload a new version after Approved without a resubmit click", () => {
+    renderReplace({
+      statusOfReview: "Reviewed",
+      statusOfSubmission: "Approved",
+    });
+
+    expect(
+      screen.getByText(/voids both e-signatures/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Upload a new version" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Resubmit for/ }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Upload a new version" }));
+
+    expect(screen.getByLabelText("Why this version")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Upload PDF" }),
+    ).toBeDisabled();
+  });
+
+  it("uses stronger copy when the signed report was already Submitted", () => {
+    renderReplace({
+      statusOfReview: "Reviewed",
+      statusOfSubmission: "Submitted",
+    });
+
+    expect(
+      screen.getByText(/already submitted to the client/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Resubmit for/ }),

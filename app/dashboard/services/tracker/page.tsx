@@ -1850,6 +1850,10 @@ export default function ServiceReportTrackerPage() {
                     service_report_file_name: next.name,
                     status_of_review:
                       next.statusOfReview ?? row.status_of_review,
+                    status_of_submission:
+                      next.statusOfSubmission !== undefined
+                        ? next.statusOfSubmission ?? ""
+                        : row.status_of_submission,
                     notes: next.notes ?? row.notes,
                   }
                 : row,
@@ -1863,6 +1867,10 @@ export default function ServiceReportTrackerPage() {
                   service_report_file_name: next.name,
                   status_of_review:
                     next.statusOfReview ?? prev.status_of_review,
+                  status_of_submission:
+                    next.statusOfSubmission !== undefined
+                      ? next.statusOfSubmission ?? ""
+                      : prev.status_of_submission,
                 }
               : prev,
           );

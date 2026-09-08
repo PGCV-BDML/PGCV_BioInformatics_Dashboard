@@ -11,6 +11,7 @@ import {
   NOTIFICATION_TASK_COMING_UP,
   NOTIFICATION_TASK_PAST_DUE,
   overlayLiveAnalysisOnNotifications,
+  reviseSignedServiceReport,
   shouldPreviewSignedLastPage,
   type AppNotification,
 } from "./notifications";
@@ -146,5 +147,19 @@ describe("shouldPreviewSignedLastPage", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("reviseSignedServiceReport", () => {
+  it("requires a reason before calling the database", async () => {
+    await expect(
+      reviseSignedServiceReport({
+        analysisId: "a-1",
+        filePath: "a-1/new.pdf",
+        fileName: "new.pdf",
+        fileSize: 12,
+        reason: "   ",
+      }),
+    ).rejects.toThrow(/reason is required/i);
   });
 });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Send, Upload } from "lucide-react";
 import { getCurrentUser, saveDataToDB } from "@/lib/supabase";
 import {
+  canReviseSignedReport,
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
   needsReReviewAfterPdfReplace,
@@ -11,8 +12,10 @@ import {
 import {
   resubmitForApproval,
   resubmitForReview,
+  reviseSignedServiceReport,
 } from "@/lib/notifications";
 import { uploadServiceReportPdf } from "@/lib/service-report-file";
+import ConfirmModal from "./confirm-modal";
 import PdfDropzone from "./pdf-dropzone";
 import {
   AssigneeSignatureOption,
@@ -24,7 +27,9 @@ export type ServiceReportReplaceResult = {
   path: string;
   name: string;
   statusOfReview: string | null;
+  statusOfSubmission?: string | null;
   notes: string | null;
+  clientAcknowledgedCleared?: boolean;
 };
 
 interface ServiceReportReplaceProps {
@@ -32,7 +37,7 @@ interface ServiceReportReplaceProps {
   filePath: string;
   statusOfReview: string | null;
   statusOfSubmission: string | null;
-  /** Only show while the report is awaiting revision or changes. */
+  /** Show after a send-back, or after Approved/Submitted for a post-sign-off revision. */
   enabled: boolean;
   onReplaced: (next: ServiceReportReplaceResult) => void;
   /** Called after a successful resubmission so the parent can refresh status. */
@@ -43,7 +48,8 @@ interface ServiceReportReplaceProps {
 
 /**
  * Lets the assignee upload a new service-report PDF and resubmit in one place
- * after a reviewer or approver sends the record back.
+ * after a reviewer or approver sends the record back, or after sign-off when
+ * the signed file still needs a correction.
  * The previous file stays in version history.
  */
 export default function ServiceReportReplace({
@@ -68,6 +74,8 @@ export default function ServiceReportReplace({
   const [attachSignature, setAttachSignature] = useState(false);
   const [preparedByAlreadyStamped, setPreparedByAlreadyStamped] =
     useState(false);
+  const [revisionReason, setRevisionReason] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const awaitingRevision = isRevisionRequestedLabel(statusOfReview);
   const awaitingChanges = isChangesRequestedLabel(statusOfSubmission);
@@ -75,7 +83,12 @@ export default function ServiceReportReplace({
     statusOfReview,
     statusOfSubmission,
   );
-  const canResubmit = awaitingRevision || (awaitingChanges && !waitingOnReReview);
+  const revisingSignedOff = canReviseSignedReport(statusOfSubmission);
+  const alreadySubmitted =
+    String(statusOfSubmission ?? "").trim().toLowerCase() === "submitted";
+  const canResubmit =
+    !revisingSignedOff &&
+    (awaitingRevision || (awaitingChanges && !waitingOnReReview));
 
   if (!enabled) return null;
 
@@ -84,10 +97,27 @@ export default function ServiceReportReplace({
     setFileError(null);
     setAttachSignature(false);
     setPreparedByAlreadyStamped(false);
+    setRevisionReason("");
+    setConfirmOpen(false);
     setIsReplacing(!hasStoredFile);
   }
 
-  async function handleUpload() {
+  function requestUpload() {
+    if (isUploading || !pendingFile) return;
+    if (revisingSignedOff && !revisionReason.trim()) {
+      setFileError(
+        "Add a short reason so officers know why this version replaced the signed report.",
+      );
+      return;
+    }
+    if (revisingSignedOff) {
+      setConfirmOpen(true);
+      return;
+    }
+    void commitUpload();
+  }
+
+  async function commitUpload() {
     if (isUploading || !pendingFile) return;
     setIsUploading(true);
     setFileError(null);
@@ -99,6 +129,39 @@ export default function ServiceReportReplace({
         file: pendingFile,
         uploadedBy: user?.id ?? null,
       });
+
+      if (revisingSignedOff) {
+        const revised = await reviseSignedServiceReport({
+          analysisId,
+          filePath: uploaded.service_report_file_path,
+          fileName: uploaded.service_report_file_name,
+          fileSize: uploaded.service_report_file_size,
+          reason: revisionReason,
+        });
+        onReplaced({
+          path: revised.path,
+          name: revised.name,
+          statusOfReview: revised.statusOfReview,
+          statusOfSubmission: revised.statusOfSubmission,
+          notes: null,
+          clientAcknowledgedCleared: revised.clientAcknowledgedCleared,
+        });
+        setPendingFile(null);
+        setRevisionReason("");
+        setConfirmOpen(false);
+        setIsReplacing(false);
+        showToast(
+          attachSignature && !preparedByAlreadyStamped
+            ? "New version uploaded. Place your signature under Prepared by. The reviewing officer will sign this version again."
+            : "New version uploaded. The reviewing officer will sign this version again.",
+          "success",
+        );
+        if (attachSignature && !preparedByAlreadyStamped) {
+          setAttachSignature(false);
+          onReadyToSign?.(analysisId);
+        }
+        return;
+      }
 
       const saved = await saveDataToDB("analysis", analysisId, {
         service_report_file_path: uploaded.service_report_file_path,
@@ -112,12 +175,19 @@ export default function ServiceReportReplace({
         typeof saved.status_of_review === "string"
           ? saved.status_of_review
           : null;
+      const nextStatusOfSubmission =
+        typeof saved.status_of_submission === "string"
+          ? saved.status_of_submission
+          : saved.status_of_submission == null
+            ? null
+            : undefined;
       const notes = typeof saved.notes === "string" ? saved.notes : null;
 
       onReplaced({
         path: uploaded.service_report_file_path,
         name: uploaded.service_report_file_name,
         statusOfReview: nextStatusOfReview,
+        statusOfSubmission: nextStatusOfSubmission,
         notes,
       });
       setPendingFile(null);
@@ -142,6 +212,7 @@ export default function ServiceReportReplace({
           : "Couldn't upload the report. Please try again.";
       setFileError(message);
       showToast(message, "error");
+      setConfirmOpen(false);
     } finally {
       setIsUploading(false);
     }
@@ -179,6 +250,15 @@ export default function ServiceReportReplace({
       : "Resubmit for approval";
 
   const dropzoneOpen = !hasStoredFile || isReplacing;
+  const introCopy = revisingSignedOff
+    ? alreadySubmitted
+      ? "This report was already submitted to the client. Upload a new version only if it still needs a correction. That voids both e-signatures, keeps the previous signed PDF under Previous versions, and asks the reviewing officer to sign again before approval."
+      : "Upload a new version if the signed report still needs a correction. That voids both e-signatures. The previous signed PDF stays under Previous versions, and the reviewing officer will sign this file again before approval can continue."
+    : waitingOnReReview
+      ? "Upload a new version if needed. The reviewing officer will sign this file again before approval can continue. The previous PDF stays on file."
+      : hasStoredFile
+        ? "Upload a new version if the comments require a new file, then resubmit. The previous PDF stays on file. A new file after peer review goes back to the reviewing officer to sign again."
+        : "Upload the corrected service report PDF, then resubmit.";
   const resubmitButton = canResubmit ? (
     <button
       type="button"
@@ -202,13 +282,7 @@ export default function ServiceReportReplace({
 
   return (
     <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
-      <p className="text-[11px] text-amber-900 leading-relaxed">
-        {waitingOnReReview
-          ? "Upload a new version if needed. The reviewing officer will sign this file again before approval can continue. The previous PDF stays on file."
-          : hasStoredFile
-            ? "Upload a new version if the comments require a new file, then resubmit. The previous PDF stays on file. A new file after peer review goes back to the reviewing officer to sign again."
-            : "Upload the corrected service report PDF, then resubmit."}
-      </p>
+      <p className="text-[11px] text-amber-900 leading-relaxed">{introCopy}</p>
 
       {hasStoredFile && !isReplacing ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -251,6 +325,30 @@ export default function ServiceReportReplace({
               setAttachSignature(false);
             }}
           />
+          {revisingSignedOff ? (
+            <div>
+              <label
+                htmlFor={`revise-signed-reason-${analysisId}`}
+                className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5"
+              >
+                Why this version
+              </label>
+              <textarea
+                id={`revise-signed-reason-${analysisId}`}
+                required
+                rows={3}
+                maxLength={500}
+                value={revisionReason}
+                onChange={(e) => {
+                  setRevisionReason(e.target.value);
+                  if (fileError) setFileError(null);
+                }}
+                disabled={isUploading}
+                placeholder="e.g. Table 2 used the wrong run ID; this version corrects the counts."
+                className="w-full px-3 py-2.5 bg-white rounded-xl border border-amber-200 text-xs leading-relaxed outline-none focus:ring-2 focus:ring-amber-400/50 resize-y disabled:opacity-60"
+              />
+            </div>
+          ) : null}
           <AssigneeSignatureOption
             checked={attachSignature}
             onChange={setAttachSignature}
@@ -269,8 +367,12 @@ export default function ServiceReportReplace({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => void handleUpload()}
-              disabled={isUploading || !pendingFile}
+              onClick={requestUpload}
+              disabled={
+                isUploading ||
+                !pendingFile ||
+                (revisingSignedOff && !revisionReason.trim())
+              }
               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#2a7797] hover:bg-[#1f5c76] disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-sm"
             >
               <Upload className="w-3.5 h-3.5" aria-hidden="true" />
@@ -296,6 +398,22 @@ export default function ServiceReportReplace({
           {resubmitError}
         </p>
       )}
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Restart review and approval?"
+        message={
+          alreadySubmitted
+            ? "This report was already submitted to the client. Uploading this file voids both e-signatures and asks the reviewing officer, then the approving officer, to sign again. The previous signed PDF stays under Previous versions."
+            : "Uploading this file voids both e-signatures. The reviewing officer will sign this version again, then the approving officer. The previous signed PDF stays under Previous versions."
+        }
+        confirmLabel="Upload and restart review"
+        isConfirming={isUploading}
+        onClose={() => {
+          if (!isUploading) setConfirmOpen(false);
+        }}
+        onConfirm={() => void commitUpload()}
+      />
     </div>
   );
 }

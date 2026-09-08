@@ -208,6 +208,8 @@ export default function ServiceReportTrackerProtocol() {
                 <td className="px-4 py-3">
                   Create the record, run the analysis, upload the PDF, assign
                   officers, address revision or change comments, and resubmit.
+                  After sign-off, upload a new version from the detail page if
+                  the signed report still needs a correction.
                 </td>
               </tr>
               <tr>
@@ -544,7 +546,8 @@ export default function ServiceReportTrackerProtocol() {
           Review returns to For review and the reviewing officer must Complete
           review again on the new file. The previous PDF stays under Previous
           versions. The approving officer is only notified after that second
-          review.
+          review. The same restart applies after Approved or Submitted: write a
+          reason, confirm, and both officers sign the new file.
         </Callout>
       </Section>
 
@@ -611,6 +614,17 @@ export default function ServiceReportTrackerProtocol() {
           <strong className="text-[#172126]">Resubmit for approval</strong>. If
           you upload a new PDF version, it goes back through peer review first.
           The earlier file stays on Previous versions.
+        </p>
+        <p>
+          If a correction is found after the report is{" "}
+          <strong className="text-[#172126]">Approved</strong> or{" "}
+          <strong className="text-[#172126]">Submitted</strong>, open the
+          detail page and upload a new version with a short reason. That voids
+          both e-signatures, keeps the signed PDF under Previous versions, and
+          notifies the reviewing officer immediately. After they Complete
+          review, the approving officer is asked to sign again. Client
+          acknowledgement is cleared so the new signed copy can be acknowledged
+          when it goes out.
         </p>
       </Section>
 
@@ -713,6 +727,16 @@ export default function ServiceReportTrackerProtocol() {
                 <td className="px-4 py-3">
                   Comments live on the detail page under Review Comments and in
                   the notification payload.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-[#172126] align-top">
+                  Can&apos;t upload a new version after Approved or Submitted
+                </td>
+                <td className="px-4 py-3">
+                  Use the record&apos;s detail page, not the tracker cell. Apply
+                  the post-sign-off revision migration. A reason is required;
+                  both officers must sign the new file.
                 </td>
               </tr>
             </tbody>

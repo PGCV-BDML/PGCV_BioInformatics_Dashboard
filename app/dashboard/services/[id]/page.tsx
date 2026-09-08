@@ -33,6 +33,7 @@ import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import { useToast } from "../../../components/toast";
 import {
   displayAnalysisLabel,
+  canReviseSignedReport,
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
   labelFromAnalysisStatus,
@@ -698,7 +699,8 @@ export default function AnalysisDetailPage({
                   statusOfSubmission={record.status_of_submission}
                   enabled={
                     isRevisionRequestedLabel(record.status_of_review) ||
-                    isChangesRequestedLabel(record.status_of_submission)
+                    isChangesRequestedLabel(record.status_of_submission) ||
+                    canReviseSignedReport(record.status_of_submission)
                   }
                   onReplaced={(next) => {
                     setRecord((prev) =>
@@ -709,10 +711,21 @@ export default function AnalysisDetailPage({
                             service_report_file_name: next.name,
                             status_of_review:
                               next.statusOfReview ?? prev.status_of_review,
+                            status_of_submission:
+                              next.statusOfSubmission !== undefined
+                                ? next.statusOfSubmission ?? ""
+                                : prev.status_of_submission,
                             notes: next.notes ?? prev.notes,
                           }
                         : prev,
                     );
+                    if (next.clientAcknowledgedCleared) {
+                      setReport((prev) =>
+                        prev
+                          ? { ...prev, client_acknowledged_at: null }
+                          : prev,
+                      );
+                    }
                     void loadActivity(record.id);
                   }}
                   onResubmitted={(stage) => {
@@ -780,7 +793,8 @@ export default function AnalysisDetailPage({
               </div>
             ) : !isReadOnly &&
               (isRevisionRequestedLabel(record.status_of_review) ||
-                isChangesRequestedLabel(record.status_of_submission)) ? (
+                isChangesRequestedLabel(record.status_of_submission) ||
+                canReviseSignedReport(record.status_of_submission)) ? (
               <>
                 <ServiceReportReplace
                   analysisId={record.id}
@@ -797,10 +811,21 @@ export default function AnalysisDetailPage({
                             service_report_file_name: next.name,
                             status_of_review:
                               next.statusOfReview ?? prev.status_of_review,
+                            status_of_submission:
+                              next.statusOfSubmission !== undefined
+                                ? next.statusOfSubmission ?? ""
+                                : prev.status_of_submission,
                             notes: next.notes ?? prev.notes,
                           }
                         : prev,
                     );
+                    if (next.clientAcknowledgedCleared) {
+                      setReport((prev) =>
+                        prev
+                          ? { ...prev, client_acknowledged_at: null }
+                          : prev,
+                      );
+                    }
                     void loadActivity(record.id);
                   }}
                   onResubmitted={(stage) => {

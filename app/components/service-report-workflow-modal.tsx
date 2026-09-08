@@ -67,6 +67,12 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
       "Revision or change-request comments land in the assignee's bell and on the detail page. Fix them, then Resubmit for review or Resubmit for approval. Uploading a new PDF version after peer review notifies the reviewing officer again — they must sign the new file before approval can continue. Previous versions stay on the record.",
   },
   {
+    title: "Revise after sign-off",
+    actor: "Analyst",
+    detail:
+      "If a signed report still needs a correction, open the record and upload a new version with a short reason. That voids both e-signatures, keeps the old PDF under Previous versions, and notifies the reviewing officer immediately. After they sign, the approving officer is asked to sign the new file. No extra Resubmit click.",
+  },
+  {
     title: "Submit and close out",
     actor: "Analyst",
     detail:

@@ -28,7 +28,9 @@ interface ReviewCommentsModalProps {
     path: string;
     name: string;
     statusOfReview: string | null;
+    statusOfSubmission?: string | null;
     notes: string | null;
+    clientAcknowledgedCleared?: boolean;
   }) => void;
   readOnly?: boolean;
   canStampPreparedBy?: boolean;

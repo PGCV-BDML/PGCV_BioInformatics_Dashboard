@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CHANGES_REQUESTED,
+  canReviseSignedReport,
   deriveLegacyStatus,
   isChangesRequestedLabel,
+  isSignedOffSubmission,
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   mapLabelToAnalysisStatus,
   needsReReviewAfterPdfReplace,
@@ -117,6 +119,21 @@ describe("needsReReviewAfterPdfReplace", () => {
   });
 });
 
+describe("canReviseSignedReport", () => {
+  it("is true after Approved or Submitted", () => {
+    expect(isSignedOffSubmission("Approved")).toBe(true);
+    expect(isSignedOffSubmission("submitted")).toBe(true);
+    expect(canReviseSignedReport("Approved")).toBe(true);
+    expect(canReviseSignedReport("Submitted")).toBe(true);
+  });
+
+  it("is false before sign-off", () => {
+    expect(canReviseSignedReport("For approval")).toBe(false);
+    expect(canReviseSignedReport(CHANGES_REQUESTED)).toBe(false);
+    expect(canReviseSignedReport(null)).toBe(false);
+  });
+});
+
 describe("analysisStatusEventLabel", () => {
   function event(
     overrides: Partial<AnalysisStatusEvent> = {},
@@ -160,6 +177,19 @@ describe("analysisStatusEventLabel", () => {
     expect(
       label.startsWith("Micah Lojera replaced the service report PDF on "),
     ).toBe(true);
+  });
+
+  it("appends the revision reason when an actor name is present", () => {
+    const label = analysisStatusEventLabel(
+      event({
+        field: "file",
+        from_value: "old.pdf",
+        to_value: "new.pdf",
+        note: "Wrong run ID in Table 2",
+      }),
+      "Micah Lojera",
+    );
+    expect(label).toContain(": Wrong run ID in Table 2");
   });
 
   it("uses the stored note when the actor name is missing", () => {

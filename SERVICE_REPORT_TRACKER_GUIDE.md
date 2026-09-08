@@ -12,7 +12,7 @@ review of the PDF and approving-officer sign-off.
 
 | You are… | You do |
 |---|---|
-| Bioinformatician / analyst | Create the record, run the analysis, upload the PDF, assign officers, address revision/change comments and resubmit |
+| Bioinformatician / analyst | Create the record, run the analysis, upload the PDF, assign officers, address revision/change comments and resubmit. After sign-off, upload a new version from the detail page if the signed report still needs a correction. |
 | Reviewing officer (`reviewing_officer`, or staff) | Browse **Sequence Analysis** (dashboard, tracker, detail) view-only; peer-review the PDF from **Notifications** (complete review or request a revision) |
 | Approving officer (`approving_officer`, or `team_lead`) | Approve the report after peer review from **Notifications**, or send it back with comments |
 | Either staff role | Mark the report **Submitted** once it has gone out to the client |
@@ -174,6 +174,22 @@ with the signed PDF (last page on Open Report). The reviewing and approving
 officers' stored notification attachments are updated to that same signed file.
 Mark **Submitted** in the tracker once the client has the report.
 
+### Revise after Approved or Submitted
+
+If a correction is found after both officers have signed, open the record's
+detail page and **Upload a new version**. This is allowed for **Approved** and
+**Submitted** reports.
+
+1. Attach the corrected PDF and write a short reason (required).
+2. Confirm that both e-signatures will be voided. There is no extra Resubmit
+   click — the reviewing officer is notified as soon as the file is stored.
+3. Status of Review returns to **For review** and Status of Submission is
+   cleared. After **Complete review**, Status of Submission opens as
+   **For approval** and the approving officer is notified.
+4. The previous signed PDF stays under **Previous versions**. If the client had
+   already acknowledged the old file, that acknowledgement is cleared so the
+   new signed copy can be acknowledged again.
+
 ---
 
 ## 6. Submit and acknowledge
@@ -210,6 +226,7 @@ before they can complete review or approve a report.
 - Printed names on the PDF are not changed — only the signature image is added
 - If no signature is on file, the action is blocked and an upload prompt appears
 - Uploading a new PDF version after **Reviewed** voids the reviewer stamp and sends the new file back for peer review. The previous file stays under **Previous versions**. Officer signature stamps (Complete review / Approve) do not void review.
+- Uploading a new PDF version after **Approved** or **Submitted** voids both stamps, requires a reason, and restarts review then approval. Apply `20260908160000_revise_signed_service_report.sql`.
 
 ---
 
@@ -226,4 +243,5 @@ before they can complete review or approve a report.
 | Can't open PDF | Storage signed URL failed; try again or re-upload |
 | Revision/change comments missing | Comments live on the detail page under Review Comments and in the notification payload |
 | Uploading a new PDF after approval changes skipped the reviewer | Migration `20260813120000_invalidate_review_on_pdf_replace.sql` not applied |
+| Can't upload a new version after Approved or Submitted | Open the record's detail page (not the tracker cell). Apply `20260908160000_revise_signed_service_report.sql`. A reason is required; both officers must sign the new file. |
 | Previous versions missing after a new upload | Apply `20260827180000_service_report_versions.sql` and `20260827180100_service_report_version_grants.sql`. Version history lists the current PDF once those run; replacements made before 180000 deleted the previous file. |
