@@ -36,8 +36,8 @@ const STATUS_BADGE: Record<
   { label: string; className: string }
 > = {
   draft: {
-    label: "Draft",
-    className: "bg-slate-100 text-slate-600 border-slate-200",
+    label: "Upcoming",
+    className: "bg-sky-50 text-sky-700 border-sky-100",
   },
   ongoing: {
     label: "On-going",

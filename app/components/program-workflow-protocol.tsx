@@ -457,21 +457,20 @@ export default function ProgramWorkflowProtocol({
             </p>
             <ul className="space-y-1.5 text-xs">
               <li>
-                <strong className="text-[#172126]">Draft</strong> — still being
-                prepared.
+                <strong className="text-[#172126]">Upcoming</strong> — scheduled
+                or still being prepared. The directory filter uses this tag.
               </li>
               <li>
                 <strong className="text-[#172126]">On-going</strong> — default
-                for new programs; active in the directory.
+                for new programs; shown under All.
               </li>
               <li>
                 <strong className="text-[#172126]">Completed</strong> — use{" "}
                 <strong>Mark as done</strong> on the program card.
               </li>
               <li>
-                <strong className="text-[#172126]">Archived</strong> — hidden
-                from the active directory; restore later from the Archived
-                filter.
+                <strong className="text-[#172126]">Archived</strong> — stays in
+                All with an Archived badge; restore later from the card menu.
               </li>
             </ul>
           </div>
@@ -720,7 +719,7 @@ export default function ProgramWorkflowProtocol({
             On the {copy.moduleTitle} directory, use{" "}
             <strong className="text-[#172126]">Mark as done</strong>, then{" "}
             <strong className="text-[#172126]">Archive</strong> when you no
-            longer need it in the active list.
+            longer need it as a current cohort.
           </li>
         </ol>
       </Section>

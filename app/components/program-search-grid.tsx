@@ -22,7 +22,6 @@ import type {
   TrainingProgramStatus,
   TrainingType,
 } from "@/types/database";
-import { TRAINING_PROGRAM_STATUS_OPTIONS } from "@/types/database";
 
 export interface ProgramCard {
   id: string;
@@ -37,15 +36,12 @@ export interface ProgramCard {
   status: TrainingProgramStatus;
 }
 
-type StatusFilter = "active" | TrainingProgramStatus | "all";
+type StatusFilter = "all" | "draft" | "completed";
 
 const FILTER_CHIPS: { value: StatusFilter; label: string }[] = [
-  { value: "active", label: "Active" },
-  ...TRAINING_PROGRAM_STATUS_OPTIONS.map((o) => ({
-    value: o.value as StatusFilter,
-    label: o.label,
-  })),
   { value: "all", label: "All" },
+  { value: "draft", label: "Upcoming" },
+  { value: "completed", label: "Completed" },
 ];
 
 const STATUS_BADGE: Record<
@@ -53,8 +49,8 @@ const STATUS_BADGE: Record<
   { label: string; className: string }
 > = {
   draft: {
-    label: "Draft",
-    className: "bg-slate-100 text-slate-600 border-slate-200",
+    label: "Upcoming",
+    className: "bg-sky-50 text-sky-700 border-sky-100",
   },
   ongoing: {
     label: "On-going",
@@ -74,7 +70,7 @@ interface ProgramSearchGridProps {
   programs: ProgramCard[];
   type: TrainingType;
   canManage?: boolean;
-  /** Staff cohort filters (Active / Draft / …). Hidden for trainee/intern. */
+  /** Staff cohort filters (All / Upcoming / Completed). Hidden for trainee/intern. */
   showStatusFilters?: boolean;
   onEdit?: (program: ProgramCard) => void;
   onMarkDone?: (program: ProgramCard) => void;
@@ -215,7 +211,7 @@ export default function ProgramSearchGrid({
   onDelete,
 }: ProgramSearchGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const effectiveStatusFilter: StatusFilter = showStatusFilters
     ? statusFilter
     : "all";
@@ -223,9 +219,7 @@ export default function ProgramSearchGrid({
   const filteredPrograms = useMemo(() => {
     let list = programs;
 
-    if (effectiveStatusFilter === "active") {
-      list = list.filter((p) => p.status !== "archived");
-    } else if (effectiveStatusFilter !== "all") {
+    if (effectiveStatusFilter !== "all") {
       list = list.filter((p) => p.status === effectiveStatusFilter);
     }
 

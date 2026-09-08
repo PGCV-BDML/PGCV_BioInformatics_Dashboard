@@ -408,9 +408,8 @@ export default function ProgramDirectory({
         title="Archive Program"
         message={
           <>
-            Archive <strong>{archiveTarget?.title}</strong>? It will be hidden
-            from the active directory. You can restore it later from the
-            Archived filter.
+            Archive <strong>{archiveTarget?.title}</strong>? It stays in All
+            with an Archived badge. Restore it later from the card menu.
           </>
         }
         confirmLabel="Archive"

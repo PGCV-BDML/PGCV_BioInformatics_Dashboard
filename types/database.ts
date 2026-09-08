@@ -274,7 +274,7 @@ export const TRAINING_PROGRAM_STATUS_OPTIONS: {
   value: TrainingProgramStatus;
   label: string;
 }[] = [
-  { value: "draft", label: "Draft" },
+  { value: "draft", label: "Upcoming" },
   { value: "ongoing", label: "On-going" },
   { value: "completed", label: "Completed" },
   { value: "archived", label: "Archived" },
