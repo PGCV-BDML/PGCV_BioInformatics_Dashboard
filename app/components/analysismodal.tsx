@@ -456,6 +456,13 @@ export default function AnalysisSidebar({
       {/* Statuses */}
       <div className="space-y-2.5 pt-1 border-t border-slate-100">
         {renderSectionLabel(<Activity className="w-3.5 h-3.5" />, "Status")}
+        {!isEditing ? (
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold leading-relaxed text-slate-600 font-aileron">
+            Do not set Status of Submission when creating a record. It is
+            filled in automatically when the reviewing officer completes review
+            and the report goes to the approving officer.
+          </p>
+        ) : null}
         <div className="grid grid-cols-1 gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="analysis-status-completion" className="text-xs font-bold text-slate-800 ml-1 font-aileron">
@@ -515,6 +522,11 @@ export default function AnalysisSidebar({
                 </option>
               ) : null}
             </select>
+            <p className="text-[10px] text-slate-400 ml-1 font-aileron">
+              {isEditing
+                ? "For approval, Under review, and Approved are set by the reviewing and approving officers. Choose Submitted after the client has the report."
+                : "Leave blank. Filled in automatically after the reviewing officer completes review."}
+            </p>
           </div>
         </div>
       </div>
