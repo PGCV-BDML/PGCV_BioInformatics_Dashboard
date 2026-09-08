@@ -23,7 +23,7 @@ const emptyForm: Omit<Task, "id"> = {
 
 const users = [
   { id: "u1", name: "Ada" },
-  { id: "team", name: "Bioinformatics Team" },
+  { id: "team", name: "Bioinformatics Team PGC UP Visayas" },
   { id: "u2", name: "Grace" },
 ];
 
@@ -52,7 +52,9 @@ describe("TaskModal assignees", () => {
     expect(screen.getByRole("button", { name: "Ada" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Grace" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Bioinformatics Team" }),
+      screen.queryByRole("button", {
+        name: "Bioinformatics Team PGC UP Visayas",
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -80,7 +82,9 @@ describe("TaskModal assignees", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Bioinformatics Team" }),
+      screen.getByRole("button", {
+        name: "Bioinformatics Team PGC UP Visayas",
+      }),
     ).toBeInTheDocument();
   });
 });

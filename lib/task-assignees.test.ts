@@ -108,13 +108,15 @@ describe("primaryAssigneeId", () => {
 describe("assignableTaskUsers", () => {
   const users = [
     { id: "u1", name: "Ada" },
-    { id: "team", name: "Bioinformatics Team" },
+    { id: "team", name: "Bioinformatics Team PGC UP Visayas" },
     { id: "u2", name: "Grace" },
   ];
 
-  it("recognizes the group account by name, ignoring case and padding", () => {
+  it("recognizes the group account by name, including the lab suffix", () => {
     expect(isTeamGroupAssigneeName("Bioinformatics Team")).toBe(true);
-    expect(isTeamGroupAssigneeName("  bioinformatics team  ")).toBe(true);
+    expect(isTeamGroupAssigneeName("  Bioinformatics Team PGC UP Visayas  ")).toBe(
+      true,
+    );
     expect(isTeamGroupAssigneeName("Ada")).toBe(false);
   });
 

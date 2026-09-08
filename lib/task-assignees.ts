@@ -55,7 +55,12 @@ export function applyTaskAssignees(
 export const TEAM_GROUP_ASSIGNEE_NAME = "Bioinformatics Team";
 
 export function isTeamGroupAssigneeName(name: string | null | undefined): boolean {
-  return name?.trim().toLowerCase() === TEAM_GROUP_ASSIGNEE_NAME.toLowerCase();
+  const normalized = name?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+  return (
+    normalized === TEAM_GROUP_ASSIGNEE_NAME.toLowerCase() ||
+    normalized.startsWith(`${TEAM_GROUP_ASSIGNEE_NAME.toLowerCase()} `)
+  );
 }
 
 /**
