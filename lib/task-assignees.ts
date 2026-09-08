@@ -50,3 +50,25 @@ export function applyTaskAssignees(
     };
   });
 }
+
+/** Shared group account — not a person, so it is not offered as a new assignee. */
+export const TEAM_GROUP_ASSIGNEE_NAME = "Bioinformatics Team";
+
+export function isTeamGroupAssigneeName(name: string | null | undefined): boolean {
+  return name?.trim().toLowerCase() === TEAM_GROUP_ASSIGNEE_NAME.toLowerCase();
+}
+
+/**
+ * People who can be picked as task assignees. The Bioinformatics Team account
+ * is omitted unless it is already on the task (so an existing assignment can
+ * still be cleared when editing).
+ */
+export function assignableTaskUsers<T extends { id: string; name: string }>(
+  users: T[],
+  selectedIds: string[] = [],
+): T[] {
+  const selected = new Set(selectedIds);
+  return users.filter(
+    (user) => selected.has(user.id) || !isTeamGroupAssigneeName(user.name),
+  );
+}

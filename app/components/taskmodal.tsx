@@ -8,7 +8,10 @@ import { CategoryMultiSelect } from "./category-chips";
 import { AssigneeMultiSelect } from "./assignee-select";
 import { TASK_CATEGORY_OPTIONS, TASK_CATEGORY_STYLES } from "@/lib/task-categories";
 import { formatTaskTimeForInput } from "@/lib/calendar-tasks";
-import { resolveTaskAssigneeIds } from "@/lib/task-assignees";
+import {
+  assignableTaskUsers,
+  resolveTaskAssigneeIds,
+} from "@/lib/task-assignees";
 import {
   ClipboardCheck,
   Briefcase,
@@ -107,6 +110,11 @@ export default function TaskModal({
   };
 
   const linkedAnalysisId = formState.linked_analysis_id;
+  const selectedAssigneeIds = resolveTaskAssigneeIds(formState);
+  const assigneeChoices = assignableTaskUsers(
+    availableUsers,
+    isAdding ? [] : selectedAssigneeIds,
+  );
 
   return (
     <SlideOverModal
@@ -227,8 +235,8 @@ export default function TaskModal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="sm:col-span-2">
             <AssigneeMultiSelect
-              selected={resolveTaskAssigneeIds(formState)}
-              users={availableUsers}
+              selected={selectedAssigneeIds}
+              users={assigneeChoices}
               onChange={handleAssigneesChange}
               max={linkedAnalysisId ? 1 : undefined}
               error={errors.assignee_ids}

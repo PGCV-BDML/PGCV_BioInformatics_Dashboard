@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Task } from "@/types/database";
 import {
   applyTaskAssignees,
+  assignableTaskUsers,
   formatAssigneeNames,
+  isTeamGroupAssigneeName,
   primaryAssigneeId,
   resolveTaskAssigneeIds,
 } from "./task-assignees";
@@ -100,5 +102,34 @@ describe("primaryAssigneeId", () => {
   it("returns null when nobody is assigned", () => {
     expect(primaryAssigneeId([])).toBeNull();
     expect(primaryAssigneeId(["u1"])).toBe("u1");
+  });
+});
+
+describe("assignableTaskUsers", () => {
+  const users = [
+    { id: "u1", name: "Ada" },
+    { id: "team", name: "Bioinformatics Team" },
+    { id: "u2", name: "Grace" },
+  ];
+
+  it("recognizes the group account by name, ignoring case and padding", () => {
+    expect(isTeamGroupAssigneeName("Bioinformatics Team")).toBe(true);
+    expect(isTeamGroupAssigneeName("  bioinformatics team  ")).toBe(true);
+    expect(isTeamGroupAssigneeName("Ada")).toBe(false);
+  });
+
+  it("omits Bioinformatics Team from new-assignment choices", () => {
+    expect(assignableTaskUsers(users, []).map((u) => u.id)).toEqual([
+      "u1",
+      "u2",
+    ]);
+  });
+
+  it("keeps Bioinformatics Team when it is already assigned", () => {
+    expect(assignableTaskUsers(users, ["team"]).map((u) => u.id)).toEqual([
+      "u1",
+      "team",
+      "u2",
+    ]);
   });
 });
