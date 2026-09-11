@@ -6,6 +6,7 @@ import ReviewCommentsPanel from "./review-comments-panel";
 import ServiceReportReplace from "./service-report-replace";
 import ServiceReportVersions from "./service-report-versions";
 import {
+  canReviseSignedReport,
   isChangesRequestedLabel,
   isRevisionRequestedLabel,
 } from "@/lib/analysis-tracker";
@@ -51,6 +52,8 @@ export default function ReviewCommentsModal({
   const awaitingSendBack =
     isRevisionRequestedLabel(row.status_of_review) ||
     isChangesRequestedLabel(row.status_of_submission);
+  const canReplaceReport =
+    awaitingSendBack || canReviseSignedReport(row.status_of_submission);
 
   return (
     <div
@@ -100,7 +103,7 @@ export default function ReviewCommentsModal({
           readOnly={readOnly}
         />
 
-        {awaitingSendBack && !readOnly ? (
+        {canReplaceReport && !readOnly ? (
           <ServiceReportReplace
             analysisId={row.id}
             filePath={row.service_report_file_path}

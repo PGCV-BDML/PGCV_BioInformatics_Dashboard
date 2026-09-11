@@ -24,6 +24,7 @@ import {
 } from "@/lib/supabase";
 import { syncAnalysisToTaskSafe } from "@/lib/sync-analysis-task";
 import {
+  canReviseSignedReport,
   deriveLegacyStatus,
   displayAnalysisLabel,
   isChangesRequestedLabel,
@@ -34,6 +35,7 @@ import {
   MANUAL_STATUS_OF_SUBMISSION_OPTIONS,
   STATUS_OF_COMPLETION_OPTIONS,
 } from "@/lib/analysis-tracker";
+import { reviseSignedServiceReport } from "@/lib/notifications";
 import {
   deleteAllServiceReportPdfs,
   uploadServiceReportPdf,
@@ -57,6 +59,7 @@ import {
 } from "../../../../types/database";
 import { servicesBreadcrumbs } from "@/lib/breadcrumbs";
 import { useToast } from "../../../components/toast";
+import ConfirmModal from "../../../components/confirm-modal";
 import DeleteModal from "../../../components/deletemodal";
 import Pagination from "../../../components/pagination";
 import DataTable, { Column } from "../../../components/datatable";
@@ -302,6 +305,8 @@ export default function ServiceReportTrackerPage() {
   const [personnelDirectory, setPersonnelDirectory] = useState<ApproverOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [revisionReason, setRevisionReason] = useState("");
+  const [signedReviseConfirmOpen, setSignedReviseConfirmOpen] = useState(false);
   /** run_id (normalized) → repository URL from Repositories module */
   const [runIdRepoLinks, setRunIdRepoLinks] = useState<Map<string, string>>(
     () => new Map(),
@@ -590,6 +595,8 @@ export default function ServiceReportTrackerPage() {
     setIsEditing(false);
     setSelectedAnalysis(null);
     setPendingFile(null);
+    setRevisionReason("");
+    setSignedReviseConfirmOpen(false);
     setAttachAssigneeSignature(false);
     setPreparedByAlreadyStamped(false);
     setFormState(EMPTY_ANALYSIS_FORM);
@@ -602,6 +609,8 @@ export default function ServiceReportTrackerPage() {
     setIsEditing(false);
     setSelectedAnalysis(null);
     setPendingFile(null);
+    setRevisionReason("");
+    setSignedReviseConfirmOpen(false);
     setAttachAssigneeSignature(false);
     setPreparedByAlreadyStamped(false);
     setFormState({
@@ -637,18 +646,23 @@ export default function ServiceReportTrackerPage() {
     setSelectedAnalysis(row);
     setIsEditing(true);
     setPendingFile(null);
+    setRevisionReason("");
+    setSignedReviseConfirmOpen(false);
     setAttachAssigneeSignature(false);
     setPreparedByAlreadyStamped(false);
     setFormState(rowToFormState(row));
     setIsSidebarOpen(true);
   }, [isReadOnly]);
 
-  const handleSaveAnalysis = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (isReadOnly || isSubmitting) return;
-      setIsSubmitting(true);
-      try {
+  const persistAnalysis = useCallback(async () => {
+    if (isReadOnly || isSubmitting) return;
+    setIsSubmitting(true);
+    const replacingSignedReport =
+      Boolean(pendingFile) &&
+      isEditing &&
+      Boolean(selectedAnalysis) &&
+      canReviseSignedReport(selectedAnalysis?.status_of_submission);
+    try {
         let assigneeId: string | null = null;
         if (formState.assignee.trim()) {
           const matchedUser = personnelDirectory.find(
@@ -679,9 +693,27 @@ export default function ServiceReportTrackerPage() {
           return;
         }
 
+        if (
+          isEditing &&
+          selectedAnalysis &&
+          canReviseSignedReport(selectedAnalysis.status_of_submission) &&
+          selectedAnalysis.service_report_file_path.trim() &&
+          !formState.service_report_file_path.trim() &&
+          !pendingFile
+        ) {
+          showToast(
+            "Upload a new PDF version. The signed file cannot be removed without a replacement.",
+            "error",
+          );
+          return;
+        }
+
+        const nextSubmission = replacingSignedReport
+          ? null
+          : emptyToNull(formState.status_of_submission);
         const legacyStatus = deriveLegacyStatus({
           status_of_completion: formState.status_of_completion,
-          status_of_submission: formState.status_of_submission,
+          status_of_submission: nextSubmission,
         });
         const nowIso = new Date().toISOString();
         const completedAt = legacyStatus === "completed" ? nowIso : null;
@@ -707,6 +739,16 @@ export default function ServiceReportTrackerPage() {
           });
         }
 
+        if (fileMeta && replacingSignedReport) {
+          await reviseSignedServiceReport({
+            analysisId: targetId,
+            filePath: fileMeta.service_report_file_path,
+            fileName: fileMeta.service_report_file_name,
+            fileSize: fileMeta.service_report_file_size,
+            reason: revisionReason,
+          });
+        }
+
         const payload: Record<string, unknown> = {
           project_id: emptyToNull(formState.project_id),
           pipeline: emptyToNull(formState.pipeline),
@@ -724,7 +766,10 @@ export default function ServiceReportTrackerPage() {
           sample_type: emptyToNull(formState.sample_type),
           run_id: emptyToNull(formState.run_id),
           status_of_completion: emptyToNull(formState.status_of_completion),
-          status_of_submission: emptyToNull(formState.status_of_submission),
+          ...(replacingSignedReport
+            ? { status_of_review: "For review" }
+            : {}),
+          status_of_submission: nextSubmission,
           service_report_link: emptyToNull(formState.service_report_link),
           client_sequences_link: emptyToNull(formState.client_sequences_link),
           notes: emptyToNull(formState.notes),
@@ -733,9 +778,9 @@ export default function ServiceReportTrackerPage() {
           ...(isEditing ? {} : { started_at: nowIso }),
         };
 
-        if (fileMeta) {
+        if (fileMeta && !replacingSignedReport) {
           Object.assign(payload, fileMeta);
-        } else if (pathCleared) {
+        } else if (pathCleared && !fileMeta) {
           payload.service_report_file_path = null;
           payload.service_report_file_name = null;
           payload.service_report_file_size = null;
@@ -782,7 +827,12 @@ export default function ServiceReportTrackerPage() {
           setServicesList((prev) => [row, ...prev]);
         }
 
-        if (syncResult === "created") {
+        if (replacingSignedReport && fileMeta) {
+          showToast(
+            "New version uploaded. The reviewing officer will sign this version again.",
+            "success",
+          );
+        } else if (syncResult === "created") {
           showToast(
             isEditing
               ? "Analysis updated and added to Tasks as Sequence Analysis."
@@ -845,6 +895,7 @@ export default function ServiceReportTrackerPage() {
       availableProjects,
       personnelDirectory,
       pendingFile,
+      revisionReason,
       attachAssigneeSignature,
       preparedByAlreadyStamped,
       currentUserId,
@@ -854,6 +905,42 @@ export default function ServiceReportTrackerPage() {
       isReadOnly,
       selectedAnalysis,
       closeSidebar,
+    ],
+  );
+
+  const handleSaveAnalysis = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isReadOnly || isSubmitting) return;
+
+      const replacingSignedReport =
+        Boolean(pendingFile) &&
+        isEditing &&
+        Boolean(selectedAnalysis) &&
+        canReviseSignedReport(selectedAnalysis?.status_of_submission);
+
+      if (replacingSignedReport && !revisionReason.trim()) {
+        showToast(
+          "Add a short reason so officers know why this version replaced the signed report.",
+          "error",
+        );
+        return;
+      }
+      if (replacingSignedReport) {
+        setSignedReviseConfirmOpen(true);
+        return;
+      }
+      void persistAnalysis();
+    },
+    [
+      isReadOnly,
+      isSubmitting,
+      pendingFile,
+      isEditing,
+      selectedAnalysis,
+      revisionReason,
+      showToast,
+      persistAnalysis,
     ],
   );
 
@@ -1932,6 +2019,11 @@ export default function ServiceReportTrackerPage() {
         statusEvents={statusEvents}
         statusEventsLoading={statusEventsLoading}
         userNames={userNames}
+        replacingSignedReport={canReviseSignedReport(
+          selectedAnalysis?.status_of_submission,
+        )}
+        revisionReason={revisionReason}
+        onRevisionReasonChange={setRevisionReason}
         onClose={closeSidebar}
         onChange={handleInputChange}
         onSubmit={handleSaveAnalysis}
@@ -1970,6 +2062,24 @@ export default function ServiceReportTrackerPage() {
         onUploaded={() => {
           setSignaturePrompt(null);
         }}
+      />
+
+      <ConfirmModal
+        isOpen={signedReviseConfirmOpen}
+        title="Restart review and approval?"
+        message={
+          String(selectedAnalysis?.status_of_submission ?? "")
+            .trim()
+            .toLowerCase() === "submitted"
+            ? "This report was already submitted to the client. Uploading this file voids both e-signatures and asks the reviewing officer, then the approving officer, to sign again. The previous signed PDF stays under Previous versions."
+            : "Uploading this file voids both e-signatures. The reviewing officer will sign this version again, then the approving officer. The previous signed PDF stays under Previous versions."
+        }
+        confirmLabel="Upload and restart review"
+        isConfirming={isSubmitting}
+        onClose={() => {
+          if (!isSubmitting) setSignedReviseConfirmOpen(false);
+        }}
+        onConfirm={() => void persistAnalysis()}
       />
 
       {!isReadOnly ? (

@@ -28,6 +28,28 @@ describe("AnalysisSidebar status of submission", () => {
     ).toBeInTheDocument();
   });
 
+  it("asks for a reason when replacing an approved report", () => {
+    render(
+      <AnalysisSidebar
+        {...baseProps}
+        isEditing
+        replacingSignedReport
+        revisionReason=""
+        onRevisionReasonChange={vi.fn()}
+        pendingFile={new File(["pdf"], "corrected.pdf", { type: "application/pdf" })}
+        formState={{
+          ...EMPTY_ANALYSIS_FORM,
+          status_of_submission: "Approved",
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Why this version")).toBeInTheDocument();
+    expect(
+      screen.getByText(/voids both e-signatures and asks the reviewing officer/i),
+    ).toBeInTheDocument();
+  });
+
   it("explains automatic stages and Submitted when editing", () => {
     render(
       <AnalysisSidebar

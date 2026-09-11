@@ -122,6 +122,10 @@ interface AnalysisSidebarProps {
   statusEvents?: AnalysisStatusEvent[];
   statusEventsLoading?: boolean;
   userNames?: Record<string, string>;
+  /** True when the stored PDF is already Approved or Submitted. */
+  replacingSignedReport?: boolean;
+  revisionReason?: string;
+  onRevisionReasonChange?: (value: string) => void;
   onClose: () => void;
   onChange: (key: keyof AnalysisFormState, value: string | number | string[] | boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -150,6 +154,9 @@ export default function AnalysisSidebar({
   statusEvents = [],
   statusEventsLoading = false,
   userNames = {},
+  replacingSignedReport = false,
+  revisionReason = "",
+  onRevisionReasonChange,
   onClose,
   onChange,
   onSubmit,
@@ -580,6 +587,12 @@ export default function AnalysisSidebar({
               >
                 Upload a new version
               </button>
+              {replacingSignedReport ? (
+                <p className="basis-full text-[10px] font-semibold text-amber-800">
+                  Already signed. A new version voids both e-signatures and
+                  notifies the reviewing officer.
+                </p>
+              ) : null}
               {canStampPreparedBy && onRequestAssigneeSignature ? (
                 <AttachAssigneeSignatureButton
                   onClick={onRequestAssigneeSignature}
@@ -619,6 +632,32 @@ export default function AnalysisSidebar({
               <p className="ml-1 text-[11px] font-semibold text-slate-500">
                 Prepared by signature is on the last page of this PDF.
               </p>
+            ) : null}
+            {replacingSignedReport ? (
+              <div className="space-y-1.5">
+                <p className="ml-1 text-[10px] font-semibold leading-relaxed text-amber-800">
+                  This report is already signed. Uploading a new version voids
+                  both e-signatures and asks the reviewing officer to sign
+                  again.
+                </p>
+                <label
+                  htmlFor="analysis-revision-reason"
+                  className="text-xs font-bold text-slate-800 ml-1 font-aileron"
+                >
+                  Why this version
+                </label>
+                <textarea
+                  id="analysis-revision-reason"
+                  required
+                  rows={3}
+                  maxLength={500}
+                  value={revisionReason}
+                  onChange={(e) => onRevisionReasonChange?.(e.target.value)}
+                  disabled={isSaving}
+                  placeholder="e.g. Table 2 used the wrong run ID; this version corrects the counts."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-amber-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400 outline-none text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 leading-relaxed resize-y disabled:opacity-60"
+                />
+              </div>
             ) : null}
           </>
         )}
