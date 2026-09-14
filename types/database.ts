@@ -579,7 +579,7 @@ export interface AuditLog {
 // Repository (standalone source links)
 // ============================================================
 
-export type RepositoryKind = "github" | "drive" | "other";
+export type RepositoryKind = "drive" | "other";
 export type RepositoryCategory =
   | "training"
   | "research"
@@ -599,16 +599,21 @@ export type RepositoryCategory =
   | "datasets"
   | "client_sequences"
   | "turnover_forms"
+  | "journal_hub"
   | "other";
 
 export const REPOSITORY_KIND_OPTIONS: {
   value: RepositoryKind;
   label: string;
 }[] = [
-  { value: "github", label: "GitHub" },
   { value: "drive", label: "Google Drive" },
   { value: "other", label: "Other" },
 ];
+
+/** Maps legacy `github` (and anything unknown) onto the remaining kinds. */
+export function toRepositoryKind(value: string): RepositoryKind {
+  return value === "drive" ? "drive" : "other";
+}
 
 export type Repository = {
   id: string;

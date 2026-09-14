@@ -16,7 +16,7 @@ import {
 import { Link2, Tag, FileText, Dna } from "lucide-react";
 
 export const EMPTY_REPOSITORY_FORM: RepositoryFormData = {
-  kind: "github",
+  kind: "other",
   title: "",
   url: "",
   description: "",
@@ -144,7 +144,7 @@ export default function RepositoryModal({
               aria-invalid={!!errors.url}
               value={formState.url}
               onChange={(e) => handleInputChange("url", e.target.value)}
-              placeholder="https://github.com/... or https://drive.google.com/..."
+              placeholder="https://drive.google.com/... or another source URL"
               className="w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm"
             />
             {errors.url && (

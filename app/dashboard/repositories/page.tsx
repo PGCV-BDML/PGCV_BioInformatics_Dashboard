@@ -28,6 +28,7 @@ import {
   RepositoryCategory,
   RepositoryKind,
   REPOSITORY_KIND_OPTIONS,
+  toRepositoryKind,
 } from "../../../types/database";
 import {
   getRowsFromDB,
@@ -58,8 +59,9 @@ const KIND_FILTERS: { value: RepositoryKind | "All"; label: string }[] = [
   ...REPOSITORY_KIND_OPTIONS,
 ];
 
-function kindLabel(kind: Repository["kind"]): string {
-  return REPOSITORY_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? kind;
+function kindLabel(kind: Repository["kind"] | string): string {
+  const normalized = toRepositoryKind(kind);
+  return REPOSITORY_KIND_OPTIONS.find((o) => o.value === normalized)?.label ?? normalized;
 }
 
 function withResolvedCategories(
@@ -68,6 +70,7 @@ function withResolvedCategories(
 ): Repository {
   return {
     ...row,
+    kind: toRepositoryKind(row.kind),
     categories: categoriesByRepo.get(row.id) ?? (row.category ? [row.category] : []),
   };
 }
@@ -75,7 +78,7 @@ function withResolvedCategories(
 function buildRepositoryPayload(formData: RepositoryFormData) {
   const categories = Array.from(new Set(formData.categories));
   return {
-    kind: formData.kind,
+    kind: toRepositoryKind(formData.kind),
     title: formData.title.trim(),
     url: formData.url.trim(),
     description: formData.description.trim() || null,
@@ -198,7 +201,7 @@ export default function RepositoriesPage() {
   const initialData = useMemo((): RepositoryFormData | null => {
     if (!selected) return null;
     return {
-      kind: selected.kind,
+      kind: toRepositoryKind(selected.kind),
       title: selected.title,
       url: selected.url,
       description: selected.description || "",
@@ -535,7 +538,7 @@ export default function RepositoriesPage() {
           <EmptyState
             icon={Inbox}
             title="No repository links yet"
-            description="Use Add Link to store a GitHub, Drive, or other source URL."
+            description="Use Add Link to store a Drive or other source URL."
             action={
               <button
                 type="button"
