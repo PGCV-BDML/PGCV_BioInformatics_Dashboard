@@ -13,7 +13,6 @@ import type {
 
 export const MAX_FAQ_TITLE = 200;
 export const MAX_FAQ_BODY = 20000;
-export const MAX_FAQ_COMMENT = 2000;
 
 export type FaqThreadListItem = FaqThread & {
   answer_count: number;
@@ -100,10 +99,6 @@ export function canPostFaqAnswer(
   return isStaffRole(role) && isOpenFaqStatus(status);
 }
 
-export function canPostFaqComment(role: UserRole | null | undefined): boolean {
-  return isStaffRole(role);
-}
-
 export function canEditFaqPost(
   role: UserRole | null | undefined,
   userId: string | null | undefined,
@@ -123,15 +118,6 @@ export function threadHasAnswers(posts: Pick<FaqPost, "kind" | "deleted_at">[]):
 
 export function answersOf(posts: FaqPost[]): FaqPost[] {
   return posts.filter((post) => post.kind === "answer");
-}
-
-export function commentsOf(
-  posts: FaqPost[],
-  parentId: string | null,
-): FaqPost[] {
-  return posts.filter(
-    (post) => post.kind === "comment" && (post.parent_id ?? null) === parentId,
-  );
 }
 
 export function sortFaqAnswers(
@@ -159,6 +145,7 @@ export function buildFaqThreadListItem(
     (post) => post.kind === "answer" && !post.deleted_at,
   );
   const lastPost = posts.reduce<string | null>((latest, post) => {
+    if (post.kind !== "answer") return latest;
     if (!latest) return post.created_at;
     return Date.parse(post.created_at) > Date.parse(latest)
       ? post.created_at
@@ -454,18 +441,11 @@ export async function deleteFaqThread(id: string): Promise<void> {
 export async function createFaqPost(input: {
   threadId: string;
   authorId: string;
-  kind: FaqPostKind;
   body: string;
-  parentId?: string | null;
 }): Promise<FaqPost> {
-  const max = input.kind === "comment" ? MAX_FAQ_COMMENT : MAX_FAQ_BODY;
-  const body = normalizeFaqBody(input.body, max);
+  const body = normalizeFaqBody(input.body);
   if (!body) {
-    throw new Error(
-      input.kind === "comment"
-        ? "Write a comment."
-        : "Write an answer.",
-    );
+    throw new Error("Write an answer.");
   }
 
   const { data, error } = await supabase
@@ -473,9 +453,9 @@ export async function createFaqPost(input: {
     .insert({
       thread_id: input.threadId,
       author_id: input.authorId,
-      kind: input.kind,
+      kind: "answer",
       body,
-      parent_id: input.parentId ?? null,
+      parent_id: null,
     })
     .select("*")
     .single();
