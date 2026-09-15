@@ -20,6 +20,7 @@ export const REPOSITORY_CATEGORIES: RepositoryCategory[] = [
   "client_sequences",
   "turnover_forms",
   "journal_hub",
+  "server",
   "other",
 ];
 
@@ -43,6 +44,7 @@ export const REPOSITORY_CATEGORY_LABELS: Record<RepositoryCategory, string> = {
   client_sequences: "Client Sequences",
   turnover_forms: "Turnover Forms",
   journal_hub: "Journal Hub",
+  server: "Server",
   other: "Other",
 };
 
@@ -72,6 +74,7 @@ export const REPOSITORY_CATEGORY_STYLES: Record<RepositoryCategory, string> = {
   client_sequences: "bg-blue-50 text-blue-800 border-blue-200/70",
   turnover_forms: "bg-emerald-50 text-emerald-800 border-emerald-200/70",
   journal_hub: "bg-green-50 text-green-900 border-green-200/70",
+  server: "bg-zinc-100 text-zinc-800 border-zinc-300/70",
   other: "bg-gray-100 text-gray-700 border-gray-300/70",
 };
 

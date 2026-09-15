@@ -600,6 +600,7 @@ export type RepositoryCategory =
   | "client_sequences"
   | "turnover_forms"
   | "journal_hub"
+  | "server"
   | "other";
 
 export const REPOSITORY_KIND_OPTIONS: {
