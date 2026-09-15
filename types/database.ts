@@ -1057,18 +1057,16 @@ export type WishlistItemFormData = {
 };
 
 export type FaqTag =
-  | "installation"
-  | "conda"
-  | "python"
   | "metabarcoding"
   | "amplicon"
   | "wgs"
-  | "rna-seq"
+  | "transcriptomics"
   | "phylogenetics"
-  | "troubleshooting"
-  | "biology"
+  | "metagenomics"
+  | "covid-19"
+  | "installation"
   | "hpc"
-  | "advice"
+  | "troubleshooting"
   | "programming";
 
 // ============================================================

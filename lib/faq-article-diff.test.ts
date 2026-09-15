@@ -10,12 +10,12 @@ describe("FAQ article diffs", () => {
   it("treats identical snapshots as unchanged", () => {
     const title = diffFaqTitle("Load conda on HPC", "Load conda on HPC");
     const body = diffFaqBodyLines("module load miniconda3", "module load miniconda3");
-    const tags = diffFaqTags(["conda", "hpc"], ["conda", "hpc"]);
+    const tags = diffFaqTags(["installation", "hpc"], ["installation", "hpc"]);
     expect(faqDiffHasChanges(title)).toBe(false);
     expect(faqDiffHasChanges(body)).toBe(false);
     expect(tags.added).toEqual([]);
     expect(tags.removed).toEqual([]);
-    expect(tags.unchanged).toEqual(["conda", "hpc"]);
+    expect(tags.unchanged).toEqual(["installation", "hpc"]);
   });
 
   it("marks title word replacements", () => {
@@ -45,10 +45,10 @@ describe("FAQ article diffs", () => {
   });
 
   it("splits tag adds and removes", () => {
-    expect(diffFaqTags(["conda", "hpc"], ["conda", "python"])).toEqual({
-      added: ["python"],
+    expect(diffFaqTags(["installation", "hpc"], ["installation", "programming"])).toEqual({
+      added: ["programming"],
       removed: ["hpc"],
-      unchanged: ["conda"],
+      unchanged: ["installation"],
     });
   });
 });

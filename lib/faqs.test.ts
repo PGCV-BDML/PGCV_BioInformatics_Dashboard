@@ -21,7 +21,7 @@ import {
 } from "./faqs";
 import type { FaqPost, FaqThread } from "@/types/database";
 import type { FaqThreadListItem } from "./faqs";
-import { uniqueFaqTags } from "./faq-tags";
+import { FAQ_TAGS, uniqueFaqTags } from "./faq-tags";
 
 function thread(
   overrides: Partial<FaqThreadListItem> = {},
@@ -36,7 +36,7 @@ function thread(
     closed_at: null,
     closed_by: null,
     created_at: "2026-09-15T02:00:00.000Z",
-    tags: ["conda", "hpc"],
+    tags: ["installation", "hpc"],
     answer_count: 1,
     last_activity_at: "2026-09-15T03:00:00.000Z",
     author_name: "Micah",
@@ -90,11 +90,26 @@ describe("FAQ form helpers", () => {
     expect(emptyFaqForm()).toEqual({ title: "", body: "", tags: [] });
   });
 
-  it("keeps advice and drops the misspelling advise", () => {
-    expect(uniqueFaqTags(["advise", "advice", "advice", "conda"])).toEqual([
-      "advice",
-      "conda",
+  it("uses the shared catalog tags in pipeline-then-ops order", () => {
+    expect(FAQ_TAGS).toEqual([
+      "metabarcoding",
+      "amplicon",
+      "wgs",
+      "transcriptomics",
+      "phylogenetics",
+      "metagenomics",
+      "covid-19",
+      "installation",
+      "hpc",
+      "troubleshooting",
+      "programming",
     ]);
+  });
+
+  it("keeps known tags and drops unknown names", () => {
+    expect(
+      uniqueFaqTags(["advise", "installation", "installation", "hpc"]),
+    ).toEqual(["installation", "hpc"]);
   });
 
   it("rejects blank titles and overlong bodies", () => {
@@ -114,9 +129,9 @@ describe("FAQ form helpers", () => {
       closed_at: null,
       closed_by: null,
       created_at: "2026-09-15T02:00:00.000Z",
-      tags: ["conda", "hpc"],
+      tags: ["installation", "hpc"],
     };
-    expect(formFromFaqThread(stored).tags).toEqual(["conda", "hpc"]);
+    expect(formFromFaqThread(stored).tags).toEqual(["installation", "hpc"]);
   });
 });
 
@@ -125,12 +140,12 @@ describe("FAQ list filters", () => {
     expect(threadMatchesSearch(thread(), "qiime")).toBe(true);
     expect(threadMatchesSearch(thread(), "conda")).toBe(true);
     expect(threadMatchesSearch(thread(), "micah")).toBe(true);
-    expect(threadMatchesSearch(thread(), "rna-seq")).toBe(false);
+    expect(threadMatchesSearch(thread(), "transcriptomics")).toBe(false);
   });
 
   it("uses OR across selected tags", () => {
-    expect(threadMatchesTags(thread(), ["python"])).toBe(false);
-    expect(threadMatchesTags(thread(), ["hpc", "python"])).toBe(true);
+    expect(threadMatchesTags(thread(), ["programming"])).toBe(false);
+    expect(threadMatchesTags(thread(), ["hpc", "programming"])).toBe(true);
     expect(threadMatchesTags(thread(), [])).toBe(true);
   });
 
@@ -147,7 +162,7 @@ describe("FAQ list filters", () => {
         closed_by: null,
         created_at: "2026-09-15T02:00:00.000Z",
       },
-      ["conda"],
+      ["installation"],
       [
         {
           kind: "answer",

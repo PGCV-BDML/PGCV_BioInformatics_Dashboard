@@ -25,7 +25,7 @@ function article(
     updated_by: "user-2",
     created_at: "2026-09-15T02:00:00.000Z",
     updated_at: "2026-09-15T05:00:00.000Z",
-    tags: ["conda", "hpc"],
+    tags: ["installation", "hpc"],
     author_name: "Micah",
     updated_by_name: "Alex",
     revision_count: 2,
@@ -54,19 +54,19 @@ describe("FAQ catalog helpers", () => {
   });
 
   it("maps a stored article back into the editor", () => {
-    expect(formFromFaqArticle(article()).tags).toEqual(["conda", "hpc"]);
+    expect(formFromFaqArticle(article()).tags).toEqual(["installation", "hpc"]);
   });
 
   it("matches search across title, answer, tags, and names", () => {
     expect(articleMatchesSearch(article(), "conda")).toBe(true);
     expect(articleMatchesSearch(article(), "miniconda")).toBe(true);
     expect(articleMatchesSearch(article(), "alex")).toBe(true);
-    expect(articleMatchesSearch(article(), "rna-seq")).toBe(false);
+    expect(articleMatchesSearch(article(), "transcriptomics")).toBe(false);
   });
 
   it("uses OR across selected tags", () => {
-    expect(articleMatchesTags(article(), ["python"])).toBe(false);
-    expect(articleMatchesTags(article(), ["hpc", "python"])).toBe(true);
+    expect(articleMatchesTags(article(), ["programming"])).toBe(false);
+    expect(articleMatchesTags(article(), ["hpc", "programming"])).toBe(true);
     expect(articleMatchesTags(article(), [])).toBe(true);
   });
 
@@ -86,12 +86,12 @@ describe("FAQ catalog helpers", () => {
     const snapshot = {
       title: "How do I load conda on HPC?",
       body: "module load miniconda3",
-      tags: ["conda", "hpc"] as const,
+      tags: ["installation", "hpc"] as const,
     };
     expect(
       faqArticleSnapshotEquals(
-        { ...snapshot, tags: ["conda", "hpc"] },
-        { ...snapshot, tags: ["hpc", "conda"] },
+        { ...snapshot, tags: ["installation", "hpc"] },
+        { ...snapshot, tags: ["hpc", "installation"] },
       ),
     ).toBe(true);
     expect(
