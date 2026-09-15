@@ -10,6 +10,7 @@ import {
   Edit3,
   Trash2,
   ListOrdered,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "../../../components/pageheader";
 import {
@@ -29,8 +30,13 @@ import {
   CovidSequencingRunFormData,
 } from "../../../../types/database";
 import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
-import { covidSampleTrackerBreadcrumbs } from "@/lib/breadcrumbs";
+import {
+  covidSampleTrackerBreadcrumbs,
+  covidSampleTrackerOfficerBreadcrumbs,
+} from "@/lib/breadcrumbs";
 import { routes } from "@/lib/routes";
+import { canEditCovidSampleTracker } from "@/lib/portal";
+import { usePortal } from "../../../components/portal-context";
 import { useDeleteRecord } from "@/hooks/useDeleteRecord";
 import { useTableState } from "@/hooks/useTableState";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
@@ -107,6 +113,9 @@ function UploadBadge({ yes }: { yes: boolean }) {
 export default function RunSummaryPage() {
   const searchParams = useSearchParams();
   const runIdParam = searchParams.get("run_id")?.trim() ?? "";
+  const { effectiveRole } = usePortal();
+  const canEdit = canEditCovidSampleTracker(effectiveRole);
+  const isReadOnly = !canEdit;
 
   const [runs, setRuns] = useState<CovidSequencingRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -249,6 +258,7 @@ export default function RunSummaryPage() {
 
   const handleAddSubmit = useCallback(
     async (formData: CovidSequencingRunFormData) => {
+      if (!canEdit) return;
       const newId = crypto.randomUUID();
       const payload = { id: newId, ...formToPayload(formData) };
 
@@ -272,12 +282,12 @@ export default function RunSummaryPage() {
         setIsSaving(false);
       }
     },
-    [showToast],
+    [canEdit, showToast],
   );
 
   const handleEditSubmit = useCallback(
     async (formData: CovidSequencingRunFormData) => {
-      if (!selected) return;
+      if (!canEdit || !selected) return;
       const payload = formToPayload(formData);
 
       setIsSaving(true);
@@ -305,7 +315,7 @@ export default function RunSummaryPage() {
         setIsSaving(false);
       }
     },
-    [selected, showToast],
+    [canEdit, selected, showToast],
   );
 
   const deleteRecord = useDeleteRecord<CovidSequencingRun>(
@@ -315,7 +325,7 @@ export default function RunSummaryPage() {
   );
 
   const handleDeleteRecord = useCallback(async () => {
-    if (!selected) return;
+    if (!canEdit || !selected) return;
     setIsDeleting(true);
     try {
       await deleteRecord(selected, () => {
@@ -326,7 +336,7 @@ export default function RunSummaryPage() {
     } finally {
       setIsDeleting(false);
     }
-  }, [selected, deleteRecord, showToast]);
+  }, [canEdit, selected, deleteRecord, showToast]);
 
   const columns: Column<CovidSequencingRun>[] = [
     {
@@ -445,21 +455,27 @@ export default function RunSummaryPage() {
               setIsEditing(true);
             }}
             className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-all"
-            title="Edit"
+            title={isReadOnly ? "View" : "Edit"}
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            {isReadOnly ? (
+              <Eye className="w-3.5 h-3.5" />
+            ) : (
+              <Edit3 className="w-3.5 h-3.5" />
+            )}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelected(r);
-              setShowDeleteConfirm(true);
-            }}
-            className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all"
-            title="Delete"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {isReadOnly ? null : (
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(r);
+                setShowDeleteConfirm(true);
+              }}
+              className="p-1.5 hover:bg-red-50 rounded-lg text-gray-600 hover:text-red-600 transition-all"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -475,9 +491,17 @@ export default function RunSummaryPage() {
       }`}
     >
       <PageHeader
-        breadcrumbTrail={covidSampleTrackerBreadcrumbs}
+        breadcrumbTrail={
+          effectiveRole === "approving_officer"
+            ? covidSampleTrackerOfficerBreadcrumbs
+            : covidSampleTrackerBreadcrumbs
+        }
         title="COVID-19 Sample Tracker"
-        subtitle="Genomic surveillance sequencing runs — separate from client Service Report Tracker"
+        subtitle={
+          isReadOnly
+            ? "Genomic surveillance sequencing runs — view only"
+            : "Genomic surveillance sequencing runs — separate from client Service Report Tracker"
+        }
         actions={
           <>
             <div className="relative w-full min-[480px]:w-64">
@@ -491,17 +515,19 @@ export default function RunSummaryPage() {
                 className="w-full h-10 pl-10 pr-4 bg-surface rounded-full border border-gray-200 text-xs outline-none focus:ring-2 focus:ring-[#4ec2bb] shadow-sm transition-all"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelected(null);
-                setIsEditing(false);
-                setIsAdding(true);
-              }}
-              className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Run
-            </button>
+            {isReadOnly ? null : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(null);
+                  setIsEditing(false);
+                  setIsAdding(true);
+                }}
+                className="flex items-center justify-center gap-1.5 h-10 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Run
+              </button>
+            )}
           </>
         }
       />
@@ -549,12 +575,14 @@ export default function RunSummaryPage() {
             <h2 className="text-2xl font-bold text-[#333333]">
               Sequencing Runs
             </h2>
-            <Link
-              href={routes.protocols.detail("covid-sample-tracker")}
-              className="text-[11px] font-bold text-[#2a7797] hover:text-[#236584] hover:underline underline-offset-2"
-            >
-              Protocol
-            </Link>
+            {isReadOnly ? null : (
+              <Link
+                href={routes.protocols.detail("covid-sample-tracker")}
+                className="text-[11px] font-bold text-[#2a7797] hover:text-[#236584] hover:underline underline-offset-2"
+              >
+                Protocol
+              </Link>
+            )}
             {stats.reviewFlagged > 0 ? (
               <span className="ml-1 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-full px-2 py-0.5">
                 {stats.reviewFlagged} flagged
@@ -620,18 +648,24 @@ export default function RunSummaryPage() {
           <EmptyState
             icon={Inbox}
             title="No sequencing runs yet"
-            description="Seed from the COVID Run_Summary sheet or add a run manually."
+            description={
+              isReadOnly
+                ? "No sequencing runs have been recorded yet."
+                : "Seed from the COVID Run_Summary sheet or add a run manually."
+            }
             action={
-              <button
-                type="button"
-                onClick={() => {
-                  setSelected(null);
-                  setIsAdding(true);
-                }}
-                className="inline-flex items-center gap-1.5 h-9 px-4 bg-slate-900 text-white text-xs font-bold rounded-full"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Run
-              </button>
+              isReadOnly ? undefined : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected(null);
+                    setIsAdding(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-slate-900 text-white text-xs font-bold rounded-full"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Run
+                </button>
+              )
             }
           />
         ) : filtered.length === 0 ? (
@@ -665,10 +699,11 @@ export default function RunSummaryPage() {
         initialData={isAdding ? EMPTY_COVID_RUN_FORM : initialData}
         onClose={handleCloseModal}
         onSubmit={isAdding ? handleAddSubmit : handleEditSubmit}
+        readOnly={isReadOnly}
       />
 
       <DeleteModal
-        isOpen={showDeleteConfirm}
+        isOpen={!isReadOnly && showDeleteConfirm}
         itemName={
           selected
             ? `run ${selected.run_number}${selected.run_id ? ` (${selected.run_id})` : ""}`

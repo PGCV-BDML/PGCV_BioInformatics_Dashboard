@@ -58,6 +58,12 @@ export const covidSampleTrackerBreadcrumbs: BreadcrumbItem[] = [
   { label: "COVID-19 Sample Tracker" },
 ];
 
+/** Approving officers do not have Sequence Analysis, so omit that crumb. */
+export const covidSampleTrackerOfficerBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "COVID-19 Sample Tracker" },
+];
+
 export const sequencingRunChecklistBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Sequence Analysis", href: "/dashboard/services" },

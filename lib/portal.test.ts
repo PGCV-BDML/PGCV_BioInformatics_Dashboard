@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  canEditCovidSampleTracker,
   canEditSequenceAnalysis,
+  canViewCovidSampleTracker,
   canViewSequenceAnalysis,
   canViewWishlist,
+  isCovidSampleTrackerPath,
   isPathAllowedForRole,
   isSequenceAnalysisReadPath,
   isWishlistPath,
@@ -92,7 +95,7 @@ describe("isPathAllowedForRole", () => {
     ).toBe(false);
   });
 
-  it("lets approving officers open Notifications and Wish List", () => {
+  it("lets approving officers open Notifications, Wish List, and COVID tracker", () => {
     expect(
       isPathAllowedForRole("/dashboard/notifications", "approving_officer"),
     ).toBe(true);
@@ -100,11 +103,48 @@ describe("isPathAllowedForRole", () => {
       isPathAllowedForRole("/dashboard/wishlist", "approving_officer"),
     ).toBe(true);
     expect(
+      isPathAllowedForRole(
+        "/dashboard/services/covid-sample-tracker",
+        "approving_officer",
+      ),
+    ).toBe(true);
+    expect(
       isPathAllowedForRole("/dashboard/services", "approving_officer"),
     ).toBe(false);
     expect(
       isPathAllowedForRole("/dashboard/services/tracker", "approving_officer"),
     ).toBe(false);
+  });
+});
+
+describe("canViewCovidSampleTracker / canEditCovidSampleTracker", () => {
+  it("lets staff view and edit", () => {
+    expect(canViewCovidSampleTracker("team_lead")).toBe(true);
+    expect(canViewCovidSampleTracker("team_member")).toBe(true);
+    expect(canEditCovidSampleTracker("team_lead")).toBe(true);
+    expect(canEditCovidSampleTracker("team_member")).toBe(true);
+  });
+
+  it("lets approving officers view but not edit", () => {
+    expect(canViewCovidSampleTracker("approving_officer")).toBe(true);
+    expect(canEditCovidSampleTracker("approving_officer")).toBe(false);
+  });
+
+  it("does not let reviewing officers or learners in", () => {
+    expect(canViewCovidSampleTracker("reviewing_officer")).toBe(false);
+    expect(canEditCovidSampleTracker("reviewing_officer")).toBe(false);
+    expect(canViewCovidSampleTracker("trainee")).toBe(false);
+    expect(canViewCovidSampleTracker("intern")).toBe(false);
+  });
+
+  it("matches the COVID-19 Sample Tracker route", () => {
+    expect(isCovidSampleTrackerPath("/dashboard/services/covid-sample-tracker")).toBe(
+      true,
+    );
+    expect(
+      isCovidSampleTrackerPath("/dashboard/services/covid-sample-tracker/"),
+    ).toBe(true);
+    expect(isCovidSampleTrackerPath("/dashboard/services/tracker")).toBe(false);
   });
 });
 

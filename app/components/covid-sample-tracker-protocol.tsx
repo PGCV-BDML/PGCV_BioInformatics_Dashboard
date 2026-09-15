@@ -175,8 +175,8 @@ export default function CovidSampleTrackerProtocol() {
           Location: sidebar →{" "}
           <strong className="text-[#172126]">
             Sequence Analysis → COVID-19 Sample Tracker
-          </strong>{" "}
-          (
+          </strong>
+          . Approving officers see it as a top-level nav item (
           <code className="text-[12px] bg-slate-100 px-1.5 py-0.5 rounded">
             /dashboard/services/covid-sample-tracker
           </code>
@@ -212,11 +212,20 @@ export default function CovidSampleTrackerProtocol() {
               </tr>
               <tr>
                 <td className="px-4 py-3 font-semibold text-[#172126] align-top">
-                  Trainee, intern, or officer
+                  Approving officer
                 </td>
                 <td className="px-4 py-3">
-                  This tracker is staff-only. Those roles cannot open or edit
-                  COVID sequencing runs.
+                  Open the tracker as <strong className="text-[#172126]">view-only</strong>:
+                  search, filter, and open a run. Cannot add, edit, or delete
+                  sequencing runs.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-[#172126] align-top">
+                  Trainee, intern, or reviewing officer
+                </td>
+                <td className="px-4 py-3">
+                  Those roles cannot open this tracker.
                 </td>
               </tr>
             </tbody>

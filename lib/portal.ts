@@ -52,6 +52,30 @@ export function canViewSequenceAnalysis(
   return isStaffRole(role) || role === "reviewing_officer";
 }
 
+/** Staff may create and edit COVID-19 Sample Tracker runs. */
+export function canEditCovidSampleTracker(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role);
+}
+
+/**
+ * Staff and approving officers may open the COVID-19 Sample Tracker.
+ * Approving officers are view-only.
+ */
+export function canViewCovidSampleTracker(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role) || role === "approving_officer";
+}
+
+export function isCovidSampleTrackerPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/services/covid-sample-tracker" ||
+    pathname.startsWith("/dashboard/services/covid-sample-tracker/")
+  );
+}
+
 const SEQUENCE_ANALYSIS_STAFF_ONLY_SLUGS = new Set([
   "report-generator",
   "covid-sample-tracker",
@@ -162,6 +186,9 @@ export function isPathAllowedForRole(
       return true;
     }
     if (role === "approving_officer" && isWishlistPath(pathname)) {
+      return true;
+    }
+    if (role === "approving_officer" && isCovidSampleTrackerPath(pathname)) {
       return true;
     }
     return notificationsOk;

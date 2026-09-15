@@ -30,6 +30,8 @@ interface CovidRunModalProps {
   initialData: CovidSequencingRunFormData | null;
   onClose: () => void;
   onSubmit: (data: CovidSequencingRunFormData) => void;
+  /** Approving officers may inspect a run but cannot save. */
+  readOnly?: boolean;
 }
 
 export default function CovidRunModal({
@@ -39,6 +41,7 @@ export default function CovidRunModal({
   initialData,
   onClose,
   onSubmit,
+  readOnly = false,
 }: CovidRunModalProps) {
   const [formState, setFormState] =
     useState<CovidSequencingRunFormData>(EMPTY_COVID_RUN_FORM);
@@ -94,6 +97,7 @@ export default function CovidRunModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -103,17 +107,40 @@ export default function CovidRunModal({
   };
 
   const fieldClass =
-    "w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm";
+    "w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed disabled:focus:ring-0 disabled:focus:border-slate-300/80";
+
+  const title = readOnly
+    ? "Sequencing Run"
+    : isAdding
+      ? "Add Sequencing Run"
+      : "Edit Sequencing Run";
 
   return (
     <SlideOverModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isAdding ? "Add Sequencing Run" : "Edit Sequencing Run"}
-      subtitle="COVID-19 Sample Tracker — not a client service report."
-      onSubmit={handleSubmit}
+      title={title}
+      subtitle={
+        readOnly
+          ? "COVID-19 Sample Tracker — view only."
+          : "COVID-19 Sample Tracker — not a client service report."
+      }
+      onSubmit={readOnly ? undefined : handleSubmit}
       submitLabel="Save"
       isSaving={isSaving}
+      footer={
+        readOnly ? (
+          <div className="flex gap-2.5 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors font-aileron"
+            >
+              Close
+            </button>
+          </div>
+        ) : undefined
+      }
     >
       <div className="space-y-4">
         <div className="space-y-2.5">
@@ -135,6 +162,7 @@ export default function CovidRunModal({
                 aria-invalid={!!errors.run_number}
                 value={formState.run_number}
                 onChange={(e) => handleInputChange("run_number", e.target.value)}
+                disabled={readOnly}
                 className={fieldClass}
               />
               {errors.run_number && (
@@ -156,6 +184,7 @@ export default function CovidRunModal({
                 value={formState.run_id}
                 onChange={(e) => handleInputChange("run_id", e.target.value)}
                 placeholder="e.g. NS_0061"
+                disabled={readOnly}
                 className={`${fieldClass} font-mono`}
               />
             </div>
@@ -173,6 +202,7 @@ export default function CovidRunModal({
                 id="covid-sequencer"
                 value={formState.sequencer}
                 onChange={(e) => handleInputChange("sequencer", e.target.value)}
+                disabled={readOnly}
                 className={fieldClass}
               >
                 <option value="">Not recorded</option>
@@ -198,6 +228,7 @@ export default function CovidRunModal({
                   handleInputChange("extraction_number", e.target.value)
                 }
                 placeholder="e.g. 56, 57"
+                disabled={readOnly}
                 className={fieldClass}
               />
             </div>
@@ -222,6 +253,7 @@ export default function CovidRunModal({
                 onChange={(e) =>
                   handleInputChange("date_received", e.target.value)
                 }
+                disabled={readOnly}
                 className={fieldClass}
               />
             </div>
@@ -239,6 +271,7 @@ export default function CovidRunModal({
                 onChange={(e) =>
                   handleInputChange("date_loaded", e.target.value)
                 }
+                disabled={readOnly}
                 className={fieldClass}
               />
             </div>
@@ -266,6 +299,7 @@ export default function CovidRunModal({
                 onChange={(e) =>
                   handleInputChange("samples_sequenced", e.target.value)
                 }
+                disabled={readOnly}
                 className={fieldClass}
               />
               {errors.samples_sequenced && (
@@ -291,6 +325,7 @@ export default function CovidRunModal({
                 onChange={(e) =>
                   handleInputChange("lineage_assigned", e.target.value)
                 }
+                disabled={readOnly}
                 className={fieldClass}
               />
               {errors.lineage_assigned && (
@@ -306,25 +341,35 @@ export default function CovidRunModal({
           {renderSectionLabel(<Upload className="w-3.5 h-3.5" />, "Uploads")}
 
           <div className="flex flex-wrap gap-4 ml-1">
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+            <label
+              className={`inline-flex items-center gap-2 text-xs font-bold text-slate-800 ${
+                readOnly ? "cursor-default" : "cursor-pointer"
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={formState.uploaded_gisaid}
                 onChange={(e) =>
                   handleInputChange("uploaded_gisaid", e.target.checked)
                 }
-                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb]"
+                disabled={readOnly}
+                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb] disabled:cursor-not-allowed"
               />
               Uploaded GISAID
             </label>
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+            <label
+              className={`inline-flex items-center gap-2 text-xs font-bold text-slate-800 ${
+                readOnly ? "cursor-default" : "cursor-pointer"
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={formState.uploaded_islap}
                 onChange={(e) =>
                   handleInputChange("uploaded_islap", e.target.checked)
                 }
-                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb]"
+                disabled={readOnly}
+                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#4ec2bb] disabled:cursor-not-allowed"
               />
               Uploaded ISLAP
             </label>
@@ -347,6 +392,7 @@ export default function CovidRunModal({
               value={formState.review_flag}
               onChange={(e) => handleInputChange("review_flag", e.target.value)}
               placeholder="e.g. loaded before received"
+              disabled={readOnly}
               className={fieldClass}
             />
           </div>
@@ -363,7 +409,8 @@ export default function CovidRunModal({
               rows={3}
               value={formState.comments}
               onChange={(e) => handleInputChange("comments", e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-y min-h-[72px]"
+              disabled={readOnly}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm resize-y min-h-[72px] disabled:opacity-70 disabled:cursor-not-allowed disabled:focus:ring-0 disabled:focus:border-slate-300/80"
             />
           </div>
         </div>

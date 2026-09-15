@@ -250,7 +250,8 @@ export default function ServiceReportTrackerProtocol() {
           (dashboard, tracker, and analysis detail) as <strong className="text-[#172126]">view-only</strong>:
           search records, open links, and download PDFs. They cannot add, edit,
           or delete records. Complete review and request revision stay on the
-          notification card. Approving officers remain on Notifications only.
+          notification card. Approving officers stay on Notifications, Wish List,
+          and a view-only COVID-19 Sample Tracker.
         </Callout>
       </Section>
 

@@ -236,11 +236,35 @@ export default function Sidebar({
         });
     }
     if (effectiveRole === "approving_officer") {
-      return navItems.filter(
+      const covidChild = navItems
+        .find((item) => item.href === "/dashboard/services")
+        ?.children?.find(
+          (child) => child.href === "/dashboard/services/covid-sample-tracker",
+        );
+      const covidItem: NavItem | null = covidChild
+        ? {
+            name: covidChild.name,
+            href: covidChild.href,
+            icon: covidChild.icon,
+            animationClass:
+              "group-hover:-translate-y-0.5 transition-transform duration-200",
+          }
+        : null;
+      const items = navItems.filter(
         (item) =>
           item.href === "/dashboard/notifications" ||
           item.href === "/dashboard/wishlist",
       );
+      if (!covidItem) return items;
+      const wishlistIndex = items.findIndex(
+        (item) => item.href === "/dashboard/wishlist",
+      );
+      if (wishlistIndex === -1) return [...items, covidItem];
+      return [
+        ...items.slice(0, wishlistIndex),
+        covidItem,
+        ...items.slice(wishlistIndex),
+      ];
     }
     return navItems;
   }, [effectiveRole]);
