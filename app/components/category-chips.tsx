@@ -88,6 +88,7 @@ interface CategoryMultiSelectProps<T extends string> {
   onChange: (next: T[]) => void;
   error?: string;
   hint?: string;
+  label?: string;
   groupLabel?: string;
 }
 
@@ -98,6 +99,7 @@ export function CategoryMultiSelect<T extends string>({
   onChange,
   error,
   hint = "Select one or more tags for this task.",
+  label = "Categories",
   groupLabel = "Task categories",
 }: CategoryMultiSelectProps<T>) {
   const toggle = (value: T) => {
@@ -111,7 +113,7 @@ export function CategoryMultiSelect<T extends string>({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-xs font-bold text-slate-800 ml-1 font-aileron">
-        Categories
+        {label}
       </span>
       <p className="text-[10px] text-slate-400 ml-1 mb-1 font-aileron">
         {hint}

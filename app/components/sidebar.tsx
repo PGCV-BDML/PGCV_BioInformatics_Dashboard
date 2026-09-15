@@ -34,6 +34,7 @@ import {
   BookOpen,
   FileOutput,
   ClipboardCheck,
+  CircleHelp,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -123,6 +124,13 @@ const navItems: NavItem[] = [
     href: "/dashboard/protocols",
     icon: BookOpen,
     animationClass: "group-hover:-rotate-6 transition-transform duration-300",
+  },
+  {
+    name: "FAQs",
+    href: "/dashboard/faqs",
+    icon: CircleHelp,
+    animationClass:
+      "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
     name: "Training",

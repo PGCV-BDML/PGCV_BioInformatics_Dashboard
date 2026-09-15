@@ -15,6 +15,7 @@ import {
   Calendar,
   Check,
   Clock,
+  CircleHelp,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
@@ -33,6 +34,7 @@ import {
   getReviewStageUiState,
   isApprovalCompleteNotification,
   isIncidentAssignedNotification,
+  isFaqNotification,
   isSentBackNotification,
   isTaskComingUpNotification,
   isTaskPastDueNotification,
@@ -96,6 +98,10 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
     }
     case "task_past_due":
       return "Past due";
+    case "faq_answer_added":
+      return "New answer on your FAQ";
+    case "faq_comment_added":
+      return "New comment on an FAQ";
   }
 }
 
@@ -109,6 +115,9 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
       : "bg-sky-100 text-sky-800";
   }
   if (kind === "task_past_due") return "bg-rose-100 text-rose-900";
+  if (kind === "faq_answer_added" || kind === "faq_comment_added") {
+    return "bg-sky-100 text-sky-800";
+  }
   if (kind === "review_request") {
     const state = getReviewStageUiState(n.review_status);
     if (state === "reviewed") return "bg-teal-100 text-teal-800";
@@ -128,6 +137,9 @@ function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (kind === "incident_assigned") return ShieldAlert;
   if (kind === "task_coming_up") return Calendar;
   if (kind === "task_past_due") return Clock;
+  if (kind === "faq_answer_added" || kind === "faq_comment_added") {
+    return CircleHelp;
+  }
   if (kind === "review_request") {
     return getReviewStageUiState(n.review_status) === "in_review" ? Eye : FileCheck2;
   }
@@ -574,6 +586,10 @@ export default function NotificationsPage() {
             const incidentAssigned =
               isIncidentAssignedNotification(notification) ||
               kind === "incident_assigned";
+            const faqNote =
+              isFaqNotification(notification) ||
+              kind === "faq_answer_added" ||
+              kind === "faq_comment_added";
             const taskComingUp =
               isTaskComingUpNotification(notification) ||
               kind === "task_coming_up";
@@ -639,7 +655,7 @@ export default function NotificationsPage() {
                           ? "bg-rose-100"
                           : isAmber
                           ? "bg-amber-100"
-                          : taskComingUp
+                          : taskComingUp || faqNote
                             ? "bg-sky-100"
                             : "bg-emerald-100"
                       }`}
@@ -652,6 +668,8 @@ export default function NotificationsPage() {
                             ? "text-amber-800"
                             : taskComingUp
                               ? "text-sky-800"
+                              : faqNote
+                                ? "text-sky-800"
                               : "text-emerald-700"
                         }`}
                       />
@@ -665,6 +683,8 @@ export default function NotificationsPage() {
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
                         {incidentAssigned
                           ? notification.payload.title || "Incident report"
+                          : faqNote
+                            ? notification.payload.title || "FAQ"
                           : taskComingUp || taskPastDue
                             ? notification.payload.title || "Untitled task"
                           : notification.payload.client_name || "Unnamed analysis"}
@@ -681,6 +701,19 @@ export default function NotificationsPage() {
                             ]
                               .filter(Boolean)
                               .join(" · ") || "You were assigned as the point person."
+                          : faqNote
+                            ? [
+                                notification.payload.comment_author
+                                  ? notification.payload.comment_author
+                                  : null,
+                                notification.payload.comment
+                                  ? notification.payload.comment
+                                  : kind === "faq_answer_added"
+                                    ? "Someone answered your question."
+                                    : "Someone commented on a thread you follow.",
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")
                           : taskPastDue
                             ? taskPastDueNotificationCopy(notification.payload)
                                 .body
@@ -732,6 +765,18 @@ export default function NotificationsPage() {
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open incident
+                      </Link>
+                    ) : faqNote ? (
+                      <Link
+                        href={
+                          notification.payload.faq_id
+                            ? routes.faqs.byId(notification.payload.faq_id)
+                            : routes.faqs.list
+                        }
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open FAQ
                       </Link>
                     ) : taskPastDue ? (
                       <>

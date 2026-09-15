@@ -10,6 +10,8 @@ import {
   NOTIFICATION_REVISION_REQUESTED,
   NOTIFICATION_TASK_COMING_UP,
   NOTIFICATION_TASK_PAST_DUE,
+  NOTIFICATION_FAQ_ANSWER_ADDED,
+  NOTIFICATION_FAQ_COMMENT_ADDED,
   overlayLiveAnalysisOnNotifications,
   reviseSignedServiceReport,
   shouldPreviewSignedLastPage,
@@ -48,6 +50,12 @@ describe("getNotificationKind", () => {
     );
     expect(getNotificationKind(notification(NOTIFICATION_TASK_PAST_DUE))).toBe(
       "task_past_due",
+    );
+    expect(getNotificationKind(notification(NOTIFICATION_FAQ_ANSWER_ADDED))).toBe(
+      "faq_answer_added",
+    );
+    expect(getNotificationKind(notification(NOTIFICATION_FAQ_COMMENT_ADDED))).toBe(
+      "faq_comment_added",
     );
   });
 

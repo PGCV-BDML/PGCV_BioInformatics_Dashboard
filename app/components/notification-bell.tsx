@@ -14,6 +14,7 @@ import {
   Calendar,
   Check,
   Clock,
+  CircleHelp,
 } from "lucide-react";
 import {
   approveAnalysis,
@@ -26,6 +27,7 @@ import {
   getReviewStageUiState,
   isApprovalCompleteNotification,
   isIncidentAssignedNotification,
+  isFaqNotification,
   isSentBackNotification,
   isTaskComingUpNotification,
   isTaskPastDueNotification,
@@ -80,6 +82,10 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
     }
     case "task_past_due":
       return "Past due";
+    case "faq_answer_added":
+      return "New answer on your FAQ";
+    case "faq_comment_added":
+      return "New comment on an FAQ";
   }
 }
 
@@ -483,6 +489,57 @@ export function NotificationBell() {
                               className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
                             >
                               <ExternalLink className="w-3 h-3" /> Open task
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleMarkRead(n.id)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 disabled:opacity-60 transition-colors font-aileron ml-auto"
+                            >
+                              <CheckCheck className="w-3 h-3" /> Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (isFaqNotification(n) || kind === "faq_answer_added" || kind === "faq_comment_added") {
+                  const href = n.payload.faq_id
+                    ? routes.faqs.byId(n.payload.faq_id)
+                    : routes.faqs.list;
+                  return (
+                    <div
+                      key={n.id}
+                      className={`px-4 py-3 hover:bg-slate-50 transition-colors ${
+                        n.is_read ? "opacity-70" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-sky-100">
+                          <CircleHelp className="w-3.5 h-3.5 text-sky-800" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-extrabold text-[#1e293b] font-aileron leading-tight">
+                            {kindTitle(kind, n)}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
+                            {n.payload.title ?? "FAQ"}
+                            {n.payload.comment_author
+                              ? ` · ${n.payload.comment_author}`
+                              : ""}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <Link
+                              href={href}
+                              onClick={() => {
+                                void markOneReadLocal(n.id);
+                                setIsOpen(false);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Open FAQ
                             </Link>
                             <button
                               type="button"

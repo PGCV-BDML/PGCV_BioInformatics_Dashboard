@@ -29,6 +29,10 @@ export const NOTIFICATION_INCIDENT_ASSIGNED = "incident_assigned";
 export const NOTIFICATION_TASK_COMING_UP = "task_coming_up";
 /** Sent to assignees when an open task has passed its due date. */
 export const NOTIFICATION_TASK_PAST_DUE = "task_past_due";
+/** Sent to the question author when someone posts an answer. */
+export const NOTIFICATION_FAQ_ANSWER_ADDED = "faq_answer_added";
+/** Sent to the question or parent-post author when someone comments. */
+export const NOTIFICATION_FAQ_COMMENT_ADDED = "faq_comment_added";
 
 export type AppNotification = {
   id: string;
@@ -52,6 +56,10 @@ export type AppNotification = {
     category?: string | null;
     status?: string | null;
     reporter_name?: string | null;
+    /** Present on faq_answer_added and faq_comment_added. */
+    faq_id?: string;
+    post_id?: string;
+    kind?: string | null;
     /** Present on task_coming_up and task_past_due. */
     task_id?: string;
     start_date?: string | null;
@@ -83,7 +91,9 @@ export type NotificationKind =
   | "approval_complete"
   | "incident_assigned"
   | "task_coming_up"
-  | "task_past_due";
+  | "task_past_due"
+  | "faq_answer_added"
+  | "faq_comment_added";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -101,6 +111,10 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "task_coming_up";
     case NOTIFICATION_TASK_PAST_DUE:
       return "task_past_due";
+    case NOTIFICATION_FAQ_ANSWER_ADDED:
+      return "faq_answer_added";
+    case NOTIFICATION_FAQ_COMMENT_ADDED:
+      return "faq_comment_added";
     case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
@@ -117,6 +131,13 @@ export function isTaskComingUpNotification(n: AppNotification): boolean {
 
 export function isTaskPastDueNotification(n: AppNotification): boolean {
   return n.type === NOTIFICATION_TASK_PAST_DUE;
+}
+
+export function isFaqNotification(n: AppNotification): boolean {
+  return (
+    n.type === NOTIFICATION_FAQ_ANSWER_ADDED ||
+    n.type === NOTIFICATION_FAQ_COMMENT_ADDED
+  );
 }
 
 /** True for notifications the assignee receives when a report is sent back. */

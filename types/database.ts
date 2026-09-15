@@ -1055,3 +1055,66 @@ export type WishlistItemFormData = {
   vendor_or_link: string;
   notes: string;
 };
+
+// ============================================================
+// FAQs (staff Q&A board)
+// ============================================================
+
+export type FaqStatus = "open" | "closed";
+
+export type FaqTag =
+  | "installation"
+  | "conda"
+  | "python"
+  | "metabarcoding"
+  | "amplicon"
+  | "wgs"
+  | "rna-seq"
+  | "phylogenetics"
+  | "troubleshooting"
+  | "biology"
+  | "hpc"
+  | "advice"
+  | "programming";
+
+export type FaqPostKind = "answer" | "comment";
+
+export type FaqThread = {
+  id: string;
+  title: string;
+  body: string;
+  status: FaqStatus;
+  author_id: string;
+  accepted_post_id: string | null;
+  closed_at: string | null;
+  closed_by: string | null;
+  created_at: string;
+  updated_at?: string;
+  /** Client-enriched from faq_tag. */
+  tags?: FaqTag[];
+};
+
+export type FaqTagRow = {
+  thread_id: string;
+  tag: FaqTag;
+};
+
+export type FaqPost = {
+  id: string;
+  thread_id: string;
+  parent_id: string | null;
+  author_id: string;
+  kind: FaqPostKind;
+  body: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at?: string;
+  /** Client-enriched from users.name. */
+  author_name?: string | null;
+};
+
+export type FaqThreadFormData = {
+  title: string;
+  body: string;
+  tags: FaqTag[];
+};

@@ -141,6 +141,17 @@ export function isWishlistPath(pathname: string): boolean {
   );
 }
 
+/** FAQs board — staff only. */
+export function canViewFaqs(role: UserRole | null | undefined): boolean {
+  return isStaffRole(role);
+}
+
+export function isFaqPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/faqs" || pathname.startsWith("/dashboard/faqs/")
+  );
+}
+
 /** Shared pages every signed-in restricted role may open (footer, etc.). */
 function isSharedDashboardPath(pathname: string): boolean {
   return (

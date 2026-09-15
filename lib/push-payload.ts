@@ -1,6 +1,8 @@
 import {
   NOTIFICATION_APPROVED,
   NOTIFICATION_CHANGES_REQUESTED,
+  NOTIFICATION_FAQ_ANSWER_ADDED,
+  NOTIFICATION_FAQ_COMMENT_ADDED,
   NOTIFICATION_INCIDENT_ASSIGNED,
   NOTIFICATION_READY_FOR_APPROVAL,
   NOTIFICATION_READY_FOR_REVIEW,
@@ -22,6 +24,7 @@ export type PushNotificationInput = {
     service_report_number?: string | null;
     comment?: string | null;
     incident_id?: string;
+    faq_id?: string;
     title?: string | null;
     severity?: string | null;
     task_id?: string;
@@ -132,6 +135,31 @@ export function buildWebPushPayload(
         title: copy.title,
         body: clip(copy.body),
         path: copy.path,
+        tag,
+      };
+    }
+    case NOTIFICATION_FAQ_ANSWER_ADDED: {
+      const faqId = notification.payload.faq_id?.trim();
+      const title = notification.payload.title?.trim() || "your question";
+      return {
+        title: "New answer on your FAQ",
+        body: clip(title),
+        path: faqId
+          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
+          : "/dashboard/faqs",
+        tag,
+      };
+    }
+    case NOTIFICATION_FAQ_COMMENT_ADDED: {
+      const faqId = notification.payload.faq_id?.trim();
+      const title = notification.payload.title?.trim() || "an FAQ";
+      const comment = notification.payload.comment?.trim();
+      return {
+        title: "New comment on an FAQ",
+        body: clip(comment ? `${title}: ${comment}` : title),
+        path: faqId
+          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
+          : "/dashboard/faqs",
         tag,
       };
     }

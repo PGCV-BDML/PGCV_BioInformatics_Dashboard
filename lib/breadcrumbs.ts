@@ -101,6 +101,19 @@ export const protocolsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Protocols" },
 ];
 
+export const faqsBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "FAQs" },
+];
+
+export function faqDetailBreadcrumbs(title: string): BreadcrumbItem[] {
+  return [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "FAQs", href: "/dashboard/faqs" },
+    { label: title },
+  ];
+}
+
 export function protocolDetailBreadcrumbs(title: string): BreadcrumbItem[] {
   return [
     { label: "Dashboard", href: "/dashboard" },

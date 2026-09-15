@@ -5,7 +5,9 @@ import {
   canViewCovidSampleTracker,
   canViewSequenceAnalysis,
   canViewWishlist,
+  canViewFaqs,
   isCovidSampleTrackerPath,
+  isFaqPath,
   isPathAllowedForRole,
   isSequenceAnalysisReadPath,
   isWishlistPath,
@@ -161,5 +163,24 @@ describe("canViewWishlist / isWishlistPath", () => {
     expect(isWishlistPath("/dashboard/wishlist")).toBe(true);
     expect(isWishlistPath("/dashboard/wishlist/")).toBe(true);
     expect(isWishlistPath("/dashboard/incidents")).toBe(false);
+  });
+});
+
+describe("canViewFaqs / isFaqPath", () => {
+  it("is staff-only", () => {
+    expect(canViewFaqs("team_lead")).toBe(true);
+    expect(canViewFaqs("team_member")).toBe(true);
+    expect(canViewFaqs("approving_officer")).toBe(false);
+    expect(canViewFaqs("trainee")).toBe(false);
+  });
+
+  it("matches the FAQs route and keeps officers off it", () => {
+    expect(isFaqPath("/dashboard/faqs")).toBe(true);
+    expect(isFaqPath("/dashboard/faqs/abc")).toBe(true);
+    expect(isPathAllowedForRole("/dashboard/faqs", "trainee")).toBe(false);
+    expect(isPathAllowedForRole("/dashboard/faqs", "approving_officer")).toBe(
+      false,
+    );
+    expect(isPathAllowedForRole("/dashboard/faqs", "team_member")).toBe(true);
   });
 });

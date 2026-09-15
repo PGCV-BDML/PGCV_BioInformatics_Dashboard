@@ -6,6 +6,8 @@ import {
   NOTIFICATION_REVISION_REQUESTED,
   NOTIFICATION_TASK_COMING_UP,
   NOTIFICATION_TASK_PAST_DUE,
+  NOTIFICATION_FAQ_ANSWER_ADDED,
+  NOTIFICATION_FAQ_COMMENT_ADDED,
 } from "./notifications";
 import { buildWebPushPayload } from "./push-payload";
 import { getPushSetupState, isIosUserAgent } from "./push-support";
@@ -84,6 +86,31 @@ describe("buildWebPushPayload", () => {
     expect(payload.title).toContain("Campus tour");
     expect(payload.body).toContain("Tour");
     expect(payload.path).toContain("task=task-1");
+  });
+
+  it("deep-links FAQ answers and comments", () => {
+    const answer = buildWebPushPayload({
+      id: "n-8",
+      type: NOTIFICATION_FAQ_ANSWER_ADDED,
+      payload: {
+        faq_id: "faq-1",
+        title: "QIIME 2 install",
+      },
+    });
+    expect(answer.title).toBe("New answer on your FAQ");
+    expect(answer.path).toBe("/dashboard/faqs/faq-1");
+
+    const comment = buildWebPushPayload({
+      id: "n-9",
+      type: NOTIFICATION_FAQ_COMMENT_ADDED,
+      payload: {
+        faq_id: "faq-1",
+        title: "QIIME 2 install",
+        comment: "Try mamba instead.",
+      },
+    });
+    expect(comment.body).toContain("Try mamba instead.");
+    expect(comment.path).toBe("/dashboard/faqs/faq-1");
   });
 
   it("falls back for unknown types", () => {

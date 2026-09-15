@@ -66,6 +66,12 @@ export const routes = {
     byId: (id: string) =>
       `/dashboard/wishlist?id=${encodeURIComponent(id.trim())}`,
   },
+  faqs: {
+    list: "/dashboard/faqs",
+    /** Open FAQs with the ask-question form. */
+    add: "/dashboard/faqs?add=1",
+    byId: (id: string) => `/dashboard/faqs/${encodeURIComponent(id.trim())}`,
+  },
   training: {
     list: "/dashboard/training",
     detail: (id: string) => `/dashboard/training/${id}`,

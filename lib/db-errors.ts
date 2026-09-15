@@ -35,6 +35,9 @@ const TABLE_LABELS: Partial<
   repository_tag: { one: "repository tag", many: "repository tags" },
   incident_report: { one: "incident report", many: "incident reports" },
   wishlist_item: { one: "wish list item", many: "wish list items" },
+  faq_thread: { one: "FAQ", many: "FAQs" },
+  faq_tag: { one: "FAQ tag", many: "FAQ tags" },
+  faq_post: { one: "FAQ reply", many: "FAQ replies" },
   incident_status_event: {
     one: "incident status event",
     many: "incident status events",
