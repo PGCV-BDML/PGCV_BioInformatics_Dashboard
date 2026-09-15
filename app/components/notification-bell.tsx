@@ -86,6 +86,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return "New answer on your FAQ";
     case "faq_comment_added":
       return "New comment on an FAQ";
+    case "faq_question_added":
+      return "New FAQ posted";
   }
 }
 
@@ -505,7 +507,7 @@ export function NotificationBell() {
                   );
                 }
 
-                if (isFaqNotification(n) || kind === "faq_answer_added" || kind === "faq_comment_added") {
+                if (isFaqNotification(n) || kind === "faq_answer_added" || kind === "faq_comment_added" || kind === "faq_question_added") {
                   const href = n.payload.faq_id
                     ? routes.faqs.byId(n.payload.faq_id)
                     : routes.faqs.list;

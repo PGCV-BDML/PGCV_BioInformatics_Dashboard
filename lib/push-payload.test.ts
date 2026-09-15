@@ -8,6 +8,7 @@ import {
   NOTIFICATION_TASK_PAST_DUE,
   NOTIFICATION_FAQ_ANSWER_ADDED,
   NOTIFICATION_FAQ_COMMENT_ADDED,
+  NOTIFICATION_FAQ_QUESTION_ADDED,
 } from "./notifications";
 import { buildWebPushPayload } from "./push-payload";
 import { getPushSetupState, isIosUserAgent } from "./push-support";
@@ -111,6 +112,22 @@ describe("buildWebPushPayload", () => {
     });
     expect(comment.body).toContain("Try mamba instead.");
     expect(comment.path).toBe("/dashboard/faqs/faq-1");
+  });
+
+  it("notifies staff of a newly posted FAQ", () => {
+    const payload = buildWebPushPayload({
+      id: "n-10",
+      type: NOTIFICATION_FAQ_QUESTION_ADDED,
+      payload: {
+        faq_id: "faq-2",
+        title: "How do I load conda on HPC?",
+        comment_author: "Micah",
+      },
+    });
+    expect(payload.title).toBe("New FAQ posted");
+    expect(payload.body).toContain("Micah");
+    expect(payload.body).toContain("conda");
+    expect(payload.path).toBe("/dashboard/faqs/faq-2");
   });
 
   it("falls back for unknown types", () => {

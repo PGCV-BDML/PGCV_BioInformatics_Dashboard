@@ -102,6 +102,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return "New answer on your FAQ";
     case "faq_comment_added":
       return "New comment on an FAQ";
+    case "faq_question_added":
+      return "New FAQ posted";
   }
 }
 
@@ -115,7 +117,11 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
       : "bg-sky-100 text-sky-800";
   }
   if (kind === "task_past_due") return "bg-rose-100 text-rose-900";
-  if (kind === "faq_answer_added" || kind === "faq_comment_added") {
+  if (
+    kind === "faq_answer_added" ||
+    kind === "faq_comment_added" ||
+    kind === "faq_question_added"
+  ) {
     return "bg-sky-100 text-sky-800";
   }
   if (kind === "review_request") {
@@ -137,7 +143,11 @@ function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (kind === "incident_assigned") return ShieldAlert;
   if (kind === "task_coming_up") return Calendar;
   if (kind === "task_past_due") return Clock;
-  if (kind === "faq_answer_added" || kind === "faq_comment_added") {
+  if (
+    kind === "faq_answer_added" ||
+    kind === "faq_comment_added" ||
+    kind === "faq_question_added"
+  ) {
     return CircleHelp;
   }
   if (kind === "review_request") {
@@ -589,7 +599,8 @@ export default function NotificationsPage() {
             const faqNote =
               isFaqNotification(notification) ||
               kind === "faq_answer_added" ||
-              kind === "faq_comment_added";
+              kind === "faq_comment_added" ||
+              kind === "faq_question_added";
             const taskComingUp =
               isTaskComingUpNotification(notification) ||
               kind === "task_coming_up";
@@ -708,6 +719,8 @@ export default function NotificationsPage() {
                                   : null,
                                 notification.payload.comment
                                   ? notification.payload.comment
+                                  : kind === "faq_question_added"
+                                    ? "A teammate posted a new question."
                                   : kind === "faq_answer_added"
                                     ? "Someone answered your question."
                                     : "Someone commented on a thread you follow.",

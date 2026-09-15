@@ -33,6 +33,8 @@ export const NOTIFICATION_TASK_PAST_DUE = "task_past_due";
 export const NOTIFICATION_FAQ_ANSWER_ADDED = "faq_answer_added";
 /** Sent to the question or parent-post author when someone comments. */
 export const NOTIFICATION_FAQ_COMMENT_ADDED = "faq_comment_added";
+/** Sent to other staff when someone posts a new FAQ question. */
+export const NOTIFICATION_FAQ_QUESTION_ADDED = "faq_question_added";
 
 export type AppNotification = {
   id: string;
@@ -56,7 +58,7 @@ export type AppNotification = {
     category?: string | null;
     status?: string | null;
     reporter_name?: string | null;
-    /** Present on faq_answer_added and faq_comment_added. */
+    /** Present on faq_answer_added, faq_comment_added, and faq_question_added. */
     faq_id?: string;
     post_id?: string;
     kind?: string | null;
@@ -93,7 +95,8 @@ export type NotificationKind =
   | "task_coming_up"
   | "task_past_due"
   | "faq_answer_added"
-  | "faq_comment_added";
+  | "faq_comment_added"
+  | "faq_question_added";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -115,6 +118,8 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "faq_answer_added";
     case NOTIFICATION_FAQ_COMMENT_ADDED:
       return "faq_comment_added";
+    case NOTIFICATION_FAQ_QUESTION_ADDED:
+      return "faq_question_added";
     case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
@@ -136,7 +141,8 @@ export function isTaskPastDueNotification(n: AppNotification): boolean {
 export function isFaqNotification(n: AppNotification): boolean {
   return (
     n.type === NOTIFICATION_FAQ_ANSWER_ADDED ||
-    n.type === NOTIFICATION_FAQ_COMMENT_ADDED
+    n.type === NOTIFICATION_FAQ_COMMENT_ADDED ||
+    n.type === NOTIFICATION_FAQ_QUESTION_ADDED
   );
 }
 

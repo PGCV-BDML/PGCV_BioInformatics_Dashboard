@@ -12,6 +12,7 @@ import {
   NOTIFICATION_TASK_PAST_DUE,
   NOTIFICATION_FAQ_ANSWER_ADDED,
   NOTIFICATION_FAQ_COMMENT_ADDED,
+  NOTIFICATION_FAQ_QUESTION_ADDED,
   overlayLiveAnalysisOnNotifications,
   reviseSignedServiceReport,
   shouldPreviewSignedLastPage,
@@ -56,6 +57,9 @@ describe("getNotificationKind", () => {
     );
     expect(getNotificationKind(notification(NOTIFICATION_FAQ_COMMENT_ADDED))).toBe(
       "faq_comment_added",
+    );
+    expect(getNotificationKind(notification(NOTIFICATION_FAQ_QUESTION_ADDED))).toBe(
+      "faq_question_added",
     );
   });
 

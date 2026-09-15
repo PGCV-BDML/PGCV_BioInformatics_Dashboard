@@ -3,6 +3,7 @@ import {
   NOTIFICATION_CHANGES_REQUESTED,
   NOTIFICATION_FAQ_ANSWER_ADDED,
   NOTIFICATION_FAQ_COMMENT_ADDED,
+  NOTIFICATION_FAQ_QUESTION_ADDED,
   NOTIFICATION_INCIDENT_ASSIGNED,
   NOTIFICATION_READY_FOR_APPROVAL,
   NOTIFICATION_READY_FOR_REVIEW,
@@ -23,6 +24,7 @@ export type PushNotificationInput = {
     client_name?: string | null;
     service_report_number?: string | null;
     comment?: string | null;
+    comment_author?: string | null;
     incident_id?: string;
     faq_id?: string;
     title?: string | null;
@@ -157,6 +159,19 @@ export function buildWebPushPayload(
       return {
         title: "New comment on an FAQ",
         body: clip(comment ? `${title}: ${comment}` : title),
+        path: faqId
+          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
+          : "/dashboard/faqs",
+        tag,
+      };
+    }
+    case NOTIFICATION_FAQ_QUESTION_ADDED: {
+      const faqId = notification.payload.faq_id?.trim();
+      const title = notification.payload.title?.trim() || "a new question";
+      const author = notification.payload.comment_author?.trim();
+      return {
+        title: "New FAQ posted",
+        body: clip(author ? `${author}: ${title}` : title),
         path: faqId
           ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
           : "/dashboard/faqs",
