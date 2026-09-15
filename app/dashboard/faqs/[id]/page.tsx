@@ -36,6 +36,8 @@ import {
   canEditFaqPost,
   canManageFaqThread,
   canPostFaqAnswer,
+  canPostFaqComment,
+  commentsOf,
   createFaqPost,
   deleteFaqThread,
   faqStatusLabel,
@@ -43,6 +45,7 @@ import {
   formatFaqTime,
   getFaqPosts,
   getFaqThread,
+  MAX_FAQ_COMMENT,
   setFaqAcceptedAnswer,
   setFaqThreadStatus,
   softDeleteFaqPost,
@@ -52,7 +55,7 @@ import {
 } from "@/lib/faqs";
 import { routes } from "@/lib/routes";
 import { supabase } from "@/lib/supabase";
-import type { FaqPost, FaqThread, FaqThreadFormData } from "@/types/database";
+import type { FaqPost, FaqThread, FaqThreadFormData, UserRole } from "@/types/database";
 
 export default function FaqThreadPage({
   params,
@@ -69,7 +72,9 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [answerBody, setAnswerBody] = useState("");
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [isSavingAnswer, setIsSavingAnswer] = useState(false);
+  const [savingCommentFor, setSavingCommentFor] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -164,6 +169,7 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
     ? canAcceptFaqAnswer(realRole, profile?.id, thread.author_id)
     : false;
   const canAnswer = thread ? canPostFaqAnswer(realRole, thread.status) : false;
+  const canComment = canPostFaqComment(realRole);
 
   const handleSaveEdit = async (form: FaqThreadFormData) => {
     if (!thread) return;
@@ -188,7 +194,9 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
       await setFaqThreadStatus(thread.id, next);
       setThread((prev) => (prev ? { ...prev, status: next } : prev));
       showToast(
-        next === "closed" ? "Question closed." : "Question reopened.",
+        next === "closed"
+          ? "Question closed. Comments on answers can still be added."
+          : "Question reopened.",
         "success",
       );
     } catch (error) {
@@ -216,6 +224,7 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
       const posted = await createFaqPost({
         threadId: thread.id,
         authorId: profile.id,
+        kind: "answer",
         body: answerBody,
       });
       setPosts((prev) => [...prev, { ...posted, author_name: profile.name }]);
@@ -225,6 +234,28 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
       showToast(describeSaveError(error, "faq_post"), "error");
     } finally {
       setIsSavingAnswer(false);
+    }
+  };
+
+  const handleComment = async (parentId: string) => {
+    if (!thread || !profile?.id) return;
+    const body = commentDrafts[parentId] ?? "";
+    setSavingCommentFor(parentId);
+    try {
+      const posted = await createFaqPost({
+        threadId: thread.id,
+        authorId: profile.id,
+        kind: "comment",
+        body,
+        parentId,
+      });
+      setPosts((prev) => [...prev, { ...posted, author_name: profile.name }]);
+      setCommentDrafts((prev) => ({ ...prev, [parentId]: "" }));
+      showToast("Comment posted.", "success");
+    } catch (error) {
+      showToast(describeSaveError(error, "faq_post"), "error");
+    } finally {
+      setSavingCommentFor(null);
     }
   };
 
@@ -345,7 +376,8 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
 
       {thread.status === "closed" ? (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          This question is closed, so new answers are off.
+          This question is closed, so new answers are off. Comments on answers
+          are still welcome.
         </div>
       ) : null}
 
@@ -423,6 +455,25 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
                   </div>
                 </div>
                 <MarkdownBody source={answer.body} />
+                <CommentList
+                  comments={commentsOf(livePosts, answer.id)}
+                  currentUserId={profile?.id}
+                  role={realRole}
+                  onDelete={handleDeletePost}
+                />
+                {canComment ? (
+                  <CommentBox
+                    value={commentDrafts[answer.id] ?? ""}
+                    onChange={(value) =>
+                      setCommentDrafts((prev) => ({
+                        ...prev,
+                        [answer.id]: value,
+                      }))
+                    }
+                    isSaving={savingCommentFor === answer.id}
+                    onSubmit={() => void handleComment(answer.id)}
+                  />
+                ) : null}
               </article>
             );
           })
@@ -465,6 +516,78 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
         onConfirm={() => void handleDelete()}
         isDeleting={isDeleting}
       />
+    </div>
+  );
+}
+
+function CommentList({
+  comments,
+  currentUserId,
+  role,
+  onDelete,
+}: {
+  comments: FaqPost[];
+  currentUserId: string | undefined;
+  role: UserRole | null;
+  onDelete: (post: FaqPost) => void;
+}) {
+  if (comments.length === 0) return null;
+  return (
+    <ul className="space-y-3 border-t border-slate-100 pt-3">
+      {comments.map((comment) => (
+        <li key={comment.id} className="rounded-xl bg-slate-50 px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <MarkdownBody source={comment.body} className="text-[13px]" />
+              <p className="mt-1 text-[10px] text-slate-400">
+                {comment.author_name || "Staff"} · {formatFaqTime(comment.created_at)}
+              </p>
+            </div>
+            {canEditFaqPost(role, currentUserId, comment.author_id) ? (
+              <button
+                type="button"
+                onClick={() => onDelete(comment)}
+                className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-red-600"
+              >
+                Delete
+              </button>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CommentBox({
+  value,
+  onChange,
+  isSaving,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  isSaving: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={value}
+        maxLength={MAX_FAQ_COMMENT}
+        rows={3}
+        placeholder="Add a comment. Markdown and links are supported."
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#4ec2bb] focus:ring-4 focus:ring-[#4ec2bb]/10 outline-none resize-y"
+      />
+      <button
+        type="button"
+        disabled={isSaving || !value.trim()}
+        onClick={onSubmit}
+        className="inline-flex items-center h-9 px-3 rounded-full border border-slate-200 bg-white text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 disabled:opacity-50 font-quicksand"
+      >
+        {isSaving ? "Posting…" : "Comment"}
+      </button>
     </div>
   );
 }

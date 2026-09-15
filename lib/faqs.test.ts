@@ -6,6 +6,8 @@ import {
   canDeleteFaqThread,
   canEditFaqPost,
   canPostFaqAnswer,
+  canPostFaqComment,
+  commentsOf,
   emptyFaqForm,
   formFromFaqThread,
   normalizeFaqBody,
@@ -43,11 +45,11 @@ function thread(
 }
 
 describe("FAQ permissions", () => {
-  it("is staff-only for asking", () => {
+  it("is staff-only for asking and commenting", () => {
     expect(canAskFaq("team_member")).toBe(true);
     expect(canAskFaq("trainee")).toBe(false);
-    expect(canPostFaqAnswer("team_lead", "open")).toBe(true);
-    expect(canPostFaqAnswer("intern", "open")).toBe(false);
+    expect(canPostFaqComment("team_lead")).toBe(true);
+    expect(canPostFaqComment("intern")).toBe(false);
   });
 
   it("lets the author or lead close, but not other members", () => {
@@ -56,9 +58,10 @@ describe("FAQ permissions", () => {
     expect(canCloseFaqThread("team_member", "user-2", "user-1")).toBe(false);
   });
 
-  it("blocks new answers on closed threads", () => {
+  it("blocks new answers on closed threads, but comments stay on", () => {
     expect(canPostFaqAnswer("team_member", "open")).toBe(true);
     expect(canPostFaqAnswer("team_member", "closed")).toBe(false);
+    expect(canPostFaqComment("team_member")).toBe(true);
   });
 
   it("lets the author delete only when there are no answers", () => {
@@ -165,7 +168,7 @@ describe("FAQ list filters", () => {
       "Micah",
     );
     expect(item.answer_count).toBe(1);
-    expect(item.last_activity_at).toBe("2026-09-15T04:00:00.000Z");
+    expect(item.last_activity_at).toBe("2026-09-15T05:00:00.000Z");
     expect(item.author_name).toBe("Micah");
   });
 });
@@ -181,6 +184,16 @@ describe("FAQ thread layout helpers", () => {
       body: "Use mamba.",
       deleted_at: null,
       created_at: "2026-09-15T03:00:00.000Z",
+    },
+    {
+      id: "c-q",
+      thread_id: "faq-1",
+      parent_id: null,
+      author_id: "u-1",
+      kind: "comment",
+      body: "Clarifying the question.",
+      deleted_at: null,
+      created_at: "2026-09-15T03:01:00.000Z",
     },
     {
       id: "c-1",
@@ -212,8 +225,10 @@ describe("FAQ thread layout helpers", () => {
     expect(sorted[0]?.id).toBe("a-2");
   });
 
-  it("ignores leftover comments when listing answers", () => {
+  it("groups comments under the parent answer, not the question", () => {
     expect(answersOf(posts).map((post) => post.id)).toEqual(["a-1", "a-2"]);
+    expect(commentsOf(posts, "a-1").map((post) => post.id)).toEqual(["c-1"]);
+    expect(commentsOf(posts, "a-2")).toEqual([]);
   });
 
   it("ignores deleted answers when counting", () => {
