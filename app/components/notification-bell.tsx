@@ -83,11 +83,11 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
     case "task_past_due":
       return "Past due";
     case "faq_answer_added":
-      return "New answer on your FAQ";
+      return "New answer in the Forum";
     case "faq_comment_added":
-      return "New comment on an FAQ";
+      return "New comment in the Forum";
     case "faq_question_added":
-      return "New FAQ posted";
+      return "New Forum question";
   }
 }
 
@@ -509,8 +509,8 @@ export function NotificationBell() {
 
                 if (isFaqNotification(n) || kind === "faq_answer_added" || kind === "faq_comment_added" || kind === "faq_question_added") {
                   const href = n.payload.faq_id
-                    ? routes.faqs.byId(n.payload.faq_id)
-                    : routes.faqs.list;
+                    ? routes.forum.byId(n.payload.faq_id)
+                    : routes.forum.list;
                   return (
                     <div
                       key={n.id}
@@ -527,7 +527,7 @@ export function NotificationBell() {
                             {kindTitle(kind, n)}
                           </p>
                           <p className="text-[11px] text-slate-500 font-aileron mt-0.5 truncate">
-                            {n.payload.title ?? "FAQ"}
+                            {n.payload.title ?? "Forum"}
                             {n.payload.comment_author
                               ? ` · ${n.payload.comment_author}`
                               : ""}
@@ -541,7 +541,7 @@ export function NotificationBell() {
                               }}
                               className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2a7797] hover:text-[#1c5c59] transition-colors font-aileron"
                             >
-                              <ExternalLink className="w-3 h-3" /> Open FAQ
+                              <ExternalLink className="w-3 h-3" /> Open thread
                             </Link>
                             <button
                               type="button"

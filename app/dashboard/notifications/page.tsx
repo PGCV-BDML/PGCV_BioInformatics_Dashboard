@@ -99,11 +99,11 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
     case "task_past_due":
       return "Past due";
     case "faq_answer_added":
-      return "New answer on your FAQ";
+      return "New answer in the Forum";
     case "faq_comment_added":
-      return "New comment on an FAQ";
+      return "New comment in the Forum";
     case "faq_question_added":
-      return "New FAQ posted";
+      return "New Forum question";
   }
 }
 
@@ -695,7 +695,7 @@ export default function NotificationsPage() {
                         {incidentAssigned
                           ? notification.payload.title || "Incident report"
                           : faqNote
-                            ? notification.payload.title || "FAQ"
+                            ? notification.payload.title || "Forum"
                           : taskComingUp || taskPastDue
                             ? notification.payload.title || "Untitled task"
                           : notification.payload.client_name || "Unnamed analysis"}
@@ -783,13 +783,13 @@ export default function NotificationsPage() {
                       <Link
                         href={
                           notification.payload.faq_id
-                            ? routes.faqs.byId(notification.payload.faq_id)
-                            : routes.faqs.list
+                            ? routes.forum.byId(notification.payload.faq_id)
+                            : routes.forum.list
                         }
                         className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        Open FAQ
+                        Open thread
                       </Link>
                     ) : taskPastDue ? (
                       <>

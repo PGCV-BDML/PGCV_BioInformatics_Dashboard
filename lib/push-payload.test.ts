@@ -89,7 +89,7 @@ describe("buildWebPushPayload", () => {
     expect(payload.path).toContain("task=task-1");
   });
 
-  it("deep-links FAQ answers and comments", () => {
+  it("deep-links Forum answers and comments", () => {
     const answer = buildWebPushPayload({
       id: "n-8",
       type: NOTIFICATION_FAQ_ANSWER_ADDED,
@@ -98,8 +98,8 @@ describe("buildWebPushPayload", () => {
         title: "QIIME 2 install",
       },
     });
-    expect(answer.title).toBe("New answer on your FAQ");
-    expect(answer.path).toBe("/dashboard/faqs/faq-1");
+    expect(answer.title).toBe("New answer in the Forum");
+    expect(answer.path).toBe("/dashboard/forum/faq-1");
 
     const comment = buildWebPushPayload({
       id: "n-9",
@@ -111,10 +111,10 @@ describe("buildWebPushPayload", () => {
       },
     });
     expect(comment.body).toContain("Try mamba instead.");
-    expect(comment.path).toBe("/dashboard/faqs/faq-1");
+    expect(comment.path).toBe("/dashboard/forum/faq-1");
   });
 
-  it("notifies staff of a newly posted FAQ", () => {
+  it("notifies staff of a newly posted Forum question", () => {
     const payload = buildWebPushPayload({
       id: "n-10",
       type: NOTIFICATION_FAQ_QUESTION_ADDED,
@@ -124,10 +124,10 @@ describe("buildWebPushPayload", () => {
         comment_author: "Micah",
       },
     });
-    expect(payload.title).toBe("New FAQ posted");
+    expect(payload.title).toBe("New Forum question");
     expect(payload.body).toContain("Micah");
     expect(payload.body).toContain("conda");
-    expect(payload.path).toBe("/dashboard/faqs/faq-2");
+    expect(payload.path).toBe("/dashboard/forum/faq-2");
   });
 
   it("falls back for unknown types", () => {

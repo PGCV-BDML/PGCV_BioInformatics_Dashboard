@@ -24,7 +24,7 @@ import DeleteModal from "../../../components/deletemodal";
 import { useDashboardUI } from "../../../components/dashboard-ui-context";
 import { usePortal } from "../../../components/portal-context";
 import { useToast } from "../../../components/toast";
-import { faqDetailBreadcrumbs } from "@/lib/breadcrumbs";
+import { forumDetailBreadcrumbs } from "@/lib/breadcrumbs";
 import { describeSaveError } from "@/lib/db-errors";
 import { FAQ_TAG_LABELS, FAQ_TAG_STYLES } from "@/lib/faq-tags";
 import {
@@ -210,7 +210,7 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
     try {
       await deleteFaqThread(thread.id);
       showToast("Question deleted.", "success");
-      router.push(routes.faqs.list);
+      router.push(routes.forum.list);
     } catch (error) {
       showToast(describeSaveError(error, "faq_thread"), "error");
       setIsDeleting(false);
@@ -310,10 +310,10 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
           description="It may have been deleted, or the link is stale."
           action={
             <Link
-              href={routes.faqs.list}
+              href={routes.forum.list}
               className="inline-flex items-center gap-1.5 h-10 px-4 bg-[#2a7797] text-white text-xs font-bold rounded-full"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to FAQs
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Forum
             </Link>
           }
         />
@@ -324,16 +324,16 @@ function FaqThreadPageContent({ threadId }: { threadId: string }) {
   return (
     <div className="space-y-8 mx-auto font-aileron max-w-[900px]">
       <PageHeader
-        breadcrumbTrail={faqDetailBreadcrumbs(thread.title)}
+        breadcrumbTrail={forumDetailBreadcrumbs(thread.title)}
         title={thread.title}
         subtitle={`${faqStatusLabel(thread.status)} · ${answers.length} ${answers.length === 1 ? "answer" : "answers"}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={routes.faqs.list}
+              href={routes.forum.list}
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> All FAQs
+              <ArrowLeft className="w-3.5 h-3.5" /> All threads
             </Link>
             {canClose ? (
               <button

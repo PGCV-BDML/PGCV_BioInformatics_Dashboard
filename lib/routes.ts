@@ -68,9 +68,14 @@ export const routes = {
   },
   faqs: {
     list: "/dashboard/faqs",
-    /** Open FAQs with the ask-question form. */
+    /** Open FAQs with the add-article form. */
     add: "/dashboard/faqs?add=1",
-    byId: (id: string) => `/dashboard/faqs/${encodeURIComponent(id.trim())}`,
+  },
+  forum: {
+    list: "/dashboard/forum",
+    /** Open Forum with the ask-question form. */
+    add: "/dashboard/forum?add=1",
+    byId: (id: string) => `/dashboard/forum/${encodeURIComponent(id.trim())}`,
   },
   training: {
     list: "/dashboard/training",

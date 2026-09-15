@@ -6,8 +6,10 @@ import {
   canViewSequenceAnalysis,
   canViewWishlist,
   canViewFaqs,
+  canViewForum,
   isCovidSampleTrackerPath,
   isFaqPath,
+  isForumPath,
   isPathAllowedForRole,
   isSequenceAnalysisReadPath,
   isWishlistPath,
@@ -182,5 +184,24 @@ describe("canViewFaqs / isFaqPath", () => {
       false,
     );
     expect(isPathAllowedForRole("/dashboard/faqs", "team_member")).toBe(true);
+  });
+});
+
+describe("canViewForum / isForumPath", () => {
+  it("is staff-only", () => {
+    expect(canViewForum("team_lead")).toBe(true);
+    expect(canViewForum("team_member")).toBe(true);
+    expect(canViewForum("approving_officer")).toBe(false);
+    expect(canViewForum("trainee")).toBe(false);
+  });
+
+  it("matches the Forum route and keeps officers off it", () => {
+    expect(isForumPath("/dashboard/forum")).toBe(true);
+    expect(isForumPath("/dashboard/forum/abc")).toBe(true);
+    expect(isPathAllowedForRole("/dashboard/forum", "trainee")).toBe(false);
+    expect(isPathAllowedForRole("/dashboard/forum", "approving_officer")).toBe(
+      false,
+    );
+    expect(isPathAllowedForRole("/dashboard/forum", "team_member")).toBe(true);
   });
 });

@@ -1056,12 +1056,6 @@ export type WishlistItemFormData = {
   notes: string;
 };
 
-// ============================================================
-// FAQs (staff Q&A board)
-// ============================================================
-
-export type FaqStatus = "open" | "closed";
-
 export type FaqTag =
   | "installation"
   | "conda"
@@ -1076,6 +1070,43 @@ export type FaqTag =
   | "hpc"
   | "advice"
   | "programming";
+
+// ============================================================
+// FAQs catalog (staff knowledge base)
+// ============================================================
+
+export type FaqArticle = {
+  id: string;
+  title: string;
+  body: string;
+  author_id: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+  /** Client-enriched from faq_article_tag. */
+  tags?: FaqTag[];
+  /** Client-enriched from users.name. */
+  author_name?: string | null;
+  /** Client-enriched from users.name. */
+  updated_by_name?: string | null;
+};
+
+export type FaqArticleTagRow = {
+  article_id: string;
+  tag: FaqTag;
+};
+
+export type FaqArticleFormData = {
+  title: string;
+  body: string;
+  tags: FaqTag[];
+};
+
+// ============================================================
+// Forum (staff Q&A board)
+// ============================================================
+
+export type FaqStatus = "open" | "closed";
 
 export type FaqPostKind = "answer" | "comment";
 

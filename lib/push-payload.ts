@@ -15,6 +15,7 @@ import {
   taskComingUpNotificationCopy,
   taskPastDueNotificationCopy,
 } from "@/lib/task-reminders";
+import { routes } from "@/lib/routes";
 
 export type PushNotificationInput = {
   id: string;
@@ -144,24 +145,20 @@ export function buildWebPushPayload(
       const faqId = notification.payload.faq_id?.trim();
       const title = notification.payload.title?.trim() || "your question";
       return {
-        title: "New answer on your FAQ",
+        title: "New answer in the Forum",
         body: clip(title),
-        path: faqId
-          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
-          : "/dashboard/faqs",
+        path: faqId ? routes.forum.byId(faqId) : routes.forum.list,
         tag,
       };
     }
     case NOTIFICATION_FAQ_COMMENT_ADDED: {
       const faqId = notification.payload.faq_id?.trim();
-      const title = notification.payload.title?.trim() || "an FAQ";
+      const title = notification.payload.title?.trim() || "a Forum thread";
       const comment = notification.payload.comment?.trim();
       return {
-        title: "New comment on an FAQ",
+        title: "New comment in the Forum",
         body: clip(comment ? `${title}: ${comment}` : title),
-        path: faqId
-          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
-          : "/dashboard/faqs",
+        path: faqId ? routes.forum.byId(faqId) : routes.forum.list,
         tag,
       };
     }
@@ -170,11 +167,9 @@ export function buildWebPushPayload(
       const title = notification.payload.title?.trim() || "a new question";
       const author = notification.payload.comment_author?.trim();
       return {
-        title: "New FAQ posted",
+        title: "New Forum question",
         body: clip(author ? `${author}: ${title}` : title),
-        path: faqId
-          ? `/dashboard/faqs/${encodeURIComponent(faqId)}`
-          : "/dashboard/faqs",
+        path: faqId ? routes.forum.byId(faqId) : routes.forum.list,
         tag,
       };
     }

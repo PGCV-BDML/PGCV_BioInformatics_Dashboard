@@ -141,7 +141,7 @@ export function isWishlistPath(pathname: string): boolean {
   );
 }
 
-/** FAQs board — staff only. */
+/** FAQs catalog — staff only. */
 export function canViewFaqs(role: UserRole | null | undefined): boolean {
   return isStaffRole(role);
 }
@@ -149,6 +149,17 @@ export function canViewFaqs(role: UserRole | null | undefined): boolean {
 export function isFaqPath(pathname: string): boolean {
   return (
     pathname === "/dashboard/faqs" || pathname.startsWith("/dashboard/faqs/")
+  );
+}
+
+/** Forum discussion board — staff only. */
+export function canViewForum(role: UserRole | null | undefined): boolean {
+  return isStaffRole(role);
+}
+
+export function isForumPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/forum" || pathname.startsWith("/dashboard/forum/")
   );
 }
 

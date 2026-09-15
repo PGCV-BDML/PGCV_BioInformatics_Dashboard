@@ -33,7 +33,7 @@ export const NOTIFICATION_TASK_PAST_DUE = "task_past_due";
 export const NOTIFICATION_FAQ_ANSWER_ADDED = "faq_answer_added";
 /** Sent to the question or answer author when someone comments on an answer. */
 export const NOTIFICATION_FAQ_COMMENT_ADDED = "faq_comment_added";
-/** Sent to other staff when someone posts a new FAQ question. */
+/** Sent to other staff when someone posts a new Forum question. */
 export const NOTIFICATION_FAQ_QUESTION_ADDED = "faq_question_added";
 
 export type AppNotification = {

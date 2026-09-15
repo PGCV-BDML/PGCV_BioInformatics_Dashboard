@@ -124,6 +124,8 @@ export type TableNames =
   | "faq_thread"
   | "faq_tag"
   | "faq_post"
+  | "faq_article"
+  | "faq_article_tag"
   | "covid_sequencing_run"
   | "sequencing_run"
   | "sequencing_run_checklist_item"
