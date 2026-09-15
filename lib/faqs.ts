@@ -15,10 +15,6 @@ export const MAX_FAQ_TITLE = 200;
 export const MAX_FAQ_BODY = 20000;
 export const MAX_FAQ_COMMENT = 2000;
 
-type FaqThreadRow = Omit<FaqThread, "tags"> & {
-  faq_tag?: { tag: string }[] | null;
-};
-
 export type FaqThreadListItem = FaqThread & {
   answer_count: number;
   last_activity_at: string;
@@ -151,8 +147,34 @@ export function sortFaqAnswers(
   });
 }
 
-function tagsFromJoin(row: FaqThreadRow): FaqTag[] {
-  return uniqueFaqTags((row.faq_tag ?? []).map((item) => item.tag));
+type FaqPostSummary = Pick<FaqPost, "kind" | "deleted_at" | "created_at">;
+
+export function buildFaqThreadListItem(
+  thread: FaqThread,
+  tags: FaqTag[],
+  posts: FaqPostSummary[],
+  authorName: string | null,
+): FaqThreadListItem {
+  const liveAnswers = posts.filter(
+    (post) => post.kind === "answer" && !post.deleted_at,
+  );
+  const lastPost = posts.reduce<string | null>((latest, post) => {
+    if (!latest) return post.created_at;
+    return Date.parse(post.created_at) > Date.parse(latest)
+      ? post.created_at
+      : latest;
+  }, null);
+  const last_activity_at =
+    lastPost && Date.parse(lastPost) > Date.parse(thread.created_at)
+      ? lastPost
+      : thread.created_at;
+  return {
+    ...thread,
+    tags,
+    answer_count: liveAnswers.length,
+    last_activity_at,
+    author_name: authorName,
+  };
 }
 
 async function namesByUserId(userIds: string[]): Promise<Map<string, string>> {
@@ -211,10 +233,70 @@ export async function replaceFaqTags(threadId: string, tags: FaqTag[]) {
   }
 }
 
+async function getFaqTagsByThreadId(
+  threadIds: string[],
+): Promise<Map<string, FaqTag[]>> {
+  const map = new Map<string, FaqTag[]>();
+  if (threadIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("faq_tag")
+    .select("thread_id, tag")
+    .in("thread_id", threadIds);
+
+  if (error) {
+    console.error("Failed to load FAQ tags:", error);
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const threadId = row.thread_id as string;
+    const list = map.get(threadId) ?? [];
+    if (typeof row.tag === "string") list.push(row.tag as FaqTag);
+    map.set(threadId, list);
+  }
+
+  for (const [threadId, tags] of map) {
+    map.set(threadId, uniqueFaqTags(tags));
+  }
+  return map;
+}
+
+async function getFaqPostSummariesByThreadId(
+  threadIds: string[],
+): Promise<Map<string, FaqPostSummary[]>> {
+  const map = new Map<string, FaqPostSummary[]>();
+  if (threadIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("faq_post")
+    .select("thread_id, kind, deleted_at, created_at")
+    .in("thread_id", threadIds);
+
+  if (error) {
+    console.error("Failed to load FAQ posts:", error);
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const threadId = row.thread_id as string;
+    const list = map.get(threadId) ?? [];
+    list.push({
+      kind: row.kind as FaqPostKind,
+      deleted_at: (row.deleted_at as string | null) ?? null,
+      created_at: row.created_at as string,
+    });
+    map.set(threadId, list);
+  }
+  return map;
+}
+
 export async function listFaqThreads(): Promise<FaqThreadListItem[]> {
+  // Do not nest faq_post on faq_thread: accepted_post_id and thread_id
+  // are two FKs between the same tables, so PostgREST cannot embed.
   const { data, error } = await supabase
     .from("faq_thread")
-    .select("*, faq_tag(tag), faq_post(id, kind, deleted_at, created_at)")
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -222,47 +304,28 @@ export async function listFaqThreads(): Promise<FaqThreadListItem[]> {
     throw error;
   }
 
-  const rows = (data ?? []) as (FaqThreadRow & {
-    faq_post?: {
-      id: string;
-      kind: FaqPostKind;
-      deleted_at: string | null;
-      created_at: string;
-    }[];
-  })[];
+  const rows = (data ?? []) as FaqThread[];
+  const ids = rows.map((row) => row.id);
+  const [tagMap, postMap, names] = await Promise.all([
+    getFaqTagsByThreadId(ids),
+    getFaqPostSummariesByThreadId(ids),
+    namesByUserId(rows.map((row) => row.author_id)),
+  ]);
 
-  const names = await namesByUserId(rows.map((row) => row.author_id));
-
-  return rows.map((row) => {
-    const posts = row.faq_post ?? [];
-    const liveAnswers = posts.filter(
-      (post) => post.kind === "answer" && !post.deleted_at,
-    );
-    const lastPost = posts.reduce<string | null>((latest, post) => {
-      if (!latest) return post.created_at;
-      return Date.parse(post.created_at) > Date.parse(latest)
-        ? post.created_at
-        : latest;
-    }, null);
-    const last_activity_at =
-      lastPost && Date.parse(lastPost) > Date.parse(row.created_at)
-        ? lastPost
-        : row.created_at;
-    const { faq_tag: _tags, faq_post: _posts, ...thread } = row;
-    return {
-      ...thread,
-      tags: tagsFromJoin(row),
-      answer_count: liveAnswers.length,
-      last_activity_at,
-      author_name: names.get(row.author_id) || null,
-    };
-  });
+  return rows.map((row) =>
+    buildFaqThreadListItem(
+      row,
+      tagMap.get(row.id) ?? [],
+      postMap.get(row.id) ?? [],
+      names.get(row.author_id) || null,
+    ),
+  );
 }
 
 export async function getFaqThread(id: string): Promise<FaqThread | null> {
   const { data, error } = await supabase
     .from("faq_thread")
-    .select("*, faq_tag(tag)")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
 
@@ -271,9 +334,8 @@ export async function getFaqThread(id: string): Promise<FaqThread | null> {
     throw error;
   }
   if (!data) return null;
-  const row = data as FaqThreadRow;
-  const { faq_tag: _tags, ...thread } = row;
-  return { ...thread, tags: tagsFromJoin(row) };
+  const tagMap = await getFaqTagsByThreadId([id]);
+  return { ...(data as FaqThread), tags: tagMap.get(id) ?? [] };
 }
 
 export async function getFaqPosts(threadId: string): Promise<FaqPost[]> {

@@ -16,6 +16,7 @@ import {
   threadHasAnswers,
   threadMatchesSearch,
   threadMatchesTags,
+  buildFaqThreadListItem,
 } from "./faqs";
 import type { FaqPost, FaqThread } from "@/types/database";
 import type { FaqThreadListItem } from "./faqs";
@@ -130,6 +131,44 @@ describe("FAQ list filters", () => {
     expect(threadMatchesTags(thread(), ["python"])).toBe(false);
     expect(threadMatchesTags(thread(), ["hpc", "python"])).toBe(true);
     expect(threadMatchesTags(thread(), [])).toBe(true);
+  });
+
+  it("counts live answers and uses the latest post as activity", () => {
+    const item = buildFaqThreadListItem(
+      {
+        id: "faq-1",
+        title: "How do I install QIIME 2?",
+        body: "conda env create fails on HPC.",
+        status: "open",
+        author_id: "user-1",
+        accepted_post_id: null,
+        closed_at: null,
+        closed_by: null,
+        created_at: "2026-09-15T02:00:00.000Z",
+      },
+      ["conda"],
+      [
+        {
+          kind: "answer",
+          deleted_at: null,
+          created_at: "2026-09-15T03:00:00.000Z",
+        },
+        {
+          kind: "answer",
+          deleted_at: "2026-09-15T04:00:00.000Z",
+          created_at: "2026-09-15T04:00:00.000Z",
+        },
+        {
+          kind: "comment",
+          deleted_at: null,
+          created_at: "2026-09-15T03:30:00.000Z",
+        },
+      ],
+      "Micah",
+    );
+    expect(item.answer_count).toBe(1);
+    expect(item.last_activity_at).toBe("2026-09-15T04:00:00.000Z");
+    expect(item.author_name).toBe("Micah");
   });
 });
 
