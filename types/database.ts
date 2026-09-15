@@ -994,3 +994,64 @@ export type IncidentReportFormData = {
   point_person_id: string;
   status: IncidentStatus;
 };
+
+// ============================================================
+// Bioinfo wish list (shared lab request board)
+// ============================================================
+
+export type WishlistCategory =
+  | "equipment"
+  | "furniture"
+  | "consumables"
+  | "software"
+  | "subscription"
+  | "other";
+
+export type WishlistStatus = "requested" | "in_process" | "received";
+
+export const WISHLIST_CATEGORY_OPTIONS: {
+  value: WishlistCategory;
+  label: string;
+}[] = [
+  { value: "equipment", label: "Equipment" },
+  { value: "furniture", label: "Furniture" },
+  { value: "consumables", label: "Consumables" },
+  { value: "software", label: "Software" },
+  { value: "subscription", label: "Subscription" },
+  { value: "other", label: "Other" },
+];
+
+export const WISHLIST_STATUS_OPTIONS: {
+  value: WishlistStatus;
+  label: string;
+}[] = [
+  { value: "requested", label: "Requested" },
+  { value: "in_process", label: "In process" },
+  { value: "received", label: "Received" },
+];
+
+export type WishlistItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: WishlistCategory;
+  status: WishlistStatus;
+  quantity: number;
+  estimated_cost: number | null;
+  vendor_or_link: string | null;
+  requester_id: string;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type WishlistItemFormData = {
+  title: string;
+  description: string;
+  category: WishlistCategory;
+  status: WishlistStatus;
+  quantity: number;
+  estimated_cost: string;
+  vendor_or_link: string;
+  notes: string;
+};

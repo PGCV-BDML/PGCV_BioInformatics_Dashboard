@@ -58,6 +58,14 @@ export const routes = {
     byId: (id: string) =>
       `/dashboard/incidents?id=${encodeURIComponent(id.trim())}`,
   },
+  wishlist: {
+    list: "/dashboard/wishlist",
+    /** Open Wish List with the add-item form. */
+    add: "/dashboard/wishlist?add=1",
+    /** Open Wish List with a specific item selected. */
+    byId: (id: string) =>
+      `/dashboard/wishlist?id=${encodeURIComponent(id.trim())}`,
+  },
   training: {
     list: "/dashboard/training",
     detail: (id: string) => `/dashboard/training/${id}`,

@@ -103,6 +103,20 @@ export function getHomePathForRole(role: UserRole | null): string {
   }
 }
 
+/** Wish List board — staff plus approving officers. */
+export function canViewWishlist(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role) || role === "approving_officer";
+}
+
+export function isWishlistPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/wishlist" ||
+    pathname.startsWith("/dashboard/wishlist/")
+  );
+}
+
 /** Shared pages every signed-in restricted role may open (footer, etc.). */
 function isSharedDashboardPath(pathname: string): boolean {
   return (
@@ -145,6 +159,9 @@ export function isPathAllowedForRole(
       pathname === "/dashboard/notifications" ||
       pathname.startsWith("/dashboard/notifications/");
     if (role === "reviewing_officer" && isSequenceAnalysisReadPath(pathname)) {
+      return true;
+    }
+    if (role === "approving_officer" && isWishlistPath(pathname)) {
       return true;
     }
     return notificationsOk;

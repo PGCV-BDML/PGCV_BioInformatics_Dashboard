@@ -34,6 +34,7 @@ const TABLE_LABELS: Partial<
   repository: { one: "repository link", many: "repository links" },
   repository_tag: { one: "repository tag", many: "repository tags" },
   incident_report: { one: "incident report", many: "incident reports" },
+  wishlist_item: { one: "wish list item", many: "wish list items" },
   incident_status_event: {
     one: "incident status event",
     many: "incident status events",
@@ -205,6 +206,18 @@ export function describeSaveError(error: unknown, table: TableNames): string {
     message.includes("incident_report_description_chk")
   ) {
     return `Failed to save ${subject}: title and description are required.`;
+  }
+
+  if (message.includes("wishlist_item_title_chk")) {
+    return `Failed to save ${subject}: add an item name.`;
+  }
+
+  if (message.includes("wishlist_item_quantity_chk")) {
+    return `Failed to save ${subject}: quantity must be at least 1.`;
+  }
+
+  if (message.includes("wishlist_item_estimated_cost_chk")) {
+    return `Failed to save ${subject}: estimated cost cannot be negative.`;
   }
 
   if (message.includes("Point person may only")) {

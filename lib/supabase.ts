@@ -120,6 +120,7 @@ export type TableNames =
   | "repository_tag"
   | "incident_report"
   | "incident_status_event"
+  | "wishlist_item"
   | "covid_sequencing_run"
   | "sequencing_run"
   | "sequencing_run_checklist_item"

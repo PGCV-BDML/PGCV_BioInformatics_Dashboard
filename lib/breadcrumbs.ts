@@ -20,6 +20,11 @@ export const incidentsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Incident Reports" },
 ];
 
+export const wishlistBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Wish List" },
+];
+
 export const collaborationsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Collaborations" },

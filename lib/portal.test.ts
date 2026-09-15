@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   canEditSequenceAnalysis,
   canViewSequenceAnalysis,
+  canViewWishlist,
   isPathAllowedForRole,
   isSequenceAnalysisReadPath,
+  isWishlistPath,
 } from "./portal";
 
 describe("canViewSequenceAnalysis / canEditSequenceAnalysis", () => {
@@ -74,6 +76,9 @@ describe("isPathAllowedForRole", () => {
       isPathAllowedForRole("/dashboard/clients", "reviewing_officer"),
     ).toBe(false);
     expect(
+      isPathAllowedForRole("/dashboard/wishlist", "reviewing_officer"),
+    ).toBe(false);
+    expect(
       isPathAllowedForRole(
         "/dashboard/services/report-generator",
         "reviewing_officer",
@@ -87,9 +92,12 @@ describe("isPathAllowedForRole", () => {
     ).toBe(false);
   });
 
-  it("keeps approving officers on Notifications only", () => {
+  it("lets approving officers open Notifications and Wish List", () => {
     expect(
       isPathAllowedForRole("/dashboard/notifications", "approving_officer"),
+    ).toBe(true);
+    expect(
+      isPathAllowedForRole("/dashboard/wishlist", "approving_officer"),
     ).toBe(true);
     expect(
       isPathAllowedForRole("/dashboard/services", "approving_officer"),
@@ -97,5 +105,21 @@ describe("isPathAllowedForRole", () => {
     expect(
       isPathAllowedForRole("/dashboard/services/tracker", "approving_officer"),
     ).toBe(false);
+  });
+});
+
+describe("canViewWishlist / isWishlistPath", () => {
+  it("lets staff and approving officers view the board", () => {
+    expect(canViewWishlist("team_lead")).toBe(true);
+    expect(canViewWishlist("team_member")).toBe(true);
+    expect(canViewWishlist("approving_officer")).toBe(true);
+    expect(canViewWishlist("reviewing_officer")).toBe(false);
+    expect(canViewWishlist("trainee")).toBe(false);
+  });
+
+  it("matches the wish list route", () => {
+    expect(isWishlistPath("/dashboard/wishlist")).toBe(true);
+    expect(isWishlistPath("/dashboard/wishlist/")).toBe(true);
+    expect(isWishlistPath("/dashboard/incidents")).toBe(false);
   });
 });

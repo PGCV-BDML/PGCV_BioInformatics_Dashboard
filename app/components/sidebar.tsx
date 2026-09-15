@@ -10,6 +10,7 @@ import { useDashboardUI } from "./dashboard-ui-context";
 import { usePortal } from "./portal-context";
 import { getHomePathForRole } from "@/lib/portal";
 import {
+  Gift,
   LayoutGrid,
   CheckSquare,
   Calendar,
@@ -154,6 +155,12 @@ const navItems: NavItem[] = [
     animationClass: "group-hover:rotate-3 transition-transform duration-200",
   },
   {
+    name: "Wish List",
+    href: "/dashboard/wishlist",
+    icon: Gift,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
     name: "Incident Reports",
     href: "/dashboard/incidents",
     icon: ShieldAlert,
@@ -229,7 +236,11 @@ export default function Sidebar({
         });
     }
     if (effectiveRole === "approving_officer") {
-      return navItems.filter((item) => item.href === "/dashboard/notifications");
+      return navItems.filter(
+        (item) =>
+          item.href === "/dashboard/notifications" ||
+          item.href === "/dashboard/wishlist",
+      );
     }
     return navItems;
   }, [effectiveRole]);
