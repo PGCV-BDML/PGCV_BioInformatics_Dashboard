@@ -5,9 +5,12 @@ import {
   canAddFaqArticle,
   canDeleteFaqArticle,
   canUpdateFaqArticle,
+  articleHasHistory,
   emptyFaqArticleForm,
+  faqArticleSnapshotEquals,
   formFromFaqArticle,
   formatFaqLastUpdated,
+  formatFaqRevisionLabel,
 } from "./faq-articles";
 import type { FaqArticleListItem } from "./faq-articles";
 
@@ -25,6 +28,7 @@ function article(
     tags: ["conda", "hpc"],
     author_name: "Micah",
     updated_by_name: "Alex",
+    revision_count: 2,
     ...overrides,
   };
 }
@@ -71,5 +75,39 @@ describe("FAQ catalog helpers", () => {
       "by Alex",
     );
     expect(formatFaqLastUpdated(null, null)).toBe("Last updated — by Staff");
+  });
+
+  it("only treats a second save as history", () => {
+    expect(articleHasHistory(1)).toBe(false);
+    expect(articleHasHistory(2)).toBe(true);
+  });
+
+  it("skips a snapshot when title, body, and tags match", () => {
+    const snapshot = {
+      title: "How do I load conda on HPC?",
+      body: "module load miniconda3",
+      tags: ["conda", "hpc"] as const,
+    };
+    expect(
+      faqArticleSnapshotEquals(
+        { ...snapshot, tags: ["conda", "hpc"] },
+        { ...snapshot, tags: ["hpc", "conda"] },
+      ),
+    ).toBe(true);
+    expect(
+      faqArticleSnapshotEquals(snapshot, {
+        ...snapshot,
+        body: "module load mamba",
+      }),
+    ).toBe(false);
+  });
+
+  it("labels a past version with time and editor", () => {
+    expect(
+      formatFaqRevisionLabel(2, "2026-09-15T05:00:00.000Z", "Alex", true),
+    ).toContain("Current · Version 2");
+    expect(
+      formatFaqRevisionLabel(1, "2026-09-15T02:00:00.000Z", "Micah"),
+    ).toContain("Version 1");
   });
 });

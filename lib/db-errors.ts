@@ -40,6 +40,7 @@ const TABLE_LABELS: Partial<
   faq_post: { one: "Forum reply", many: "Forum replies" },
   faq_article: { one: "FAQ", many: "FAQs" },
   faq_article_tag: { one: "FAQ tag", many: "FAQ tags" },
+  faq_article_revision: { one: "FAQ version", many: "FAQ versions" },
   incident_status_event: {
     one: "incident status event",
     many: "incident status events",

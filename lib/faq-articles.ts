@@ -5,6 +5,7 @@ import { formatFaqTime, normalizeFaqBody, normalizeFaqTitle } from "@/lib/faqs";
 import type {
   FaqArticle,
   FaqArticleFormData,
+  FaqArticleRevision,
   FaqTag,
   UserRole,
 } from "@/types/database";
@@ -13,6 +14,17 @@ export type FaqArticleListItem = FaqArticle & {
   tags: FaqTag[];
   author_name: string | null;
   updated_by_name: string | null;
+  revision_count: number;
+};
+
+export type FaqArticleRevisionItem = FaqArticleRevision & {
+  edited_by_name: string | null;
+};
+
+type FaqArticleSnapshot = {
+  title: string;
+  body: string;
+  tags: FaqTag[];
 };
 
 export function emptyFaqArticleForm(): FaqArticleFormData {
@@ -78,6 +90,34 @@ export function formatFaqLastUpdated(
   const when = formatFaqTime(iso);
   const who = name?.trim() || "Staff";
   return `Last updated ${when} by ${who}`;
+}
+
+export function articleHasHistory(revisionCount: number): boolean {
+  return revisionCount > 1;
+}
+
+export function faqArticleSnapshotEquals(
+  previous: FaqArticleSnapshot,
+  next: FaqArticleSnapshot,
+): boolean {
+  if (previous.title !== next.title || previous.body !== next.body) {
+    return false;
+  }
+  const prevTags = uniqueFaqTags(previous.tags).slice().sort().join("\0");
+  const nextTags = uniqueFaqTags(next.tags).slice().sort().join("\0");
+  return prevTags === nextTags;
+}
+
+export function formatFaqRevisionLabel(
+  version: number,
+  iso: string | null | undefined,
+  name: string | null | undefined,
+  isCurrent = false,
+): string {
+  const when = formatFaqTime(iso);
+  const who = name?.trim() || "Staff";
+  const prefix = isCurrent ? `Current · Version ${version}` : `Version ${version}`;
+  return `${prefix} · ${when} by ${who}`;
 }
 
 async function namesByUserId(userIds: string[]): Promise<Map<string, string>> {
@@ -167,6 +207,112 @@ export async function replaceFaqArticleTags(articleId: string, tags: FaqTag[]) {
   }
 }
 
+async function getRevisionCountsByArticleId(
+  articleIds: string[],
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (articleIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("faq_article_revision")
+    .select("article_id")
+    .in("article_id", articleIds);
+
+  if (error) {
+    console.error("Failed to load FAQ version counts:", error);
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const articleId = row.article_id as string;
+    map.set(articleId, (map.get(articleId) ?? 0) + 1);
+  }
+  return map;
+}
+
+async function nextRevisionVersion(articleId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("faq_article_revision")
+    .select("version")
+    .eq("article_id", articleId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load FAQ version number:", error);
+    throw error;
+  }
+
+  return ((data?.version as number | undefined) ?? 0) + 1;
+}
+
+async function insertFaqArticleRevision(input: {
+  articleId: string;
+  editorId: string;
+  title: string;
+  body: string;
+  tags: FaqTag[];
+}): Promise<void> {
+  const version = await nextRevisionVersion(input.articleId);
+  const { error } = await supabase.from("faq_article_revision").insert({
+    article_id: input.articleId,
+    version,
+    title: input.title,
+    body: input.body,
+    tags: uniqueFaqTags(input.tags),
+    edited_by: input.editorId,
+  });
+  if (error) {
+    console.error("Failed to save FAQ version:", error);
+    throw error;
+  }
+}
+
+async function getFaqArticleSnapshot(
+  articleId: string,
+): Promise<FaqArticleSnapshot | null> {
+  const { data, error } = await supabase
+    .from("faq_article")
+    .select("title, body")
+    .eq("id", articleId)
+    .maybeSingle();
+  if (error) {
+    console.error("Failed to load FAQ:", error);
+    throw error;
+  }
+  if (!data) return null;
+  const tagsById = await getArticleTagsByArticleId([articleId]);
+  return {
+    title: data.title as string,
+    body: data.body as string,
+    tags: tagsById.get(articleId) ?? [],
+  };
+}
+
+export async function listFaqArticleRevisions(
+  articleId: string,
+): Promise<FaqArticleRevisionItem[]> {
+  const { data, error } = await supabase
+    .from("faq_article_revision")
+    .select("*")
+    .eq("article_id", articleId)
+    .order("version", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load FAQ versions:", error);
+    throw error;
+  }
+
+  const rows = (data ?? []) as FaqArticleRevision[];
+  const names = await namesByUserId(rows.map((row) => row.edited_by));
+  return rows.map((row) => ({
+    ...row,
+    tags: uniqueFaqTags(row.tags ?? []),
+    edited_by_name: names.get(row.edited_by) || null,
+  }));
+}
+
 export async function listFaqArticles(): Promise<FaqArticleListItem[]> {
   const { data, error } = await supabase
     .from("faq_article")
@@ -180,9 +326,10 @@ export async function listFaqArticles(): Promise<FaqArticleListItem[]> {
 
   const rows = (data ?? []) as FaqArticle[];
   const ids = rows.map((row) => row.id);
-  const [tagsById, names] = await Promise.all([
+  const [tagsById, names, revisionCounts] = await Promise.all([
     getArticleTagsByArticleId(ids),
     namesByUserId(rows.flatMap((row) => [row.author_id, row.updated_by])),
+    getRevisionCountsByArticleId(ids),
   ]);
 
   return rows.map((row) => ({
@@ -190,6 +337,7 @@ export async function listFaqArticles(): Promise<FaqArticleListItem[]> {
     tags: tagsById.get(row.id) ?? [],
     author_name: names.get(row.author_id) || null,
     updated_by_name: names.get(row.updated_by) || null,
+    revision_count: revisionCounts.get(row.id) ?? 0,
   }));
 }
 
@@ -222,11 +370,19 @@ export async function createFaqArticle(
 
   const article = data as FaqArticle;
   await replaceFaqArticleTags(article.id, tags);
+  await insertFaqArticleRevision({
+    articleId: article.id,
+    editorId: authorId,
+    title,
+    body,
+    tags,
+  });
   return {
     ...article,
     tags,
     author_name: null,
     updated_by_name: null,
+    revision_count: 1,
   };
 }
 
@@ -242,6 +398,15 @@ export async function updateFaqArticle(
   if (!body) throw new Error("Write an answer.");
   if (tags.length === 0) throw new Error("Choose at least one tag.");
 
+  const current = await getFaqArticleSnapshot(id);
+  if (
+    current &&
+    faqArticleSnapshotEquals(current, { title, body, tags })
+  ) {
+    return;
+  }
+
+  await replaceFaqArticleTags(id, tags);
   const { error } = await supabase
     .from("faq_article")
     .update({
@@ -256,7 +421,13 @@ export async function updateFaqArticle(
     throw error;
   }
 
-  await replaceFaqArticleTags(id, tags);
+  await insertFaqArticleRevision({
+    articleId: id,
+    editorId,
+    title,
+    body,
+    tags,
+  });
 }
 
 export async function deleteFaqArticle(id: string): Promise<void> {

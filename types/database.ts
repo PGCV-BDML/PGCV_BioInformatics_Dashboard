@@ -1102,6 +1102,19 @@ export type FaqArticleFormData = {
   tags: FaqTag[];
 };
 
+export type FaqArticleRevision = {
+  id: string;
+  article_id: string;
+  version: number;
+  title: string;
+  body: string;
+  tags: FaqTag[];
+  edited_by: string;
+  created_at: string;
+  /** Client-enriched from users.name. */
+  edited_by_name?: string | null;
+};
+
 // ============================================================
 // Forum (staff Q&A board)
 // ============================================================

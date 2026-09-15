@@ -126,6 +126,7 @@ export type TableNames =
   | "faq_post"
   | "faq_article"
   | "faq_article_tag"
+  | "faq_article_revision"
   | "covid_sequencing_run"
   | "sequencing_run"
   | "sequencing_run_checklist_item"

@@ -2,11 +2,12 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, ChevronDown, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { BookOpen, ChevronDown, History, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
 import Pagination from "../../components/pagination";
 import FaqArticleModal from "../../components/faq-article-modal";
+import FaqArticleHistoryModal from "../../components/faq-article-history-modal";
 import DeleteModal from "../../components/deletemodal";
 import { CategoryChips } from "../../components/category-chips";
 import { MarkdownBody } from "../../components/markdown-body";
@@ -21,6 +22,7 @@ import {
   FAQ_TAG_STYLES,
 } from "@/lib/faq-tags";
 import {
+  articleHasHistory,
   articleMatchesSearch,
   articleMatchesTags,
   canAddFaqArticle,
@@ -65,6 +67,9 @@ function FaqsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [deleting, setDeleting] = useState<FaqArticleListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [historyArticle, setHistoryArticle] = useState<FaqArticleListItem | null>(
+    null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   const { toggleSidebar } = useDashboardUI();
@@ -76,10 +81,11 @@ function FaqsPageContent() {
   const canAdd = canAddFaqArticle(realRole);
   const canEdit = canUpdateFaqArticle(realRole);
   const modalOpen = isAdding || Boolean(editing);
+  const historyOpen = Boolean(historyArticle);
 
   useEffect(() => {
-    toggleSidebar(modalOpen);
-  }, [modalOpen, toggleSidebar]);
+    toggleSidebar(modalOpen || historyOpen);
+  }, [modalOpen, historyOpen, toggleSidebar]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -99,7 +105,10 @@ function FaqsPageContent() {
   }, [load]);
 
   useEffect(() => {
-    if (addParam && canAdd) setIsAdding(true);
+    if (addParam && canAdd) {
+      setHistoryArticle(null);
+      setIsAdding(true);
+    }
   }, [addParam, canAdd]);
 
   const filtered = useMemo(() => {
@@ -134,6 +143,23 @@ function FaqsPageContent() {
     setIsAdding(false);
     setEditing(null);
     if (addParam) router.replace(routes.faqs.list);
+  };
+
+  const openEditor = (article?: FaqArticleListItem) => {
+    setHistoryArticle(null);
+    if (article) {
+      setIsAdding(false);
+      setEditing(article);
+    } else {
+      setEditing(null);
+      setIsAdding(true);
+    }
+  };
+
+  const openHistory = (article: FaqArticleListItem) => {
+    setIsAdding(false);
+    setEditing(null);
+    setHistoryArticle(article);
   };
 
   const handleSave = async (form: FaqArticleFormData) => {
@@ -181,7 +207,7 @@ function FaqsPageContent() {
           canAdd ? (
             <button
               type="button"
-              onClick={() => setIsAdding(true)}
+              onClick={() => openEditor()}
               className="inline-flex items-center justify-center gap-2 h-11 px-5 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all font-quicksand"
             >
               <Plus className="w-4 h-4" />
@@ -243,7 +269,7 @@ function FaqsPageContent() {
               canAdd && articles.length === 0 ? (
                 <button
                   type="button"
-                  onClick={() => setIsAdding(true)}
+                  onClick={() => openEditor()}
                   className="inline-flex items-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add FAQ
@@ -274,12 +300,30 @@ function FaqsPageContent() {
                           styles={FAQ_TAG_STYLES}
                           maxVisible={4}
                         />
-                        <p className="text-[11px] text-slate-400 font-aileron">
-                          {formatFaqLastUpdated(
-                            article.updated_at,
-                            article.updated_by_name,
-                          )}
-                        </p>
+                        {articleHasHistory(article.revision_count) ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openHistory(article);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-[#2a7797] font-aileron text-left"
+                          >
+                            <History className="w-3 h-3 shrink-0" />
+                            {formatFaqLastUpdated(
+                              article.updated_at,
+                              article.updated_by_name,
+                            )}
+                          </button>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 font-aileron">
+                            {formatFaqLastUpdated(
+                              article.updated_at,
+                              article.updated_by_name,
+                            )}
+                          </p>
+                        )}
                       </div>
                       {canEdit || canDelete ? (
                         <div className="flex shrink-0 items-center gap-1">
@@ -288,7 +332,8 @@ function FaqsPageContent() {
                               type="button"
                               onClick={(event) => {
                                 event.preventDefault();
-                                setEditing(article);
+                                event.stopPropagation();
+                                openEditor(article);
                               }}
                               className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-800 font-quicksand"
                             >
@@ -339,6 +384,10 @@ function FaqsPageContent() {
         }
         onClose={closeEditor}
         onSubmit={(form) => void handleSave(form)}
+      />
+      <FaqArticleHistoryModal
+        article={historyArticle}
+        onClose={() => setHistoryArticle(null)}
       />
       <DeleteModal
         isOpen={Boolean(deleting)}
