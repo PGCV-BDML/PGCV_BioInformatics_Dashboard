@@ -66,7 +66,7 @@ function setupCopy(state: PushSetupState, isIos: boolean): {
     case "subscribed":
       return {
         title: "Lock-screen alerts are on",
-        body: "This device will notify you for review, approval, incident assignments, and upcoming tours or events even when the dashboard is closed.",
+        body: "This device will notify you for review, approval, incident assignments, and upcoming tours or events between 6 AM and 6 PM Philippine time, even when the dashboard is closed.",
         action: "disable",
         actionLabel: "Turn off on this device",
       };
@@ -75,8 +75,8 @@ function setupCopy(state: PushSetupState, isIos: boolean): {
       return {
         title: isIos ? "Enable alerts on this iPhone" : "Enable phone alerts",
         body: isIos
-          ? "Allow notifications so review, incident, and event reminders reach you when the app is closed."
-          : "Android and desktop browsers can receive alerts after you allow notifications. Adding the app to your home screen is optional but recommended.",
+          ? "Allow notifications so review, incident, and event reminders reach you between 6 AM and 6 PM Philippine time when the app is closed."
+          : "Android and desktop browsers can receive alerts after you allow notifications (6 AM–6 PM Philippine time). Adding the app to your home screen is optional but recommended.",
         action: "enable",
         actionLabel: "Enable alerts",
       };
