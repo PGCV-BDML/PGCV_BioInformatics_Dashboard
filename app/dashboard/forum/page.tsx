@@ -308,6 +308,19 @@ function ForumPageContent() {
             onPageChange={setCurrentPage}
           />
         ) : null}
+
+        {loadError ? null : (
+          <p className="text-sm font-medium text-slate-500 font-aileron px-1">
+            Looking for an answered question?{" "}
+            <Link
+              href={routes.faqs.list}
+              className="font-bold text-[#2a7797] hover:text-[#1c5c59] underline underline-offset-2"
+            >
+              Browse the FAQ catalog
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       <FaqAskModal

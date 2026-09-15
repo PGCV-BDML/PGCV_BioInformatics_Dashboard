@@ -108,12 +108,14 @@ export const faqsBreadcrumbs: BreadcrumbItem[] = [
 
 export const forumBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
+  { label: "FAQs", href: "/dashboard/faqs" },
   { label: "Forum" },
 ];
 
 export function forumDetailBreadcrumbs(title: string): BreadcrumbItem[] {
   return [
     { label: "Dashboard", href: "/dashboard" },
+    { label: "FAQs", href: "/dashboard/faqs" },
     { label: "Forum", href: "/dashboard/forum" },
     { label: title },
   ];

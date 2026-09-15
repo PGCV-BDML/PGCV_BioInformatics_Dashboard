@@ -132,13 +132,19 @@ const navItems: NavItem[] = [
     icon: CircleHelp,
     animationClass:
       "group-hover:-translate-y-0.5 transition-transform duration-200",
-  },
-  {
-    name: "Forum",
-    href: "/dashboard/forum",
-    icon: MessagesSquare,
-    animationClass:
-      "group-hover:-translate-y-0.5 transition-transform duration-200",
+    children: [
+      {
+        name: "Catalog",
+        href: "/dashboard/faqs",
+        exact: true,
+        icon: BookOpen,
+      },
+      {
+        name: "Forum",
+        href: "/dashboard/forum",
+        icon: MessagesSquare,
+      },
+    ],
   },
   {
     name: "Training",
@@ -317,7 +323,11 @@ export default function Sidebar({
     const next: Record<string, boolean> = {};
     for (const item of visibleNavItems) {
       if (item.children?.length) {
-        next[item.name] = isPathActive(pathname, item.href);
+        next[item.name] =
+          isPathActive(pathname, item.href) ||
+          item.children.some((child) =>
+            isPathActive(pathname, child.href, child.exact),
+          );
       }
     }
     setExpandedMenus((prev) => ({ ...prev, ...next }));

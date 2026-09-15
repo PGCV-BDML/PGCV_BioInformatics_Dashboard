@@ -1,8 +1,18 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, ChevronDown, History, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  History,
+  MessagesSquare,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
 import Pagination from "../../components/pagination";
@@ -263,7 +273,7 @@ function FaqsPageContent() {
             description={
               articles.length === 0
                 ? "Add a question and its answer so the team has a reference."
-                : "Try another tag or search."
+                : "Try another tag or search. If it is not in the catalog, ask the team in the Forum."
             }
             action={
               canAdd && articles.length === 0 ? (
@@ -274,6 +284,13 @@ function FaqsPageContent() {
                 >
                   <Plus className="w-3.5 h-3.5" /> Add FAQ
                 </button>
+              ) : articles.length > 0 ? (
+                <Link
+                  href={routes.forum.list}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full"
+                >
+                  <MessagesSquare className="w-3.5 h-3.5" /> Ask in the Forum
+                </Link>
               ) : null
             }
           />
@@ -373,6 +390,8 @@ function FaqsPageContent() {
             onPageChange={setCurrentPage}
           />
         ) : null}
+
+        {loadError ? null : <FaqForumPrompt />}
       </div>
 
       <FaqArticleModal
@@ -396,6 +415,24 @@ function FaqsPageContent() {
         onConfirm={() => void handleDelete()}
         isDeleting={isDeleting}
       />
+    </div>
+  );
+}
+
+function FaqForumPrompt() {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-[rgba(42,119,151,0.22)] bg-[#e6f4f8]/70 px-4 py-3">
+      <MessagesSquare className="w-4 h-4 mt-0.5 shrink-0 text-[#2a7797]" />
+      <p className="text-sm font-medium text-slate-600 font-aileron">
+        Question not here?{" "}
+        <Link
+          href={routes.forum.list}
+          className="font-bold text-[#2a7797] hover:text-[#1c5c59] underline underline-offset-2"
+        >
+          Ask it in the Forum
+        </Link>
+        .
+      </p>
     </div>
   );
 }
