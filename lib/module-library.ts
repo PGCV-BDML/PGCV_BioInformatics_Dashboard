@@ -30,6 +30,11 @@ export type ModuleLibraryItem = {
   duration: string | null;
   summary: string | null;
   hasDataset: boolean;
+  /**
+   * modules.json `retired`: the entry page is now a redirect. Hidden from the
+   * picker, but courses that already include it still open it.
+   */
+  retired: boolean;
 };
 
 type ManifestEntry = {
@@ -42,6 +47,7 @@ type ManifestEntry = {
   duration?: unknown;
   summary?: unknown;
   dataset?: unknown;
+  retired?: unknown;
 };
 
 function optionalString(value: unknown): string | null {
@@ -61,8 +67,9 @@ export function isSafeRepoPath(path: string): boolean {
 }
 
 /**
- * Turns modules.json into picker items, in teaching order. Entries without an
- * entry file (modules still in development) are skipped.
+ * Turns modules.json into library items, in teaching order. Entries without
+ * an entry file (modules still in development) are skipped; retired ones are
+ * kept so existing course links still resolve.
  */
 export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
   const modules = (raw as { modules?: unknown } | null)?.modules;
@@ -90,6 +97,7 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
       duration: optionalString(entry.duration),
       summary: optionalString(entry.summary),
       hasDataset: Boolean(optionalString(entry.dataset)),
+      retired: Boolean(entry.retired),
     });
   }
   return items;
