@@ -134,7 +134,7 @@ The course builder's **Add from library** reads `modules.json` from the private 
 
 - **Never change a module's `id`** in `modules.json`. Courses point at the id.
 - **Renaming or moving a file is fine**, as long as its `folder`/`entry` in `modules.json` is updated in the same commit.
-- **Removing a module from `modules.json` breaks it** in any course that includes it. Remove it from those courses first.
+- **Removing a module from `modules.json` breaks it** in any course that includes it. To retire one, mark it `retired` instead: it disappears from **Add from library**, and courses that already include it still open it.
 - **`GITHUB_MODULES_TOKEN` expires** on the date set when it was created. It's a fine-grained token with read-only Contents access to `bioinfo-modules` only. If **Add from library** stops loading, check that first, then update `GITHUB_MODULES_TOKEN` on Vercel and redeploy.
 
 HTTPS is enforced by Vercel for the production domain.
