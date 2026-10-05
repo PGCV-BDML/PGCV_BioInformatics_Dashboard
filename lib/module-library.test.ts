@@ -52,6 +52,7 @@ describe("parseModuleManifest", () => {
         duration: "≈ 3 hours",
         summary: "Linux basics.",
         hasDataset: false,
+        retired: false,
       },
       {
         id: "ggdc",
@@ -62,8 +63,25 @@ describe("parseModuleManifest", () => {
         duration: null,
         summary: null,
         hasDataset: true,
+        retired: false,
       },
     ]);
+  });
+
+  it("keeps retired modules but flags them", () => {
+    const [item] = parseModuleManifest({
+      modules: [
+        {
+          id: "wga-hands-on",
+          name: "Whole Genome Assembly (hands-on only)",
+          folder: "Whole-Genome-Assembly",
+          entry: "whole-genome-assembly-module-hands-on.html",
+          retired: { target: "whole-genome-assembly-module-with-lecture.html#part=2" },
+        },
+      ],
+    });
+    expect(item?.id).toBe("wga-hands-on");
+    expect(item?.retired).toBe(true);
   });
 
   it("drops unsafe paths and tolerates junk input", () => {
@@ -138,6 +156,7 @@ describe("groupLibraryItems", () => {
       duration: null,
       summary: null,
       hasDataset: false,
+      retired: false,
     };
     const groups = groupLibraryItems([
       { ...base, id: "a", title: "A", path: "A/a.html", group: "Foundations" },

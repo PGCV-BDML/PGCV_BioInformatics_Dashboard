@@ -297,7 +297,8 @@ export default function ProgramModules({
   }, [catalog, modulesList]);
 
   const availableLibrary = useMemo(
-    () => catalog.filter((item) => !assignedIds.has(item.id)),
+    () =>
+      catalog.filter((item) => !item.retired && !assignedIds.has(item.id)),
     [assignedIds, catalog],
   );
 
