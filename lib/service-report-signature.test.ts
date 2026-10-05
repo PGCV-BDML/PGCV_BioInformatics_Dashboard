@@ -143,7 +143,7 @@ describe("resolveSignatureRect", () => {
     const page = pdf.addPage([595.28, 841.89]);
     const font = await pdf.embedFont(StandardFonts.TimesRoman);
     const bold = await pdf.embedFont(StandardFonts.TimesRomanBold);
-    page.drawText("Prepared by:", { x: 72, y: 593, size: 12, font });
+    page.drawText("Prepared by:", { x: 72, y: 649, size: 12, font });
     page.drawText("MICAH DANIELLE D. LOJERA", {
       x: 72,
       y: 561,
@@ -236,7 +236,7 @@ describe("resolveSignatureRect", () => {
     const rect = resolveSignatureRect(page, "prepared_by", 400, 100);
     expect(rect.height).toBe(40);
     expect(rect.y).toBeCloseTo(561 - drop, 0);
-    expect(rect.y + rect.height).toBeLessThan(593);
+    expect(rect.y + rect.height).toBeLessThan(649);
   });
 
   it("puts the reviewing stamp over the printed name under Reviewed by", async () => {

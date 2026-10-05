@@ -311,13 +311,14 @@ export default function ProgramDirectory({
     }
   }, [archiveTarget, updateProgramStatus]);
 
+  const selectedProgramId = selectedProgram?.id;
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
       await deleteDataFromDB("training_program", deleteTarget.id);
       setRawPrograms((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      if (selectedProgram?.id === deleteTarget.id) {
+      if (selectedProgramId === deleteTarget.id) {
         handleCloseModal();
       }
       setDeleteTarget(null);
@@ -328,7 +329,7 @@ export default function ProgramDirectory({
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTarget, selectedProgram?.id, handleCloseModal, showToast, title]);
+  }, [deleteTarget, selectedProgramId, handleCloseModal, showToast, title]);
 
   return (
     <div className="space-y-8 mx-auto font-aileron w-full max-w-[1240px]">

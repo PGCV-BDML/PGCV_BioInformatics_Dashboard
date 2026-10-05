@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored pdf.js worker (git-ignored, copied in locally); not our code.
+    "public/pdf.worker.min.mjs",
   ]),
   // Stricter type-safety and DX rules
   {
