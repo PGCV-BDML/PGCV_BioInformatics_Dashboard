@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { repoPathFromModuleLink } from "@/lib/module-library";
+import { getGithubModuleViewUrl } from "@/lib/module-library-client";
 
 /** Private bucket created in 20260813140000_module_file_storage.sql. */
 export const MODULE_FILES_BUCKET = "module-files";
@@ -182,7 +184,8 @@ export async function deleteModuleFile(
 }
 
 /**
- * Prefer an uploaded file when present; otherwise open the library HTML path.
+ * Prefer an uploaded file when present; otherwise open the library module
+ * (a signed viewer URL for github: links, or a plain URL as stored).
  */
 export async function resolveModuleHref(module: {
   html_content_link?: string | null;
@@ -190,6 +193,10 @@ export async function resolveModuleHref(module: {
 }): Promise<string | null> {
   if (hasUploadedModuleFile(module.file_path)) {
     return getModuleFileSignedUrl(module.file_path);
+  }
+  const repoPath = repoPathFromModuleLink(module.html_content_link);
+  if (repoPath) {
+    return getGithubModuleViewUrl(repoPath);
   }
   const html = module.html_content_link?.trim();
   return html || null;

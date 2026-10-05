@@ -28,11 +28,11 @@ import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
 import type { ProgramType } from "@/lib/routes";
 import {
-  expandPackItemIds,
-  libraryForProgramType,
-  packsForProgramType,
+  groupLibraryItems,
+  moduleLinkForPath,
   type ModuleLibraryItem,
 } from "@/lib/module-library";
+import { fetchModuleCatalog } from "@/lib/module-library-client";
 import {
   MAX_MODULE_FILE_BYTES,
   MODULE_FILE_ACCEPT,
@@ -218,7 +218,10 @@ export default function ProgramModules({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadFileError, setUploadFileError] = useState<string | null>(null);
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([]);
-  const [selectedPackIds, setSelectedPackIds] = useState<string[]>([]);
+  const [catalog, setCatalog] = useState<ModuleLibraryItem[]>([]);
+  const [catalogStatus, setCatalogStatus] = useState<
+    "idle" | "loading" | "ready" | "unconfigured" | "error"
+  >("idle");
   const [isSaving, setIsSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ModuleRow | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -270,34 +273,28 @@ export default function ProgramModules({
     [modulesList],
   );
 
+  const loadCatalog = useCallback(async () => {
+    setCatalogStatus("loading");
+    try {
+      const result = await fetchModuleCatalog();
+      setCatalog(result.modules);
+      setCatalogStatus(result.configured ? "ready" : "unconfigured");
+    } catch (error) {
+      console.error("Failed to load module catalog:", error);
+      setCatalogStatus("error");
+    }
+  }, []);
+
   const availableLibrary = useMemo(
     () =>
-      libraryForProgramType(programType).filter(
-        (item) => !assignedPaths.has(item.htmlPath),
-      ),
-    [assignedPaths, programType],
+      catalog.filter((item) => !assignedPaths.has(moduleLinkForPath(item.path))),
+    [assignedPaths, catalog],
   );
 
-  const availablePacks = useMemo(
-    () =>
-      packsForProgramType(programType).filter((pack) =>
-        expandPackItemIds(pack.id).some(
-          (item) => !assignedPaths.has(item.htmlPath),
-        ),
-      ),
-    [assignedPaths, programType],
+  const libraryByGroup = useMemo(
+    () => groupLibraryItems(availableLibrary),
+    [availableLibrary],
   );
-
-  const libraryByGroup = useMemo(() => {
-    const groups = new Map<string, ModuleLibraryItem[]>();
-    for (const item of availableLibrary) {
-      const key = item.group ?? "Other";
-      const list = groups.get(key) ?? [];
-      list.push(item);
-      groups.set(key, list);
-    }
-    return Array.from(groups.entries());
-  }, [availableLibrary]);
 
   const toggleMarkAsRead = (moduleId: string) => {
     setReadModuleIds((prev) =>
@@ -411,26 +408,9 @@ export default function ProgramModules({
     }
   };
 
-  const resolveItemsToAdd = (): ModuleLibraryItem[] => {
-    const byPath = new Map<string, ModuleLibraryItem>();
-
-    for (const id of selectedLibraryIds) {
-      const item = availableLibrary.find((entry) => entry.id === id);
-      if (item && !assignedPaths.has(item.htmlPath)) {
-        byPath.set(item.htmlPath, item);
-      }
-    }
-
-    for (const packId of selectedPackIds) {
-      for (const item of expandPackItemIds(packId)) {
-        if (!assignedPaths.has(item.htmlPath) && !byPath.has(item.htmlPath)) {
-          byPath.set(item.htmlPath, item);
-        }
-      }
-    }
-
-    return Array.from(byPath.values());
-  };
+  // Teaching order from modules.json, regardless of click order.
+  const resolveItemsToAdd = (): ModuleLibraryItem[] =>
+    availableLibrary.filter((item) => selectedLibraryIds.includes(item.id));
 
   const handleAddSelected = async () => {
     const toAdd = resolveItemsToAdd();
@@ -448,7 +428,7 @@ export default function ProgramModules({
           id,
           program_id: programId,
           title: item.title,
-          html_content_link: item.htmlPath,
+          html_content_link: moduleLinkForPath(item.path),
           file_path: null,
           file_name: null,
           file_size: null,
@@ -462,7 +442,6 @@ export default function ProgramModules({
 
       setModulesList((prev) => [...prev, ...created]);
       setSelectedLibraryIds([]);
-      setSelectedPackIds([]);
       setIsPickerOpen(false);
       showToast(
         toAdd.length === 1
@@ -484,9 +463,12 @@ export default function ProgramModules({
     );
   };
 
-  const togglePackId = (id: string) => {
-    setSelectedPackIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+  const toggleGroup = (items: ModuleLibraryItem[]) => {
+    const ids = items.map((item) => item.id);
+    setSelectedLibraryIds((prev) =>
+      ids.every((id) => prev.includes(id))
+        ? prev.filter((id) => !ids.includes(id))
+        : [...prev, ...ids.filter((id) => !prev.includes(id))],
     );
   };
 
@@ -597,6 +579,9 @@ export default function ProgramModules({
                 onClick={() => {
                   setIsUploadOpen(false);
                   setIsPickerOpen(true);
+                  if (catalogStatus === "idle" || catalogStatus === "error") {
+                    void loadCatalog();
+                  }
                 }}
                 className="inline-flex items-center justify-center gap-2 h-10 px-5 bg-[#2a7797] hover:bg-[#1f5f79] text-white text-xs font-bold rounded-full shadow-sm transition-colors disabled:opacity-50"
               >
@@ -741,10 +726,9 @@ export default function ProgramModules({
           if (isSaving) return;
           setIsPickerOpen(false);
           setSelectedLibraryIds([]);
-          setSelectedPackIds([]);
         }}
         title="Add modules from library"
-        subtitle="Select prepared materials to include in this course"
+        subtitle="Pick modules from the bioinfo-modules repo on GitHub"
         footer={
           <div className="flex justify-end gap-3">
             <button
@@ -753,7 +737,6 @@ export default function ProgramModules({
               onClick={() => {
                 setIsPickerOpen(false);
                 setSelectedLibraryIds([]);
-                setSelectedPackIds([]);
               }}
               className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
             >
@@ -775,77 +758,95 @@ export default function ProgramModules({
         }
       >
         <div className="space-y-6">
-          {availablePacks.length > 0 && (
-            <section className="space-y-2">
-              <p className="text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] font-quicksand">
-                Packs
+          {catalogStatus === "loading" || catalogStatus === "idle" ? (
+            <p className="text-sm text-slate-500">Loading modules from GitHub…</p>
+          ) : catalogStatus === "unconfigured" ? (
+            <p className="text-sm text-slate-500">
+              The module library isn&apos;t connected yet. Set{" "}
+              <code className="text-xs">GITHUB_MODULES_TOKEN</code> on the
+              server, or use Upload file for now.
+            </p>
+          ) : catalogStatus === "error" ? (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-rose-600">
+                Couldn&apos;t load the module library from GitHub.
               </p>
-              {availablePacks.map((pack) => {
-                const checked = selectedPackIds.includes(pack.id);
-                return (
-                  <label
-                    key={pack.id}
-                    className={`flex items-start gap-3 rounded-2xl border px-4 py-3 cursor-pointer transition-colors ${
-                      checked
-                        ? "border-[#4ec2bb] bg-[#f0faf9]"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => togglePackId(pack.id)}
-                      className="mt-1"
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold text-slate-800">
-                        {pack.title}
-                      </span>
-                      <span className="block text-[11px] text-slate-500 mt-0.5">
-                        {pack.description}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </section>
-          )}
-
-          {libraryByGroup.length === 0 && availablePacks.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => void loadCatalog()}
+                className="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          ) : libraryByGroup.length === 0 ? (
             <p className="text-sm text-slate-500">
               Every library module is already on this course.
             </p>
           ) : (
-            libraryByGroup.map(([group, items]) => (
-              <section key={group} className="space-y-2">
-                <p className="text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] font-quicksand">
-                  {group}
-                </p>
-                {items.map((item) => {
-                  const checked = selectedLibraryIds.includes(item.id);
-                  return (
-                    <label
-                      key={item.id}
-                      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 cursor-pointer transition-colors ${
-                        checked
-                          ? "border-[#4ec2bb] bg-[#f0faf9]"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleLibraryId(item.id)}
-                        className="mt-1"
-                      />
-                      <span className="text-sm font-bold text-slate-800">
-                        {item.title}
-                      </span>
-                    </label>
-                  );
-                })}
-              </section>
-            ))
+            libraryByGroup.map(([group, items]) => {
+              const allChecked = items.every((item) =>
+                selectedLibraryIds.includes(item.id),
+              );
+              return (
+                <section key={group} className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] font-quicksand">
+                      {group}
+                    </p>
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(items)}
+                        className="text-[11px] font-bold text-[#2a7797] hover:text-[#1f5c76] underline decoration-dotted"
+                      >
+                        {allChecked ? "Clear track" : "Select whole track"}
+                      </button>
+                    )}
+                  </div>
+                  {items.map((item) => {
+                    const checked = selectedLibraryIds.includes(item.id);
+                    const meta = [item.level, item.duration]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <label
+                        key={item.id}
+                        className={`flex items-start gap-3 rounded-2xl border px-4 py-3 cursor-pointer transition-colors ${
+                          checked
+                            ? "border-[#4ec2bb] bg-[#f0faf9]"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleLibraryId(item.id)}
+                          className="mt-1"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-bold text-slate-800">
+                            {item.title}
+                          </span>
+                          {(meta || item.hasDataset) && (
+                            <span className="block text-[11px] font-semibold text-slate-500 mt-0.5">
+                              {meta}
+                              {meta && item.hasDataset ? " · " : ""}
+                              {item.hasDataset ? "Practice dataset" : ""}
+                            </span>
+                          )}
+                          {item.summary && (
+                            <span className="block text-[11px] text-slate-500 mt-1">
+                              {item.summary}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </section>
+              );
+            })
           )}
         </div>
       </SlideOverModal>

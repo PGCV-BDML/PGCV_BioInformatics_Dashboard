@@ -1,162 +1,113 @@
-import type { ProgramType } from "@/lib/routes";
+/**
+ * Training module library, sourced from the private bioinfo-modules GitHub
+ * repo. Its modules.json is the single source of truth for which modules
+ * exist; the dashboard reads it through /api/training-modules/catalog and
+ * serves module files through /api/training-modules/f/… (see
+ * lib/github-modules.ts). This file holds the client-safe parts.
+ */
+
+/** module.html_content_link prefix marking a path inside bioinfo-modules. */
+export const GITHUB_MODULE_PREFIX = "github:";
 
 export type ModuleLibraryItem = {
   id: string;
   title: string;
-  htmlPath: string;
-  /** Which program types this asset is intended for */
-  tags: ProgramType[];
-  /** Optional UI group label in the picker */
-  group?: string;
+  /** Path inside the repo, e.g. "DNA-Barcoding/dna-barcoding-module.html" */
+  path: string;
+  /** Picker group label (modules.json `track`) */
+  group: string;
+  level: string | null;
+  duration: string | null;
+  summary: string | null;
+  hasDataset: boolean;
 };
 
-export type ModuleLibraryPack = {
-  id: string;
-  title: string;
-  description: string;
-  itemIds: string[];
-  tags: ProgramType[];
+type ManifestEntry = {
+  id?: unknown;
+  name?: unknown;
+  folder?: unknown;
+  entry?: unknown;
+  track?: unknown;
+  level?: unknown;
+  duration?: unknown;
+  summary?: unknown;
+  dataset?: unknown;
 };
+
+function optionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 /**
- * Prepared HTML modules shipped under public/assets/Training.
- * Add new files here after committing assets to the repo.
+ * Rejects anything that could escape the repo or reach hidden files:
+ * empty or dot-prefixed segments (covers "..", ".git", ".claude"),
+ * backslashes, and leading slashes.
  */
-export const MODULE_LIBRARY: ModuleLibraryItem[] = [
-  {
-    id: "setting-up-workstation",
-    title: "Setting Up Workstation",
-    htmlPath: "/assets/Training/setting-up-workstation.html",
-    tags: ["training", "internship"],
-    group: "Foundations",
-  },
-  {
-    id: "basic-coding-module",
-    title: "Basic Coding Module",
-    htmlPath: "/assets/Training/basic-coding-module.html",
-    tags: ["training", "internship"],
-    group: "Foundations",
-  },
-  {
-    id: "dna-barcoding-module",
-    title: "DNA Barcoding Module",
-    htmlPath: "/assets/Training/dna-barcoding-module.html",
-    tags: ["training", "internship"],
-    group: "Core methods",
-  },
-  {
-    id: "primer-design-training-module",
-    title: "Primer Design Module",
-    htmlPath: "/assets/Training/primer-design-training-module.html",
-    tags: ["training", "internship"],
-    group: "Core methods",
-  },
-  {
-    id: "transcriptome-module",
-    title: "Transcriptome Module",
-    htmlPath: "/assets/Training/transcriptome-module.html",
-    tags: ["training", "internship"],
-    group: "Core methods",
-  },
-  {
-    id: "phylogenetic-analysis-internship-module",
-    title: "Phylogenetic Analysis Module",
-    htmlPath: "/assets/Training/phylogenetic-analysis-internship-module.html",
-    tags: ["training", "internship"],
-    group: "Core methods",
-  },
-  {
-    id: "16s-metagenomics-module",
-    title: "16S Metagenomics Module",
-    htmlPath: "/assets/Training/Metagenomics/16s-metagenomics-module.html",
-    tags: ["training", "internship"],
-    group: "Metagenomics",
-  },
-  {
-    id: "r-short-course",
-    title: "R Short Course",
-    htmlPath: "/assets/Training/Metagenomics/R-short-course.html",
-    tags: ["training", "internship"],
-    group: "Metagenomics",
-  },
-  {
-    id: "whole-genome-assembly-module-with-lecture",
-    title: "Whole Genome Assembly (with lecture)",
-    htmlPath:
-      "/assets/Training/Whole Genome Assembly/whole-genome-assembly-module-with-lecture.html",
-    tags: ["training", "internship"],
-    group: "Whole Genome Assembly",
-  },
-  {
-    id: "tygs-guide",
-    title: "TYGS Guide",
-    htmlPath:
-      "/assets/Training/Whole Genome Assembly/Other Downstream Analyses/tygs-guide.html",
-    tags: ["training", "internship"],
-    group: "Whole Genome Assembly",
-  },
-  {
-    id: "proksee-guide",
-    title: "Proksee Guide",
-    htmlPath:
-      "/assets/Training/Whole Genome Assembly/Other Downstream Analyses/proksee-guide.html",
-    tags: ["training", "internship"],
-    group: "Whole Genome Assembly",
-  },
-  {
-    id: "ggdc-guide",
-    title: "GGDC Guide",
-    htmlPath:
-      "/assets/Training/Whole Genome Assembly/Other Downstream Analyses/ggdc-guide.html",
-    tags: ["training", "internship"],
-    group: "Whole Genome Assembly",
-  },
-];
-
-export const MODULE_LIBRARY_PACKS: ModuleLibraryPack[] = [
-  {
-    id: "pack-metagenomics",
-    title: "Metagenomics pack",
-    description: "16S metagenomics + R short course",
-    itemIds: ["16s-metagenomics-module", "r-short-course"],
-    tags: ["training", "internship"],
-  },
-  {
-    id: "pack-wga",
-    title: "Whole Genome Assembly pack",
-    description: "WGA lecture module + TYGS, Proksee, and GGDC guides",
-    itemIds: [
-      "whole-genome-assembly-module-with-lecture",
-      "tygs-guide",
-      "proksee-guide",
-      "ggdc-guide",
-    ],
-    tags: ["training", "internship"],
-  },
-];
-
-export function getLibraryItem(id: string): ModuleLibraryItem | undefined {
-  return MODULE_LIBRARY.find((item) => item.id === id);
+export function isSafeRepoPath(path: string): boolean {
+  if (!path || path.length > 512 || path.includes("\\")) return false;
+  return path
+    .split("/")
+    .every((segment) => segment.length > 0 && !segment.startsWith("."));
 }
 
-export function libraryForProgramType(
-  programType: ProgramType,
-): ModuleLibraryItem[] {
-  return MODULE_LIBRARY.filter((item) => item.tags.includes(programType));
+/**
+ * Turns modules.json into picker items, in teaching order. Entries without an
+ * entry file (modules still in development) are skipped.
+ */
+export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
+  const modules = (raw as { modules?: unknown } | null)?.modules;
+  if (!Array.isArray(modules)) return [];
+
+  const items: ModuleLibraryItem[] = [];
+  const seenPaths = new Set<string>();
+  for (const entry of modules as ManifestEntry[]) {
+    const id = optionalString(entry?.id);
+    const title = optionalString(entry?.name);
+    const folder = optionalString(entry?.folder);
+    const file = optionalString(entry?.entry);
+    if (!id || !title || !folder || !file) continue;
+
+    const path = `${folder}/${file}`;
+    if (!isSafeRepoPath(path) || seenPaths.has(path)) continue;
+    seenPaths.add(path);
+
+    items.push({
+      id,
+      title,
+      path,
+      group: optionalString(entry.track) ?? "Other",
+      level: optionalString(entry.level),
+      duration: optionalString(entry.duration),
+      summary: optionalString(entry.summary),
+      hasDataset: Boolean(optionalString(entry.dataset)),
+    });
+  }
+  return items;
 }
 
-export function packsForProgramType(
-  programType: ProgramType,
-): ModuleLibraryPack[] {
-  return MODULE_LIBRARY_PACKS.filter((pack) =>
-    pack.tags.includes(programType),
-  );
+export function moduleLinkForPath(path: string): string {
+  return `${GITHUB_MODULE_PREFIX}${path}`;
 }
 
-export function expandPackItemIds(packId: string): ModuleLibraryItem[] {
-  const pack = MODULE_LIBRARY_PACKS.find((p) => p.id === packId);
-  if (!pack) return [];
-  return pack.itemIds
-    .map((id) => getLibraryItem(id))
-    .filter((item): item is ModuleLibraryItem => Boolean(item));
+/** Repo path from a stored html_content_link, or null if it isn't one. */
+export function repoPathFromModuleLink(
+  link: string | null | undefined,
+): string | null {
+  const value = link?.trim();
+  if (!value?.startsWith(GITHUB_MODULE_PREFIX)) return null;
+  const path = value.slice(GITHUB_MODULE_PREFIX.length);
+  return isSafeRepoPath(path) ? path : null;
+}
+
+/** Groups items by track, keeping teaching order within and across groups. */
+export function groupLibraryItems(
+  items: ModuleLibraryItem[],
+): [string, ModuleLibraryItem[]][] {
+  const groups = new Map<string, ModuleLibraryItem[]>();
+  for (const item of items) {
+    const list = groups.get(item.group) ?? [];
+    list.push(item);
+    groups.set(item.group, list);
+  }
+  return Array.from(groups.entries());
 }
