@@ -125,7 +125,17 @@ The app deploys automatically on Vercel when changes are pushed to the `main` br
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (optional legacy fallback)
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push; generate with `npm run vapid:generate`)
    - `PUSH_DISPATCH_SECRET` (random secret, e.g. `openssl rand -hex 32`)
+   - `GITHUB_MODULES_TOKEN` (training module library; see below)
 3. Push to `main` — Vercel builds and deploys automatically.
+
+### Training module library
+
+The course builder's **Add from library** reads `modules.json` from the private [bioinfo-modules](https://github.com/bioinfopgcupvisayas/bioinfo-modules) repo, and modules open straight from that repo through `/api/training-modules`. Changes pushed to its `main` branch show up within about 5 minutes, with no redeploy. Courses store each module as `github-module:<id>`.
+
+- **Never change a module's `id`** in `modules.json`. Courses point at the id.
+- **Renaming or moving a file is fine**, as long as its `folder`/`entry` in `modules.json` is updated in the same commit.
+- **Removing a module from `modules.json` breaks it** in any course that includes it. Remove it from those courses first.
+- **`GITHUB_MODULES_TOKEN` expires** on the date set when it was created. It's a fine-grained token with read-only Contents access to `bioinfo-modules` only. If **Add from library** stops loading, check that first, then update `GITHUB_MODULES_TOKEN` on Vercel and redeploy.
 
 HTTPS is enforced by Vercel for the production domain.
 
