@@ -29,7 +29,9 @@ import { useToast } from "@/app/components/toast";
 import type { ProgramType } from "@/lib/routes";
 import {
   groupLibraryItems,
-  moduleLinkForPath,
+  moduleIdFromModuleLink,
+  moduleLinkForId,
+  repoPathFromModuleLink,
   type ModuleLibraryItem,
 } from "@/lib/module-library";
 import { fetchModuleCatalog } from "@/lib/module-library-client";
@@ -268,10 +270,6 @@ export default function ProgramModules({
     load();
   }, [load]);
 
-  const assignedPaths = useMemo(
-    () => new Set(modulesList.map((m) => m.htmlLink).filter(Boolean)),
-    [modulesList],
-  );
 
   const loadCatalog = useCallback(async () => {
     setCatalogStatus("loading");
@@ -285,10 +283,22 @@ export default function ProgramModules({
     }
   }, []);
 
+  // Library ids already on this course, including older github:<path> links.
+  const assignedIds = useMemo(() => {
+    const idByPath = new Map(catalog.map((item) => [item.path, item.id]));
+    const ids = new Set<string>();
+    for (const row of modulesList) {
+      const id =
+        moduleIdFromModuleLink(row.htmlLink) ??
+        idByPath.get(repoPathFromModuleLink(row.htmlLink) ?? "");
+      if (id) ids.add(id);
+    }
+    return ids;
+  }, [catalog, modulesList]);
+
   const availableLibrary = useMemo(
-    () =>
-      catalog.filter((item) => !assignedPaths.has(moduleLinkForPath(item.path))),
-    [assignedPaths, catalog],
+    () => catalog.filter((item) => !assignedIds.has(item.id)),
+    [assignedIds, catalog],
   );
 
   const libraryByGroup = useMemo(
@@ -428,7 +438,7 @@ export default function ProgramModules({
           id,
           program_id: programId,
           title: item.title,
-          html_content_link: moduleLinkForPath(item.path),
+          html_content_link: moduleLinkForId(item.id),
           file_path: null,
           file_name: null,
           file_size: null,

@@ -6,7 +6,17 @@
  * lib/github-modules.ts). This file holds the client-safe parts.
  */
 
-/** module.html_content_link prefix marking a path inside bioinfo-modules. */
+/**
+ * module.html_content_link prefix for a library module, stored by its
+ * modules.json `id` so renaming or moving the file in the repo doesn't break
+ * courses. The path is looked up from the catalog each time it's opened.
+ */
+export const GITHUB_MODULE_ID_PREFIX = "github-module:";
+
+/**
+ * Older prefix that stored the repo path directly. Still opened as-is; the
+ * module_links_by_id migration converts the known ones.
+ */
 export const GITHUB_MODULE_PREFIX = "github:";
 
 export type ModuleLibraryItem = {
@@ -85,11 +95,30 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
   return items;
 }
 
+/** modules.json ids are lowercase slugs, e.g. "16s-metagenomics". */
+export function isSafeModuleId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id);
+}
+
+export function moduleLinkForId(id: string): string {
+  return `${GITHUB_MODULE_ID_PREFIX}${id}`;
+}
+
+/** Module id from a stored html_content_link, or null if it isn't one. */
+export function moduleIdFromModuleLink(
+  link: string | null | undefined,
+): string | null {
+  const value = link?.trim();
+  if (!value?.startsWith(GITHUB_MODULE_ID_PREFIX)) return null;
+  const id = value.slice(GITHUB_MODULE_ID_PREFIX.length);
+  return isSafeModuleId(id) ? id : null;
+}
+
 export function moduleLinkForPath(path: string): string {
   return `${GITHUB_MODULE_PREFIX}${path}`;
 }
 
-/** Repo path from a stored html_content_link, or null if it isn't one. */
+/** Repo path from a legacy github: link, or null if it isn't one. */
 export function repoPathFromModuleLink(
   link: string | null | undefined,
 ): string | null {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   groupLibraryItems,
+  isSafeModuleId,
   isSafeRepoPath,
+  moduleIdFromModuleLink,
+  moduleLinkForId,
   moduleLinkForPath,
   parseModuleManifest,
   repoPathFromModuleLink,
@@ -102,6 +105,29 @@ describe("module links", () => {
     expect(repoPathFromModuleLink("/assets/Training/x.html")).toBeNull();
     expect(repoPathFromModuleLink("github:../x.html")).toBeNull();
     expect(repoPathFromModuleLink(null)).toBeNull();
+  });
+});
+
+describe("module id links", () => {
+  it("round-trips modules.json ids", () => {
+    const link = moduleLinkForId("16s-metagenomics");
+    expect(link).toBe("github-module:16s-metagenomics");
+    expect(moduleIdFromModuleLink(link)).toBe("16s-metagenomics");
+  });
+
+  it("keeps id links and path links apart", () => {
+    expect(moduleIdFromModuleLink("github:Basic-Coding/x.html")).toBeNull();
+    expect(repoPathFromModuleLink("github-module:basic-coding")).toBeNull();
+    expect(moduleIdFromModuleLink("/assets/Training/x.html")).toBeNull();
+    expect(moduleIdFromModuleLink(null)).toBeNull();
+  });
+
+  it("rejects ids that aren't plain slugs", () => {
+    expect(isSafeModuleId("wga-hands-on")).toBe(true);
+    expect(isSafeModuleId("../x")).toBe(false);
+    expect(isSafeModuleId("a/b")).toBe(false);
+    expect(isSafeModuleId("")).toBe(false);
+    expect(moduleIdFromModuleLink("github-module:../x")).toBeNull();
   });
 });
 
