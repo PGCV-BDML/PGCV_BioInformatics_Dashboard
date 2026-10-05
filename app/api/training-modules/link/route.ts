@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 import { getUserFromAuthorizationHeader } from "@/lib/push-auth";
 import {
   createViewToken,
+  getModuleCatalog,
+  GithubModulesError,
   isGithubModulesConfigured,
   viewUrlForPath,
 } from "@/lib/github-modules";
-import { isSafeRepoPath } from "@/lib/module-library";
+import { isSafeModuleId, isSafeRepoPath } from "@/lib/module-library";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Mints a short-lived viewer URL for one file in the modules repo. */
+/**
+ * Mints a short-lived viewer URL for a library module, given its modules.json
+ * `id` (looked up to its current path) or, for older links, a repo `path`.
+ */
 export async function POST(request: Request) {
   const auth = await getUserFromAuthorizationHeader(
     request.headers.get("authorization"),
@@ -27,10 +32,34 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as {
+    id?: unknown;
     path?: unknown;
   } | null;
-  const path = typeof body?.path === "string" ? body.path.trim() : "";
-  if (!isSafeRepoPath(path)) {
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
+  let path = typeof body?.path === "string" ? body.path.trim() : "";
+
+  if (id) {
+    if (!isSafeModuleId(id)) {
+      return NextResponse.json({ error: "Invalid module id" }, { status: 400 });
+    }
+    try {
+      const item = (await getModuleCatalog()).find((m) => m.id === id);
+      if (!item) {
+        return NextResponse.json(
+          { error: "This module is no longer in the library." },
+          { status: 404 },
+        );
+      }
+      path = item.path;
+    } catch (error) {
+      console.error("Failed to load module catalog:", error);
+      const status = error instanceof GithubModulesError ? error.status : 502;
+      return NextResponse.json(
+        { error: "Couldn't load the module library from GitHub." },
+        { status },
+      );
+    }
+  } else if (!isSafeRepoPath(path)) {
     return NextResponse.json({ error: "Invalid module path" }, { status: 400 });
   }
 

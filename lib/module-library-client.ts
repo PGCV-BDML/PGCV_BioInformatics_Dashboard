@@ -27,12 +27,17 @@ export async function fetchModuleCatalog(): Promise<ModuleCatalog> {
   return (await response.json()) as ModuleCatalog;
 }
 
-/** Short-lived viewer URL for a file in the bioinfo-modules repo. */
-export async function getGithubModuleViewUrl(path: string): Promise<string> {
+/**
+ * Short-lived viewer URL for a library module, by modules.json id or (for
+ * older links) by repo path.
+ */
+export async function getGithubModuleViewUrl(
+  target: { id: string } | { path: string },
+): Promise<string> {
   const response = await fetch("/api/training-modules/link", {
     method: "POST",
     headers: await authHeaders(),
-    body: JSON.stringify({ path }),
+    body: JSON.stringify(target),
   });
   const body = (await response.json().catch(() => null)) as {
     url?: string;
