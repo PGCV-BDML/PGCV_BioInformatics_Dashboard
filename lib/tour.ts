@@ -52,16 +52,39 @@ export type TourMember = {
   image: string | null;
 };
 
+export const PROJECT_STEP_STATES = ["done", "now", "next"] as const;
+export type ProjectStepState = (typeof PROJECT_STEP_STATES)[number];
+
+export type TourProjectStep = { label: string; note: string; state: ProjectStepState };
+
 export type TourProject = {
   id: string;
   title: string;
   /** Scientific name, shown in italics, e.g. "Rusa alfredi". */
   species: string | null;
+  /** Everyday name shown after the species, e.g. "Philippine spotted deer". */
+  commonName: string | null;
   status: string | null;
   image: string | null;
+  /** Caption on the photo, e.g. "Meet Abraham". */
+  imageTitle: string | null;
+  /** Shown on the photo; required in practice for any photo we didn't take. */
+  imageCredit: string | null;
+  /** Red List badge on the photo, e.g. { code: "EN", label: "Endangered · IUCN Red List" }. */
+  conservation: { code: string; label: string } | null;
+  /** Short extra chips on the photo, e.g. "~700 adults left in the wild". */
+  facts: string[];
+  /** Where the species lives; `former` islands are shown struck through. */
+  range: { title: string; current: string[]; former: string[] } | null;
   summary: TourText;
   highlights: TourSpec[];
+  /** Sample-to-result timeline. */
+  steps: TourProjectStep[];
+  /** "What's next" line under the timeline. */
+  next: TourText | null;
   partners: string[];
+  /** Paper to cite; `url` (usually the DOI link) also becomes a QR code. */
+  citation: { text: string; url: string; note: string | null } | null;
 };
 
 export type TourVideo = {
@@ -162,6 +185,78 @@ function text(value: unknown, where: string): TourText {
   return out;
 }
 
+function strList(value: unknown, where: string): string[] {
+  return arr(value ?? [], where).flatMap((v) => (typeof v === "string" && v.trim() ? [v.trim()] : []));
+}
+
+/** Only http(s) links, so a typo can never become a javascript: URL or QR code. */
+function httpsUrl(value: unknown): string | null {
+  const url = optStr(value);
+  if (!url) return null;
+  try {
+    return ["https:", "http:"].includes(new URL(url).protocol) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function project(p: unknown, i: number): TourProject {
+  const where = `projects.items[${i}]`;
+  const o = obj(p, where);
+
+  const conservation = o.conservation == null ? null : obj(o.conservation, `${where}.conservation`);
+  const range = o.range == null ? null : obj(o.range, `${where}.range`);
+  const citation = o.citation == null ? null : obj(o.citation, `${where}.citation`);
+  const citationUrl = citation ? httpsUrl(citation.url) : null;
+
+  return {
+    id: str(o.id, `${where}.id`),
+    title: str(o.title, `${where}.title`),
+    species: optStr(o.species),
+    commonName: optStr(o.commonName),
+    status: optStr(o.status),
+    image: image(o.image),
+    imageTitle: optStr(o.imageTitle),
+    imageCredit: optStr(o.imageCredit),
+    conservation: conservation
+      ? { code: str(conservation.code, `${where}.conservation.code`), label: str(conservation.label, `${where}.conservation.label`) }
+      : null,
+    facts: strList(o.facts, `${where}.facts`),
+    range: range
+      ? {
+          title: optStr(range.title) ?? "Where it lives",
+          current: strList(range.current, `${where}.range.current`),
+          former: strList(range.former, `${where}.range.former`),
+        }
+      : null,
+    summary: text(o.summary, `${where}.summary`),
+    highlights: arr(o.highlights ?? [], `${where}.highlights`).map((h, j) => {
+      const ho = obj(h, `${where}.highlights[${j}]`);
+      return {
+        value: str(ho.value, `${where}.highlights[${j}].value`),
+        unit: optStr(ho.unit) ?? "",
+        label: optStr(ho.label) ?? "",
+      };
+    }),
+    steps: arr(o.steps ?? [], `${where}.steps`).map((st, j) => {
+      const so = obj(st, `${where}.steps[${j}]`);
+      const state = optStr(so.state);
+      return {
+        label: str(so.label, `${where}.steps[${j}].label`),
+        note: optStr(so.note) ?? "",
+        // Anything unrecognised reads as finished rather than failing the whole tour.
+        state: PROJECT_STEP_STATES.find((s) => s === state) ?? "done",
+      };
+    }),
+    next: o.next == null ? null : text(o.next, `${where}.next`),
+    partners: strList(o.partners, `${where}.partners`),
+    citation:
+      citation && citationUrl
+        ? { text: str(citation.text, `${where}.citation.text`), url: citationUrl, note: optStr(citation.note) }
+        : null,
+  };
+}
+
 function image(value: unknown): string | null {
   const path = optStr(value);
   return path && isSafeTourAssetPath(path) ? path : null;
@@ -248,28 +343,7 @@ export function parseTourContent(raw: unknown): TourContent {
     projects: {
       title: str(projects.title, "projects.title"),
       intro: text(projects.intro, "projects.intro"),
-      items: arr(projects.items ?? [], "projects.items").map((p, i) => {
-        const o = obj(p, `projects.items[${i}]`);
-        return {
-          id: str(o.id, `projects.items[${i}].id`),
-          title: str(o.title, `projects.items[${i}].title`),
-          species: optStr(o.species),
-          status: optStr(o.status),
-          image: image(o.image),
-          summary: text(o.summary, `projects.items[${i}].summary`),
-          highlights: arr(o.highlights ?? [], `projects.items[${i}].highlights`).map((h, j) => {
-            const ho = obj(h, `projects.items[${i}].highlights[${j}]`);
-            return {
-              value: str(ho.value, `projects.items[${i}].highlights[${j}].value`),
-              unit: optStr(ho.unit) ?? "",
-              label: optStr(ho.label) ?? "",
-            };
-          }),
-          partners: arr(o.partners ?? [], `projects.items[${i}].partners`).flatMap((v) =>
-            typeof v === "string" && v.trim() ? [v.trim()] : [],
-          ),
-        };
-      }),
+      items: arr(projects.items ?? [], "projects.items").map(project),
     },
     covid: {
       title: str(covid.title, "covid.title"),

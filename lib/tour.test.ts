@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import deerExample from "@/docs/tour-content/visayan-spotted-deer.json";
 import {
   FALLBACK_TOUR,
   isSafeTourAssetPath,
@@ -177,5 +178,52 @@ describe("FALLBACK_TOUR", () => {
     expect(parseTourContent(minimalTour()).nextstrain).toBeNull();
     const unsafe = minimalTour({ nextstrain: { title: "T", intro: "I", tree: "../secrets.json" } });
     expect(parseTourContent(unsafe).nextstrain).toBeNull();
+  });
+});
+
+describe("featured project fields", () => {
+  const withProject = (item: Record<string, unknown>) =>
+    parseTourContent(minimalTour({ projects: { title: "P", intro: "I", items: [{ id: "x", title: "T", summary: "S", ...item }] } }))
+      .projects.items[0]!;
+
+  it("parses the documented Visayan spotted deer example", () => {
+    const deer = parseTourContent(minimalTour({ projects: deerExample })).projects.items[0]!;
+    expect(deer).toMatchObject({
+      species: "Rusa alfredi",
+      image: "images/projects/abraham.jpg",
+      conservation: { code: "EN" },
+      range: { current: ["Panay", "Negros"], former: ["Cebu", "Guimaras", "Masbate"] },
+      citation: { url: "https://doi.org/10.46471/gigabyte.150" },
+    });
+    expect(deer.steps).toHaveLength(5);
+    expect(deer.steps.every((step) => step.state === "done")).toBe(true);
+    expect(resolveText(deer.next!, "technical")).toMatch(/Hi-C/);
+  });
+
+  it("defaults every new field when it is left out", () => {
+    expect(withProject({})).toMatchObject({
+      commonName: null,
+      imageTitle: null,
+      imageCredit: null,
+      conservation: null,
+      facts: [],
+      range: null,
+      steps: [],
+      next: null,
+      citation: null,
+    });
+  });
+
+  it("reads an unknown step state as done", () => {
+    expect(withProject({ steps: [{ label: "Sample", state: "finished" }] }).steps[0]).toEqual({
+      label: "Sample",
+      note: "",
+      state: "done",
+    });
+  });
+
+  it("drops a citation whose link is not http(s)", () => {
+    expect(withProject({ citation: { text: "Paper", url: "javascript:alert(1)" } }).citation).toBeNull();
+    expect(withProject({ citation: { text: "Paper", url: "not a url" } }).citation).toBeNull();
   });
 });

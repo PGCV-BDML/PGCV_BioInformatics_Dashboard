@@ -1,0 +1,52 @@
+{
+  "title": "Genomes for Philippine wildlife",
+  "intro": "Beyond public health, we assemble reference genomes for species found nowhere else, so conservationists can measure and protect their genetic diversity.",
+  "items": [
+    {
+      "id": "visayan-spotted-deer",
+      "title": "First draft genome of the Visayan spotted deer",
+      "species": "Rusa alfredi",
+      "commonName": "Philippine spotted deer",
+      "status": "Published · GigaByte 2025",
+      "image": "images/projects/abraham.jpg",
+      "imageTitle": "Meet Abraham",
+      "imageCredit": "CENTROP, Silliman University · Photo: L. Cabrera, CC-BY",
+      "conservation": { "code": "EN", "label": "Endangered · IUCN Red List" },
+      "facts": ["~700 adults left in the wild (2016)"],
+      "range": {
+        "title": "Found only in the Visayas",
+        "current": ["Panay", "Negros"],
+        "former": ["Cebu", "Guimaras", "Masbate"]
+      },
+      "summary": {
+        "general": "From a small ear-tissue sample taken from Abraham, a male in Silliman University's captive herd, we sequenced 157 billion DNA letters and pieced them together on our HPC server. The result is the first genome for the deer, and for its whole genus Rusa: a reference for checking how much genetic diversity this endangered species has left.",
+        "students": "Scientists took a tiny piece of ear from Abraham, a deer at Silliman University, and read his DNA: about 2.5 billion letters long. Our computers then pieced the letters together like a giant puzzle. It is the first time anyone has read the full genome of this endangered deer.",
+        "technical": "Illumina NextSeq 1000 short reads (2 × 151 bp, 157 Gbp) were assembled with MaSuRCA and scaffolded with RagTag against Cervus elaphus. RusAlf_1.1 spans 2.52 Gb (scaffold N50 75 Mb, contig N50 46 kb) with 95.5% complete BUSCOs (cetartiodactyla_odb10) and 24,531 genes annotated with GeMoMa and BRAKER. Single-copy orthologs place R. alfredi close to the genus Cervus."
+      },
+      "highlights": [
+        { "value": "2.52", "unit": "Gb", "label": "genome assembled" },
+        { "value": "24,531", "unit": "", "label": "genes annotated" },
+        { "value": "95.5", "unit": "%", "label": "BUSCO complete" },
+        { "value": "99.99", "unit": "%", "label": "base accuracy (QV 47)" }
+      ],
+      "steps": [
+        { "label": "Sample", "note": "Ear tissue · Silliman", "state": "done" },
+        { "label": "Sequencing", "note": "NextSeq 1000 · PGC Visayas", "state": "done" },
+        { "label": "Assembly", "note": "On our HPC server", "state": "done" },
+        { "label": "Annotation", "note": "24,531 genes", "state": "done" },
+        { "label": "Published", "note": "GigaByte, Feb 2025", "state": "done" }
+      ],
+      "next": {
+        "general": "Long-read and Hi-C sequencing for a fuller genome, and genetic diversity studies of Silliman's captive herd.",
+        "students": "Reading longer stretches of DNA to fill the gaps, and checking how closely related the deer at Silliman are.",
+        "technical": "Long-read and Hi-C data to improve contiguity and resolve structural variants, RNA-Seq for annotation, and population genetics (microsatellites, SNPs, RADseq) for the captive herd."
+      },
+      "partners": ["Silliman University · CENTROP"],
+      "citation": {
+        "text": "Javier et al. (2025), GigaByte",
+        "url": "https://doi.org/10.46471/gigabyte.150",
+        "note": "With UP MSI, UPV College of Fisheries and Ocean Sciences, and UPV NIMBB · Data: GenBank JBCEYX000000000"
+      }
+    }
+  ]
+}

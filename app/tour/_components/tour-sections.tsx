@@ -6,7 +6,8 @@ import { Cpu, HardDrive, MemoryStick, type LucideIcon } from "lucide-react";
 import { resolveText, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
-import { BRAND, SERVICE_HEX } from "./brand";
+import { BRAND, CARD, SERVICE_HEX } from "./brand";
+import { FeaturedProject } from "./project-feature";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import { ServiceIcon } from "./service-icons";
@@ -31,7 +32,6 @@ const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 /** Cards come in one after another, capped so long lists don't drag. */
 const stagger = (i: number, start = 200) => delay(start + Math.min(i, 8) * 60);
 
-const CARD = "rounded-2xl border border-[#2b3278]/10 bg-white shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)]";
 
 function Eyebrow({ index, children, onDark }: { index: number; children: React.ReactNode; onDark?: boolean }) {
   return (
@@ -309,55 +309,13 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
   const { projects } = content;
   const [lead, ...rest] = projects.items;
   if (!lead) return null;
-  const leadSrc = tourAssetUrl(lead.image);
   return (
     <LightSection index={index}>
       <Eyebrow index={index}>Research highlights</Eyebrow>
       <SectionHeading title={projects.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
 
-      <article className={`${CARD} ${styles.enter} mt-10 flex flex-col overflow-hidden md:flex-row`} style={delay(220)}>
-        {leadSrc && (
-          <div className="aspect-[4/3] shrink-0 bg-[#f0e8f2] md:aspect-auto md:w-[44%]">
-            <img src={leadSrc} alt={lead.species ? `${lead.species}` : lead.title} loading="lazy" className={`${styles.kenBurns} h-full w-full object-cover`} />
-          </div>
-        )}
-        <div className="flex flex-1 flex-col p-6 md:p-10">
-          {lead.status && (
-            <span className="self-start rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
-              {lead.status}
-            </span>
-          )}
-          <h3 className="mt-4 text-2xl font-black text-[#2b3278] md:text-3xl">{lead.title}</h3>
-          {lead.species && <p className="mt-1 text-lg italic text-[#5e205e]">{lead.species}</p>}
-          <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(lead.summary, audience)}</p>
-          {lead.highlights.length > 0 && (
-            <dl className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {lead.highlights.map((h, i) => (
-                <div
-                  key={h.label || i}
-                  className="flex flex-col-reverse rounded-xl border-l-4 bg-[#f7f6fa] px-4 py-3"
-                  style={{ borderColor: [BRAND.teal, BRAND.deepTeal, BRAND.purple, BRAND.navy][i % 4] }}
-                >
-                  <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
-                  <dd className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">
-                      <CountUp value={h.value} />
-                    </span>
-                    {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {lead.partners.length > 0 && (
-            <p className="mt-6 text-sm text-[#5b6770]">
-              <span className="font-semibold text-[#2b3278]">In partnership with </span>
-              {lead.partners.join(" · ")}
-            </p>
-          )}
-        </div>
-      </article>
+      <FeaturedProject project={lead} audience={audience} />
 
       {rest.length > 0 && (
         <ul className="mt-6 grid gap-5 md:grid-cols-2">
