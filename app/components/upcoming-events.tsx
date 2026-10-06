@@ -123,7 +123,7 @@ export function UpcomingEvents() {
               No dates after this week
             </p>
             <p className="text-[11px] text-slate-400 mt-1 max-w-[220px] font-aileron">
-              This week's work is in Tasks for the Week. Later dates show up here.
+              This week&apos;s work is in Tasks for the Week. Later dates show up here.
             </p>
             <Link
               href="/dashboard/tasks"

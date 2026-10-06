@@ -13,6 +13,7 @@ import {
   formatFaqRevisionLabel,
 } from "./faq-articles";
 import type { FaqArticleListItem } from "./faq-articles";
+import type { FaqTag } from "@/types/database";
 
 function article(
   overrides: Partial<FaqArticleListItem> = {},
@@ -86,7 +87,7 @@ describe("FAQ catalog helpers", () => {
     const snapshot = {
       title: "How do I load conda on HPC?",
       body: "module load miniconda3",
-      tags: ["installation", "hpc"] as const,
+      tags: ["installation", "hpc"] as FaqTag[],
     };
     expect(
       faqArticleSnapshotEquals(
