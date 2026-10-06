@@ -83,6 +83,7 @@ describe("TourExperience", () => {
                 status: null,
                 commonName: null,
                 image: null,
+                imageFocus: null,
                 imageTitle: null,
                 imageCredit: null,
                 conservation: null,

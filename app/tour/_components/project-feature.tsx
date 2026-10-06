@@ -50,6 +50,7 @@ function ProjectPhoto({ project }: { project: TourProject }) {
           alt={project.imageTitle ? `${project.imageTitle}: ${name}` : name}
           loading="lazy"
           className={`${styles.kenBurns} absolute inset-0 h-full w-full object-cover`}
+          style={project.imageFocus ? { objectPosition: project.imageFocus, transformOrigin: project.imageFocus } : undefined}
         />
       )}
       <div

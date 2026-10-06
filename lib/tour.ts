@@ -66,6 +66,8 @@ export type TourProject = {
   commonName: string | null;
   status: string | null;
   image: string | null;
+  /** Which part of the photo stays in frame when it is cropped, as CSS "x% y%". */
+  imageFocus: string | null;
   /** Caption on the photo, e.g. "Meet Abraham". */
   imageTitle: string | null;
   /** Shown on the photo; required in practice for any photo we didn't take. */
@@ -189,6 +191,12 @@ function strList(value: unknown, where: string): string[] {
   return arr(value ?? [], where).flatMap((v) => (typeof v === "string" && v.trim() ? [v.trim()] : []));
 }
 
+/** "35% 50%"-style crop focus; anything else falls back to the centre. */
+function focus(value: unknown): string | null {
+  const v = optStr(value);
+  return v && /^(100|\d{1,2})% (100|\d{1,2})%$/.test(v) ? v : null;
+}
+
 /** Only http(s) links, so a typo can never become a javascript: URL or QR code. */
 function httpsUrl(value: unknown): string | null {
   const url = optStr(value);
@@ -216,6 +224,7 @@ function project(p: unknown, i: number): TourProject {
     commonName: optStr(o.commonName),
     status: optStr(o.status),
     image: image(o.image),
+    imageFocus: focus(o.imageFocus),
     imageTitle: optStr(o.imageTitle),
     imageCredit: optStr(o.imageCredit),
     conservation: conservation

@@ -145,6 +145,7 @@ The course builder's **Add from library** reads `modules.json` from the private 
 - **Text and photos** come from `tour.json` and `images/` in the private [pgcv-tour-content](https://github.com/bioinfopgcupvisayas/pgcv-tour-content) repo; edits on its `main` branch show up within about 5 minutes. Images are served through `/api/tour/asset/…`, which only allows `images/*.jpg|png|webp`. Videos are linked (unlisted YouTube or a GitHub Release), never committed.
 - **Projects:** the first entry in `projects.items` is shown as a large featured card. Besides `title`, `species`, `status`, `image`, `summary`, `highlights` and `partners`, it can take these optional fields:
   - `commonName`
+  - `imageFocus` (`"x% y%"`): which part of the photo stays in frame when cropped
   - `imageTitle` and `imageCredit`: caption and credit on the photo
   - `conservation` (`{ code, label }`, e.g. an IUCN "EN" badge) and `facts` (short chips on the photo)
   - `range` (`{ title, current[], former[] }`): former islands are shown struck through

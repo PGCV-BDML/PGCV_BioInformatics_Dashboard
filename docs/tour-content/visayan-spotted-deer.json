@@ -9,6 +9,7 @@
       "commonName": "Philippine spotted deer",
       "status": "Published · GigaByte 2025",
       "image": "images/projects/abraham.jpg",
+      "imageFocus": "35% 55%",
       "imageTitle": "Meet Abraham",
       "imageCredit": "CENTROP, Silliman University · Photo: L. Cabrera, CC-BY",
       "conservation": { "code": "EN", "label": "Endangered · IUCN Red List" },

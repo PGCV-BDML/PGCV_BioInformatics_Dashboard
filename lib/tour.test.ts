@@ -203,6 +203,7 @@ describe("featured project fields", () => {
   it("defaults every new field when it is left out", () => {
     expect(withProject({})).toMatchObject({
       commonName: null,
+      imageFocus: null,
       imageTitle: null,
       imageCredit: null,
       conservation: null,
@@ -212,6 +213,12 @@ describe("featured project fields", () => {
       next: null,
       citation: null,
     });
+  });
+
+  it("accepts only percentage pairs as a photo focus", () => {
+    expect(withProject({ imageFocus: "35% 55%" }).imageFocus).toBe("35% 55%");
+    expect(withProject({ imageFocus: "left; background: red" }).imageFocus).toBeNull();
+    expect(withProject({ imageFocus: "150% 0%" }).imageFocus).toBeNull();
   });
 
   it("reads an unknown step state as done", () => {
