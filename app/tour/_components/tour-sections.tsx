@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- tour images come from our own
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
+import { useState } from "react";
 import {
   resolveText,
   tourAssetUrl,
@@ -9,21 +10,37 @@ import {
 } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 
+/**
+ * PGC Visayas brand colours (PGC Brand Guide 2025). Teal #12ca99 is too light
+ * for text on light backgrounds, so small text uses the darker `tealInk`.
+ */
+const BRAND = {
+  teal: "#12ca99",
+  tealInk: "#0a7558",
+  deepTeal: "#2a7797",
+  purple: "#5e205e",
+  navy: "#2b3278",
+} as const;
+
+// Content keeps its colour names; they map onto the PGCV palette here.
 const SERVICE_HEX: Record<ServiceColor, string> = {
-  purple: "#4e2a74",
-  magenta: "#92298d",
-  mint: "#13886a",
-  coral: "#c4523b",
-  indigo: "#2b1747",
+  purple: BRAND.purple,
+  magenta: "#912a8c",
+  mint: BRAND.tealInk,
+  coral: BRAND.deepTeal,
+  indigo: BRAND.navy,
 };
 
 type SectionProps = { content: TourContent; audience: Audience };
 
+const CARD = "rounded-2xl border border-[#2b3278]/10 bg-white shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)]";
+
 function Eyebrow({ index, children, onDark }: { index: number; children: React.ReactNode; onDark?: boolean }) {
   return (
     <p
-      className={`font-quicksand text-xs font-bold uppercase tracking-[0.2em] ${onDark ? "text-[#6ff2c4]" : "text-[#13886a]"}`}
+      className={`flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] ${onDark ? "text-[#12ca99]" : "text-[#0a7558]"}`}
     >
+      <span className="h-0.5 w-8 rounded-full bg-[#12ca99]" aria-hidden="true" />
       {String(index).padStart(2, "0")} · {children}
     </p>
   );
@@ -32,39 +49,68 @@ function Eyebrow({ index, children, onDark }: { index: number; children: React.R
 function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) {
   return (
     <h2
-      className={`mt-3 text-3xl font-extrabold tracking-tight md:text-[44px] md:leading-[1.1] ${onDark ? "text-white" : "text-[#4e2a74]"}`}
+      className={`mt-3 text-3xl font-black tracking-tight md:text-[44px] md:leading-[1.1] ${onDark ? "text-white" : "text-[#2b3278]"}`}
     >
       {title}
     </h2>
   );
 }
 
+/** Decorative double helix echoing the logo mark. */
+function HelixArt({ className }: { className?: string }) {
+  const rungs = Array.from({ length: 18 }, (_, i) => i);
+  return (
+    <svg viewBox="0 0 600 240" className={className} aria-hidden="true" fill="none">
+      <defs>
+        <linearGradient id="helix-strand" x1="0" x2="1">
+          <stop offset="0" stopColor="#f08a2c" />
+          <stop offset="0.5" stopColor="#c0399a" />
+          <stop offset="1" stopColor="#12ca99" />
+        </linearGradient>
+      </defs>
+      <path d="M0 120 C 75 20, 150 20, 225 120 S 375 220, 450 120 S 562 20, 600 70" stroke="url(#helix-strand)" strokeWidth="5" strokeLinecap="round" />
+      <path d="M0 120 C 75 220, 150 220, 225 120 S 375 20, 450 120 S 562 220, 600 170" stroke="white" strokeOpacity="0.35" strokeWidth="3" strokeLinecap="round" />
+      {rungs.map((i) => {
+        const x = 18 + i * 33;
+        // Rounded so server and client render identical attributes.
+        const y = Math.round(78 * Math.abs(Math.sin((x / 225) * Math.PI)));
+        return <line key={i} x1={x} x2={x} y1={120 - y} y2={120 + y} stroke="white" strokeOpacity="0.18" strokeWidth="3" strokeLinecap="round" />;
+      })}
+    </svg>
+  );
+}
+
 export function HeroSection({ content, audience }: SectionProps) {
   const { hero } = content;
   return (
-    <div className="bg-[linear-gradient(135deg,#2b1747_0%,#4e2a74_55%,#a2457f_100%)] text-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
-        <p className="font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#6ff2c4]">
+    <div className="relative overflow-hidden bg-[linear-gradient(135deg,#2b3278_0%,#5e205e_45%,#2a7797_85%,#12ca99_130%)] text-white">
+      <HelixArt className="pointer-events-none absolute -right-40 top-4 hidden w-[620px] opacity-45 xl:block" />
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+        <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
           {hero.eyebrow}
         </p>
-        <h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-tight md:text-6xl md:leading-[1.05]">
+        <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight md:text-6xl md:leading-[1.05]">
           {hero.title}
         </h1>
-        <p className="mt-6 max-w-3xl text-lg leading-relaxed text-[#f3edf9] md:text-xl">
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
           {resolveText(hero.intro, audience)}
         </p>
         {hero.facts.length > 0 && (
-          <dl className="mt-12 grid grid-cols-2 gap-6 md:flex md:gap-12">
+          <dl className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {hero.facts.map((fact) => (
-              <div key={fact.label}>
-                <dt className="sr-only">{fact.label}</dt>
-                <dd className="text-3xl font-black md:text-4xl">{fact.value}</dd>
-                <dd className="mt-1 text-sm font-medium text-[#dccbf0]">{fact.label}</dd>
+              <div
+                key={fact.label}
+                className="flex flex-col-reverse rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 backdrop-blur-sm"
+              >
+                <dt className="mt-1 text-sm font-medium text-white/75">{fact.label}</dt>
+                <dd className="text-3xl font-black tracking-tight md:text-4xl">{fact.value}</dd>
               </div>
             ))}
           </dl>
         )}
       </div>
+      <div className="h-1.5 bg-[linear-gradient(90deg,#12ca99,#2a7797,#5e205e)]" aria-hidden="true" />
     </div>
   );
 }
@@ -75,32 +121,31 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
     <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6b73]">
+      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
         {resolveText(services.intro, audience)}
       </p>
-      <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {services.items.map((service) => {
           const color = SERVICE_HEX[service.color];
           return (
             <li
               key={service.id}
-              className="flex flex-col gap-3 rounded-3xl border border-slate-300/50 bg-[#fffdf8] p-7 shadow-xl shadow-slate-400/15"
+              className={`${CARD} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform hover:-translate-y-0.5`}
             >
+              <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden="true" />
               <span
-                className="flex h-13 w-13 items-center justify-center rounded-2xl text-base font-bold"
-                style={{ color, backgroundColor: `${color}1f` }}
+                className="flex h-12 w-12 items-center justify-center rounded-xl text-base font-black text-white"
+                style={{ backgroundColor: color }}
                 aria-hidden="true"
               >
                 {service.code}
               </span>
-              <h3 className="text-xl font-bold text-[#333333]">{service.name}</h3>
-              <p className="flex-1 leading-relaxed text-[#5b6b73]">
-                {resolveText(service.summary, audience)}
-              </p>
+              <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{service.name}</h3>
+              <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>
               {service.tag && (
                 <span
                   className="self-start rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{ color, backgroundColor: `${color}1f` }}
+                  style={{ color, backgroundColor: `${color}14` }}
                 >
                   {service.tag}
                 </span>
@@ -113,17 +158,23 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
   );
 }
 
+const SPEC_COLORS = [BRAND.teal, "#6cc4e6", "#d7a6d7"];
+
 export function InfrastructureSection({ content, audience, index }: SectionProps & { index: number }) {
   const { infrastructure } = content;
   return (
-    <div className="bg-[#22143a] text-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <div className="relative overflow-hidden bg-[#1c2152] text-white">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(18,202,153,0.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(94,32,94,0.45),transparent_50%)]"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
         <Eyebrow index={index} onDark>
           Under the hood
         </Eyebrow>
         <SectionHeading title={infrastructure.title} onDark />
-        <p className="mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#f2806a]/40 bg-[#f2806a]/15 px-5 py-3 text-[#fde0d9]">
-          <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#f2806a]">
+        <p className="mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#12ca99]/10 px-5 py-3 text-white/90">
+          <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
             In simple terms
           </span>
           <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
@@ -134,38 +185,40 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
             return (
               <article
                 key={item.id}
-                className="flex flex-col gap-8 rounded-[28px] border border-white/10 bg-white/5 p-6 md:flex-row md:items-center md:gap-14 md:p-10"
+                className="flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10"
               >
                 {src && (
-                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#e4d9f1_100%)] p-6 md:h-[460px] md:w-[360px]">
+                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px]">
                     <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain" />
                   </div>
                 )}
                 <div className="flex-1">
                   {item.kicker && (
-                    <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#6ff2c4]">
+                    <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99]">
                       {item.kicker}
                     </p>
                   )}
-                  <h3 className="mt-1 text-3xl font-extrabold">{item.name}</h3>
-                  <p className="mt-2 text-lg text-[#b9a8cf]">{resolveText(item.description, audience)}</p>
+                  <h3 className="mt-1 text-3xl font-black">{item.name}</h3>
+                  <p className="mt-2 text-lg text-white/70">{resolveText(item.description, audience)}</p>
                   <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-                    {item.specs.map((spec, i) => (
-                      <div key={spec.label || i} className="rounded-2xl bg-white/[0.06] px-6 py-5">
-                        <dd className="flex items-baseline gap-2">
-                          <span
-                            className="text-5xl font-black tracking-tight"
-                            style={{ color: ["#6ff2c4", "#1fae86", "#f2806a"][i % 3] }}
-                          >
-                            {spec.value}
-                          </span>
-                          <span className="text-xl font-bold" style={{ color: ["#6ff2c4", "#1fae86", "#f2806a"][i % 3] }}>
-                            {spec.unit}
-                          </span>
-                        </dd>
-                        <dt className="mt-1 text-sm font-medium text-[#b9a8cf]">{spec.label}</dt>
-                      </div>
-                    ))}
+                    {item.specs.map((spec, i) => {
+                      const color = SPEC_COLORS[i % SPEC_COLORS.length];
+                      return (
+                        <div
+                          key={spec.label || i}
+                          className="flex flex-col-reverse rounded-2xl border-l-4 bg-white/[0.06] px-6 py-5"
+                          style={{ borderColor: color }}
+                        >
+                          <dt className="mt-1 text-sm font-medium text-white/70">{spec.label}</dt>
+                          <dd className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black tracking-tight" style={{ color }}>
+                              {spec.value}
+                            </span>
+                            <span className="text-xl font-bold text-white/80">{spec.unit}</span>
+                          </dd>
+                        </div>
+                      );
+                    })}
                   </dl>
                 </div>
               </article>
@@ -183,7 +236,7 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
     <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6b73]">
+      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
         {resolveText(trainings.intro, audience)}
       </p>
       <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
@@ -192,16 +245,18 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
           // 3 across on the first row, 2 wider tiles after (matches the deck).
           const span = i < 3 ? "lg:col-span-2" : "lg:col-span-3";
           return (
-            <li
-              key={training.name}
-              className={`${span} overflow-hidden rounded-2xl border border-slate-300/50 bg-[#fffdf8]`}
-            >
-              <div className="aspect-[3/2] bg-[#f3edf9]">
-                {src && (
-                  <img src={src} alt={`${training.name} training session`} loading="lazy" className="h-full w-full object-cover" />
-                )}
+            <li key={training.name} className={`${span} group relative aspect-[3/2] overflow-hidden rounded-2xl bg-[#f0e8f2]`}>
+              {src && (
+                <img
+                  src={src}
+                  alt={`${training.name} training session`}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(28,33,82,0.92),rgba(28,33,82,0))] px-5 pb-4 pt-16">
+                <p className="text-lg font-bold text-white">{training.name}</p>
               </div>
-              <p className="px-5 py-4 text-lg font-bold text-[#333333]">{training.name}</p>
             </li>
           );
         })}
@@ -219,6 +274,120 @@ function formatMonthYear(iso: string | null): string | null {
   });
 }
 
+/** Round an axis maximum up to 1, 2, 2.5 or 5 × 10ⁿ so the ticks read cleanly. */
+function niceCeil(value: number): number {
+  if (value <= 0) return 1;
+  const pow = 10 ** Math.floor(Math.log10(value));
+  const step = [1, 2, 2.5, 5, 10].find((s) => s * pow >= value) ?? 10;
+  return step * pow;
+}
+
+function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] }) {
+  const [active, setActive] = useState<number | null>(null);
+  const peak = Math.max(1, ...quarterly.map((q) => q.samples));
+  const peakIndex = quarterly.findIndex((q) => q.samples === peak);
+  const top = niceCeil(peak);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(top * f));
+  const dense = quarterly.length > 16;
+
+  return (
+    <div className="mt-8 flex gap-3">
+      {/* y-axis */}
+      <div className="relative h-64 w-10 shrink-0 text-right text-[11px] tabular-nums text-[#5b6770]" aria-hidden="true">
+        {ticks.map((t) => (
+          <span key={t} className="absolute right-0 translate-y-1/2 leading-none" style={{ bottom: `${(t / top) * 100}%` }}>
+            {t.toLocaleString("en-PH")}
+          </span>
+        ))}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="relative h-64" onMouseLeave={() => setActive(null)}>
+          {ticks.map((t) => (
+            <span
+              key={t}
+              className={`absolute inset-x-0 h-px ${t === 0 ? "bg-[#2b3278]/30" : "bg-[#2b3278]/[0.07]"}`}
+              style={{ bottom: `${(t / top) * 100}%` }}
+              aria-hidden="true"
+            />
+          ))}
+
+          <ol className="absolute inset-0 flex items-end gap-0.5 md:gap-1.5">
+            {quarterly.map((q, i) => {
+              const isPeak = i === peakIndex;
+              const isActive = active === i;
+              const height = Math.max(q.samples > 0 ? 1.5 : 0, (q.samples / top) * 100);
+              const align =
+                i > quarterly.length * 0.7 ? "right-0" : i < quarterly.length * 0.3 ? "left-0" : "left-1/2 -translate-x-1/2";
+              return (
+                <li
+                  key={q.label}
+                  tabIndex={0}
+                  aria-label={`${q.label}: ${q.samples.toLocaleString("en-PH")} samples`}
+                  onMouseEnter={() => setActive(i)}
+                  onFocus={() => setActive(i)}
+                  onBlur={() => setActive(null)}
+                  className="relative flex h-full min-w-0 flex-1 items-end justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#12ca99]"
+                >
+                  {isActive && <span className="absolute inset-0 rounded-md bg-[#2b3278]/[0.05]" aria-hidden="true" />}
+                  <span
+                    className="relative w-full max-w-12 rounded-t-[4px] transition-[filter] duration-150"
+                    style={{
+                      height: `${height}%`,
+                      background: isPeak
+                        ? `linear-gradient(to top, ${BRAND.purple}, #8a3a8a)`
+                        : `linear-gradient(to top, ${BRAND.deepTeal}, #1f9e8a)`,
+                      filter: isActive ? "brightness(1.15)" : undefined,
+                    }}
+                    aria-hidden="true"
+                  >
+                    {isPeak && !isActive && (
+                      <span className="absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#5e205e] px-2 py-0.5 text-[11px] font-bold text-white">
+                        Peak · {q.samples.toLocaleString("en-PH")}
+                      </span>
+                    )}
+                  </span>
+                  {isActive && (
+                    <span
+                      className={`pointer-events-none absolute z-10 whitespace-nowrap rounded-lg bg-[#1c2152] px-3 py-2 text-left text-xs text-white shadow-lg ${align}`}
+                      style={{ bottom: `calc(${height}% + 10px)` }}
+                      aria-hidden="true"
+                    >
+                      <span className="block font-semibold text-white/70">{q.label}</span>
+                      <span className="block text-base font-black tabular-nums">
+                        {q.samples.toLocaleString("en-PH")}
+                        <span className="ml-1 text-xs font-medium text-white/70">samples</span>
+                      </span>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+
+        {/* x-axis: quarter, with the year under the first quarter shown for that year */}
+        <ol className="mt-2 flex gap-0.5 md:gap-1.5" aria-hidden="true">
+          {quarterly.map((q, i) => {
+            const [quarter, year] = q.label.split(" ");
+            const firstOfYear = i === 0 || quarterly[i - 1]?.label.split(" ")[1] !== year;
+            return (
+              <li key={q.label} className="min-w-0 flex-1 text-center">
+                <span className={`block text-[10px] font-semibold text-[#5b6770] md:text-[11px] ${dense ? "max-md:invisible" : ""}`}>
+                  {quarter}
+                </span>
+                <span className={`block h-4 whitespace-nowrap text-[11px] font-bold text-[#2b3278] ${firstOfYear ? "" : "invisible"}`}>
+                  {year}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 export function CovidSection({
   content,
   audience,
@@ -226,80 +395,54 @@ export function CovidSection({
   stats,
 }: SectionProps & { index: number; stats: TourCovidStats | null }) {
   const { covid } = content;
-  const max = stats ? Math.max(1, ...stats.quarterly.map((q) => q.samples)) : 1;
   const from = formatMonthYear(stats?.firstRunDate ?? null);
   const to = formatMonthYear(stats?.lastRunDate ?? null);
   const tiles = stats
     ? [
-        { value: stats.totalSamples.toLocaleString("en-PH"), label: "samples sequenced", color: "#4e2a74" },
-        { value: stats.totalRuns.toLocaleString("en-PH"), label: "sequencing runs", color: "#92298d" },
-        { value: stats.lineageAssigned.toLocaleString("en-PH"), label: "genomes assigned a lineage", color: "#13886a" },
+        { value: stats.totalSamples.toLocaleString("en-PH"), label: "samples sequenced", color: BRAND.deepTeal },
+        { value: stats.totalRuns.toLocaleString("en-PH"), label: "sequencing runs", color: BRAND.purple },
+        { value: stats.lineageAssigned.toLocaleString("en-PH"), label: "genomes assigned a lineage", color: BRAND.teal },
         ...(stats.pctLineageAssigned !== null
-          ? [{ value: `${stats.pctLineageAssigned.toFixed(1)}%`, label: "lineage assignment rate", color: "#c4523b" }]
+          ? [{ value: `${stats.pctLineageAssigned.toFixed(1)}%`, label: "lineage assignment rate", color: BRAND.navy }]
           : []),
       ]
     : [];
 
   return (
-    <div className="bg-[#f3edf9]">
+    <div className="bg-[#f0e8f2]">
       <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
-        <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6b73]">
+        <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
           {resolveText(covid.intro, audience)}
         </p>
         {stats && (
-          <>
-            <dl className="mt-10 grid grid-cols-2 gap-5 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.6fr)]">
+            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
               {tiles.map((tile) => (
-                <div
-                  key={tile.label}
-                  className="rounded-3xl border border-slate-300/50 bg-[#fffdf8] px-6 py-5 shadow-xl shadow-slate-400/15"
-                >
-                  <span className="block h-1 w-8 rounded-full" style={{ backgroundColor: tile.color }} aria-hidden="true" />
-                  <dd className="mt-2 text-3xl font-black tracking-tight md:text-4xl" style={{ color: tile.color }}>
-                    {tile.value}
-                  </dd>
-                  <dt className="mt-1 text-sm font-medium text-[#5b6b73]">{tile.label}</dt>
+                <div key={tile.label} className={`${CARD} relative flex flex-col-reverse justify-end overflow-hidden py-4 pl-6 pr-5`}>
+                  <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: tile.color }} aria-hidden="true" />
+                  <dt className="mt-0.5 text-sm font-medium text-[#5b6770]">{tile.label}</dt>
+                  <dd className="text-3xl font-black tracking-tight text-[#2b3278] tabular-nums">{tile.value}</dd>
                 </div>
               ))}
             </dl>
             {stats.quarterly.length > 0 && (
-              <figure className="mt-6 rounded-3xl border border-slate-300/50 bg-[#fffdf8] p-6 shadow-xl shadow-slate-400/15 md:p-8">
-                <figcaption className="text-lg font-bold text-[#333333]">
-                  Samples sequenced per quarter
+              <figure className={`${CARD} flex flex-col p-6 md:p-8`}>
+                <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <span className="text-lg font-bold text-[#2b3278]">Samples sequenced per quarter</span>
                   {from && to && (
-                    <span className="ml-2 text-sm font-medium text-[#7a8e9b]">
+                    <span className="text-sm font-medium text-[#5b6770]">
                       {from} – {to}
                     </span>
                   )}
                 </figcaption>
-                <ol className="mt-6 flex h-56 items-end gap-1.5 md:gap-2.5">
-                  {stats.quarterly.map((q, i) => {
-                    const isPeak = q.samples === max;
-                    return (
-                      <li key={q.label} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-2">
-                        <div
-                          className="rounded-t-md"
-                          style={{
-                            height: `${Math.max(q.samples > 0 ? 2 : 0, (q.samples / max) * 100)}%`,
-                            backgroundColor: isPeak ? "#4e2a74" : "#1fae86",
-                          }}
-                          title={`${q.label}: ${q.samples.toLocaleString("en-PH")} samples`}
-                        />
-                        <span
-                          className={`truncate text-center text-[10px] font-medium text-[#7a8e9b] md:text-[11px] ${stats.quarterly.length > 10 && i % 2 ? "invisible" : ""}`}
-                        >
-                          {q.label}
-                        </span>
-                        <span className="sr-only">{q.samples} samples</span>
-                      </li>
-                    );
-                  })}
-                </ol>
+                <div className="flex flex-1 flex-col justify-end">
+                  <QuarterlyChart quarterly={stats.quarterly} />
+                </div>
               </figure>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -312,19 +455,26 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
     <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
       <Eyebrow index={index}>The people</Eyebrow>
       <SectionHeading title={team.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6b73]">{resolveText(team.intro, audience)}</p>
+      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(team.intro, audience)}</p>
       <ul className="mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4">
         {team.members.map((member) => {
           const src = tourAssetUrl(member.image);
           return (
-            <li key={member.id} className="flex flex-col overflow-hidden rounded-2xl border border-slate-300/50 bg-[#fffdf8]">
-              <div className="aspect-[310/366] bg-[#f1f1ef]">
-                {src && <img src={src} alt={member.fullName} loading="lazy" className="h-full w-full object-cover" />}
+            <li key={member.id} className={`${CARD} group flex flex-col overflow-hidden`}>
+              <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2]">
+                {src && (
+                  <img
+                    src={src}
+                    alt={member.fullName}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
               </div>
-              <div className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-[#bff5e1]/60 px-3 py-4 text-center">
-                <p className="text-lg font-extrabold text-[#22143a] md:text-xl">{member.nickname}</p>
-                <p className="text-xs font-medium text-[#3d4d57] md:text-[13px]">{member.fullName}</p>
-                <p className="font-quicksand text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a4a5a] md:text-[11px]">
+              <div className="flex flex-1 flex-col gap-0.5 border-t-4 border-[#12ca99] px-4 py-4">
+                <p className="text-lg font-black text-[#2b3278] md:text-xl">{member.nickname}</p>
+                <p className="text-xs font-medium text-[#333333] md:text-[13px]">{member.fullName}</p>
+                <p className="mt-1 font-quicksand text-[10px] font-bold uppercase tracking-[0.1em] text-[#0a7558] md:text-[11px]">
                   {member.position}
                 </p>
               </div>
@@ -332,9 +482,10 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           );
         })}
         {team.joinCard && (
-          <li className="flex flex-col justify-center gap-2 rounded-2xl bg-[#4e2a74] p-6 text-white">
-            <p className="text-xl font-extrabold md:text-2xl">{team.joinCard.title}</p>
-            <p className="text-sm leading-relaxed text-[#f3edf9] md:text-base">{team.joinCard.body}</p>
+          <li className="flex flex-col justify-center gap-2 rounded-2xl bg-[linear-gradient(150deg,#2b3278,#5e205e)] p-6 text-white">
+            <span className="mb-2 h-1 w-10 rounded-full bg-[#12ca99]" aria-hidden="true" />
+            <p className="text-xl font-black md:text-2xl">{team.joinCard.title}</p>
+            <p className="text-sm leading-relaxed text-white/85 md:text-base">{team.joinCard.body}</p>
           </li>
         )}
       </ul>
@@ -350,8 +501,8 @@ export function VideosSection({ content, index }: SectionProps & { index: number
       <SectionHeading title={videos.title} />
       <ul className="mt-10 grid gap-6 md:grid-cols-2">
         {videos.items.map((video) => (
-          <li key={video.id} className="overflow-hidden rounded-3xl border border-slate-300/50 bg-[#fffdf8]">
-            <div className="aspect-video bg-[#22143a]">
+          <li key={video.id} className={`${CARD} overflow-hidden`}>
+            <div className="aspect-video bg-[#1c2152]">
               {video.youtubeId ? (
                 <iframe
                   className="h-full w-full"
@@ -366,8 +517,8 @@ export function VideosSection({ content, index }: SectionProps & { index: number
               )}
             </div>
             <p className="flex items-baseline justify-between gap-3 px-5 py-4">
-              <span className="font-semibold text-[#333333]">{video.title}</span>
-              {video.duration && <span className="text-sm text-[#7a8e9b]">{video.duration}</span>}
+              <span className="font-semibold text-[#2b3278]">{video.title}</span>
+              {video.duration && <span className="text-sm text-[#5b6770]">{video.duration}</span>}
             </p>
           </li>
         ))}
@@ -379,31 +530,38 @@ export function VideosSection({ content, index }: SectionProps & { index: number
 export function ContactSection({ content, audience, index }: SectionProps & { index: number }) {
   const { contact } = content;
   return (
-    <div className="bg-[linear-gradient(90deg,#4e2a74_0%,#7b3f9e_100%)] text-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-20">
-        <p className="font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#f3edf9]">
-          {String(index).padStart(2, "0")} · Work with us
-        </p>
-        <h2 className="mt-3 max-w-3xl text-3xl font-extrabold tracking-tight md:text-[40px] md:leading-[1.15]">
-          {contact.title}
-        </h2>
-        <p className="mt-3 text-lg text-[#f3edf9]">{resolveText(contact.intro, audience)}</p>
-        <ul className="mt-6 space-y-2">
+    <div className="relative overflow-hidden bg-[linear-gradient(120deg,#2b3278_0%,#5e205e_55%,#2a7797_100%)] text-white">
+      <HelixArt className="pointer-events-none absolute -bottom-10 -right-32 hidden w-[560px] opacity-30 lg:block" />
+      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 md:px-8 md:py-20 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+        <div>
+          <p className="flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
+            <span className="h-0.5 w-8 rounded-full bg-[#12ca99]" aria-hidden="true" />
+            {String(index).padStart(2, "0")} · Work with us
+          </p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-[40px] md:leading-[1.15]">
+            {contact.title}
+          </h2>
+          <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>
+          {contact.social && (
+            <p className="mt-6 text-sm font-medium text-white/80">
+              Follow us: <span className="font-bold text-white">{contact.social.handle}</span>
+              {contact.social.platforms.length > 0 && <> — {contact.social.platforms.join(" · ")}</>}
+            </p>
+          )}
+        </div>
+        <ul className="space-y-3">
           {contact.emails.map((email) => (
-            <li key={email.address} className="flex flex-wrap gap-x-3">
-              <span className="font-bold">{email.label}</span>
-              <a className="text-[#f3edf9] underline-offset-4 hover:underline" href={`mailto:${email.address}`}>
-                {email.address}
+            <li key={email.address}>
+              <a
+                href={`mailto:${email.address}`}
+                className="block rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 transition-colors hover:border-[#12ca99]/60 hover:bg-white/[0.14]"
+              >
+                <span className="block text-xs font-bold uppercase tracking-[0.1em] text-[#9ff0d8]">{email.label}</span>
+                <span className="mt-0.5 block break-all font-semibold">{email.address}</span>
               </a>
             </li>
           ))}
         </ul>
-        {contact.social && (
-          <p className="mt-6 text-sm font-medium text-[#f3edf9]">
-            Follow us: <span className="font-bold text-white">{contact.social.handle}</span>
-            {contact.social.platforms.length > 0 && <> — {contact.social.platforms.join(" · ")}</>}
-          </p>
-        )}
       </div>
     </div>
   );
