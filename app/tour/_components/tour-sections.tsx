@@ -1,14 +1,26 @@
 /* eslint-disable @next/next/no-img-element -- tour images come from our own
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Cpu, HardDrive, MemoryStick, type LucideIcon } from "lucide-react";
 import { resolveText, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
+import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import { BRAND, SERVICE_HEX } from "./brand";
 import { LogoHelix } from "./logo-helix";
 import { ServiceIcon } from "./service-icons";
 import { useReveal } from "./use-reveal";
 import styles from "./tour-motion.module.css";
+
+// ~11k-node SVG and its data load after the rest of the tour.
+const PhyloTree = dynamic(() => import("./phylo-tree").then((m) => m.PhyloTree), {
+  ssr: false,
+  loading: () => (
+    <div className="mt-8 flex h-[480px] items-center justify-center rounded-2xl border border-[#2b3278]/10 bg-white text-sm text-[#5b6770]">
+      Loading the variant tree…
+    </div>
+  ),
+});
 
 type SectionProps = { content: TourContent; audience: Audience };
 
@@ -231,6 +243,118 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+export function ProjectsSection({ content, audience, index }: SectionProps & { index: number }) {
+  const { projects } = content;
+  const [lead, ...rest] = projects.items;
+  if (!lead) return null;
+  const leadSrc = tourAssetUrl(lead.image);
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+      <Eyebrow index={index}>Research highlights</Eyebrow>
+      <SectionHeading title={projects.title} />
+      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(projects.intro, audience)}</p>
+
+      <article className={`${CARD} mt-10 flex flex-col overflow-hidden md:flex-row`}>
+        {leadSrc && (
+          <div className="aspect-[4/3] shrink-0 bg-[#f0e8f2] md:aspect-auto md:w-[44%]">
+            <img src={leadSrc} alt={lead.species ? `${lead.species}` : lead.title} loading="lazy" className="h-full w-full object-cover" />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col p-6 md:p-10">
+          {lead.status && (
+            <span className="self-start rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
+              {lead.status}
+            </span>
+          )}
+          <h3 className="mt-4 text-2xl font-black text-[#2b3278] md:text-3xl">{lead.title}</h3>
+          {lead.species && <p className="mt-1 text-lg italic text-[#5e205e]">{lead.species}</p>}
+          <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(lead.summary, audience)}</p>
+          {lead.highlights.length > 0 && (
+            <dl className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {lead.highlights.map((h, i) => (
+                <div
+                  key={h.label || i}
+                  className="flex flex-col-reverse rounded-xl border-l-4 bg-[#f7f6fa] px-4 py-3"
+                  style={{ borderColor: [BRAND.teal, BRAND.deepTeal, BRAND.purple, BRAND.navy][i % 4] }}
+                >
+                  <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
+                  <dd className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">{h.value}</span>
+                    {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {lead.partners.length > 0 && (
+            <p className="mt-6 text-sm text-[#5b6770]">
+              <span className="font-semibold text-[#2b3278]">In partnership with </span>
+              {lead.partners.join(" · ")}
+            </p>
+          )}
+        </div>
+      </article>
+
+      {rest.length > 0 && (
+        <ul className="mt-6 grid gap-5 md:grid-cols-2">
+          {rest.map((project) => (
+            <li key={project.id} className={`${CARD} p-6`}>
+              {project.status && (
+                <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">{project.status}</p>
+              )}
+              <h3 className="mt-2 text-xl font-black text-[#2b3278]">{project.title}</h3>
+              {project.species && <p className="italic text-[#5e205e]">{project.species}</p>}
+              <p className="mt-2 text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function VariantTreeSection({
+  content,
+  audience,
+  index,
+  summary,
+}: SectionProps & { index: number; summary: TourPhyloSummary }) {
+  const nextstrain = content.nextstrain!;
+  const provinces = summary.provinces.filter((p) => p.count > 0 && p.name !== "Other").length;
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-16">
+      <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
+        <div className="max-w-3xl">
+          <Eyebrow index={index}>Tracking the variants</Eyebrow>
+          <SectionHeading title={nextstrain.title} />
+          <p className="mt-3 text-lg leading-relaxed text-[#5b6770]">{resolveText(nextstrain.intro, audience)}</p>
+        </div>
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[#2b3278] lg:mt-0 lg:shrink-0 lg:flex-col lg:text-right">
+          <div className="flex items-baseline gap-1.5 lg:justify-end">
+            <dd className="text-2xl font-black tabular-nums">{summary.tipCount.toLocaleString("en-PH")}</dd>
+            <dt className="text-sm font-semibold">genomes</dt>
+          </div>
+          <div className="flex items-baseline gap-1.5 lg:justify-end">
+            <dt className="sr-only">Sampled</dt>
+            <dd className="text-sm font-semibold">
+              {formatMonth(summary.firstMonth)} – {formatMonth(summary.lastMonth)}
+            </dd>
+          </div>
+          <div className="flex items-baseline gap-1.5 lg:justify-end">
+            <dd className="text-sm font-semibold">{provinces}</dd>
+            <dt className="text-sm font-semibold">provinces</dt>
+          </div>
+        </dl>
+      </div>
+      <PhyloTree summary={summary} />
+      <p className="mt-3 text-xs text-[#5b6770]">
+        Each dot is one sequenced virus; branches join viruses that share an ancestor. Built with Nextstrain; dates
+        rounded to the month; no sample IDs or patient details are included.
+      </p>
     </div>
   );
 }

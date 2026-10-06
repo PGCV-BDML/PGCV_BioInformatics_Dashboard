@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { getTourContent } from "@/lib/tour-content";
+import { getTourContent, getTourPhylo } from "@/lib/tour-content";
+import { summarizePhylo } from "@/lib/tour-phylo";
 import { getTourCovidStats } from "@/lib/tour-stats";
 import { TourExperience } from "./_components/tour-experience";
 
 /**
  * Public Lab Tour page for visiting schools and institutions. Lives outside
  * /dashboard so it needs no sign-in. Text and photos come from the
- * pgcv-tour-content repo; COVID-19 numbers are aggregates from Supabase.
+ * pgcv-tour-content repo; COVID-19 numbers are aggregates from Supabase, and
+ * the variant tree is a slimmed Nextstrain build (scripts/slim-auspice.mjs).
  */
 export const revalidate = 300;
 
@@ -18,5 +20,6 @@ export const metadata: Metadata = {
 
 export default async function TourPage() {
   const [{ content }, stats] = await Promise.all([getTourContent(), getTourCovidStats()]);
-  return <TourExperience content={content} stats={stats} />;
+  const phylo = await getTourPhylo(content.nextstrain?.tree);
+  return <TourExperience content={content} stats={stats} phylo={phylo ? summarizePhylo(phylo) : null} />;
 }

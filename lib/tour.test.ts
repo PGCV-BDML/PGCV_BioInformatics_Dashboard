@@ -147,4 +147,35 @@ describe("FALLBACK_TOUR", () => {
   it("survives a round trip through the parser", () => {
     expect(() => parseTourContent({ version: 1, ...FALLBACK_TOUR })).not.toThrow();
   });
+
+  it("parses optional projects and the variant tree block", () => {
+    const tour = parseTourContent(
+      minimalTour({
+        projects: {
+          title: "Projects",
+          intro: "Genomes we assembled",
+          items: [
+            {
+              id: "rusa",
+              title: "First draft genome of the Visayan spotted deer",
+              species: "Rusa alfredi",
+              summary: "Summary",
+              highlights: [{ value: "2.6", unit: "Gb", label: "assembly" }],
+              partners: ["Partner", ""],
+            },
+          ],
+        },
+        nextstrain: { title: "Variant tree", intro: "Intro", tree: "nextstrain/tree.json" },
+      }),
+    );
+    expect(tour.projects.items[0]).toMatchObject({ species: "Rusa alfredi", image: null, partners: ["Partner"] });
+    expect(tour.nextstrain?.tree).toBe("nextstrain/tree.json");
+  });
+
+  it("leaves projects empty and the variant tree off when omitted or unsafe", () => {
+    expect(parseTourContent(minimalTour()).projects.items).toEqual([]);
+    expect(parseTourContent(minimalTour()).nextstrain).toBeNull();
+    const unsafe = minimalTour({ nextstrain: { title: "T", intro: "I", tree: "../secrets.json" } });
+    expect(parseTourContent(unsafe).nextstrain).toBeNull();
+  });
 });
