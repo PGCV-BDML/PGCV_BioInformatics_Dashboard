@@ -271,6 +271,32 @@ export function monthlyCounts(
   return out;
 }
 
+/**
+ * Running tip totals for the map and live legend: element m holds the tips
+ * sampled in `months[0]`…`months[m]`, indexed `province * groupCount + group`.
+ * Tips outside `months` are left out.
+ */
+export function cumulativeCounts(
+  layout: PhyloLayout,
+  months: string[],
+  provinceCount: number,
+  groupCount: number,
+): Uint32Array[] {
+  const index = new Map(months.map((m, i) => [m, i]));
+  const perMonth = months.map(() => new Uint32Array(provinceCount * groupCount));
+  for (const i of layout.tips) {
+    const m = index.get(monthKey(layout.x[i]!));
+    if (m === undefined) continue;
+    perMonth[m]![layout.province[i]! * groupCount + layout.group[i]!]! += 1;
+  }
+  for (let m = 1; m < perMonth.length; m++) {
+    const row = perMonth[m]!;
+    const prev = perMonth[m - 1]!;
+    for (let k = 0; k < row.length; k++) row[k]! += prev[k]!;
+  }
+  return perMonth;
+}
+
 // --- Summary (server → page, so the slide renders before the tree loads) ------
 
 export type TourPhyloSummary = {

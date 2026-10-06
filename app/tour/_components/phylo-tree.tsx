@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import {
+  cumulativeCounts,
   formatMonth,
   layoutPhylo,
   monthKey,
@@ -12,6 +13,7 @@ import {
   type PhyloLayout,
   type TourPhyloSummary,
 } from "@/lib/tour-phylo";
+import { PhyloMap } from "./phylo-map";
 
 /**
  * Categorical palette, validated for adjacent-pair colour-vision separation
@@ -63,6 +65,8 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
   const [hover, setHover] = useState<number | null>(null);
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
+  /** Province hovered on the map; its genomes are picked out on the tree. */
+  const [focusProvince, setFocusProvince] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -173,6 +177,26 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
     // sx/sy only depend on values already listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tree, colorBy, colors, cutoff, x0, x1]);
+
+  // Genomes from the province hovered on the map, drawn over a dimmed tree.
+  const focusTips = useMemo(() => {
+    if (!tree || focusProvince === null) return null;
+    const { layout } = tree;
+    const by = layout[colorBy];
+    const tips: string[][] = colors.map(() => []);
+    for (const i of layout.tips) {
+      if (at(layout.province, i) !== focusProvince || at(layout.x, i) > cutoff) continue;
+      at(tips, at(by, i)).push(`M${f(sx(at(layout.x, i)))},${f(sy(at(layout.y, i)))}h0`);
+    }
+    return tips.map((t) => t.join(""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, colorBy, colors, cutoff, focusProvince, x0, x1]);
+
+  // Running totals per month for the map and its live legend.
+  const cumulative = useMemo(
+    () => (tree ? cumulativeCounts(tree.layout, months, tree.provinces.length, tree.groupLabels.length) : null),
+    [tree, months],
+  );
 
   // Stacked monthly counts, drawn on the same x scale as the tree.
   const freq = useMemo(() => {
@@ -292,8 +316,8 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
         </div>
       </div>
 
-      <div className="mt-5 lg:flex lg:gap-8">
-        <div className="min-w-0 flex-1">
+      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+        <div className="min-w-0">
           {/* Tree — sized to the screen when presenting so the whole slide fits */}
           <div
             ref={treeBox}
@@ -331,7 +355,13 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
                     vectorEffect="non-scaling-stroke"
                   />
                 ))}
-                <g clipPath="url(#phylo-cutoff)" fill="none" strokeLinecap="round">
+                <g
+                  clipPath="url(#phylo-cutoff)"
+                  fill="none"
+                  strokeLinecap="round"
+                  className="transition-opacity duration-200"
+                  opacity={focusTips ? 0.18 : 1}
+                >
                   {paths.branches.map((d, k) =>
                     d ? <path key={`b${k}`} d={d} stroke={colors[k]} strokeWidth={1} vectorEffect="non-scaling-stroke" /> : null,
                   )}
@@ -339,6 +369,13 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
                     d ? <path key={`t${k}`} d={d} stroke={colors[k]} strokeWidth={4} vectorEffect="non-scaling-stroke" /> : null,
                   )}
                 </g>
+                {focusTips && (
+                  <g fill="none" strokeLinecap="round">
+                    {focusTips.map((d, k) =>
+                      d ? <path key={k} d={d} stroke={colors[k]} strokeWidth={5} vectorEffect="non-scaling-stroke" /> : null,
+                    )}
+                  </g>
+                )}
               </svg>
             )}
             {tree && hovered !== null && (
@@ -411,18 +448,35 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
           </div>
         </div>
 
-        {/* Legend with counts — identity never relies on colour alone */}
-        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#2b3278]/10 pt-4 text-sm lg:mt-0 lg:w-52 lg:shrink-0 lg:flex-col lg:flex-nowrap lg:self-start lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-          {categories.map((c, k) =>
-            c.count > 0 ? (
-              <li key={c.label} className="flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[k] }} aria-hidden="true" />
-                <span className="font-medium text-[#333333] lg:flex-1">{c.label}</span>
-                <span className="tabular-nums text-[#5b6770]">{c.count.toLocaleString("en-PH")}</span>
-              </li>
-            ) : null,
+        {/* Map with live counts, Nextstrain-style */}
+        <div className="mt-6 border-t border-[#2b3278]/10 pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          {tree && cumulative ? (
+            <PhyloMap
+              cumulative={cumulative}
+              monthIndex={monthIndex}
+              monthLabel={formatMonth(monthAt(monthIndex))}
+              tweenMs={MS_PER_MONTH * 0.9}
+              provinces={tree.provinces}
+              groupLabels={tree.groupLabels}
+              colorBy={colorBy}
+              colors={colors}
+              tipProvince={hovered !== null ? at(tree.layout.province, hovered) : null}
+              onFocusProvince={setFocusProvince}
+            />
+          ) : (
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm lg:flex-col">
+              {categories.map((c, k) =>
+                c.count > 0 ? (
+                  <li key={c.label} className="flex items-center gap-2">
+                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[k] }} aria-hidden="true" />
+                    <span className="font-medium text-[#333333] lg:flex-1">{c.label}</span>
+                    <span className="tabular-nums text-[#5b6770]">{c.count.toLocaleString("en-PH")}</span>
+                  </li>
+                ) : null,
+              )}
+            </ul>
           )}
-        </ul>
+        </div>
       </div>
 
       {freq && (
