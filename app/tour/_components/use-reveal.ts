@@ -29,3 +29,25 @@ export function useReveal<T extends Element>() {
 
   return [ref, state] as const;
 }
+
+/**
+ * Tracks whether the element is on screen, so looping backgrounds can pause
+ * while scrolled away. `null` until the first observation.
+ */
+export function useOnScreen<T extends Element>() {
+  const ref = useRef<T>(null);
+  const [onScreen, setOnScreen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      const last = entries.at(-1);
+      if (last) setOnScreen(last.isIntersecting);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, onScreen] as const;
+}

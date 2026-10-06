@@ -1,0 +1,200 @@
+/*
+ * Section backgrounds for the Lab Tour. Layers are absolutely positioned
+ * behind the content, animate transform/opacity/stroke dashes only, stop for
+ * prefers-reduced-motion, and pause while their section is off screen.
+ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* --- Aurora: soft patches of the logo colours ----------------------------- */
+
+.blob {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, var(--c), transparent);
+  opacity: var(--a);
+  translate: -50% -50%;
+}
+
+/* --- Sequence texture: rows of A/C/G/T, drawn as generated content so the
+       letters are neither selectable nor part of the page text. ---------- */
+
+.sequence {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: 0.5rem;
+  color: #fff;
+  opacity: 0.07;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.45em;
+  line-height: 1;
+  white-space: nowrap;
+  /* Fade out behind the headline so it never competes with the text. */
+  mask-image: linear-gradient(90deg, transparent 0%, transparent 25%, #000 70%);
+}
+
+/* On phones the copy spans the full width, so the letters sit right behind it. */
+@media (max-width: 767px) {
+  .sequence {
+    opacity: 0.035;
+  }
+}
+
+.row {
+  display: block;
+  width: max-content;
+}
+
+.row::before {
+  content: attr(data-seq);
+}
+
+/* --- Light sections: dot grid near one corner plus a soft glow ------------ */
+
+.dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(43 50 120 / 0.2) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 55% 75% at var(--mx) var(--my), #000 0%, transparent 70%);
+}
+
+.glow {
+  position: absolute;
+  top: var(--gy);
+  left: var(--gx);
+  width: min(52rem, 110vw);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 15%, transparent), transparent);
+  translate: -50% -50%;
+}
+
+/* --- Infrastructure: circuit traces with travelling data pulses ----------- */
+
+.circuit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.trace {
+  stroke: rgb(255 255 255 / 0.07);
+}
+
+.pulse {
+  stroke-dasharray: 0.07 0.93;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+.node {
+  fill: #1c2152;
+  stroke: rgb(255 255 255 / 0.18);
+}
+
+.light {
+  opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blob {
+    animation: drift var(--t) ease-in-out infinite alternate;
+  }
+
+  .blobAlt {
+    animation-name: drift-alt;
+  }
+
+  .row {
+    animation: stream var(--t) linear infinite;
+  }
+
+  .rowReverse {
+    animation-direction: reverse;
+  }
+
+  .glow {
+    animation: drift 32s ease-in-out infinite alternate;
+  }
+
+  .pulse {
+    animation: pulse var(--t) linear infinite;
+    animation-delay: var(--d);
+  }
+
+  .light {
+    animation: rack-light 2.8s steps(1) infinite;
+    animation-delay: var(--d);
+  }
+
+  .root[data-offscreen] * {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate(6%, -5%) scale(1.08);
+  }
+}
+
+@keyframes drift-alt {
+  to {
+    transform: translate(-7%, 4%) scale(0.94);
+  }
+}
+
+@keyframes stream {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  60% {
+    stroke-dashoffset: -0.07;
+    opacity: 1;
+  }
+  61%,
+  100% {
+    stroke-dashoffset: -0.07;
+    opacity: 0;
+  }
+}
+
+@keyframes rack-light {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.25;
+  }
+}

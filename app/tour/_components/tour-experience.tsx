@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Pause, Play } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
@@ -18,6 +18,8 @@ import {
   VariantTreeSection,
   VideosSection,
 } from "./tour-sections";
+import { HelixProgress } from "./helix-progress";
+import styles from "./tour-motion.module.css";
 
 type SectionId =
   | "welcome"
@@ -44,6 +46,16 @@ const NAV_LABELS: Record<SectionId, string> = {
   contact: "Contact",
 };
 
+/** How long each slide stays up when auto-advance is on. */
+const AUTO_ADVANCE_MS = 20_000;
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+/** Plain light sections; a light section right after another gets a divider rule. */
+const LIGHT_SECTIONS = new Set<SectionId>(["services", "trainings", "projects", "variant-tree", "team", "videos"]);
+
 export function TourExperience({
   content,
   stats,
@@ -56,6 +68,9 @@ export function TourExperience({
   const [audience, setAudience] = useState<Audience>("general");
   const [presenting, setPresenting] = useState(false);
   const [current, setCurrent] = useState(0);
+  const [autoAdvance, setAutoAdvance] = useState(false);
+  // Sections whose entrance has played; each animates in once.
+  const [revealed, setRevealed] = useState<ReadonlySet<number>>(() => new Set());
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   // Sections with nothing to show are skipped entirely.
@@ -75,13 +90,17 @@ export function TourExperience({
     (index: number) => {
       const clamped = Math.max(0, Math.min(sectionIds.length - 1, index));
       setCurrent(clamped);
-      sectionRefs.current[clamped]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      sectionRefs.current[clamped]?.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "start",
+      });
     },
     [sectionIds.length],
   );
 
   const stopPresenting = useCallback(() => {
     setPresenting(false);
+    setAutoAdvance(false);
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
@@ -110,6 +129,51 @@ export function TourExperience({
     for (const el of sectionRefs.current) if (el) observer.observe(el);
     return () => observer.disconnect();
   }, [sectionIds]);
+
+  // Play each section's entrance the first time it scrolls into view.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const shown = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => sectionRefs.current.indexOf(entry.target as HTMLElement))
+          .filter((index) => index >= 0);
+        if (!shown.length) return;
+        for (const entry of entries) if (entry.isIntersecting) observer.unobserve(entry.target);
+        setRevealed((prev) => new Set([...prev, ...shown]));
+      },
+      { rootMargin: "0px 0px -15% 0px" },
+    );
+    for (const el of sectionRefs.current) if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [sectionIds]);
+
+  // In Present mode each slide snaps to the top; the sections' scroll-mt-16
+  // keeps them clear of the sticky header.
+  useEffect(() => {
+    if (!presenting) return;
+    const html = document.documentElement;
+    html.style.scrollSnapType = "y proximity";
+    return () => {
+      html.style.scrollSnapType = "";
+    };
+  }, [presenting]);
+
+  // Auto-advance for a lobby screen: next slide every 20s, back to the start
+  // after the last. Any slide change restarts the clock. A video someone is
+  // watching (focus inside its iframe) or a hidden tab holds the slide.
+  useEffect(() => {
+    if (!presenting || !autoAdvance) return;
+    let timer = 0;
+    const arm = () => {
+      timer = window.setTimeout(() => {
+        if (document.hidden || document.activeElement?.matches("iframe, video")) arm();
+        else goTo(current + 1 >= sectionIds.length ? 0 : current + 1);
+      }, AUTO_ADVANCE_MS);
+    };
+    arm();
+    return () => window.clearTimeout(timer);
+  }, [presenting, autoAdvance, current, goTo, sectionIds.length]);
 
   useEffect(() => {
     if (!presenting) return;
@@ -249,12 +313,15 @@ export function TourExperience({
             key={id}
             id={id}
             aria-label={NAV_LABELS[id]}
+            data-tone={LIGHT_SECTIONS.has(id) ? "light" : undefined}
+            // The opening slide plays straight from the server HTML, without waiting for hydration.
+            data-reveal={index === 0 || revealed.has(index) ? "visible" : "pending"}
             ref={(el) => {
               sectionRefs.current[index] = el;
             }}
             className={`scroll-mt-16 ${
               presenting
-                ? "flex min-h-[calc(100vh-4rem)] flex-col [&>div]:flex [&>div]:w-full [&>div]:flex-1 [&>div]:flex-col [&>div]:justify-center"
+                ? "flex min-h-[calc(100vh-4rem)] snap-start flex-col [&>div]:flex [&>div]:w-full [&>div]:flex-1 [&>div]:flex-col [&>div]:justify-center"
                 : ""
             }`}
           >
@@ -287,15 +354,30 @@ export function TourExperience({
       </footer>
 
       {presenting && (
-        <div className="fixed inset-x-0 bottom-4 z-40 flex items-center justify-center gap-4" aria-hidden="true">
-          <div className="flex items-center gap-2 rounded-full bg-[#1c2152]/85 px-4 py-2 backdrop-blur">
-            {sectionIds.map((id, i) => (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="relative flex items-center gap-3 overflow-hidden rounded-full bg-[#1c2152]/85 py-1.5 pl-4 pr-1.5 text-white shadow-lg backdrop-blur">
+            <HelixProgress labels={sectionIds.map((id) => NAV_LABELS[id])} current={current} onSelect={goTo} />
+            <span className="hidden text-xs text-white/70 lg:inline">← → to navigate · Esc to exit</span>
+            <button
+              type="button"
+              aria-pressed={autoAdvance}
+              onClick={() => setAutoAdvance((on) => !on)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                autoAdvance ? "bg-[#12ca99] text-[#1c2152]" : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              {autoAdvance ? <Pause className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
+              Auto-advance
+            </button>
+            {autoAdvance && (
               <span
-                key={id}
-                className={`h-2.5 rounded-full transition-all ${i === current ? "w-8 bg-[#12ca99]" : "w-2.5 bg-white/30"}`}
+                // Restarts with every slide change.
+                key={current}
+                className={`${styles.countdown} absolute inset-x-0 bottom-0 h-0.5 bg-[#12ca99]`}
+                style={{ "--t": `${AUTO_ADVANCE_MS}ms` } as React.CSSProperties}
+                aria-hidden="true"
               />
-            ))}
-            <span className="ml-3 text-xs text-white/70">← → to navigate · Esc to exit</span>
+            )}
           </div>
         </div>
       )}
