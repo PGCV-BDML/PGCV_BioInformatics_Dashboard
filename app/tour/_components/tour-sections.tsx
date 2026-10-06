@@ -11,6 +11,7 @@ import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import { ServiceIcon } from "./service-icons";
 import { useReveal } from "./use-reveal";
+import { CountUp } from "./count-up";
 import styles from "./tour-motion.module.css";
 
 // ~11k-node SVG and its data load after the rest of the tour.
@@ -25,6 +26,11 @@ const PhyloTree = dynamic(() => import("./phylo-tree").then((m) => m.PhyloTree),
 
 type SectionProps = { content: TourContent; audience: Audience };
 
+/** Entrance delay; `styles.enter` and friends read it as --d. */
+const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
+/** Cards come in one after another, capped so long lists don't drag. */
+const stagger = (i: number, start = 200) => delay(start + Math.min(i, 8) * 60);
+
 const CARD = "rounded-2xl border border-[#2b3278]/10 bg-white shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)]";
 
 function Eyebrow({ index, children, onDark }: { index: number; children: React.ReactNode; onDark?: boolean }) {
@@ -32,8 +38,10 @@ function Eyebrow({ index, children, onDark }: { index: number; children: React.R
     <p
       className={`flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] ${onDark ? "text-[#12ca99]" : "text-[#0a7558]"}`}
     >
-      <span className="h-0.5 w-8 rounded-full bg-[#12ca99]" aria-hidden="true" />
-      {String(index).padStart(2, "0")} · {children}
+      <span className={`h-0.5 w-8 rounded-full bg-[#12ca99] ${styles.growX}`} aria-hidden="true" />
+      <span className={styles.fadeIn} style={delay(150)}>
+        {String(index).padStart(2, "0")} · {children}
+      </span>
     </p>
   );
 }
@@ -41,7 +49,8 @@ function Eyebrow({ index, children, onDark }: { index: number; children: React.R
 function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) {
   return (
     <h2
-      className={`mt-3 text-3xl font-black tracking-tight md:text-[44px] md:leading-[1.1] ${onDark ? "text-white" : "text-[#2b3278]"}`}
+      className={`mt-3 text-3xl font-black tracking-tight md:text-[44px] md:leading-[1.1] ${onDark ? "text-white" : "text-[#2b3278]"} ${styles.enter}`}
+      style={delay(80)}
     >
       {title}
     </h2>
@@ -106,12 +115,14 @@ export function HeroSection({ content, audience }: SectionProps) {
         </p>
         {hero.facts.length > 0 && (
           <dl className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            {hero.facts.map((fact) => (
+            {hero.facts.map((fact, i) => (
               <div
                 key={fact.label}
-                className="flex flex-col-reverse rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 backdrop-blur-sm"
+                className={`flex flex-col-reverse rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 backdrop-blur-sm ${styles.enter}`}
+                style={stagger(i, 400)}
               >
                 <dt className="mt-1 text-sm font-medium text-white/75">{fact.label}</dt>
+                {/* No count-up here: the hero must not wait for JavaScript to show its numbers. */}
                 <dd className="text-3xl font-black tracking-tight md:text-4xl">{fact.value}</dd>
               </div>
             ))}
@@ -130,7 +141,8 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
     <li
       ref={ref}
       data-reveal={reveal}
-      className={`${CARD} ${styles.hoverable} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform duration-300 ease-tour hover:-translate-y-1`}
+      className={`${CARD} ${styles.hoverable} ${styles.enter} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform duration-300 ease-tour hover:-translate-y-1`}
+      style={delay((order % 3) * 90)}
     >
       <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden="true" />
       {/* Cards in the same row start their icons a beat apart. */}
@@ -152,7 +164,7 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
     <LightSection index={index}>
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
+      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(services.intro, audience)}
       </p>
       <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -189,19 +201,23 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           Under the hood
         </Eyebrow>
         <SectionHeading title={infrastructure.title} onDark />
-        <p className="mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#12ca99]/10 px-5 py-3 text-white/90">
+        <p
+          className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#12ca99]/10 px-5 py-3 text-white/90`}
+          style={delay(160)}
+        >
           <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
             In simple terms
           </span>
           <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
         </p>
         <div className="mt-10 space-y-6">
-          {infrastructure.items.map((item) => {
+          {infrastructure.items.map((item, itemIndex) => {
             const src = tourAssetUrl(item.image);
             return (
               <article
                 key={item.id}
-                className="flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10"
+                style={stagger(itemIndex)}
+                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10`}
               >
                 {src && (
                   <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px]">
@@ -232,7 +248,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                           <dt className="mt-1 text-sm font-medium text-white/70">{spec.label}</dt>
                           <dd className="flex items-baseline gap-2">
                             <span className="text-5xl font-black tracking-tight" style={{ color }}>
-                              {spec.value}
+                              <CountUp value={spec.value} />
                             </span>
                             <span className="text-xl font-bold text-white/80">{spec.unit}</span>
                           </dd>
@@ -256,7 +272,7 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
     <LightSection index={index}>
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
+      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(trainings.intro, audience)}
       </p>
       <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
@@ -265,13 +281,17 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
           // 3 across on the first row, 2 wider tiles after (matches the deck).
           const span = i < 3 ? "lg:col-span-2" : "lg:col-span-3";
           return (
-            <li key={training.name} className={`${span} group relative aspect-[3/2] overflow-hidden rounded-2xl bg-[#f0e8f2]`}>
+            <li
+              key={training.name}
+              className={`${span} ${styles.enter} group relative aspect-[3/2] overflow-hidden rounded-2xl bg-[#f0e8f2]`}
+              style={stagger(i)}
+            >
               {src && (
                 <img
                   src={src}
                   alt={`${training.name} training session`}
                   loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className={`${styles.kenBurns} h-full w-full object-cover transition-transform duration-500 group-hover:scale-105`}
                 />
               )}
               <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(28,33,82,0.92),rgba(28,33,82,0))] px-5 pb-4 pt-16">
@@ -294,12 +314,12 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
     <LightSection index={index}>
       <Eyebrow index={index}>Research highlights</Eyebrow>
       <SectionHeading title={projects.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(projects.intro, audience)}</p>
+      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
 
-      <article className={`${CARD} mt-10 flex flex-col overflow-hidden md:flex-row`}>
+      <article className={`${CARD} ${styles.enter} mt-10 flex flex-col overflow-hidden md:flex-row`} style={delay(220)}>
         {leadSrc && (
           <div className="aspect-[4/3] shrink-0 bg-[#f0e8f2] md:aspect-auto md:w-[44%]">
-            <img src={leadSrc} alt={lead.species ? `${lead.species}` : lead.title} loading="lazy" className="h-full w-full object-cover" />
+            <img src={leadSrc} alt={lead.species ? `${lead.species}` : lead.title} loading="lazy" className={`${styles.kenBurns} h-full w-full object-cover`} />
           </div>
         )}
         <div className="flex flex-1 flex-col p-6 md:p-10">
@@ -321,7 +341,9 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
                 >
                   <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
                   <dd className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">{h.value}</span>
+                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">
+                      <CountUp value={h.value} />
+                    </span>
                     {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
                   </dd>
                 </div>
@@ -339,8 +361,8 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
 
       {rest.length > 0 && (
         <ul className="mt-6 grid gap-5 md:grid-cols-2">
-          {rest.map((project) => (
-            <li key={project.id} className={`${CARD} p-6`}>
+          {rest.map((project, i) => (
+            <li key={project.id} className={`${CARD} ${styles.enter} p-6`} style={stagger(i, 320)}>
               {project.status && (
                 <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">{project.status}</p>
               )}
@@ -369,11 +391,13 @@ export function VariantTreeSection({
         <div className="max-w-3xl">
           <Eyebrow index={index}>Tracking the variants</Eyebrow>
           <SectionHeading title={nextstrain.title} />
-          <p className="mt-3 text-lg leading-relaxed text-[#5b6770]">{resolveText(nextstrain.intro, audience)}</p>
+          <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(nextstrain.intro, audience)}</p>
         </div>
         <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[#2b3278] lg:mt-0 lg:shrink-0 lg:flex-col lg:text-right">
           <div className="flex items-baseline gap-1.5 lg:justify-end">
-            <dd className="text-2xl font-black tabular-nums">{summary.tipCount.toLocaleString("en-PH")}</dd>
+            <dd className="text-2xl font-black tabular-nums">
+              <CountUp value={summary.tipCount.toLocaleString("en-PH")} />
+            </dd>
             <dt className="text-sm font-semibold">genomes</dt>
           </div>
           <div className="flex items-baseline gap-1.5 lg:justify-end">
@@ -416,6 +440,9 @@ function niceCeil(value: number): number {
 
 function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] }) {
   const [active, setActive] = useState<number | null>(null);
+  const [ref, reveal] = useReveal<HTMLDivElement>();
+  // Bars grow left to right over ~0.8s, then the peak label appears.
+  const barStep = Math.min(60, 800 / Math.max(1, quarterly.length));
   const peak = Math.max(1, ...quarterly.map((q) => q.samples));
   const peakIndex = quarterly.findIndex((q) => q.samples === peak);
   const top = niceCeil(peak);
@@ -423,7 +450,7 @@ function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] 
   const dense = quarterly.length > 16;
 
   return (
-    <div className="mt-8 flex gap-3">
+    <div ref={ref} data-reveal={reveal} className="mt-8 flex gap-3">
       {/* y-axis */}
       <div className="relative h-64 w-10 shrink-0 text-right text-[11px] tabular-nums text-[#5b6770]" aria-hidden="true">
         {ticks.map((t) => (
@@ -463,8 +490,9 @@ function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] 
                 >
                   {isActive && <span className="absolute inset-0 rounded-md bg-[#2b3278]/[0.05]" aria-hidden="true" />}
                   <span
-                    className="relative w-full max-w-12 rounded-t-[4px] transition-[filter] duration-150"
+                    className={`${styles.bar} relative w-full max-w-12 rounded-t-[4px] transition-[filter] duration-150`}
                     style={{
+                      ...delay(Math.round(i * barStep)),
                       height: `${height}%`,
                       background: isPeak
                         ? `linear-gradient(to top, ${BRAND.purple}, #8a3a8a)`
@@ -474,7 +502,10 @@ function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] 
                     aria-hidden="true"
                   >
                     {isPeak && !isActive && (
-                      <span className="absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#5e205e] px-2 py-0.5 text-[11px] font-bold text-white">
+                      <span
+                        className={`${styles.fadeIn} absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#5e205e] px-2 py-0.5 text-[11px] font-bold text-white`}
+                        style={delay(Math.round(quarterly.length * barStep) + 500)}
+                      >
                         Peak · {q.samples.toLocaleString("en-PH")}
                       </span>
                     )}
@@ -544,22 +575,28 @@ export function CovidSection({
     <LightSection index={index} lavender>
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
-        <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
+        <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
           {resolveText(covid.intro, audience)}
         </p>
         {stats && (
           <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.6fr)]">
             <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-              {tiles.map((tile) => (
-                <div key={tile.label} className={`${CARD} relative flex flex-col-reverse justify-end overflow-hidden py-4 pl-6 pr-5`}>
+              {tiles.map((tile, i) => (
+                <div
+                  key={tile.label}
+                  className={`${CARD} ${styles.enter} relative flex flex-col-reverse justify-end overflow-hidden py-4 pl-6 pr-5`}
+                  style={stagger(i)}
+                >
                   <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: tile.color }} aria-hidden="true" />
                   <dt className="mt-0.5 text-sm font-medium text-[#5b6770]">{tile.label}</dt>
-                  <dd className="text-3xl font-black tracking-tight text-[#2b3278] tabular-nums">{tile.value}</dd>
+                  <dd className="text-3xl font-black tracking-tight text-[#2b3278] tabular-nums">
+                    <CountUp value={tile.value} />
+                  </dd>
                 </div>
               ))}
             </dl>
             {stats.quarterly.length > 0 && (
-              <figure className={`${CARD} flex flex-col p-6 md:p-8`}>
+              <figure className={`${CARD} ${styles.enter} flex flex-col p-6 md:p-8`} style={delay(260)}>
                 <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span className="text-lg font-bold text-[#2b3278]">Samples sequenced per quarter</span>
                   {from && to && (
@@ -585,19 +622,19 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
     <LightSection index={index}>
       <Eyebrow index={index}>The people</Eyebrow>
       <SectionHeading title={team.title} />
-      <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(team.intro, audience)}</p>
+      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
       <ul className="mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4">
-        {team.members.map((member) => {
+        {team.members.map((member, i) => {
           const src = tourAssetUrl(member.image);
           return (
-            <li key={member.id} className={`${CARD} group flex flex-col overflow-hidden`}>
+            <li key={member.id} className={`${CARD} ${styles.enter} group flex flex-col overflow-hidden`} style={stagger(i)}>
               <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2]">
                 {src && (
                   <img
                     src={src}
                     alt={member.fullName}
                     loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className={`${styles.kenBurns} h-full w-full object-cover transition-transform duration-500 group-hover:scale-105`}
                   />
                 )}
               </div>
@@ -612,7 +649,10 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           );
         })}
         {team.joinCard && (
-          <li className="flex flex-col justify-center gap-2 rounded-2xl bg-[linear-gradient(150deg,#2b3278,#5e205e)] p-6 text-white">
+          <li
+            className={`${styles.enter} flex flex-col justify-center gap-2 rounded-2xl bg-[linear-gradient(150deg,#2b3278,#5e205e)] p-6 text-white`}
+            style={stagger(team.members.length)}
+          >
             <span className="mb-2 h-1 w-10 rounded-full bg-[#12ca99]" aria-hidden="true" />
             <p className="text-xl font-black md:text-2xl">{team.joinCard.title}</p>
             <p className="text-sm leading-relaxed text-white/85 md:text-base">{team.joinCard.body}</p>
@@ -630,8 +670,8 @@ export function VideosSection({ content, index }: SectionProps & { index: number
       <Eyebrow index={index}>See it in action</Eyebrow>
       <SectionHeading title={videos.title} />
       <ul className="mt-10 grid gap-6 md:grid-cols-2">
-        {videos.items.map((video) => (
-          <li key={video.id} className={`${CARD} overflow-hidden`}>
+        {videos.items.map((video, i) => (
+          <li key={video.id} className={`${CARD} ${styles.enter} overflow-hidden`} style={stagger(i)}>
             <div className="aspect-video bg-[#1c2152]">
               {video.youtubeId ? (
                 <iframe
@@ -684,7 +724,10 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
             <span className="h-0.5 w-8 rounded-full bg-[#12ca99]" aria-hidden="true" />
             {String(index).padStart(2, "0")} · Work with us
           </p>
-          <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-[40px] md:leading-[1.15]">
+          <h2
+            className={`${styles.enter} mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-[40px] md:leading-[1.15]`}
+            style={delay(80)}
+          >
             {contact.title}
           </h2>
           <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>
@@ -696,8 +739,8 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
           )}
         </div>
         <ul className="space-y-3">
-          {contact.emails.map((email) => (
-            <li key={email.address}>
+          {contact.emails.map((email, i) => (
+            <li key={email.address} className={styles.enter} style={stagger(i, 250)}>
               <a
                 href={`mailto:${email.address}`}
                 className="block rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 transition-colors hover:border-[#12ca99]/60 hover:bg-white/[0.14]"
