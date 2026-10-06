@@ -58,3 +58,24 @@ describe("SectionBackdrop", () => {
     expect(new Set(rows).size).toBe(rows.length);
   });
 });
+
+describe("FeaturedProject", () => {
+  it("renders the deer example with its range, timeline and a scannable citation", async () => {
+    const { parseTourContent } = await import("@/lib/tour");
+    const { FeaturedProject } = await import("./project-feature");
+    const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
+    const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
+    const { getByText, getByRole, getAllByText } = render(
+      <FeaturedProject project={tour.projects.items[0]!} audience="students" />,
+    );
+    expect(getByText(/giant puzzle/)).toBeInTheDocument();
+    expect(getByText("Meet Abraham")).toBeInTheDocument();
+    expect(getByText("Cebu").closest("li")).toHaveTextContent("Formerly Cebu");
+    expect(getAllByText(/\(done\)/)).toHaveLength(5);
+    expect(getByRole("img", { name: /QR code linking to Javier et al\. \(2025\)/ }).querySelector("path")).not.toBeNull();
+    expect(getByRole("link", { name: /Javier et al\. \(2025\), GigaByte/ })).toHaveAttribute(
+      "href",
+      "https://doi.org/10.46471/gigabyte.150",
+    );
+  });
+});

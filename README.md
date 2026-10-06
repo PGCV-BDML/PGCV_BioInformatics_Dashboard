@@ -143,6 +143,16 @@ The course builder's **Add from library** reads `modules.json` from the private 
 `/tour` is a **public** page (no sign-in) for visiting schools and institutions, with a Students / General / Technical audience switch and a full-screen **Present** mode (arrow keys to move between sections, Esc to exit). Staff reach it from **Lab Tour** in the sidebar.
 
 - **Text and photos** come from `tour.json` and `images/` in the private [pgcv-tour-content](https://github.com/bioinfopgcupvisayas/pgcv-tour-content) repo; edits on its `main` branch show up within about 5 minutes. Images are served through `/api/tour/asset/…`, which only allows `images/*.jpg|png|webp`. Videos are linked (unlisted YouTube or a GitHub Release), never committed.
+- **Projects:** the first entry in `projects.items` is shown as a large featured card. Besides `title`, `species`, `status`, `image`, `summary`, `highlights` and `partners`, it can take these optional fields:
+  - `commonName`
+  - `imageFocus` (`"x% y%"`): which part of the photo stays in frame when cropped
+  - `imageTitle` and `imageCredit`: caption and credit on the photo
+  - `conservation` (`{ code, label }`, e.g. an IUCN "EN" badge) and `facts` (short chips on the photo)
+  - `range` (`{ title, current[], former[] }`): former islands are shown struck through
+  - `steps` (`{ label, note, state }`, with `state` one of `done`, `now` or `next`) and `next` (a "What's next" line, per audience)
+  - `citation` (`{ text, url, note }`): the http(s) `url` also becomes a QR code
+
+  [`docs/tour-content/visayan-spotted-deer.json`](docs/tour-content/visayan-spotted-deer.json) is a complete example, ready to paste as the `projects` block. Its photo goes in the content repo at `images/projects/abraham.jpg`.
 - **COVID-19 numbers** are live totals from the `get_tour_covid_stats()` RPC (migration `20261006120000_tour_covid_stats.sql`), refreshed hourly. It returns aggregates only; `covid_sequencing_run` rows stay staff-only.
 - **Token:** set `GITHUB_TOUR_TOKEN` to a fine-grained PAT with read-only Contents access to `pgcv-tour-content`, or add that repo to the `GITHUB_MODULES_TOKEN` PAT. If GitHub can't be reached or `tour.json` is invalid, the page falls back to the built-in copy in `lib/tour.ts` (no photos) instead of erroring.
 

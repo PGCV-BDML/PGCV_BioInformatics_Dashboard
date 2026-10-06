@@ -35,3 +35,6 @@ export const SERVICE_HEX: Record<ServiceColor, string> = {
   coral: BRAND.deepTeal,
   indigo: BRAND.navy,
 };
+
+/** White card used across the tour's light sections. */
+export const CARD = "rounded-2xl border border-[#2b3278]/10 bg-white shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)]";
