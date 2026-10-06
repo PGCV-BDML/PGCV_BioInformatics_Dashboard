@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
@@ -151,30 +152,35 @@ export function TourExperience({
   };
 
   return (
-    <div className={`min-h-screen bg-[#f4f4f4] text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}>
-      <header className="sticky top-0 z-30 border-b border-[#4e2a74]/10 bg-[#fffdf8]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <a href="#welcome" className="flex items-center gap-3" onClick={(e) => { e.preventDefault(); goTo(0); }}>
-            <span
-              className="h-9 w-9 shrink-0 rounded-full bg-[linear-gradient(90deg,#f08a2c,#7b2d8e,#2a6db0)]"
-              aria-hidden="true"
+    <div className={`min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}>
+      <header className="sticky top-0 z-30 border-b-[3px] border-[#12ca99] bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8">
+          <a href="#welcome" className="flex shrink-0 items-center gap-3" onClick={(e) => { e.preventDefault(); goTo(0); }}>
+            <Image
+              src="/assets/pgcv_logo.png"
+              alt="Philippine Genome Center Visayas Logo"
+              width={1440}
+              height={611}
+              priority
+              className="h-10 w-auto shrink-0 md:h-12"
             />
-            <span className="leading-tight">
-              <span className="block font-bold text-[#4e2a74]">PGC Visayas</span>
-              <span className="hidden font-quicksand text-[10px] font-bold uppercase tracking-[0.12em] text-[#7a8e9b] sm:block">
-                Bioinformatics &amp; Data Management Lab
-              </span>
+            <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block xl:hidden">
+              Bioinformatics &amp;
+              <br />
+              Data Management Lab
             </span>
           </a>
 
           <nav aria-label="Tour sections" className="hidden xl:block">
-            <ul className="flex gap-5 whitespace-nowrap text-sm font-medium text-[#4b5b63]">
+            <ul className="flex gap-5 whitespace-nowrap text-sm font-semibold text-[#5b6770]">
               {sectionIds.slice(1).map((id, i) => (
                 <li key={id}>
                   <a
                     href={`#${id}`}
                     onClick={(e) => { e.preventDefault(); goTo(i + 1); }}
-                    className={`hover:text-[#4e2a74] ${current === i + 1 ? "font-semibold text-[#4e2a74]" : ""}`}
+                    className={`border-b-2 py-1 transition-colors hover:text-[#2b3278] ${
+                      current === i + 1 ? "border-[#12ca99] text-[#2b3278]" : "border-transparent"
+                    }`}
                   >
                     {NAV_LABELS[id]}
                   </a>
@@ -187,7 +193,7 @@ export function TourExperience({
             <div
               role="radiogroup"
               aria-label="Who is visiting today?"
-              className="flex rounded-full border border-[#4e2a74]/20 bg-white p-1"
+              className="flex rounded-full border border-[#2b3278]/15 bg-white p-1"
             >
               {AUDIENCES.map((option) => (
                 <button
@@ -197,7 +203,7 @@ export function TourExperience({
                   aria-checked={audience === option}
                   onClick={() => setAudience(option)}
                   className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3.5 sm:text-sm ${
-                    audience === option ? "bg-[#4e2a74] text-white" : "text-[#4e2a74] hover:bg-[#f3edf9]"
+                    audience === option ? "bg-[#2b3278] text-white" : "text-[#2b3278] hover:bg-[#f0e8f2]"
                   }`}
                 >
                   {AUDIENCE_LABELS[option]}
@@ -207,7 +213,7 @@ export function TourExperience({
             <button
               type="button"
               onClick={presenting ? stopPresenting : startPresenting}
-              className="hidden items-center gap-2 rounded-full bg-[#4e2a74] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3d2060] md:inline-flex"
+              className="hidden items-center gap-2 rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)] md:inline-flex"
             >
               {presenting ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
               {presenting ? "Exit presentation" : "Present"}
@@ -236,23 +242,39 @@ export function TourExperience({
         ))}
       </main>
 
-      <footer className="bg-[#22143a] px-4 py-6 text-sm text-[#b9a8cf] md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2">
-          <span>Philippine Genome Center Visayas · University of the Philippines Visayas</span>
+      <footer className="bg-[#1c2152] px-4 py-8 text-sm text-white/70 md:px-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <span className="rounded-xl bg-white px-3 py-2">
+              <Image
+                src="/assets/pgcv_logo.png"
+                alt="Philippine Genome Center Visayas Logo"
+                width={1440}
+                height={611}
+                className="h-8 w-auto"
+              />
+            </span>
+            <span className="leading-relaxed">
+              <span className="block font-semibold text-white">
+                University of the Philippines – Philippine Genome Center Visayas
+              </span>
+              Bioinformatics and Data Management Laboratory · @PGCVisayas
+            </span>
+          </div>
           <span>Summary statistics only — no client or patient data is shown.</span>
         </div>
       </footer>
 
       {presenting && (
         <div className="fixed inset-x-0 bottom-4 z-40 flex items-center justify-center gap-4" aria-hidden="true">
-          <div className="flex items-center gap-2 rounded-full bg-[#22143a]/85 px-4 py-2 backdrop-blur">
+          <div className="flex items-center gap-2 rounded-full bg-[#1c2152]/85 px-4 py-2 backdrop-blur">
             {sectionIds.map((id, i) => (
               <span
                 key={id}
-                className={`h-2.5 rounded-full transition-all ${i === current ? "w-8 bg-[#6ff2c4]" : "w-2.5 bg-white/30"}`}
+                className={`h-2.5 rounded-full transition-all ${i === current ? "w-8 bg-[#12ca99]" : "w-2.5 bg-white/30"}`}
               />
             ))}
-            <span className="ml-3 text-xs text-[#b9a8cf]">← → to navigate · Esc to exit</span>
+            <span className="ml-3 text-xs text-white/70">← → to navigate · Esc to exit</span>
           </div>
         </div>
       )}
