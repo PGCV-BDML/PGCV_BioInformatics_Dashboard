@@ -5,6 +5,8 @@
  * never shows an error page in front of visitors.
  */
 
+import { isSafeTourPhyloPath } from "@/lib/tour-phylo";
+
 export const AUDIENCES = ["students", "general", "technical"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
@@ -50,6 +52,18 @@ export type TourMember = {
   image: string | null;
 };
 
+export type TourProject = {
+  id: string;
+  title: string;
+  /** Scientific name, shown in italics, e.g. "Rusa alfredi". */
+  species: string | null;
+  status: string | null;
+  image: string | null;
+  summary: TourText;
+  highlights: TourSpec[];
+  partners: string[];
+};
+
 export type TourVideo = {
   id: string;
   title: string;
@@ -68,7 +82,10 @@ export type TourContent = {
   services: { title: string; intro: TourText; items: TourService[] };
   infrastructure: { title: string; analogy: TourText; items: TourInfrastructureItem[] };
   trainings: { title: string; intro: TourText; items: TourTraining[] };
+  projects: { title: string; intro: TourText; items: TourProject[] };
   covid: { title: string; intro: TourText };
+  /** Variant tree slide; `tree` is a nextstrain/*.json path in the content repo. */
+  nextstrain: { title: string; intro: TourText; tree: string } | null;
   team: {
     title: string;
     intro: TourText;
@@ -163,6 +180,8 @@ export function parseTourContent(raw: unknown): TourContent {
   const covid = obj(root.covid, "covid");
   const team = obj(root.team, "team");
   const videos = obj(root.videos ?? { title: "Videos", items: [] }, "videos");
+  const projects = obj(root.projects ?? { title: "Projects", intro: "Projects", items: [] }, "projects");
+  const nextstrain = root.nextstrain ? obj(root.nextstrain, "nextstrain") : null;
   const contact = obj(root.contact, "contact");
   const joinCard = team.joinCard ? obj(team.joinCard, "team.joinCard") : null;
   const social = contact.social ? obj(contact.social, "contact.social") : null;
@@ -226,10 +245,44 @@ export function parseTourContent(raw: unknown): TourContent {
         return { name: str(o.name, `trainings.items[${i}].name`), image: image(o.image) };
       }),
     },
+    projects: {
+      title: str(projects.title, "projects.title"),
+      intro: text(projects.intro, "projects.intro"),
+      items: arr(projects.items ?? [], "projects.items").map((p, i) => {
+        const o = obj(p, `projects.items[${i}]`);
+        return {
+          id: str(o.id, `projects.items[${i}].id`),
+          title: str(o.title, `projects.items[${i}].title`),
+          species: optStr(o.species),
+          status: optStr(o.status),
+          image: image(o.image),
+          summary: text(o.summary, `projects.items[${i}].summary`),
+          highlights: arr(o.highlights ?? [], `projects.items[${i}].highlights`).map((h, j) => {
+            const ho = obj(h, `projects.items[${i}].highlights[${j}]`);
+            return {
+              value: str(ho.value, `projects.items[${i}].highlights[${j}].value`),
+              unit: optStr(ho.unit) ?? "",
+              label: optStr(ho.label) ?? "",
+            };
+          }),
+          partners: arr(o.partners ?? [], `projects.items[${i}].partners`).flatMap((v) =>
+            typeof v === "string" && v.trim() ? [v.trim()] : [],
+          ),
+        };
+      }),
+    },
     covid: {
       title: str(covid.title, "covid.title"),
       intro: text(covid.intro, "covid.intro"),
     },
+    nextstrain:
+      nextstrain && isSafeTourPhyloPath(optStr(nextstrain.tree) ?? "")
+        ? {
+            title: str(nextstrain.title, "nextstrain.title"),
+            intro: text(nextstrain.intro, "nextstrain.intro"),
+            tree: str(nextstrain.tree, "nextstrain.tree"),
+          }
+        : null,
     team: {
       title: str(team.title, "team.title"),
       intro: text(team.intro, "team.intro"),
@@ -331,10 +384,12 @@ export const FALLBACK_TOUR: TourContent = {
     ],
   },
   trainings: { title: "Bioinformatics trainings", intro: "Hands-on workshops run in our own computer lab.", items: [] },
+  projects: { title: "Research projects", intro: "Genomes we have sequenced and assembled.", items: [] },
   covid: {
     title: "COVID-19 genomic surveillance",
     intro: "Our lab was at the forefront of the region's biosurveillance effort during the pandemic.",
   },
+  nextstrain: null,
   team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [], joinCard: null },
   videos: { title: "Videos", items: [] },
   contact: {

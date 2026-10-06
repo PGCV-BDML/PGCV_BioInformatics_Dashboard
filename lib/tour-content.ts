@@ -1,4 +1,5 @@
 import { FALLBACK_TOUR, parseTourContent, type TourContent } from "@/lib/tour";
+import { isSafeTourPhyloPath, parseTourPhylo, type TourPhylo } from "@/lib/tour-phylo";
 
 /**
  * Server-only access to the private pgcv-tour-content repo.
@@ -77,5 +78,26 @@ export async function getTourContent(): Promise<TourContentResult> {
   } catch (error) {
     console.error("Lab tour: using built-in content.", error);
     return { content: FALLBACK_TOUR, source: "fallback" };
+  }
+}
+
+/**
+ * The Variant tree file named by tour.json's nextstrain.tree, or null when it
+ * is missing, unsafe or not a slimmed pgcv-tour-phylo file (the slide is then
+ * hidden). Slimmed files are a few hundred KB, well inside the fetch cache.
+ */
+export async function getTourPhylo(path: string | null | undefined): Promise<TourPhylo | null> {
+  if (!path || !isSafeTourPhyloPath(path) || !isTourContentConfigured()) return null;
+  try {
+    const response = await fetchTourRepoFile(path, {
+      next: { revalidate: TOUR_CONTENT_REVALIDATE_SECONDS },
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub returned ${response.status} for ${path}`);
+    }
+    return parseTourPhylo(await response.json());
+  } catch (error) {
+    console.error("Lab tour: hiding the variant tree.", error);
+    return null;
   }
 }
