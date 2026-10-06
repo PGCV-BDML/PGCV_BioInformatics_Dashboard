@@ -31,6 +31,9 @@
   --font-aileron: "Aileron", sans-serif;
   --font-optima: "Optima", sans-serif;
   --font-quicksand: "Quicksand", sans-serif;
+
+  /* Motion Tokens */
+  --ease-tour: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @font-face {

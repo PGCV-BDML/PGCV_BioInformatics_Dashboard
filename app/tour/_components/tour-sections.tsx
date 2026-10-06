@@ -2,15 +2,15 @@
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import {
-  resolveText,
-  tourAssetUrl,
-  type Audience,
-  type ServiceColor,
-  type TourContent,
-} from "@/lib/tour";
+import { Cpu, HardDrive, MemoryStick, type LucideIcon } from "lucide-react";
+import { resolveText, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
+import { BRAND, SERVICE_HEX } from "./brand";
+import { LogoHelix } from "./logo-helix";
+import { ServiceIcon } from "./service-icons";
+import { useReveal } from "./use-reveal";
+import styles from "./tour-motion.module.css";
 
 // ~11k-node SVG and its data load after the rest of the tour.
 const PhyloTree = dynamic(() => import("./phylo-tree").then((m) => m.PhyloTree), {
@@ -21,27 +21,6 @@ const PhyloTree = dynamic(() => import("./phylo-tree").then((m) => m.PhyloTree),
     </div>
   ),
 });
-
-/**
- * PGC Visayas brand colours (PGC Brand Guide 2025). Teal #12ca99 is too light
- * for text on light backgrounds, so small text uses the darker `tealInk`.
- */
-const BRAND = {
-  teal: "#12ca99",
-  tealInk: "#0a7558",
-  deepTeal: "#2a7797",
-  purple: "#5e205e",
-  navy: "#2b3278",
-} as const;
-
-// Content keeps its colour names; they map onto the PGCV palette here.
-const SERVICE_HEX: Record<ServiceColor, string> = {
-  purple: BRAND.purple,
-  magenta: "#912a8c",
-  mint: BRAND.tealInk,
-  coral: BRAND.deepTeal,
-  indigo: BRAND.navy,
-};
 
 type SectionProps = { content: TourContent; audience: Audience };
 
@@ -68,35 +47,15 @@ function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) 
   );
 }
 
-/** Decorative double helix echoing the logo mark. */
-function HelixArt({ className }: { className?: string }) {
-  const rungs = Array.from({ length: 18 }, (_, i) => i);
-  return (
-    <svg viewBox="0 0 600 240" className={className} aria-hidden="true" fill="none">
-      <defs>
-        <linearGradient id="helix-strand" x1="0" x2="1">
-          <stop offset="0" stopColor="#f08a2c" />
-          <stop offset="0.5" stopColor="#c0399a" />
-          <stop offset="1" stopColor="#12ca99" />
-        </linearGradient>
-      </defs>
-      <path d="M0 120 C 75 20, 150 20, 225 120 S 375 220, 450 120 S 562 20, 600 70" stroke="url(#helix-strand)" strokeWidth="5" strokeLinecap="round" />
-      <path d="M0 120 C 75 220, 150 220, 225 120 S 375 20, 450 120 S 562 220, 600 170" stroke="white" strokeOpacity="0.35" strokeWidth="3" strokeLinecap="round" />
-      {rungs.map((i) => {
-        const x = 18 + i * 33;
-        // Rounded so server and client render identical attributes.
-        const y = Math.round(78 * Math.abs(Math.sin((x / 225) * Math.PI)));
-        return <line key={i} x1={x} x2={x} y1={120 - y} y2={120 + y} stroke="white" strokeOpacity="0.18" strokeWidth="3" strokeLinecap="round" />;
-      })}
-    </svg>
-  );
-}
-
 export function HeroSection({ content, audience }: SectionProps) {
   const { hero } = content;
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(135deg,#2b3278_0%,#5e205e_45%,#2a7797_85%,#12ca99_130%)] text-white">
-      <HelixArt className="pointer-events-none absolute -right-40 top-4 hidden w-[620px] opacity-45 xl:block" />
+      <LogoHelix
+        onDark
+        animate
+        className="pointer-events-none absolute -right-28 top-10 hidden w-[560px] opacity-35 md:block xl:-right-20 xl:w-[720px] xl:opacity-70"
+      />
       <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
@@ -127,6 +86,29 @@ export function HeroSection({ content, audience }: SectionProps) {
   );
 }
 
+function ServiceCard({ service, audience, order }: { service: TourService; audience: Audience; order: number }) {
+  const [ref, reveal] = useReveal<HTMLLIElement>();
+  const color = SERVICE_HEX[service.color];
+  return (
+    <li
+      ref={ref}
+      data-reveal={reveal}
+      className={`${CARD} ${styles.hoverable} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform duration-300 ease-tour hover:-translate-y-1`}
+    >
+      <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden="true" />
+      {/* Cards in the same row start their icons a beat apart. */}
+      <ServiceIcon id={service.id} code={service.code} color={color} delay={(order % 3) * 90} />
+      <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{service.name}</h3>
+      <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>
+      {service.tag && (
+        <span className="self-start rounded-full px-3 py-1 text-xs font-semibold" style={{ color, backgroundColor: `${color}14` }}>
+          {service.tag}
+        </span>
+      )}
+    </li>
+  );
+}
+
 export function ServicesSection({ content, audience, index }: SectionProps & { index: number }) {
   const { services } = content;
   return (
@@ -137,40 +119,24 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
         {resolveText(services.intro, audience)}
       </p>
       <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {services.items.map((service) => {
-          const color = SERVICE_HEX[service.color];
-          return (
-            <li
-              key={service.id}
-              className={`${CARD} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform hover:-translate-y-0.5`}
-            >
-              <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden="true" />
-              <span
-                className="flex h-12 w-12 items-center justify-center rounded-xl text-base font-black text-white"
-                style={{ backgroundColor: color }}
-                aria-hidden="true"
-              >
-                {service.code}
-              </span>
-              <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{service.name}</h3>
-              <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>
-              {service.tag && (
-                <span
-                  className="self-start rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{ color, backgroundColor: `${color}14` }}
-                >
-                  {service.tag}
-                </span>
-              )}
-            </li>
-          );
-        })}
+        {services.items.map((service, i) => (
+          <ServiceCard key={service.id} service={service} audience={audience} order={i} />
+        ))}
       </ul>
     </div>
   );
 }
 
 const SPEC_COLORS = [BRAND.teal, "#6cc4e6", "#d7a6d7"];
+
+/** Specs carry no id, so the icon is picked from the unit and label wording. */
+function specIcon(spec: { unit: string; label: string }): LucideIcon | null {
+  const words = `${spec.unit} ${spec.label}`.toLowerCase();
+  if (/\b(cores?|cpus?|processing)\b/.test(words)) return Cpu;
+  if (/\b(ram|memory)\b/.test(words)) return MemoryStick;
+  if (/\b(storage|disk|tb|pb)\b/.test(words)) return HardDrive;
+  return null;
+}
 
 export function InfrastructureSection({ content, audience, index }: SectionProps & { index: number }) {
   const { infrastructure } = content;
@@ -215,12 +181,16 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                   <dl className="mt-8 grid gap-4 sm:grid-cols-3">
                     {item.specs.map((spec, i) => {
                       const color = SPEC_COLORS[i % SPEC_COLORS.length];
+                      const Icon = specIcon(spec);
                       return (
                         <div
                           key={spec.label || i}
-                          className="flex flex-col-reverse rounded-2xl border-l-4 bg-white/[0.06] px-6 py-5"
+                          className="relative flex flex-col-reverse rounded-2xl border-l-4 bg-white/[0.06] px-6 py-5"
                           style={{ borderColor: color }}
                         >
+                          {Icon && (
+                            <Icon className="absolute right-4 top-4 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />
+                          )}
                           <dt className="mt-1 text-sm font-medium text-white/70">{spec.label}</dt>
                           <dd className="flex items-baseline gap-2">
                             <span className="text-5xl font-black tracking-tight" style={{ color }}>
@@ -655,7 +625,7 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
   const { contact } = content;
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(120deg,#2b3278_0%,#5e205e_55%,#2a7797_100%)] text-white">
-      <HelixArt className="pointer-events-none absolute -bottom-10 -right-32 hidden w-[560px] opacity-30 lg:block" />
+      <LogoHelix onDark className="pointer-events-none absolute -bottom-6 -right-24 hidden w-[600px] opacity-35 lg:block" />
       <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 md:px-8 md:py-20 lg:grid-cols-[1.2fr_1fr] lg:items-center">
         <div>
           <p className="flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
