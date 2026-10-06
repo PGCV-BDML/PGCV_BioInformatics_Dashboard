@@ -24,6 +24,10 @@
   transform-box: fill-box;
 }
 
+.growX {
+  transform-origin: left;
+}
+
 .rung,
 .pop {
   transform-origin: center;
@@ -36,6 +40,11 @@
 
 .scan {
   opacity: 0;
+}
+
+/* Without motion a static full bar would say nothing, so it only shows animated. */
+.countdown {
+  visibility: hidden;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -69,6 +78,43 @@
     animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
   }
 
+  /*
+   * Section entrances. `backwards` fill only: once finished they leave no
+   * transform behind, so hover lifts on the same elements keep working.
+   */
+  .enter {
+    animation: tour-enter 0.6s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) backwards;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .growX {
+    animation: tour-grow-x 0.6s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) backwards;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .bar {
+    animation: tour-grow-y 0.7s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) backwards;
+    animation-delay: var(--d, 0ms);
+    transform-origin: bottom;
+  }
+
+  .fadeIn {
+    animation: tour-fade 0.4s ease-out backwards;
+    animation-delay: var(--d, 0ms);
+  }
+
+  /* Present mode: photos drift slowly, like a documentary pan. */
+  [data-presenting] .kenBurns {
+    animation: tour-ken-burns 22s ease-in-out infinite alternate;
+  }
+
+  /* Auto-advance countdown for the current slide. */
+  .countdown {
+    visibility: visible;
+    transform-origin: left;
+    animation: tour-countdown var(--t) linear both;
+  }
+
   /* Hover loops: only while the card is pointed at, snapping back on leave. */
   .hoverable:hover .bob {
     animation: tour-bob 1.6s ease-in-out infinite;
@@ -98,9 +144,34 @@
 }
 
 @media (scripting: enabled) {
-  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight) {
+  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
     animation-play-state: paused;
   }
+}
+
+/* A count-up waits, invisible but still taking its final width, until shown. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .count[data-reveal="pending"] {
+    visibility: hidden;
+  }
+}
+
+.count {
+  position: relative;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The final value, drawn invisibly to reserve the width as the digits grow. */
+.count::before {
+  content: attr(data-final);
+  visibility: hidden;
+}
+
+.countValue {
+  position: absolute;
+  inset: 0;
+  white-space: nowrap;
 }
 
 @keyframes tour-draw {
@@ -182,5 +253,50 @@
 @keyframes tour-blink {
   50% {
     opacity: 0;
+  }
+}
+
+@keyframes tour-enter {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes tour-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tour-ken-burns {
+  from {
+    transform: scale(1.02) translate(0, 0);
+  }
+  to {
+    transform: scale(1.1) translate(-1.5%, -1%);
+  }
+}
+
+@keyframes tour-countdown {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Printed tours show everything in its final state. */
+@media print {
+  .count[data-reveal] {
+    visibility: visible;
+  }
+
+  :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
+    animation: none !important;
   }
 }
