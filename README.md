@@ -126,6 +126,7 @@ The app deploys automatically on Vercel when changes are pushed to the `main` br
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push; generate with `npm run vapid:generate`)
    - `PUSH_DISPATCH_SECRET` (random secret, e.g. `openssl rand -hex 32`)
    - `GITHUB_MODULES_TOKEN` (training module library; see below)
+   - `GITHUB_TOUR_TOKEN` (Lab Tour content; optional if `GITHUB_MODULES_TOKEN` can also read `pgcv-tour-content`)
 3. Push to `main` — Vercel builds and deploys automatically.
 
 ### Training module library
@@ -136,6 +137,14 @@ The course builder's **Add from library** reads `modules.json` from the private 
 - **Renaming or moving a file is fine**, as long as its `folder`/`entry` in `modules.json` is updated in the same commit.
 - **Removing a module from `modules.json` breaks it** in any course that includes it. To retire one, mark it `retired` instead: it disappears from **Add from library**, and courses that already include it still open it.
 - **`GITHUB_MODULES_TOKEN` expires** on the date set when it was created. It's a fine-grained token with read-only Contents access to `bioinfo-modules` only. If **Add from library** stops loading, check that first, then update `GITHUB_MODULES_TOKEN` on Vercel and redeploy.
+
+### Lab Tour page
+
+`/tour` is a **public** page (no sign-in) for visiting schools and institutions, with a Students / General / Technical audience switch and a full-screen **Present** mode (arrow keys to move between sections, Esc to exit). Staff reach it from **Lab Tour** in the sidebar.
+
+- **Text and photos** come from `tour.json` and `images/` in the private [pgcv-tour-content](https://github.com/bioinfopgcupvisayas/pgcv-tour-content) repo; edits on its `main` branch show up within about 5 minutes. Images are served through `/api/tour/asset/…`, which only allows `images/*.jpg|png|webp`. Videos are linked (unlisted YouTube or a GitHub Release), never committed.
+- **COVID-19 numbers** are live totals from the `get_tour_covid_stats()` RPC (migration `20261006120000_tour_covid_stats.sql`), refreshed hourly. It returns aggregates only; `covid_sequencing_run` rows stay staff-only.
+- **Token:** set `GITHUB_TOUR_TOKEN` to a fine-grained PAT with read-only Contents access to `pgcv-tour-content`, or add that repo to the `GITHUB_MODULES_TOKEN` PAT. If GitHub can't be reached or `tour.json` is invalid, the page falls back to the built-in copy in `lib/tour.ts` (no photos) instead of erroring.
 
 HTTPS is enforced by Vercel for the production domain.
 
