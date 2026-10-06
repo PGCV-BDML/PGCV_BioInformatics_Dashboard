@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { expandLineage, lineageGroup, LINEAGE_GROUPS, monthMidpoint, slimAuspice } from "@/scripts/slim-auspice.mjs";
 import {
   isSafeTourPhyloPath,
+  cumulativeCounts,
   layoutPhylo,
   monthKey,
   monthlyCounts,
@@ -154,5 +155,16 @@ describe("layoutPhylo", () => {
     expect(rows[0]!.counts).toEqual([1, 0]);
     expect(rows[1]!.counts).toEqual([0, 0]);
     expect(rows[2]!.counts).toEqual([0, 1]);
+  });
+
+  it("keeps running totals by province and group", () => {
+    // Index is province * 2 + group; the June tip falls outside the months given.
+    const cum = cumulativeCounts(layoutPhylo(phylo), ["2022-01", "2022-02", "2022-03", "2022-04"], 2, 2);
+    expect(cum.map((row) => Array.from(row))).toEqual([
+      [0, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 0, 0, 1],
+    ]);
   });
 });
