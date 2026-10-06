@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   CircleHelp,
   MessagesSquare,
+  Presentation,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -186,6 +187,12 @@ const navItems: NavItem[] = [
     name: "Incident Reports",
     href: "/dashboard/incidents",
     icon: ShieldAlert,
+    animationClass: "group-hover:scale-105 transition-transform duration-200",
+  },
+  {
+    name: "Lab Tour",
+    href: "/tour",
+    icon: Presentation,
     animationClass: "group-hover:scale-105 transition-transform duration-200",
   },
 ];

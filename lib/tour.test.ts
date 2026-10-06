@@ -1,0 +1,150 @@
+import { describe, expect, it } from "vitest";
+import {
+  FALLBACK_TOUR,
+  isSafeTourAssetPath,
+  parseTourContent,
+  resolveText,
+  TourContentError,
+  tourAssetUrl,
+} from "@/lib/tour";
+
+function minimalTour(overrides: Record<string, unknown> = {}) {
+  return {
+    version: 1,
+    hero: { eyebrow: "Welcome", title: "Title", intro: "Intro", facts: [{ value: "120", label: "cores" }] },
+    services: {
+      title: "Services",
+      intro: "From a gene to a genome",
+      items: [
+        {
+          id: "barcoding",
+          code: "BC",
+          color: "magenta",
+          name: "DNA Barcoding",
+          tag: "fish",
+          summary: { general: "General copy", students: "Student copy" },
+        },
+      ],
+    },
+    infrastructure: {
+      title: "Infra",
+      analogy: "Like 120 brains",
+      items: [
+        {
+          id: "hpc",
+          name: "HPC Server",
+          image: "images/infrastructure/hpc-rack.png",
+          description: "Computes everything",
+          specs: [{ value: "120", unit: "cores", label: "processing power" }],
+        },
+      ],
+    },
+    trainings: { title: "Trainings", intro: "Workshops", items: [{ name: "Basic Coding", image: "images/trainings/basic-coding.jpg" }] },
+    covid: { title: "COVID-19", intro: "Biosurveillance" },
+    team: {
+      title: "Team",
+      intro: "The lab",
+      members: [{ id: "micah", nickname: "Micah", fullName: "Micah Danielle Lojera", position: "Senior Research Associate", image: "images/team/micah.jpg" }],
+      joinCard: { title: "Could this be you?", body: "We host interns." },
+    },
+    videos: { title: "Videos", items: [] },
+    contact: {
+      title: "Contact",
+      intro: "Write to us",
+      emails: [{ label: "Bioinformatics Laboratory", address: "bioinfo.pgc.upvisayas@up.edu.ph" }],
+      social: { handle: "@PGCVisayas", platforms: ["Facebook", 3, ""] },
+    },
+    ...overrides,
+  };
+}
+
+describe("parseTourContent", () => {
+  it("parses a complete tour.json", () => {
+    const tour = parseTourContent(minimalTour());
+    expect(tour.services.items[0]).toMatchObject({ id: "barcoding", color: "magenta" });
+    expect(tour.infrastructure.items[0]!.image).toBe("images/infrastructure/hpc-rack.png");
+    expect(tour.team.members[0]!.fullName).toBe("Micah Danielle Lojera");
+    expect(tour.contact.social?.platforms).toEqual(["Facebook"]);
+  });
+
+  it("rejects an unknown schema version", () => {
+    expect(() => parseTourContent(minimalTour({ version: 2 }))).toThrow(TourContentError);
+  });
+
+  it("rejects audience text without a general version", () => {
+    const raw = minimalTour();
+    raw.hero.intro = { students: "Only students" } as unknown as string;
+    expect(() => parseTourContent(raw)).toThrow(/hero\.intro\.general/);
+  });
+
+  it("falls back to purple for an unknown service color", () => {
+    const raw = minimalTour();
+    raw.services.items[0]!.color = "neon";
+    expect(parseTourContent(raw).services.items[0]!.color).toBe("purple");
+  });
+
+  it("drops image paths outside images/", () => {
+    const raw = minimalTour();
+    raw.team.members[0]!.image = "../secrets.png";
+    raw.trainings.items[0]!.image = "tour.json";
+    const tour = parseTourContent(raw);
+    expect(tour.team.members[0]!.image).toBeNull();
+    expect(tour.trainings.items[0]!.image).toBeNull();
+  });
+
+  it("keeps only videos with a valid YouTube id or https URL", () => {
+    const tour = parseTourContent(
+      minimalTour({
+        videos: {
+          title: "Videos",
+          items: [
+            { id: "a", title: "YouTube", youtubeId: "abcdefghijk" },
+            { id: "b", title: "Release asset", url: "https://github.com/x/releases/download/v1/a.mp4" },
+            { id: "c", title: "Bad id", youtubeId: "nope" },
+            { id: "d", title: "Plain http", url: "http://example.com/a.mp4" },
+          ],
+        },
+      }),
+    );
+    expect(tour.videos.items.map((v) => v.id)).toEqual(["a", "b"]);
+  });
+
+  it("treats a missing videos block as no videos", () => {
+    const raw = minimalTour();
+    delete (raw as Record<string, unknown>).videos;
+    expect(parseTourContent(raw).videos.items).toEqual([]);
+  });
+});
+
+describe("resolveText", () => {
+  it("uses the audience version when present and general otherwise", () => {
+    const text = { general: "General", students: "Students" };
+    expect(resolveText(text, "students")).toBe("Students");
+    expect(resolveText(text, "technical")).toBe("General");
+    expect(resolveText("Plain", "technical")).toBe("Plain");
+  });
+});
+
+describe("tour asset paths", () => {
+  it("only allows images under images/", () => {
+    expect(isSafeTourAssetPath("images/team/micah.jpg")).toBe(true);
+    expect(isSafeTourAssetPath("images/infrastructure/hpc-rack.PNG")).toBe(true);
+    expect(isSafeTourAssetPath("tour.json")).toBe(false);
+    expect(isSafeTourAssetPath("images/../tour.json")).toBe(false);
+    expect(isSafeTourAssetPath("images/.hidden.jpg")).toBe(false);
+    expect(isSafeTourAssetPath("images/notes.md")).toBe(false);
+    expect(isSafeTourAssetPath("images\\team\\a.jpg")).toBe(false);
+  });
+
+  it("builds proxy URLs only for safe paths", () => {
+    expect(tourAssetUrl("images/team/micah.jpg")).toBe("/api/tour/asset/images/team/micah.jpg");
+    expect(tourAssetUrl("README.md")).toBeNull();
+    expect(tourAssetUrl(null)).toBeNull();
+  });
+});
+
+describe("FALLBACK_TOUR", () => {
+  it("survives a round trip through the parser", () => {
+    expect(() => parseTourContent({ version: 1, ...FALLBACK_TOUR })).not.toThrow();
+  });
+});
