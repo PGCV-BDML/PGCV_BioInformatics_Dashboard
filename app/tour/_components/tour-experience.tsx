@@ -5,14 +5,17 @@ import Image from "next/image";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
+import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import {
   ContactSection,
   CovidSection,
   HeroSection,
   InfrastructureSection,
+  ProjectsSection,
   ServicesSection,
   TeamSection,
   TrainingsSection,
+  VariantTreeSection,
   VideosSection,
 } from "./tour-sections";
 
@@ -21,7 +24,9 @@ type SectionId =
   | "services"
   | "infrastructure"
   | "trainings"
+  | "projects"
   | "covid-19"
+  | "variant-tree"
   | "team"
   | "videos"
   | "contact";
@@ -31,7 +36,9 @@ const NAV_LABELS: Record<SectionId, string> = {
   services: "Services",
   infrastructure: "Infrastructure",
   trainings: "Trainings",
+  projects: "Projects",
   "covid-19": "COVID-19",
+  "variant-tree": "Variant tree",
   team: "Team",
   videos: "Videos",
   contact: "Contact",
@@ -40,9 +47,11 @@ const NAV_LABELS: Record<SectionId, string> = {
 export function TourExperience({
   content,
   stats,
+  phylo = null,
 }: {
   content: TourContent;
   stats: TourCovidStats | null;
+  phylo?: TourPhyloSummary | null;
 }) {
   const [audience, setAudience] = useState<Audience>("general");
   const [presenting, setPresenting] = useState(false);
@@ -53,12 +62,14 @@ export function TourExperience({
   const sectionIds = useMemo(() => {
     const ids: SectionId[] = ["welcome", "services", "infrastructure"];
     if (content.trainings.items.length) ids.push("trainings");
+    if (content.projects.items.length) ids.push("projects");
     ids.push("covid-19");
+    if (content.nextstrain && phylo) ids.push("variant-tree");
     if (content.team.members.length) ids.push("team");
     if (content.videos.items.length) ids.push("videos");
     ids.push("contact");
     return ids;
-  }, [content]);
+  }, [content, phylo]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -140,8 +151,12 @@ export function TourExperience({
         return <InfrastructureSection {...props} />;
       case "trainings":
         return <TrainingsSection {...props} />;
+      case "projects":
+        return <ProjectsSection {...props} />;
       case "covid-19":
         return <CovidSection {...props} stats={stats} />;
+      case "variant-tree":
+        return phylo ? <VariantTreeSection {...props} summary={phylo} /> : null;
       case "team":
         return <TeamSection {...props} />;
       case "videos":
@@ -152,9 +167,15 @@ export function TourExperience({
   };
 
   return (
-    <div className={`min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}>
+    <div
+      data-presenting={presenting || undefined}
+      className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}
+    >
       <header className="sticky top-0 z-30 border-b-[3px] border-[#12ca99] bg-white/95 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8">
+        {/* Wider while presenting so the nav and "Exit presentation" fit on one line. */}
+        <div
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8 ${presenting ? "2xl:max-w-7xl" : ""}`}
+        >
           <a href="#welcome" className="flex shrink-0 items-center gap-3" onClick={(e) => { e.preventDefault(); goTo(0); }}>
             <Image
               src="/assets/pgcv_logo.png"
@@ -171,8 +192,8 @@ export function TourExperience({
             </span>
           </a>
 
-          <nav aria-label="Tour sections" className="hidden xl:block">
-            <ul className="flex gap-5 whitespace-nowrap text-sm font-semibold text-[#5b6770]">
+          <nav aria-label="Tour sections" className={presenting ? "hidden 2xl:block" : "hidden xl:block"}>
+            <ul className="flex gap-4 whitespace-nowrap text-sm font-semibold text-[#5b6770] 2xl:gap-5">
               {sectionIds.slice(1).map((id, i) => (
                 <li key={id}>
                   <a
@@ -213,7 +234,7 @@ export function TourExperience({
             <button
               type="button"
               onClick={presenting ? stopPresenting : startPresenting}
-              className="hidden items-center gap-2 rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)] md:inline-flex"
+              className="hidden items-center gap-2 whitespace-nowrap rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)] md:inline-flex"
             >
               {presenting ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
               {presenting ? "Exit presentation" : "Present"}
@@ -261,7 +282,7 @@ export function TourExperience({
               Bioinformatics and Data Management Laboratory · @PGCVisayas
             </span>
           </div>
-          <span>Summary statistics only — no client or patient data is shown.</span>
+          <span>No client or patient information is shown.</span>
         </div>
       </footer>
 
