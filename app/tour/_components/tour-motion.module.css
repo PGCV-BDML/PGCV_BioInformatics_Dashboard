@@ -1,0 +1,186 @@
+/*
+ * Motion for the Lab Tour. Everything animates transform, opacity or stroke
+ * dashes only, and nothing moves when the visitor prefers reduced motion.
+ *
+ * Reveal-on-scroll: an element with data-reveal="pending" holds its children's
+ * entrance animations on their first frame until useReveal flips it to
+ * "visible". The hold only applies when scripting is on, so without JS the
+ * entrances simply play on load.
+ */
+
+.draw {
+  stroke-dasharray: 1;
+}
+
+.rung,
+.rise,
+.pop,
+.slideLeft,
+.slideRight,
+.bob,
+.express,
+.drift,
+.driftAlt {
+  transform-box: fill-box;
+}
+
+.rung,
+.pop {
+  transform-origin: center;
+}
+
+.rise,
+.express {
+  transform-origin: bottom;
+}
+
+.scan {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .draw {
+    animation: tour-draw 1.4s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  .rung {
+    animation: tour-grow-y 0.5s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  .rise {
+    animation: tour-grow-y 0.6s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  .pop {
+    animation: tour-pop 0.5s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  .slideLeft {
+    animation: tour-slide-left 0.7s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  .slideRight {
+    animation: tour-slide-right 0.7s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
+  }
+
+  /* Hover loops: only while the card is pointed at, snapping back on leave. */
+  .hoverable:hover .bob {
+    animation: tour-bob 1.6s ease-in-out infinite;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .hoverable:hover .express {
+    animation: tour-express 1.8s ease-in-out infinite;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .hoverable:hover .drift {
+    animation: tour-drift 2.4s ease-in-out infinite alternate;
+  }
+
+  .hoverable:hover .driftAlt {
+    animation: tour-drift-alt 3s ease-in-out infinite alternate;
+  }
+
+  .hoverable:hover .scan {
+    animation: tour-scan 1.6s ease-in-out infinite alternate;
+  }
+
+  .hoverable:hover .blink {
+    animation: tour-blink 1s steps(1) infinite;
+  }
+}
+
+@media (scripting: enabled) {
+  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight) {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes tour-draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tour-grow-y {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-slide-left {
+  from {
+    transform: translateX(-8px);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-slide-right {
+  from {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-bob {
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes tour-express {
+  50% {
+    transform: scaleY(0.55);
+  }
+}
+
+@keyframes tour-drift {
+  to {
+    transform: translate(1.5px, -1.5px);
+  }
+}
+
+@keyframes tour-drift-alt {
+  to {
+    transform: translate(-1.5px, 1px) rotate(12deg);
+  }
+}
+
+@keyframes tour-scan {
+  from {
+    opacity: 0.9;
+    transform: translateY(-9px);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateY(9px);
+  }
+}
+
+@keyframes tour-blink {
+  50% {
+    opacity: 0;
+  }
+}
