@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FALLBACK_TOUR } from "@/lib/tour";
 import { LogoHelix } from "./logo-helix";
+import { SectionBackdrop } from "./section-backdrop";
 import { hasServiceIcon, ServiceIcon } from "./service-icons";
 
 describe("ServiceIcon", () => {
@@ -39,5 +40,21 @@ describe("LogoHelix", () => {
       const ref = path.getAttribute("stroke")?.match(/^url\(#(.+)\)$/)?.[1];
       expect(ids).toContain(ref);
     }
+  });
+});
+
+describe("SectionBackdrop", () => {
+  it("keeps the sequence texture out of the page text", () => {
+    const { container } = render(<SectionBackdrop variant="hero" />);
+    const rows = [...container.querySelectorAll("[data-seq]")].map((row) => row.getAttribute("data-seq") ?? "");
+    expect(container.textContent).toBe("");
+    expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row).toMatch(/^[ACGT]+$/);
+      // All four bases appear, so the rows don't collapse into a repeating pattern.
+      expect(new Set(row).size).toBe(4);
+    }
+    expect(new Set(rows).size).toBe(rows.length);
   });
 });

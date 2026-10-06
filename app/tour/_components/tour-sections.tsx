@@ -8,6 +8,7 @@ import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import { BRAND, SERVICE_HEX } from "./brand";
 import { LogoHelix } from "./logo-helix";
+import { SectionBackdrop } from "./section-backdrop";
 import { ServiceIcon } from "./service-icons";
 import { useReveal } from "./use-reveal";
 import styles from "./tour-motion.module.css";
@@ -47,10 +48,46 @@ function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) 
   );
 }
 
+/**
+ * Wrapper for the light sections: a dot-grid-and-glow backdrop, plus a thin
+ * logo-gradient rule when the section directly follows another light one
+ * (tour-experience marks those with data-tone="light").
+ */
+function LightSection({
+  index,
+  lavender,
+  className = "py-16 md:py-24",
+  children,
+}: {
+  index: number;
+  lavender?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`relative overflow-hidden ${lavender ? "bg-[#f0e8f2]" : ""}`}>
+      <SectionBackdrop variant="light" index={index} />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 hidden px-4 md:px-8 [[data-tone=light]+[data-tone=light]_&]:block"
+      >
+        <div className="mx-auto h-px max-w-6xl bg-[linear-gradient(90deg,transparent,#ff8601,#9c1f7a,#0176c3,transparent)] opacity-50" />
+      </div>
+      <div className={`relative mx-auto w-full max-w-6xl px-4 md:px-8 ${className}`}>{children}</div>
+    </div>
+  );
+}
+
 export function HeroSection({ content, audience }: SectionProps) {
   const { hero } = content;
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(135deg,#2b3278_0%,#5e205e_45%,#2a7797_85%,#12ca99_130%)] text-white">
+      <SectionBackdrop variant="hero" />
+      {/* Keeps the headline side dark enough for white text over the aurora. */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(28,33,82,0.7)_0%,rgba(28,33,82,0.35)_50%,transparent_80%)]"
+        aria-hidden="true"
+      />
       <LogoHelix
         onDark
         animate
@@ -81,7 +118,7 @@ export function HeroSection({ content, audience }: SectionProps) {
           </dl>
         )}
       </div>
-      <div className="h-1.5 bg-[linear-gradient(90deg,#12ca99,#2a7797,#5e205e)]" aria-hidden="true" />
+      <div className="relative h-1.5 bg-[linear-gradient(90deg,#ff8601,#c51b4a,#8a2990,#0176c3)]" aria-hidden="true" />
     </div>
   );
 }
@@ -112,7 +149,7 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
 export function ServicesSection({ content, audience, index }: SectionProps & { index: number }) {
   const { services } = content;
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index}>
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
       <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
@@ -123,7 +160,7 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
           <ServiceCard key={service.id} service={service} audience={audience} order={i} />
         ))}
       </ul>
-    </div>
+    </LightSection>
   );
 }
 
@@ -146,6 +183,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(18,202,153,0.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(94,32,94,0.45),transparent_50%)]"
         aria-hidden="true"
       />
+      <SectionBackdrop variant="infrastructure" />
       <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
         <Eyebrow index={index} onDark>
           Under the hood
@@ -215,7 +253,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
 export function TrainingsSection({ content, audience, index }: SectionProps & { index: number }) {
   const { trainings } = content;
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index}>
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
       <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
@@ -243,7 +281,7 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
           );
         })}
       </ul>
-    </div>
+    </LightSection>
   );
 }
 
@@ -253,7 +291,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
   if (!lead) return null;
   const leadSrc = tourAssetUrl(lead.image);
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index}>
       <Eyebrow index={index}>Research highlights</Eyebrow>
       <SectionHeading title={projects.title} />
       <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(projects.intro, audience)}</p>
@@ -313,7 +351,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
           ))}
         </ul>
       )}
-    </div>
+    </LightSection>
   );
 }
 
@@ -326,7 +364,7 @@ export function VariantTreeSection({
   const nextstrain = content.nextstrain!;
   const provinces = summary.provinces.filter((p) => p.count > 0 && p.name !== "Other").length;
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-16">
+    <LightSection index={index} className="py-16">
       <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
         <div className="max-w-3xl">
           <Eyebrow index={index}>Tracking the variants</Eyebrow>
@@ -355,7 +393,7 @@ export function VariantTreeSection({
         Each dot is one sequenced virus; branches join viruses that share an ancestor. Built with Nextstrain; dates
         rounded to the month; no sample IDs or patient details are included.
       </p>
-    </div>
+    </LightSection>
   );
 }
 
@@ -503,8 +541,7 @@ export function CovidSection({
     : [];
 
   return (
-    <div className="bg-[#f0e8f2]">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index} lavender>
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
         <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">
@@ -538,15 +575,14 @@ export function CovidSection({
             )}
           </div>
         )}
-      </div>
-    </div>
+    </LightSection>
   );
 }
 
 export function TeamSection({ content, audience, index }: SectionProps & { index: number }) {
   const { team } = content;
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index}>
       <Eyebrow index={index}>The people</Eyebrow>
       <SectionHeading title={team.title} />
       <p className="mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770]">{resolveText(team.intro, audience)}</p>
@@ -583,14 +619,14 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           </li>
         )}
       </ul>
-    </div>
+    </LightSection>
   );
 }
 
 export function VideosSection({ content, index }: SectionProps & { index: number }) {
   const { videos } = content;
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+    <LightSection index={index}>
       <Eyebrow index={index}>See it in action</Eyebrow>
       <SectionHeading title={videos.title} />
       <ul className="mt-10 grid gap-6 md:grid-cols-2">
@@ -617,6 +653,21 @@ export function VideosSection({ content, index }: SectionProps & { index: number
           </li>
         ))}
       </ul>
+    </LightSection>
+  );
+}
+
+/** The contact slide bookends the hero: its helix draws in when scrolled to. */
+function ContactHelix() {
+  const [ref, reveal] = useReveal<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      data-reveal={reveal}
+      className="pointer-events-none absolute -bottom-6 -right-24 hidden w-[600px] opacity-45 lg:block"
+      aria-hidden="true"
+    >
+      <LogoHelix onDark animate className="w-full" />
     </div>
   );
 }
@@ -625,7 +676,8 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
   const { contact } = content;
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(120deg,#2b3278_0%,#5e205e_55%,#2a7797_100%)] text-white">
-      <LogoHelix onDark className="pointer-events-none absolute -bottom-6 -right-24 hidden w-[600px] opacity-35 lg:block" />
+      <SectionBackdrop variant="contact" />
+      <ContactHelix />
       <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 md:px-8 md:py-20 lg:grid-cols-[1.2fr_1fr] lg:items-center">
         <div>
           <p className="flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">

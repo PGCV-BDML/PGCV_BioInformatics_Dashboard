@@ -44,6 +44,9 @@ const NAV_LABELS: Record<SectionId, string> = {
   contact: "Contact",
 };
 
+/** Plain light sections; a light section right after another gets a divider rule. */
+const LIGHT_SECTIONS = new Set<SectionId>(["services", "trainings", "projects", "variant-tree", "team", "videos"]);
+
 export function TourExperience({
   content,
   stats,
@@ -249,6 +252,7 @@ export function TourExperience({
             key={id}
             id={id}
             aria-label={NAV_LABELS[id]}
+            data-tone={LIGHT_SECTIONS.has(id) ? "light" : undefined}
             ref={(el) => {
               sectionRefs.current[index] = el;
             }}
