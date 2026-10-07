@@ -20,6 +20,7 @@ import {
 } from "./tour-sections";
 import { HelixProgress } from "./helix-progress";
 import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
+import { useSlideFit } from "./slide-fit";
 import styles from "./tour-motion.module.css";
 
 type SectionId =
@@ -74,6 +75,7 @@ export function TourExperience({
   // slide starts "visible" so it plays straight from the server HTML.
   const [reveal, setReveal] = useState<ReadonlyMap<number, RevealState>>(() => new Map([[0, "visible"]]));
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+  const headerRef = useRef<HTMLElement>(null);
 
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
@@ -158,6 +160,9 @@ export function TourExperience({
     });
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [sectionIds]);
+
+  // In Present mode each slide shrinks, if needed, to fit the screen.
+  useSlideFit(presenting, sectionRefs, headerRef, sectionIds);
 
   // In Present mode each slide snaps to the top; the sections' scroll-mt-16
   // keeps them clear of the sticky header.
@@ -246,7 +251,7 @@ export function TourExperience({
       data-presenting={presenting || undefined}
       className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}
     >
-      <header className="sticky top-0 z-30 border-b-[3px] border-[#12ca99] bg-white/95 shadow-sm backdrop-blur">
+      <header ref={headerRef} className="sticky top-0 z-30 border-b-[3px] border-[#12ca99] bg-white/95 shadow-sm backdrop-blur">
         {/* Wider while presenting so the nav and "Exit presentation" fit on one line. */}
         <div
           className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8 ${presenting ? "2xl:max-w-7xl" : ""}`}
