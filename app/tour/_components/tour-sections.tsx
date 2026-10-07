@@ -433,6 +433,8 @@ export function VirusModelSection({
   const [siteIndex, setSiteIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rotating, setRotating] = useState(true);
+  // False when the browser has no WebGL and a still picture is shown.
+  const [interactive, setInteractive] = useState(true);
   const site = siteIndex === null ? null : (mutations[siteIndex] ?? null);
 
   const showView = (next: VirusView) => {
@@ -494,6 +496,7 @@ export function VirusModelSection({
               mutations={mutations}
               spinning={rotating && !playing && !site}
               onOpenSpike={openSpike}
+              onInteractiveChange={setInteractive}
             />
 
             <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
@@ -517,15 +520,17 @@ export function VirusModelSection({
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                aria-pressed={rotating}
-                onClick={() => setRotating((on) => !on)}
-                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/70 px-3.5 py-2 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
-              >
-                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-                {rotating ? "Stop turning" : "Turn"}
-              </button>
+              {interactive && (
+                <button
+                  type="button"
+                  aria-pressed={rotating}
+                  onClick={() => setRotating((on) => !on)}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/70 px-3.5 py-2 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
+                >
+                  <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                  {rotating ? "Stop turning" : "Turn"}
+                </button>
+              )}
             </div>
 
             <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
