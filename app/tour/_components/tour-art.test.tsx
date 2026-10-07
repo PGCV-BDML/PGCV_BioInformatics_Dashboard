@@ -60,7 +60,7 @@ describe("SectionBackdrop", () => {
 });
 
 describe("light section motifs", () => {
-  it.each(["assembly", "network", "contours", "radar", "bokeh"] as const)(
+  it.each(["assembly", "network", "contours", "radar", "bokeh", "glyphs"] as const)(
     "draws the %s art as hidden decoration with no text",
     (motif) => {
       const { container } = render(<SectionBackdrop variant="light" motif={motif} />);
@@ -70,6 +70,15 @@ describe("light section motifs", () => {
       expect(container.textContent).toBe("");
     },
   );
+
+  it("draws the field symbols as generated content", () => {
+    const { container } = render(<SectionBackdrop variant="light" motif="glyphs" />);
+    const symbols = [...container.querySelectorAll("[data-glyph]")].map((g) => g.getAttribute("data-glyph"));
+    expect(symbols).toContain("Σ");
+    expect(symbols).toContain("</>");
+    expect(symbols).toContain("ATG");
+    expect(new Set(symbols).size).toBe(symbols.length);
+  });
 
   it("points the radar sweep at its own gradient", () => {
     const { container } = render(<SectionBackdrop variant="light" motif="radar" />);

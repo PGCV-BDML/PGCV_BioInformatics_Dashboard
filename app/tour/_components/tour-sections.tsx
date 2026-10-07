@@ -11,6 +11,7 @@ import { SHOWCASE_COPY, SHOWCASE_INTRO } from "@/lib/tour-showcase";
 import { AGENDA, AGENDA_INTRO, AGENDA_TITLE } from "@/lib/tour-agenda";
 import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
+import { BioinfoVenn, INTRO_FIELD_COLORS } from "./bioinfo-venn";
 import { FeaturedProject } from "./project-feature";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
@@ -203,6 +204,40 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
   );
 }
 
+export function IntroSection({ audience, index }: { audience: Audience; index: number }) {
+  return (
+    <LightSection index={index} motif="glyphs">
+      <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-12">
+        <BioinfoVenn className="order-last mx-auto w-full max-w-[34rem] md:order-first group-data-[presenting]/tour:max-h-[62vh]" />
+        <div>
+          <Eyebrow index={index}>Before we begin</Eyebrow>
+          <SectionHeading title={INTRO_TITLE} />
+          <p className={`mt-4 text-lg leading-relaxed text-[#5b6770] md:text-xl ${styles.enter}`} style={delay(160)}>
+            {resolveText(INTRO_DEFINITION, audience)}
+          </p>
+          <ul className="mt-6 space-y-3">
+            {INTRO_FIELDS.map((field, i) => {
+              const color = INTRO_FIELD_COLORS[field.id].ink;
+              return (
+                <li
+                  key={field.id}
+                  className={`border-l-4 bg-white/70 py-2 pl-4 pr-3 leading-relaxed text-[#5b6770] ${styles.enter}`}
+                  style={{ borderColor: color, ...stagger(i, 320) }}
+                >
+                  <span className="font-bold" style={{ color }}>
+                    {field.name}
+                  </span>{" "}
+                  {resolveText(field.role, audience)}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </LightSection>
+  );
+}
+
 export function ServicesSection({ content, audience, index }: SectionProps & { index: number }) {
   const { services } = content;
   return (
@@ -298,7 +333,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
         </Eyebrow>
         <SectionHeading title={infrastructure.title} onDark />
         <p
-          className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#12ca99]/10 px-5 py-3 text-white/90`}
+          className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#1b3259]/90 backdrop-blur-sm px-5 py-3 text-white/90`}
           style={delay(160)}
         >
           <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
@@ -311,6 +346,8 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           card is a grid (the text column becomes `contents`), with the photo
           beside the text and the specs in a full-width row along the bottom,
           so the tiles have room and line up whatever the text length.
+          Cards are near-opaque so the circuit pulses run under them, not
+          through the numbers.
         */}
         <div
           className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
@@ -321,7 +358,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
               <article
                 key={item.id}
                 style={stagger(itemIndex)}
-                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
+                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-[#252a5a]/90 backdrop-blur-sm p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
               >
                 {src && (
                   <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[180px]!">

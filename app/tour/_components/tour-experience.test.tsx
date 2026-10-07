@@ -168,7 +168,7 @@ describe("TourExperience", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
     const { unmount } = render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 4)).toEqual(["welcome", "services", "showcase", "lab-map"]);
+    expect(ids.slice(0, 5)).toEqual(["welcome", "intro", "services", "showcase", "lab-map"]);
     const frame = screen.getByTitle("Explore the lab");
     expect(frame).toHaveAttribute("src", "/api/tour/lab-map");
     expect(frame).toHaveAttribute("sandbox", "allow-scripts");
