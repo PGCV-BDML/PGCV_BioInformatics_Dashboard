@@ -2,30 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GLViewer } from "3dmol";
-import type { TourVirusMutation, VirusRole, VirusShape } from "@/lib/tour-virus";
-import { BRAND, LOGO } from "./brand";
+import type { TourVirusMutation, VirusShape } from "@/lib/tour-virus";
+import { CHAIN_COLORS, MARKER, ROLE_COLORS } from "./virus-colors";
+import { VirusStill } from "./virus-still";
 
 export type VirusView = "virus" | "spike";
 
-/** The schematic in tour colours: a teal envelope with teal spikes, one picked out in logo orange. */
-const ROLE_COLORS: Record<VirusRole, string> = {
-  envelope: BRAND.deepTeal,
-  stem: "#1f9e8a",
-  lobe: BRAND.teal,
-  highlightStem: "#c96a00",
-  highlightLobe: LOGO.orange,
-};
+/**
+ * "3d" once the WebGL viewer is up; "still" draws a flat picture instead when
+ * the browser has no WebGL; "failed" when a file or the 3D library didn't load.
+ */
+type Mode = "loading" | "3d" | "still" | "failed";
 
-/** Spike chains A/B/C, matching the Infrastructure slide's spec colours. */
-const CHAIN_COLORS = [
-  ["A", BRAND.teal],
-  ["B", "#6cc4e6"],
-  ["C", "#d7a6d7"],
-] as const;
-
-const MARKER = LOGO.orange;
 
 type Vec = { x: number; y: number; z: number };
+
+function hasWebGL(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -43,12 +42,15 @@ export function VirusViewer({
   mutations,
   spinning,
   onOpenSpike,
+  onInteractiveChange,
 }: {
   view: VirusView;
   site: TourVirusMutation | null;
   mutations: TourVirusMutation[];
   spinning: boolean;
   onOpenSpike: () => void;
+  /** Whether the model can be turned (false for the still picture). */
+  onInteractiveChange?: (interactive: boolean) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<GLViewer | null>(null);
@@ -61,8 +63,12 @@ export function VirusViewer({
   const [onScreen, setOnScreen] = useState(false);
   const [scene, setScene] = useState<VirusShape[] | null>(null);
   const [pdb, setPdb] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("loading");
+  const [pdbFailed, setPdbFailed] = useState(false);
+  // Bumped by "Try again": the viewer and the structure retry separately.
+  const [viewerAttempt, setViewerAttempt] = useState(0);
+  const [pdbAttempt, setPdbAttempt] = useState(0);
+  const ready = mode === "3d";
 
   useEffect(() => {
     openSpikeRef.current = onOpenSpike;
@@ -92,31 +98,59 @@ export function VirusViewer({
     };
   }, []);
 
-  // 3Dmol and the virus recipe.
+  useEffect(() => {
+    if (mode === "3d" || mode === "still") onInteractiveChange?.(mode === "3d");
+  }, [mode, onInteractiveChange]);
+
+  // The virus recipe, then 3Dmol, or the still picture without WebGL.
   useEffect(() => {
     const host = hostRef.current;
     if (!near || !host) return;
     let cancelled = false;
     (async () => {
+      let shapes: VirusShape[];
       try {
-        const [$3Dmol, response] = await Promise.all([import("3dmol"), fetch("/api/tour/virus/scene")]);
+        const response = await fetch("/api/tour/virus/scene");
         if (!response.ok) throw new Error(`scene ${response.status}`);
-        const { shapes } = (await response.json()) as { shapes: VirusShape[] };
-        if (cancelled) return;
+        shapes = ((await response.json()) as { shapes: VirusShape[] }).shapes;
+      } catch (e) {
+        console.error("Lab tour: virus model didn't load.", e);
+        if (!cancelled) setMode("failed");
+        return;
+      }
+      if (cancelled) return;
+      setScene(shapes);
+      if (!hasWebGL()) {
+        console.warn("Lab tour: no WebGL, showing a still picture of the virus.");
+        setMode("still");
+        return;
+      }
+
+      let $3Dmol: typeof import("3dmol");
+      try {
+        $3Dmol = await import("3dmol");
+      } catch (e) {
+        // Usually a network hiccup, or a page left open across a deploy.
+        console.error("Lab tour: 3D viewer didn't load.", e);
+        if (!cancelled) setMode("failed");
+        return;
+      }
+      if (cancelled) return;
+      try {
         const viewer = $3Dmol.createViewer(host, {
           backgroundColor: "#1c2152",
           backgroundAlpha: 0,
           antialias: true,
           cartoonQuality: 3,
         } as never);
-        if (!viewer) throw new Error("WebGL unavailable");
+        if (!viewer) throw new Error("createViewer returned nothing");
         fixPickingUnderZoom(viewer, host);
         viewerRef.current = viewer;
-        setScene(shapes);
-        setReady(true);
+        setMode("3d");
       } catch (e) {
-        console.error("Lab tour: 3D virus unavailable.", e);
-        if (!cancelled) setError("The 3D model needs WebGL, which this browser doesn't have turned on.");
+        console.error("Lab tour: WebGL viewer failed, showing a still picture.", e);
+        host.replaceChildren();
+        setMode("still");
       }
     })();
     return () => {
@@ -129,23 +163,23 @@ export function VirusViewer({
       // 3Dmol leaves its canvas behind.
       host.replaceChildren();
     };
-  }, [near]);
+  }, [near, viewerAttempt]);
 
   // The spike structure, the first time it is asked for.
   useEffect(() => {
-    if (view !== "spike" || pdb || !ready) return;
+    if (view !== "spike" || pdb || (mode !== "3d" && mode !== "still")) return;
     let cancelled = false;
     fetch("/api/tour/virus/structure")
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`structure ${r.status}`))))
       .then((text) => !cancelled && setPdb(text))
       .catch((e) => {
-        console.error("Lab tour: spike structure unavailable.", e);
-        if (!cancelled) setError("The spike structure couldn't be loaded.");
+        console.error("Lab tour: spike structure didn't load.", e);
+        if (!cancelled) setPdbFailed(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [view, pdb, ready]);
+  }, [view, pdb, mode, pdbAttempt]);
 
   // Keep the canvas sized to its card (Present mode changes it).
   useEffect(() => {
@@ -159,7 +193,7 @@ export function VirusViewer({
   // Paint the current view, then focus the selected site.
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !scene) return;
+    if (!viewer || !scene || mode !== "3d") return;
     if (view === "spike" && !pdb) return;
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
@@ -236,7 +270,7 @@ export function VirusViewer({
       animateView(viewer, homeRef.current[view]!, prefersReducedMotion() ? 0 : 500, (id) => (frameRef.current = id));
     }
     viewer.render();
-  }, [view, site, mutations, scene, pdb]);
+  }, [view, site, mutations, scene, pdb, mode]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -244,23 +278,61 @@ export function VirusViewer({
     viewer.spin(spinning && onScreen && !prefersReducedMotion() ? "y" : false, 0.35);
   }, [spinning, onScreen, ready, view]);
 
-  const loading = !error && (!ready || (view === "spike" && !pdb));
+  const failed = mode === "failed" || (view === "spike" && pdbFailed);
+  const loading = !failed && (mode === "loading" || (view === "spike" && !pdb));
+  const retry = () => {
+    if (mode === "failed") {
+      setMode("loading");
+      setViewerAttempt((n) => n + 1);
+    } else {
+      setPdbFailed(false);
+      setPdbAttempt((n) => n + 1);
+    }
+  };
+  const subject =
+    view === "virus"
+      ? "the SARS-CoV-2 virus, with spikes on its surface"
+      : `the spike protein${site ? `, with ${site.name} marked` : ", with mutation sites marked"}`;
   return (
     <div className="relative h-full w-full">
       <div
         ref={hostRef}
         role="img"
-        aria-label={
-          view === "virus"
-            ? "3D model of the SARS-CoV-2 virus, with spikes on its surface. Drag to turn it."
-            : `3D model of the spike protein${site ? `, with ${site.name} marked` : ", with mutation sites marked"}. Drag to turn it.`
-        }
+        aria-label={`3D model of ${subject}. Drag to turn it.`}
+        hidden={mode === "still"}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
       />
-      {(loading || error) && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-medium text-white/70">
-          {error ?? (
-            <span className="inline-flex items-center gap-3">
+      {mode === "still" && scene && (view === "virus" || pdb) && (
+        <VirusStill
+          view={view}
+          scene={scene}
+          pdb={pdb}
+          marked={site ? [site] : mutations}
+          large={!!site}
+          label={`Picture of ${subject}.`}
+          onOpenSpike={onOpenSpike}
+        />
+      )}
+      {mode === "still" && (
+        <p className="pointer-events-none absolute right-4 top-16 max-w-[15rem] rounded-2xl bg-[#1c2152]/70 px-3 py-1.5 text-right text-xs font-medium text-white/70 backdrop-blur sm:top-4 md:right-5 md:top-5">
+          Still picture: this browser has 3D graphics (WebGL) turned off.
+        </p>
+      )}
+      {(loading || failed) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm font-medium text-white/70">
+          {failed ? (
+            <>
+              <span>The 3D model didn&apos;t load.</span>
+              <button
+                type="button"
+                onClick={retry}
+                className="rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <span className="pointer-events-none inline-flex items-center gap-3">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#12ca99]/30 border-t-[#12ca99]" aria-hidden="true" />
               Preparing the 3D model…
             </span>
