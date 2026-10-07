@@ -434,7 +434,6 @@ export const FALLBACK_TOUR: TourContent = {
     facts: [
       { value: "120", label: "CPU cores in our HPC server" },
       { value: "360 TB", label: "of genomic data storage" },
-      { value: "5", label: "bioinformatics services" },
     ],
   },
   services: {
