@@ -1,5 +1,13 @@
 import { FALLBACK_TOUR, parseTourContent, type TourContent } from "@/lib/tour";
 import { isSafeTourPhyloPath, parseTourPhylo, type TourPhylo } from "@/lib/tour-phylo";
+import {
+  isSafeTourVirusPath,
+  parseTourVirusData,
+  parseVirusScene,
+  slimSpikePdb,
+  type TourVirusSummary,
+  type VirusShape,
+} from "@/lib/tour-virus";
 
 /**
  * Server-only access to the private pgcv-tour-content repo.
@@ -98,6 +106,56 @@ export async function getTourPhylo(path: string | null | undefined): Promise<Tou
     return parseTourPhylo(await response.json());
   } catch (error) {
     console.error("Lab tour: hiding the variant tree.", error);
+    return null;
+  }
+}
+
+type VirusModel = NonNullable<TourContent["virusModel"]>;
+
+async function fetchVirusFile(path: string, ext: "json" | "pdb"): Promise<Response | null> {
+  if (!isSafeTourVirusPath(path, ext) || !isTourContentConfigured()) return null;
+  const response = await fetchTourRepoFile(path, {
+    next: { revalidate: TOUR_CONTENT_REVALIDATE_SECONDS },
+  });
+  if (!response.ok) throw new Error(`GitHub returned ${response.status} for ${path}`);
+  return response;
+}
+
+/**
+ * The 3D virus slide's mutation list, from the exhibit's public-data.json, or
+ * null when it is missing or unreadable (the slide is then hidden).
+ */
+export async function getTourVirus(model: VirusModel | null): Promise<TourVirusSummary | null> {
+  if (!model) return null;
+  try {
+    const response = await fetchVirusFile(model.data, "json");
+    return response ? parseTourVirusData(await response.json()) : null;
+  } catch (error) {
+    console.error("Lab tour: hiding the 3D virus.", error);
+    return null;
+  }
+}
+
+/** The schematic whole-virus shapes, or null. */
+export async function getTourVirusScene(model: VirusModel | null): Promise<VirusShape[] | null> {
+  if (!model) return null;
+  try {
+    const response = await fetchVirusFile(model.scene, "json");
+    return response ? parseVirusScene(await response.json()) : null;
+  } catch (error) {
+    console.error("Lab tour: no virus scene.", error);
+    return null;
+  }
+}
+
+/** The spike structure's atom records (~1.8 MB), or null. */
+export async function getTourVirusStructure(model: VirusModel | null): Promise<string | null> {
+  if (!model) return null;
+  try {
+    const response = await fetchVirusFile(model.structure, "pdb");
+    return response ? slimSpikePdb(await response.text()) : null;
+  } catch (error) {
+    console.error("Lab tour: no spike structure.", error);
     return null;
   }
 }

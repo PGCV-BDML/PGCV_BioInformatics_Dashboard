@@ -6,6 +6,7 @@ import { Maximize2, Minimize2, Pause, Play } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
+import type { TourVirusSummary } from "@/lib/tour-virus";
 import {
   ContactSection,
   CovidSection,
@@ -17,6 +18,7 @@ import {
   TrainingsSection,
   VariantTreeSection,
   VideosSection,
+  VirusModelSection,
 } from "./tour-sections";
 import { HelixProgress } from "./helix-progress";
 import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
@@ -31,6 +33,7 @@ type SectionId =
   | "projects"
   | "covid-19"
   | "variant-tree"
+  | "virus-model"
   | "team"
   | "videos"
   | "contact";
@@ -43,6 +46,7 @@ const NAV_LABELS: Record<SectionId, string> = {
   projects: "Projects",
   "covid-19": "COVID-19",
   "variant-tree": "Variant tree",
+  "virus-model": "3D virus",
   team: "Team",
   videos: "Videos",
   contact: "Contact",
@@ -62,10 +66,12 @@ export function TourExperience({
   content,
   stats,
   phylo = null,
+  virus = null,
 }: {
   content: TourContent;
   stats: TourCovidStats | null;
   phylo?: TourPhyloSummary | null;
+  virus?: TourVirusSummary | null;
 }) {
   const [audience, setAudience] = useState<Audience>("general");
   const [presenting, setPresenting] = useState(false);
@@ -84,11 +90,12 @@ export function TourExperience({
     if (content.projects.items.length) ids.push("projects");
     ids.push("covid-19");
     if (content.nextstrain && phylo) ids.push("variant-tree");
+    if (content.virusModel && virus) ids.push("virus-model");
     if (content.team.members.length) ids.push("team");
     if (content.videos.items.length) ids.push("videos");
     ids.push("contact");
     return ids;
-  }, [content, phylo]);
+  }, [content, phylo, virus]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -237,6 +244,8 @@ export function TourExperience({
         return <CovidSection {...props} stats={stats} />;
       case "variant-tree":
         return phylo ? <VariantTreeSection {...props} summary={phylo} /> : null;
+      case "virus-model":
+        return virus ? <VirusModelSection {...props} summary={virus} /> : null;
       case "team":
         return <TeamSection {...props} />;
       case "videos":

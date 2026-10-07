@@ -184,6 +184,20 @@ describe("FALLBACK_TOUR", () => {
     const unsafe = minimalTour({ nextstrain: { title: "T", intro: "I", tree: "../secrets.json" } });
     expect(parseTourContent(unsafe).nextstrain).toBeNull();
   });
+
+  it("reads the 3D virus block only with safe pgc-covid-exhibit paths", () => {
+    const virusModel = {
+      title: "Meet the virus",
+      intro: { general: "Turn it around" },
+      scene: "pgc-covid-exhibit/models/virus-scene.json",
+      structure: "pgc-covid-exhibit/models/spike-7KJ2.pdb",
+      data: "pgc-covid-exhibit/public-data.json",
+    };
+    expect(parseTourContent(minimalTour({ virusModel })).virusModel).toMatchObject(virusModel);
+    expect(parseTourContent(minimalTour()).virusModel).toBeNull();
+    const unsafe = minimalTour({ virusModel: { ...virusModel, structure: "images/../tour.pdb" } });
+    expect(parseTourContent(unsafe).virusModel).toBeNull();
+  });
 });
 
 describe("featured project fields", () => {
