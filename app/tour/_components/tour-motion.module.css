@@ -4,8 +4,9 @@
  *
  * Reveal-on-scroll: an element with data-reveal="pending" holds its children's
  * entrance animations on their first frame until useReveal flips it to
- * "visible". The hold only applies when scripting is on, so without JS the
- * entrances simply play on load.
+ * "visible". Once it has left the screen it briefly becomes "reset", which
+ * drops the animations so they replay on the next visit. Both only apply when
+ * scripting is on, so without JS the entrances simply play on load.
  */
 
 .draw {
@@ -147,11 +148,15 @@
   [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
     animation-play-state: paused;
   }
+
+  [data-reveal="reset"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
+    animation: none;
+  }
 }
 
 /* A count-up waits, invisible but still taking its final width, until shown. */
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-  .count[data-reveal="pending"] {
+  .count:is([data-reveal="pending"], [data-reveal="reset"]) {
     visibility: hidden;
   }
 }
