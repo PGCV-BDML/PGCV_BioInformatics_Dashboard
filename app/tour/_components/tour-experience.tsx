@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Maximize2, Minimize2, Pause, Play } from "lucide-react";
+import { Maximize2, Pause, Play, X } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
@@ -61,6 +61,46 @@ function prefersReducedMotion(): boolean {
 
 /** Plain light sections; a light section right after another gets a divider rule. */
 const LIGHT_SECTIONS = new Set<SectionId>(["services", "trainings", "projects", "variant-tree", "team", "videos"]);
+
+/** Who the copy is written for; shown in the header, and in the controls while presenting. */
+function AudienceToggle({
+  audience,
+  onChange,
+  onDark,
+}: {
+  audience: Audience;
+  onChange: (audience: Audience) => void;
+  onDark?: boolean;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Who is visiting today?"
+      className={`flex rounded-full border p-1 ${onDark ? "border-white/15 bg-white/10" : "border-[#2b3278]/15 bg-white"}`}
+    >
+      {AUDIENCES.map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={audience === option}
+          onClick={() => onChange(option)}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${onDark ? "" : "sm:px-3.5 sm:text-sm"} ${
+            audience === option
+              ? onDark
+                ? "bg-white text-[#1c2152]"
+                : "bg-[#2b3278] text-white"
+              : onDark
+                ? "text-white/80 hover:bg-white/10"
+                : "text-[#2b3278] hover:bg-[#f0e8f2]"
+          }`}
+        >
+          {AUDIENCE_LABELS[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function TourExperience({
   content,
@@ -171,8 +211,8 @@ export function TourExperience({
   // In Present mode each slide shrinks, if needed, to fit the screen.
   useSlideFit(presenting, sectionRefs, headerRef, sectionIds);
 
-  // In Present mode each slide snaps to the top; the sections' scroll-mt-16
-  // keeps them clear of the sticky header.
+  // In Present mode each slide snaps to the top of the screen (the header is
+  // hidden then; otherwise the sections' scroll-mt-16 keeps them clear of it).
   useEffect(() => {
     if (!presenting) return;
     const html = document.documentElement;
@@ -260,11 +300,12 @@ export function TourExperience({
       data-presenting={presenting || undefined}
       className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}
     >
-      <header ref={headerRef} className="sticky top-0 z-30 border-b-[3px] border-[#12ca99] bg-white/95 shadow-sm backdrop-blur">
-        {/* Wider while presenting so the nav and "Exit presentation" fit on one line. */}
-        <div
-          className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8 ${presenting ? "2xl:max-w-7xl" : ""}`}
-        >
+      {/* Present mode is full screen: the slides get the whole height, and the controls move to the bottom bar. */}
+      <header
+        ref={headerRef}
+        className={`sticky top-0 z-30 border-b-[3px] ${presenting ? "hidden" : ""} border-[#12ca99] bg-white/95 shadow-sm backdrop-blur`}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8">
           <a href="#welcome" className="flex shrink-0 items-center gap-3" onClick={(e) => { e.preventDefault(); goTo(0); }}>
             <Image
               src="/assets/pgcv_logo.png"
@@ -281,7 +322,7 @@ export function TourExperience({
             </span>
           </a>
 
-          <nav aria-label="Tour sections" className={presenting ? "hidden 2xl:block" : "hidden xl:block"}>
+          <nav aria-label="Tour sections" className="hidden xl:block">
             <ul className="flex gap-4 whitespace-nowrap text-sm font-semibold text-[#5b6770] 2xl:gap-5">
               {sectionIds.slice(1).map((id, i) => (
                 <li key={id}>
@@ -300,39 +341,20 @@ export function TourExperience({
           </nav>
 
           <div className="flex items-center gap-2">
-            <div
-              role="radiogroup"
-              aria-label="Who is visiting today?"
-              className="flex rounded-full border border-[#2b3278]/15 bg-white p-1"
-            >
-              {AUDIENCES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  role="radio"
-                  aria-checked={audience === option}
-                  onClick={() => setAudience(option)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3.5 sm:text-sm ${
-                    audience === option ? "bg-[#2b3278] text-white" : "text-[#2b3278] hover:bg-[#f0e8f2]"
-                  }`}
-                >
-                  {AUDIENCE_LABELS[option]}
-                </button>
-              ))}
-            </div>
+            {!presenting && <AudienceToggle audience={audience} onChange={setAudience} />}
             <button
               type="button"
-              onClick={presenting ? stopPresenting : startPresenting}
+              onClick={startPresenting}
               className="hidden items-center gap-2 whitespace-nowrap rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)] md:inline-flex"
             >
-              {presenting ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
-              {presenting ? "Exit presentation" : "Present"}
+              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              Present
             </button>
           </div>
         </div>
       </header>
 
-      <main>
+      <main className={presenting ? styles.presentType : undefined}>
         {sectionIds.map((id, index) => (
           <section
             key={id}
@@ -344,11 +366,12 @@ export function TourExperience({
             ref={(el) => {
               sectionRefs.current[index] = el;
             }}
-            className={`scroll-mt-16 ${
+            className={
               presenting
-                ? "flex min-h-[calc(100vh-4rem)] snap-start flex-col [&>div]:flex [&>div]:w-full [&>div]:flex-1 [&>div]:flex-col [&>div]:justify-center"
-                : ""
-            }`}
+                ? // pb-16 keeps the slide centred above the floating controls (slide-fit's CONTROLS_PX).
+                  "flex min-h-screen snap-start flex-col pb-16 [&>div]:flex [&>div]:w-full [&>div]:flex-1 [&>div]:flex-col [&>div]:justify-center"
+                : "scroll-mt-16"
+            }
           >
             {renderSection(id, index)}
           </section>
@@ -382,7 +405,8 @@ export function TourExperience({
         <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
           <div className="relative flex items-center gap-3 overflow-hidden rounded-full bg-[#1c2152]/85 py-1.5 pl-4 pr-1.5 text-white shadow-lg backdrop-blur">
             <HelixProgress labels={sectionIds.map((id) => NAV_LABELS[id])} current={current} onSelect={goTo} />
-            <span className="hidden text-xs text-white/70 lg:inline">← → to navigate · Esc to exit</span>
+            <span className="hidden text-xs text-white/70 2xl:inline">← → to navigate · Esc to exit</span>
+            <AudienceToggle audience={audience} onChange={setAudience} onDark />
             <button
               type="button"
               aria-pressed={autoAdvance}
@@ -393,6 +417,15 @@ export function TourExperience({
             >
               {autoAdvance ? <Pause className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
               Auto-advance
+            </button>
+            <button
+              type="button"
+              onClick={stopPresenting}
+              aria-label="Exit presentation"
+              title="Exit presentation (Esc)"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
             {autoAdvance && (
               <span

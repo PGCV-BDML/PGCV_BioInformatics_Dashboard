@@ -46,8 +46,17 @@ const stagger = (i: number, start = 200) => delay(start + Math.min(i, 8) * 60);
  * less padding and more items per row, and slide-fit.ts shrinks whatever
  * still doesn't fit. `!` beats the responsive classes these override.
  */
-const PRESENT_WIDE = "group-data-[presenting]/tour:max-w-[110rem]! group-data-[presenting]/tour:py-10!";
+const PRESENT_WIDE = "group-data-[presenting]/tour:max-w-[110rem]! group-data-[presenting]/tour:py-6!";
 const PRESENT_GAP = "group-data-[presenting]/tour:mt-6!";
+/** Intros run wider, so they take two lines rather than three. */
+const PRESENT_INTRO = "group-data-[presenting]/tour:max-w-5xl!";
+/**
+ * Dense slides put the title on the left and the intro on the right, to
+ * give their content the height a stacked header would take.
+ */
+const PRESENT_SPLIT_HEADER =
+  "group-data-[presenting]/tour:flex group-data-[presenting]/tour:items-end group-data-[presenting]/tour:justify-between group-data-[presenting]/tour:gap-12";
+const PRESENT_SPLIT_INTRO = "group-data-[presenting]/tour:mt-0! group-data-[presenting]/tour:max-w-2xl!";
 /**
  * As many columns as fit, so a row of cards becomes one line on a wide
  * screen. Written out in full: Tailwind only builds classes it finds as is.
@@ -194,7 +203,7 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
     <LightSection index={index} motif="assembly">
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
-      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+      <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(services.intro, audience)}
       </p>
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${PRESENT_GAP} ${PRESENT_COLUMNS.services}`}>
@@ -240,7 +249,11 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           </span>
           <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
         </p>
-        {/* Present mode: the machines side by side, each with a smaller photo. */}
+        {/*
+          Present mode: the machines side by side as two matching cards. Both
+          stretch to the same height, photos fill the same box and the specs
+          sit along the bottom, so the two line up whatever the text length.
+        */}
         <div
           className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
         >
@@ -250,14 +263,14 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
               <article
                 key={item.id}
                 style={stagger(itemIndex)}
-                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:gap-6! group-data-[presenting]/tour:md:p-6!`}
+                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:items-stretch! group-data-[presenting]/tour:md:gap-6! group-data-[presenting]/tour:md:p-6!`}
               >
                 {src && (
-                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:h-[320px]! group-data-[presenting]/tour:md:w-[180px]!">
-                    <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain" />
+                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:min-h-[300px] group-data-[presenting]/tour:md:w-[200px]!">
+                    <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[300px]" />
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex flex-1 flex-col">
                   {item.kicker && (
                     <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99]">
                       {item.kicker}
@@ -265,25 +278,27 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                   )}
                   <h3 className="mt-1 text-3xl font-black">{item.name}</h3>
                   <p className="mt-2 text-lg text-white/70">{resolveText(item.description, audience)}</p>
-                  <dl className="mt-8 grid gap-4 sm:grid-cols-3">
+                  <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-auto group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:pt-6">
                     {item.specs.map((spec, i) => {
                       const color = SPEC_COLORS[i % SPEC_COLORS.length];
                       const Icon = specIcon(spec);
                       return (
                         <div
                           key={spec.label || i}
-                          className="relative flex flex-col-reverse rounded-2xl border-l-4 bg-white/[0.06] px-6 py-5"
+                          className="flex flex-col rounded-2xl border-l-4 bg-white/[0.06] px-5 py-4"
                           style={{ borderColor: color }}
                         >
-                          {Icon && (
-                            <Icon className="absolute right-4 top-4 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />
-                          )}
-                          <dt className="mt-1 text-sm font-medium text-white/70">{spec.label}</dt>
-                          <dd className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black tracking-tight" style={{ color }}>
-                              <CountUp value={spec.value} />
+                          {/* Value first on screen, label under it; the label stays first for screen readers. */}
+                          <dt className="order-last mt-1 text-sm font-medium leading-snug text-white/70">{spec.label}</dt>
+                          <dd>
+                            {Icon && <Icon className="mb-2 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />}
+                            {/* Present-mode tiles are narrow, so the unit always goes under the number rather than wrapping on some tiles only. */}
+                            <span className="flex flex-wrap items-baseline gap-x-1.5 group-data-[presenting]/tour:flex-col group-data-[presenting]/tour:items-start">
+                              <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-4xl" style={{ color }}>
+                                <CountUp value={spec.value} />
+                              </span>
+                              <span className="text-xl font-bold text-white/80">{spec.unit}</span>
                             </span>
-                            <span className="text-xl font-bold text-white/80">{spec.unit}</span>
                           </dd>
                         </div>
                       );
@@ -305,7 +320,7 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
     <LightSection index={index} motif="network">
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
-      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+      <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(trainings.intro, audience)}
       </p>
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6 ${PRESENT_GAP} ${PRESENT_COLUMNS.trainings}`}>
@@ -345,9 +360,13 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
   if (!lead) return null;
   return (
     <LightSection index={index} motif="contours">
-      <Eyebrow index={index}>Research highlights</Eyebrow>
-      <SectionHeading title={projects.title} />
-      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>Research highlights</Eyebrow>
+          <SectionHeading title={projects.title} />
+        </div>
+        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
+      </div>
 
       <FeaturedProject project={lead} audience={audience} />
 
@@ -380,7 +399,7 @@ export function VariantTreeSection({
   return (
     <LightSection index={index} className="py-16">
       <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
-        <div className="max-w-3xl">
+        <div className={`max-w-3xl ${PRESENT_INTRO}`}>
           <Eyebrow index={index}>Tracking the variants</Eyebrow>
           <SectionHeading title={nextstrain.title} />
           <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(nextstrain.intro, audience)}</p>
@@ -477,13 +496,17 @@ export function VirusModelSection({
         aria-hidden="true"
       />
       <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
-        <Eyebrow index={index} onDark>
-          Up close
-        </Eyebrow>
-        <SectionHeading title={virusModel.title} onDark />
-        <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
-          {resolveText(virusModel.intro, audience)}
-        </p>
+        <div className={PRESENT_SPLIT_HEADER}>
+          <div className="shrink-0">
+            <Eyebrow index={index} onDark>
+              Up close
+            </Eyebrow>
+            <SectionHeading title={virusModel.title} onDark />
+          </div>
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
+            {resolveText(virusModel.intro, audience)}
+          </p>
+        </div>
 
         <div className={`mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] ${PRESENT_GAP}`}>
           <figure
@@ -777,7 +800,7 @@ export function CovidSection({
     <LightSection index={index} motif="radar" lavender>
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
-        <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+        <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
           {resolveText(covid.intro, audience)}
         </p>
         {stats && (
@@ -822,21 +845,26 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
   const { team } = content;
   return (
     <LightSection index={index} motif="bokeh">
-      <Eyebrow index={index}>The people</Eyebrow>
-      <SectionHeading title={team.title} />
-      <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>The people</Eyebrow>
+          <SectionHeading title={team.title} />
+        </div>
+        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
+      </div>
       <ul className={`mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.team}`}>
         {team.members.map((member, i) => {
           const src = tourAssetUrl(member.image);
           return (
             <li key={member.id} className={`${CARD} ${styles.enter} group flex flex-col overflow-hidden`} style={stagger(i)}>
-              <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2]">
+              {/* Square in Present mode: a shorter row leaves room to show everyone larger. */}
+              <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2] group-data-[presenting]/tour:aspect-square!">
                 {src && (
                   <img
                     src={src}
                     alt={member.fullName}
                     loading="lazy"
-                    className={`${styles.kenBurns} h-full w-full object-cover transition-transform duration-500 group-hover:scale-105`}
+                    className={`${styles.kenBurns} h-full w-full object-cover transition-transform group-data-[presenting]/tour:object-[50%_20%] duration-500 group-hover:scale-105`}
                   />
                 )}
               </div>
