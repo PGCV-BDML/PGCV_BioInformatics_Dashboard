@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { largestFittingZoom, MIN_SLIDE_ZOOM } from "./slide-fit";
+import { largestFittingZoom, MAX_SLIDE_ZOOM, MIN_SLIDE_ZOOM } from "./slide-fit";
 
 describe("largestFittingZoom", () => {
-  it("keeps full size when the slide already fits", () => {
-    expect(largestFittingZoom(() => true)).toBe(1);
+  it("grows a short slide to the maximum when it still fits", () => {
+    expect(largestFittingZoom(() => true)).toBe(MAX_SLIDE_ZOOM);
+  });
+
+  it("grows a slide only as far as it fits", () => {
+    // 600 px of content on an 800 px screen fits up to 1.33.
+    expect(largestFittingZoom((zoom) => 600 * zoom <= 800)).toBe(1.33);
   });
 
   it("finds the largest zoom whose height fits", () => {

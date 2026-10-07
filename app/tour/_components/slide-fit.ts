@@ -6,18 +6,24 @@ import { useEffect, type RefObject } from "react";
  */
 export const MIN_SLIDE_ZOOM = 0.6;
 
+/**
+ * Largest scale a slide is grown to, so a slide with room to spare fills the
+ * screen instead of floating in the middle of it.
+ */
+export const MAX_SLIDE_ZOOM = 1.5;
+
 /** Room kept clear at the bottom for the floating Present-mode controls. */
 const CONTROLS_PX = 64;
 
 /**
- * Largest zoom between MIN_SLIDE_ZOOM and 1 (in steps of 0.01) for which
+ * Largest zoom between MIN_SLIDE_ZOOM and MAX_SLIDE_ZOOM (in steps of 0.01) for which
  * `fits` holds, or MIN_SLIDE_ZOOM if none does. A binary search, because a
  * wider layout can reflow into fewer rows, so height isn't proportional to zoom.
  */
 export function largestFittingZoom(fits: (zoom: number) => boolean): number {
-  if (fits(1)) return 1;
+  if (fits(MAX_SLIDE_ZOOM)) return MAX_SLIDE_ZOOM;
   let lo = Math.round(MIN_SLIDE_ZOOM * 100);
-  let hi = 100;
+  let hi = Math.round(MAX_SLIDE_ZOOM * 100);
   while (hi - lo > 1) {
     const mid = Math.floor((lo + hi) / 2);
     if (fits(mid / 100)) lo = mid;
@@ -42,7 +48,7 @@ function applyZoom(slide: HTMLElement, zoom: number) {
   slide.style.zoom = zoom === 1 ? "" : String(zoom);
 }
 
-/** Shrinks one slide (a section's first child) so its content fits the screen. */
+/** Scales one slide (a section's first child) so its content fills the screen. */
 function fitSlide(slide: HTMLElement, available: number) {
   const zoom = largestFittingZoom((z) => {
     applyZoom(slide, z);
@@ -53,9 +59,10 @@ function fitSlide(slide: HTMLElement, available: number) {
 }
 
 /**
- * In Present mode, scales each slide down (CSS zoom, so it also takes less
- * room) until it fits between the header and the controls. Refits when the
- * window or any slide's content changes size, and clears it all on exit.
+ * In Present mode, scales each slide (CSS zoom, so layout follows) to the
+ * largest size that fits above the controls, growing short slides and
+ * shrinking tall ones. Refits when the window or any slide's content changes
+ * size, and clears it all on exit.
  */
 export function useSlideFit(
   presenting: boolean,
@@ -75,7 +82,8 @@ export function useSlideFit(
     const fitAll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const available = window.innerHeight - (headerRef.current?.offsetHeight ?? 64) - CONTROLS_PX;
+        // The header is hidden while presenting, so this is normally 0.
+        const available = window.innerHeight - (headerRef.current?.offsetHeight ?? 0) - CONTROLS_PX;
         for (const slide of slides()) fitSlide(slide, available);
       });
     };
