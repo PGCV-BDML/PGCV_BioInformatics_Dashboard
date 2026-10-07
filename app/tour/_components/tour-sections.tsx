@@ -10,6 +10,7 @@ import { BRAND, CARD, SERVICE_HEX } from "./brand";
 import { FeaturedProject } from "./project-feature";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
+import type { LightMotif } from "./light-motifs";
 import { ServiceIcon } from "./service-icons";
 import { SocialIcon, hasSocialIcon } from "./social-icons";
 import { useReveal } from "./use-reveal";
@@ -67,17 +68,19 @@ function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) 
 function LightSection({
   index,
   lavender,
+  motif,
   className = "py-16 md:py-24",
   children,
 }: {
   index: number;
   lavender?: boolean;
+  motif?: LightMotif;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={`relative overflow-hidden ${lavender ? "bg-[#f0e8f2]" : ""}`}>
-      <SectionBackdrop variant="light" index={index} />
+      <SectionBackdrop variant="light" index={index} motif={motif} />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 hidden px-4 md:px-8 [[data-tone=light]+[data-tone=light]_&]:block"
@@ -165,7 +168,7 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
 export function ServicesSection({ content, audience, index }: SectionProps & { index: number }) {
   const { services } = content;
   return (
-    <LightSection index={index}>
+    <LightSection index={index} motif="assembly">
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
@@ -273,7 +276,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
 export function TrainingsSection({ content, audience, index }: SectionProps & { index: number }) {
   const { trainings } = content;
   return (
-    <LightSection index={index}>
+    <LightSection index={index} motif="network">
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
@@ -314,7 +317,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
   const [lead, ...rest] = projects.items;
   if (!lead) return null;
   return (
-    <LightSection index={index}>
+    <LightSection index={index} motif="contours">
       <Eyebrow index={index}>Research highlights</Eyebrow>
       <SectionHeading title={projects.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
@@ -534,7 +537,7 @@ export function CovidSection({
     : [];
 
   return (
-    <LightSection index={index} lavender>
+    <LightSection index={index} motif="radar" lavender>
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
         <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
@@ -581,7 +584,7 @@ export function CovidSection({
 export function TeamSection({ content, audience, index }: SectionProps & { index: number }) {
   const { team } = content;
   return (
-    <LightSection index={index}>
+    <LightSection index={index} motif="bokeh">
       <Eyebrow index={index}>The people</Eyebrow>
       <SectionHeading title={team.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>

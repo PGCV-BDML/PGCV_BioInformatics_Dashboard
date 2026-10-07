@@ -59,6 +59,31 @@ describe("SectionBackdrop", () => {
   });
 });
 
+describe("light section motifs", () => {
+  it.each(["assembly", "network", "contours", "radar", "bokeh"] as const)(
+    "draws the %s art as hidden decoration with no text",
+    (motif) => {
+      const { container } = render(<SectionBackdrop variant="light" motif={motif} />);
+      const root = container.firstElementChild!;
+      expect(root.getAttribute("aria-hidden")).toBe("true");
+      expect(root.childElementCount).toBeGreaterThan(2);
+      expect(container.textContent).toBe("");
+    },
+  );
+
+  it("points the radar sweep at its own gradient", () => {
+    const { container } = render(<SectionBackdrop variant="light" motif="radar" />);
+    const id = container.querySelector("linearGradient")?.id;
+    expect(id).toBeTruthy();
+    expect(container.querySelector(`path[fill="url(#${id})"]`)).not.toBeNull();
+  });
+
+  it("leaves a plain light section without extra art", () => {
+    const { container } = render(<SectionBackdrop variant="light" />);
+    expect(container.querySelector("svg")).toBeNull();
+  });
+});
+
 describe("FeaturedProject", () => {
   it("renders the deer example with its range, timeline and a scannable citation", async () => {
     const { parseTourContent } = await import("@/lib/tour");
