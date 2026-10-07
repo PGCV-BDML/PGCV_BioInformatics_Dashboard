@@ -11,8 +11,10 @@ import { FeaturedProject } from "./project-feature";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import { ServiceIcon } from "./service-icons";
+import { SocialIcon, hasSocialIcon } from "./social-icons";
 import { useReveal } from "./use-reveal";
 import { CountUp } from "./count-up";
+import { DoiQr } from "./doi-qr";
 import styles from "./tour-motion.module.css";
 
 // ~11k-node SVG and its data load after the rest of the tour.
@@ -690,10 +692,31 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
           </h2>
           <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>
           {contact.social && (
-            <p className="mt-6 text-sm font-medium text-white/80">
-              Follow us: <span className="font-bold text-white">{contact.social.handle}</span>
-              {contact.social.platforms.length > 0 && <> — {contact.social.platforms.join(" · ")}</>}
-            </p>
+            <div className="mt-6">
+              <p className="text-sm font-medium text-white/80">
+                Follow us: <span className="font-bold text-white">{contact.social.handle}</span>
+              </p>
+              {contact.social.platforms.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2.5" aria-label="Find us on">
+                  {contact.social.platforms.map((platform) => (
+                    <li
+                      key={platform}
+                      title={platform}
+                      className="flex h-10 min-w-10 items-center justify-center rounded-full bg-white/[0.1] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),inset_0_-1px_0_rgba(0,0,0,0.2),0_6px_14px_-6px_rgba(10,12,40,0.6)]"
+                    >
+                      {hasSocialIcon(platform) ? (
+                        <>
+                          <SocialIcon platform={platform} className="h-[18px] w-[18px]" />
+                          <span className="sr-only">{platform}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs font-bold">{platform}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
         <ul className="space-y-3">
@@ -709,7 +732,41 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
             </li>
           ))}
         </ul>
+        {contact.qrCodes.length > 0 && (
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 lg:col-span-2">
+            {contact.qrCodes.map((qr, i) => (
+              <li key={qr.url} className={styles.enter} style={stagger(i, 400)}>
+                <EmbossedQr label={qr.label} url={qr.url} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A QR code pressed into a raised plate: the plate catches light on its top
+ * edge and casts a shadow below, and the code sits in a sunken well.
+ */
+function EmbossedQr({ label, url }: { label: string; url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group/qr flex flex-col items-center text-center"
+    >
+      <span className="block w-full max-w-[200px] rounded-[22px] bg-[linear-gradient(145deg,#ffffff_0%,#e9e7f1_100%)] p-3.5 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.95),inset_0_-2px_0_rgba(43,50,120,0.12),0_2px_0_rgba(20,22,60,0.35),0_14px_28px_-10px_rgba(10,12,40,0.6),-6px_-6px_18px_-8px_rgba(255,255,255,0.18)] transition-transform duration-300 group-hover/qr:-translate-y-1">
+        <span className="block rounded-[14px] bg-white p-2 shadow-[inset_2px_3px_6px_rgba(43,50,120,0.22),inset_-2px_-2px_4px_rgba(255,255,255,0.9)]">
+          <DoiQr url={url} label={`QR code for the PGC Visayas ${label}`} className="block h-auto w-full rounded-md" />
+        </span>
+      </span>
+      <span className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-white/65">PGC Visayas</span>
+      <span className="mt-0.5 font-quicksand text-lg font-bold leading-tight text-white [text-shadow:0_1px_0_rgba(0,0,0,0.35),0_-1px_0_rgba(255,255,255,0.12)]">
+        {label}
+      </span>
+    </a>
   );
 }

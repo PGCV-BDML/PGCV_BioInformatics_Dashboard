@@ -54,6 +54,10 @@ function minimalTour(overrides: Record<string, unknown> = {}) {
       intro: "Write to us",
       emails: [{ label: "Bioinformatics Laboratory", address: "bioinfo.pgc.upvisayas@up.edu.ph" }],
       social: { handle: "@PGCVisayas", platforms: ["Facebook", 3, ""] },
+      qrCodes: [
+        { label: "Website", url: "https://pgcvisayas.upv.edu.ph/" },
+        { label: "Bad link", url: "javascript:alert(1)" },
+      ],
     },
     ...overrides,
   };
@@ -66,6 +70,7 @@ describe("parseTourContent", () => {
     expect(tour.infrastructure.items[0]!.image).toBe("images/infrastructure/hpc-rack.png");
     expect(tour.team.members[0]!.fullName).toBe("Micah Danielle Lojera");
     expect(tour.contact.social?.platforms).toEqual(["Facebook"]);
+    expect(tour.contact.qrCodes).toEqual([{ label: "Website", url: "https://pgcvisayas.upv.edu.ph/" }]);
   });
 
   it("rejects an unknown schema version", () => {
