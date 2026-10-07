@@ -35,6 +35,24 @@ const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 /** Cards come in one after another, capped so long lists don't drag. */
 const stagger = (i: number, start = 200) => delay(start + Math.min(i, 8) * 60);
 
+/*
+ * Present mode (data-presenting on the tour root) targets a wide, short
+ * screen such as a 1280×720 projector: content spans the full width, with
+ * less padding and more items per row, and slide-fit.ts shrinks whatever
+ * still doesn't fit. `!` beats the responsive classes these override.
+ */
+const PRESENT_WIDE = "group-data-[presenting]/tour:max-w-[110rem]! group-data-[presenting]/tour:py-10!";
+const PRESENT_GAP = "group-data-[presenting]/tour:mt-6!";
+/**
+ * As many columns as fit, so a row of cards becomes one line on a wide
+ * screen. Written out in full: Tailwind only builds classes it finds as is.
+ */
+const PRESENT_COLUMNS = {
+  services: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]!",
+  trainings: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]!",
+  team: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]!",
+};
+
 
 function Eyebrow({ index, children, onDark }: { index: number; children: React.ReactNode; onDark?: boolean }) {
   return (
@@ -87,7 +105,7 @@ function LightSection({
       >
         <div className="mx-auto h-px max-w-6xl bg-[linear-gradient(90deg,transparent,#ff8601,#9c1f7a,#0176c3,transparent)] opacity-50" />
       </div>
-      <div className={`relative mx-auto w-full max-w-6xl px-4 md:px-8 ${className}`}>{children}</div>
+      <div className={`relative mx-auto w-full max-w-6xl px-4 md:px-8 ${className} ${PRESENT_WIDE}`}>{children}</div>
     </div>
   );
 }
@@ -174,7 +192,7 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(services.intro, audience)}
       </p>
-      <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${PRESENT_GAP} ${PRESENT_COLUMNS.services}`}>
         {services.items.map((service, i) => (
           <ServiceCard key={service.id} service={service} audience={audience} order={i} />
         ))}
@@ -203,7 +221,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
         aria-hidden="true"
       />
       <SectionBackdrop variant="infrastructure" />
-      <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
         <Eyebrow index={index} onDark>
           Under the hood
         </Eyebrow>
@@ -217,17 +235,20 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           </span>
           <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
         </p>
-        <div className="mt-10 space-y-6">
+        {/* Present mode: the machines side by side, each with a smaller photo. */}
+        <div
+          className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
+        >
           {infrastructure.items.map((item, itemIndex) => {
             const src = tourAssetUrl(item.image);
             return (
               <article
                 key={item.id}
                 style={stagger(itemIndex)}
-                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10`}
+                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:gap-6! group-data-[presenting]/tour:md:p-6!`}
               >
                 {src && (
-                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px]">
+                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:h-[320px]! group-data-[presenting]/tour:md:w-[180px]!">
                     <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain" />
                   </div>
                 )}
@@ -282,11 +303,12 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
         {resolveText(trainings.intro, audience)}
       </p>
-      <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+      <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6 ${PRESENT_GAP} ${PRESENT_COLUMNS.trainings}`}>
         {trainings.items.map((training, i) => {
           const src = tourAssetUrl(training.image);
           // 3 across on the first row, 2 wider tiles after (matches the deck).
-          const span = i < 3 ? "lg:col-span-2" : "lg:col-span-3";
+          // Present mode puts them all in one row of squares instead.
+          const span = `${i < 3 ? "lg:col-span-2" : "lg:col-span-3"} group-data-[presenting]/tour:col-span-1! group-data-[presenting]/tour:aspect-square!`;
           return (
             <li
               key={training.name}
@@ -588,7 +610,7 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
       <Eyebrow index={index}>The people</Eyebrow>
       <SectionHeading title={team.title} />
       <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
-      <ul className="mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4">
+      <ul className={`mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.team}`}>
         {team.members.map((member, i) => {
           const src = tourAssetUrl(member.image);
           return (

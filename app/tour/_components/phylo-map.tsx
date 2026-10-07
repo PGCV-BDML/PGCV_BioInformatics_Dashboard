@@ -143,8 +143,10 @@ export function PhyloMap({
   const focus = (p: number | undefined, event: React.PointerEvent) => {
     if (p === undefined || !box.current) return;
     const rect = box.current.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    setHover({ p, x, y: event.clientY - rect.top, right: x > rect.width * 0.55 });
+    // Present mode may zoom the slide: convert screen pixels back to the box's own.
+    const scale = rect.width / (box.current.offsetWidth || rect.width);
+    const x = (event.clientX - rect.left) / scale;
+    setHover({ p, x, y: (event.clientY - rect.top) / scale, right: x > box.current.offsetWidth * 0.55 });
     if (hover?.p !== p) onFocusProvince(p);
   };
   const blur = () => {

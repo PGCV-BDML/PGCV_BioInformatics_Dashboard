@@ -43,7 +43,7 @@ function ProjectPhoto({ project }: { project: TourProject }) {
   const name = project.commonName ?? project.species ?? project.title;
   const range = project.range;
   return (
-    <div className="relative min-h-[380px] shrink-0 overflow-hidden bg-[#1c2152] lg:min-h-[540px] lg:w-[44%]">
+    <div className="relative min-h-[380px] shrink-0 overflow-hidden bg-[#1c2152] lg:min-h-[540px] lg:w-[44%] group-data-[presenting]/tour:lg:min-h-[420px]! group-data-[presenting]/tour:lg:w-[30%]!">
       {src && (
         <img
           src={src}
@@ -164,99 +164,104 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
   const hasPhotoPanel =
     Boolean(tourAssetUrl(project.image)) || Boolean(project.conservation) || Boolean(project.range) || project.facts.length > 0;
   return (
-    <article className={`${CARD} ${styles.enter} relative mt-10 flex flex-col overflow-hidden lg:flex-row`} style={delay(220)}>
+    <article className={`${CARD} ${styles.enter} relative mt-10 flex flex-col overflow-hidden lg:flex-row group-data-[presenting]/tour:mt-6!`} style={delay(220)}>
       <span
         className="absolute inset-x-0 top-0 z-10 h-1 bg-[linear-gradient(90deg,#ff8601,#e5332a,#9c1f7a,#0176c3)]"
         aria-hidden="true"
       />
       {hasPhotoPanel && <ProjectPhoto project={project} />}
 
-      <div className="flex flex-1 flex-col p-6 md:p-10">
-        {project.status && (
-          <span className="self-start rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
-            {project.status}
-          </span>
-        )}
-        <h3 className="mt-4 text-2xl font-black text-[#2b3278] md:text-3xl">{project.title}</h3>
-        {project.species && (
-          <p className="mt-1 text-lg italic text-[#5e205e]">
-            {project.species}
-            {project.commonName && <span className="not-italic text-[15px] text-[#5b6770]"> · {project.commonName}</span>}
-          </p>
-        )}
-        <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+      {/* Present mode: story and journey side by side, so the card is wide rather than tall. */}
+      <div className="flex flex-1 flex-col p-6 md:p-10 group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-2 group-data-[presenting]/tour:gap-x-10 group-data-[presenting]/tour:md:p-8!">
+        <div>
+          {project.status && (
+            <span className="self-start rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
+              {project.status}
+            </span>
+          )}
+          <h3 className="mt-4 text-2xl font-black text-[#2b3278] md:text-3xl">{project.title}</h3>
+          {project.species && (
+            <p className="mt-1 text-lg italic text-[#5e205e]">
+              {project.species}
+              {project.commonName && <span className="not-italic text-[15px] text-[#5b6770]"> · {project.commonName}</span>}
+            </p>
+          )}
+          <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(project.summary, audience)}</p>
 
-        {project.highlights.length > 0 && (
-          <dl className="mt-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {project.highlights.map((h, i) => (
-              <div
-                key={h.label || i}
-                className="flex flex-col-reverse justify-end border-l-4 bg-[#f7f6fa] px-4 py-3"
-                style={{ borderColor: HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length] }}
-              >
-                <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
-                <dd className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">
-                    <CountUp value={h.value} />
-                  </span>
-                  {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
+          {project.highlights.length > 0 && (
+            <dl className="mt-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
+              {project.highlights.map((h, i) => (
+                <div
+                  key={h.label || i}
+                  className="flex flex-col-reverse justify-end border-l-4 bg-[#f7f6fa] px-4 py-3"
+                  style={{ borderColor: HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length] }}
+                >
+                  <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
+                  <dd className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">
+                      <CountUp value={h.value} />
+                    </span>
+                    {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
 
-        {project.steps.length > 0 && (
-          <div className="mt-8">
-            <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">From sample to genome</p>
-            <StepTimeline steps={project.steps} />
-            {project.next && (
-              <p className="mt-4 text-sm text-[#5b6770]">
-                <span className="font-bold text-[#0a7558]">What&rsquo;s next: </span>
-                {resolveText(project.next, audience)}
-              </p>
-            )}
-          </div>
-        )}
-
-        {(project.partners.length > 0 || project.citation) && (
-          <div className="mt-auto pt-7">
-            {project.partners.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-[#2b3278]/10 pt-5">
-                <span className="mr-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">
-                  In partnership with
-                </span>
-                {project.partners.map((partner) => (
-                  <span key={partner} className="rounded-lg bg-[#f7f6fa] px-3 py-1.5 text-sm font-bold text-[#2b3278]">
-                    {partner}
-                  </span>
-                ))}
-              </div>
-            )}
-            {project.citation && (
-              <div className="mt-4 flex items-center gap-4 rounded-xl bg-[#f7f6fa] p-3">
-                <DoiQr
-                  url={project.citation.url}
-                  label={`QR code linking to ${project.citation.text}`}
-                  className="h-16 w-16 shrink-0 rounded-md"
-                />
-                <p className="min-w-0 text-[13px] leading-relaxed text-[#5b6770]">
-                  <a
-                    href={project.citation.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-bold text-[#2b3278] underline-offset-2 hover:underline"
-                  >
-                    {project.citation.text}
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                  <span className="block break-all">{project.citation.url.replace(/^https?:\/\//, "")}</span>
-                  {project.citation.note && <span className="block">{project.citation.note}</span>}
+        <div className="flex flex-1 flex-col">
+          {project.steps.length > 0 && (
+            <div className="mt-8 group-data-[presenting]/tour:mt-1!">
+              <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">From sample to genome</p>
+              <StepTimeline steps={project.steps} />
+              {project.next && (
+                <p className="mt-4 text-sm text-[#5b6770]">
+                  <span className="font-bold text-[#0a7558]">What&rsquo;s next: </span>
+                  {resolveText(project.next, audience)}
                 </p>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+
+          {(project.partners.length > 0 || project.citation) && (
+            <div className="mt-auto pt-7">
+              {project.partners.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-[#2b3278]/10 pt-5">
+                  <span className="mr-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">
+                    In partnership with
+                  </span>
+                  {project.partners.map((partner) => (
+                    <span key={partner} className="rounded-lg bg-[#f7f6fa] px-3 py-1.5 text-sm font-bold text-[#2b3278]">
+                      {partner}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {project.citation && (
+                <div className="mt-4 flex items-center gap-4 rounded-xl bg-[#f7f6fa] p-3">
+                  <DoiQr
+                    url={project.citation.url}
+                    label={`QR code linking to ${project.citation.text}`}
+                    className="h-16 w-16 shrink-0 rounded-md"
+                  />
+                  <p className="min-w-0 text-[13px] leading-relaxed text-[#5b6770]">
+                    <a
+                      href={project.citation.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-bold text-[#2b3278] underline-offset-2 hover:underline"
+                    >
+                      {project.citation.text}
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    </a>
+                    <span className="block break-all">{project.citation.url.replace(/^https?:\/\//, "")}</span>
+                    {project.citation.note && <span className="block">{project.citation.note}</span>}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
