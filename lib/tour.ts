@@ -450,7 +450,7 @@ export function parseTourContent(raw: unknown): TourContent {
 export const FALLBACK_TOUR: TourContent = {
   hero: {
     eyebrow: "Welcome to the lab tour",
-    title: "Reading the genomes of the Visayas",
+    title: "Bringing genomic science home to the Visayas",
     intro:
       "The Bioinformatics and Data Management Laboratory of the Philippine Genome Center Visayas turns raw DNA and RNA sequence data into answers — and trains the next generation of bioinformaticians.",
     facts: [
