@@ -1,0 +1,291 @@
+/*
+ * Background art for the light tour sections (light-motifs.tsx). Like
+ * backdrop.module.css: transform, opacity and stroke dashes only, still for
+ * prefers-reduced-motion, and paused by SectionBackdrop while off screen.
+ */
+
+/* SVG motifs sit on the right, fading out toward the headline on the left. */
+.art {
+  position: absolute;
+  right: -3%;
+  top: 50%;
+  width: min(44rem, 62vw);
+  height: auto;
+  translate: 0 -50%;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+}
+
+@media (max-width: 767px) {
+  .art {
+    width: 90vw;
+    opacity: 0.55;
+  }
+}
+
+/* --- Services: reads assembling into a contig ---------------------------- */
+
+/* Cards fill the middle, so the reads assemble up beside the heading. */
+.assembly {
+  top: 0;
+  width: min(38rem, 54vw);
+  translate: none;
+}
+
+.read {
+  opacity: 0.4;
+}
+
+.contig {
+  opacity: 0.18;
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+/* --- Trainings: network links ------------------------------------------- */
+
+/* Photos fill the middle, so this sits up by the heading instead. */
+.network {
+  top: -2rem;
+  width: min(36rem, 52vw);
+  translate: none;
+}
+
+.link {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  opacity: 0.22;
+}
+
+.node {
+  opacity: 0.45;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* --- Projects: contour lines --------------------------------------------- */
+
+/* The project card fills the middle; the rings frame the heading instead. */
+.contours {
+  top: -9rem;
+  width: min(38rem, 54vw);
+  translate: none;
+}
+
+.contourSpin {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+
+.contour {
+  opacity: 0.32;
+  stroke-dasharray: 10 14;
+}
+
+/* --- COVID-19: radar ----------------------------------------------------- */
+
+.radar {
+  top: -3rem;
+  width: min(34rem, 50vw);
+  translate: none;
+}
+
+.sweep {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+
+.ping {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+
+.blip {
+  opacity: 0.35;
+}
+
+/* --- Team: rising lights -------------------------------------------------- */
+
+.bokeh {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 35%);
+}
+
+.light {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 60%, transparent), transparent);
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .read {
+    animation: assemble 9s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) infinite both;
+    animation-delay: var(--d);
+  }
+
+  .contig {
+    animation: contig 9s ease-in-out infinite both;
+  }
+
+  .link {
+    animation: link 12s ease-in-out infinite both;
+    animation-delay: var(--d);
+  }
+
+  .node {
+    animation: node 4s ease-in-out infinite alternate;
+    animation-delay: var(--d);
+  }
+
+  .contourSpin {
+    animation: spin 240s linear infinite;
+  }
+
+  .contour {
+    animation: contour-flow 30s linear infinite;
+  }
+
+  .contourReverse {
+    animation-direction: reverse;
+  }
+
+  .sweep {
+    animation: spin var(--t) linear infinite;
+  }
+
+  .ping {
+    animation: ping 6s ease-out infinite;
+    animation-delay: var(--d);
+  }
+
+  .blip {
+    animation: blip var(--t) linear infinite;
+    animation-delay: var(--d);
+  }
+
+  /* Rising from below the section instead of sitting at a fixed height. */
+  .light {
+    top: auto;
+    bottom: calc(var(--s) * -1);
+    opacity: 0;
+    animation: rise var(--t) linear infinite;
+    animation-delay: var(--d);
+  }
+}
+
+@keyframes assemble {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  18%,
+  75% {
+    opacity: 0.4;
+    transform: none;
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes contig {
+  0%,
+  15% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  50%,
+  80% {
+    opacity: 0.18;
+    transform: none;
+  }
+  95%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes link {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.22;
+  }
+  20%,
+  65% {
+    stroke-dashoffset: 0;
+    opacity: 0.22;
+  }
+  85%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes node {
+  to {
+    transform: scale(1.4);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 240 is a whole number of 24-unit dash periods, so the loop has no jump. */
+@keyframes contour-flow {
+  to {
+    stroke-dashoffset: -240;
+  }
+}
+
+@keyframes ping {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.12);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes blip {
+  0% {
+    opacity: 0.9;
+  }
+  35%,
+  100% {
+    opacity: 0.12;
+  }
+}
+
+@keyframes rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15%,
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1100px);
+  }
+}

@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import { BRAND, LOGO } from "./brand";
+import { LightMotifArt, type LightMotif } from "./light-motifs";
 import { useOnScreen } from "./use-reveal";
 import styles from "./backdrop.module.css";
 
@@ -155,7 +156,16 @@ function Circuit() {
 
 export type BackdropVariant = "hero" | "contact" | "light" | "infrastructure";
 
-export function SectionBackdrop({ variant, index = 0 }: { variant: BackdropVariant; index?: number }) {
+export function SectionBackdrop({
+  variant,
+  index = 0,
+  motif,
+}: {
+  variant: BackdropVariant;
+  index?: number;
+  /** Light sections only: the slide's own background art. */
+  motif?: LightMotif;
+}) {
   const [ref, onScreen] = useOnScreen<HTMLSpanElement>();
   return (
     <span ref={ref} className={styles.root} data-offscreen={onScreen === false ? "" : undefined} aria-hidden="true">
@@ -171,7 +181,12 @@ export function SectionBackdrop({ variant, index = 0 }: { variant: BackdropVaria
           <SequenceTexture />
         </>
       )}
-      {variant === "light" && <LightLayers index={index} />}
+      {variant === "light" && (
+        <>
+          <LightLayers index={index} />
+          {motif && <LightMotifArt motif={motif} />}
+        </>
+      )}
       {variant === "infrastructure" && <Circuit />}
     </span>
   );
