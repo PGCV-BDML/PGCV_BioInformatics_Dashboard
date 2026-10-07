@@ -34,7 +34,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * A figure that counts up from zero the first time it scrolls into view.
+ * A figure that counts up from zero each time it scrolls into view.
  * The markup always carries the final value: without JavaScript, or with
  * reduced motion, that is simply what shows. Values that don't start with a
  * number are rendered as they are.
@@ -57,7 +57,11 @@ export function CountUp({ value }: { value: string }) {
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      // Start from zero next time, rather than flashing the final value.
+      setProgress(0);
+    };
   }, [animate]);
 
   const shown = parsed && animate && progress < 1 ? formatCount(parsed, parsed.target * progress) : value;

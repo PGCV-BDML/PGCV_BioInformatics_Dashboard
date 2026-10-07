@@ -19,6 +19,7 @@ import {
   VideosSection,
 } from "./tour-sections";
 import { HelixProgress } from "./helix-progress";
+import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
 import styles from "./tour-motion.module.css";
 
 type SectionId =
@@ -69,8 +70,9 @@ export function TourExperience({
   const [presenting, setPresenting] = useState(false);
   const [current, setCurrent] = useState(0);
   const [autoAdvance, setAutoAdvance] = useState(false);
-  // Sections whose entrance has played; each animates in once.
-  const [revealed, setRevealed] = useState<ReadonlySet<number>>(() => new Set());
+  // Entrance state per section; one not listed yet is "pending". The opening
+  // slide starts "visible" so it plays straight from the server HTML.
+  const [reveal, setReveal] = useState<ReadonlyMap<number, RevealState>>(() => new Map([[0, "visible"]]));
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   // Sections with nothing to show are skipped entirely.
@@ -130,22 +132,31 @@ export function TourExperience({
     return () => observer.disconnect();
   }, [sectionIds]);
 
-  // Play each section's entrance the first time it scrolls into view.
+  // Play each section's entrance whenever it scrolls into view, and rewind it
+  // once it has left the screen, so going back to a slide replays it.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const shown = entries
-          .filter((entry) => entry.isIntersecting)
-          .map((entry) => sectionRefs.current.indexOf(entry.target as HTMLElement))
-          .filter((index) => index >= 0);
-        if (!shown.length) return;
-        for (const entry of entries) if (entry.isIntersecting) observer.unobserve(entry.target);
-        setRevealed((prev) => new Set([...prev, ...shown]));
-      },
-      { rootMargin: "0px 0px -15% 0px" },
-    );
-    for (const el of sectionRefs.current) if (el) observer.observe(el);
-    return () => observer.disconnect();
+    const set = (index: number, state: RevealState) =>
+      setReveal((prev) => (prev.get(index) === state ? prev : new Map(prev).set(index, state)));
+    const cleanups = sectionRefs.current.flatMap((el, index) => {
+      if (!el) return [];
+      let cancel = () => {};
+      const stop = watchReveal(
+        el,
+        () => {
+          cancel();
+          set(index, "visible");
+        },
+        () => {
+          cancel = rewindReveal(
+            () => set(index, "reset"),
+            () => set(index, "pending"),
+          );
+        },
+        "-15%",
+      );
+      return [() => (stop(), cancel())];
+    });
+    return () => cleanups.forEach((cleanup) => cleanup());
   }, [sectionIds]);
 
   // In Present mode each slide snaps to the top; the sections' scroll-mt-16
@@ -315,7 +326,7 @@ export function TourExperience({
             aria-label={NAV_LABELS[id]}
             data-tone={LIGHT_SECTIONS.has(id) ? "light" : undefined}
             // The opening slide plays straight from the server HTML, without waiting for hydration.
-            data-reveal={index === 0 || revealed.has(index) ? "visible" : "pending"}
+            data-reveal={reveal.get(index) ?? "pending"}
             ref={(el) => {
               sectionRefs.current[index] = el;
             }}
