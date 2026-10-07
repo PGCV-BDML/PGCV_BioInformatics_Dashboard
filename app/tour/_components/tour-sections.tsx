@@ -104,7 +104,9 @@ export function HeroSection({ content, audience }: SectionProps) {
         animate
         className="pointer-events-none absolute -right-28 top-10 hidden w-[560px] opacity-35 md:block xl:-right-20 xl:w-[720px] xl:opacity-70"
       />
-      <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
+      {/* m-auto: in Present mode the slide fills the screen, so the content
+          centres itself and the accent bar below stays on the bottom edge. */}
+      <div className="relative m-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
           {hero.eyebrow}
