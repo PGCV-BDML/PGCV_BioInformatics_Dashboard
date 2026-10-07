@@ -3,6 +3,8 @@ import deerExample from "@/docs/tour-content/visayan-spotted-deer.json";
 import {
   FALLBACK_TOUR,
   isSafeTourAssetPath,
+  isSafeTourLabMapPath,
+  LAB_MAP_CSP,
   parseTourContent,
   resolveText,
   TourContentError,
@@ -196,6 +198,24 @@ describe("FALLBACK_TOUR", () => {
     expect(parseTourContent(minimalTour()).virusModel).toBeNull();
     const unsafe = minimalTour({ virusModel: { ...virusModel, structure: "images/../tour.pdb" } });
     expect(parseTourContent(unsafe).virusModel).toBeNull();
+  });
+});
+
+describe("lab map", () => {
+  it("reads the lab map block only with a safe lab-map/*.html path", () => {
+    const labMap = { title: "Explore the lab", intro: { general: "Walk the rooms" }, src: "lab-map/index.html" };
+    expect(parseTourContent(minimalTour({ labMap })).labMap).toMatchObject(labMap);
+    expect(parseTourContent(minimalTour()).labMap).toBeNull();
+    for (const src of ["index.html", "lab-map/../tour.json", "lab-map/.secret.html", "lab-map/map.js", "images/x.html"]) {
+      expect(parseTourContent(minimalTour({ labMap: { ...labMap, src } })).labMap).toBeNull();
+    }
+  });
+
+  it("is served sandboxed, without same-origin access, and framed only by the tour", () => {
+    expect(isSafeTourLabMapPath("lab-map/v2/index.HTML")).toBe(true);
+    expect(LAB_MAP_CSP).toMatch(/^sandbox allow-scripts;/);
+    expect(LAB_MAP_CSP).not.toContain("allow-same-origin");
+    expect(LAB_MAP_CSP).toContain("frame-ancestors 'self'");
   });
 });
 

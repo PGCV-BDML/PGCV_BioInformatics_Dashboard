@@ -12,6 +12,7 @@ import {
   CovidSection,
   HeroSection,
   InfrastructureSection,
+  LabMapSection,
   ProjectsSection,
   ServicesSection,
   TeamSection,
@@ -27,6 +28,7 @@ import styles from "./tour-motion.module.css";
 
 type SectionId =
   | "welcome"
+  | "lab-map"
   | "services"
   | "infrastructure"
   | "trainings"
@@ -40,6 +42,7 @@ type SectionId =
 
 const NAV_LABELS: Record<SectionId, string> = {
   welcome: "Welcome",
+  "lab-map": "Lab map",
   services: "Services",
   infrastructure: "Infrastructure",
   trainings: "Trainings",
@@ -107,11 +110,14 @@ export function TourExperience({
   stats,
   phylo = null,
   virus = null,
+  labMap = false,
 }: {
   content: TourContent;
   stats: TourCovidStats | null;
   phylo?: TourPhyloSummary | null;
   virus?: TourVirusSummary | null;
+  /** Whether the lab map page loaded; the slide is hidden otherwise. */
+  labMap?: boolean;
 }) {
   const [audience, setAudience] = useState<Audience>("general");
   const [presenting, setPresenting] = useState(false);
@@ -125,7 +131,9 @@ export function TourExperience({
 
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
-    const ids: SectionId[] = ["welcome", "services", "infrastructure"];
+    const ids: SectionId[] = ["welcome"];
+    if (content.labMap && labMap) ids.push("lab-map");
+    ids.push("services", "infrastructure");
     if (content.trainings.items.length) ids.push("trainings");
     if (content.projects.items.length) ids.push("projects");
     ids.push("covid-19");
@@ -135,7 +143,7 @@ export function TourExperience({
     if (content.videos.items.length) ids.push("videos");
     ids.push("contact");
     return ids;
-  }, [content, phylo, virus]);
+  }, [content, phylo, virus, labMap]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -272,6 +280,8 @@ export function TourExperience({
     switch (id) {
       case "welcome":
         return <HeroSection content={content} audience={audience} />;
+      case "lab-map":
+        return <LabMapSection {...props} />;
       case "services":
         return <ServicesSection {...props} />;
       case "infrastructure":

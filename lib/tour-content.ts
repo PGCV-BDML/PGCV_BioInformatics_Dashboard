@@ -1,4 +1,4 @@
-import { FALLBACK_TOUR, parseTourContent, type TourContent } from "@/lib/tour";
+import { FALLBACK_TOUR, isSafeTourLabMapPath, parseTourContent, type TourContent } from "@/lib/tour";
 import { isSafeTourPhyloPath, parseTourPhylo, type TourPhylo } from "@/lib/tour-phylo";
 import {
   isSafeTourVirusPath,
@@ -156,6 +156,34 @@ export async function getTourVirusStructure(model: VirusModel | null): Promise<s
     return response ? slimSpikePdb(await response.text()) : null;
   } catch (error) {
     console.error("Lab tour: no spike structure.", error);
+    return null;
+  }
+}
+
+/** Lab map pages are hand-written HTML; anything bigger is a mistake (e.g. inlined photos). */
+const LAB_MAP_MAX_BYTES = 1_500_000;
+
+/**
+ * The lab map slide's self-contained HTML page, or null when it is missing,
+ * unsafe or too big (the slide is then hidden). Served to the browser only
+ * through /api/tour/lab-map, sandboxed.
+ */
+export async function getTourLabMap(labMap: TourContent["labMap"]): Promise<string | null> {
+  if (!labMap || !isSafeTourLabMapPath(labMap.src) || !isTourContentConfigured()) return null;
+  try {
+    const response = await fetchTourRepoFile(labMap.src, {
+      next: { revalidate: TOUR_CONTENT_REVALIDATE_SECONDS },
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub returned ${response.status} for ${labMap.src}`);
+    }
+    const html = await response.text();
+    if (new TextEncoder().encode(html).length > LAB_MAP_MAX_BYTES) {
+      throw new Error(`${labMap.src} is over ${LAB_MAP_MAX_BYTES} bytes`);
+    }
+    return html;
+  } catch (error) {
+    console.error("Lab tour: hiding the lab map.", error);
     return null;
   }
 }

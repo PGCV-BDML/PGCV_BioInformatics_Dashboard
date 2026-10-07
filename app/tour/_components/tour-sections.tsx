@@ -2,8 +2,8 @@
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Cpu, HardDrive, MemoryStick, Pause, Play, RotateCw, type LucideIcon } from "lucide-react";
-import { resolveText, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
+import { Cpu, HardDrive, Maximize2, MemoryStick, Pause, Play, RotateCw, type LucideIcon } from "lucide-react";
+import { resolveText, TOUR_LAB_MAP_URL, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
@@ -309,6 +309,59 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The content repo's self-contained 3D lab map, framed whole. It scrolls on
+ * its own; tour-experience leaves the arrow keys to it while it has focus.
+ */
+export function LabMapSection({ content, audience, index }: SectionProps & { index: number }) {
+  const labMap = content.labMap!;
+  return (
+    <div className="relative overflow-hidden bg-[#1c2152] text-white">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,rgba(18,202,153,0.16),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(42,119,151,0.4),transparent_55%)]"
+        aria-hidden="true"
+      />
+      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
+        <div className={PRESENT_SPLIT_HEADER}>
+          <div className="shrink-0">
+            <Eyebrow index={index} onDark>
+              Step inside
+            </Eyebrow>
+            <SectionHeading title={labMap.title} onDark />
+          </div>
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
+            {resolveText(labMap.intro, audience)}
+          </p>
+        </div>
+
+        <figure
+          className={`${styles.enter} relative mt-10 h-[70vh] min-h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-[#073e3e] ${PRESENT_GAP}`}
+          style={delay(240)}
+        >
+          <iframe
+            src={TOUR_LAB_MAP_URL}
+            title={labMap.title}
+            loading="lazy"
+            // Same policy as the route's CSP header, so an old cached copy is boxed in too.
+            sandbox="allow-scripts"
+            referrerPolicy="no-referrer"
+            className="h-full w-full"
+          />
+          <a
+            href={TOUR_LAB_MAP_URL}
+            target="_blank"
+            rel="noopener"
+            className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/80 px-3.5 py-2 text-xs font-semibold text-white/85 backdrop-blur transition-colors hover:bg-[#1c2152] group-data-[presenting]/tour:hidden"
+          >
+            <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Open on its own
+          </a>
+        </figure>
       </div>
     </div>
   );

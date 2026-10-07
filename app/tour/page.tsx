@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTourContent, getTourPhylo, getTourVirus } from "@/lib/tour-content";
+import { getTourContent, getTourLabMap, getTourPhylo, getTourVirus } from "@/lib/tour-content";
 import { summarizePhylo } from "@/lib/tour-phylo";
 import { getTourCovidStats } from "@/lib/tour-stats";
 import { TourExperience } from "./_components/tour-experience";
@@ -9,7 +9,8 @@ import { TourExperience } from "./_components/tour-experience";
  * /dashboard so it needs no sign-in. Text and photos come from the
  * pgcv-tour-content repo; COVID-19 numbers are aggregates from Supabase, and
  * the variant tree is a slimmed Nextstrain build (scripts/slim-auspice.mjs),
- * and the 3D virus comes from the content repo's pgc-covid-exhibit/ folder.
+ * the 3D virus comes from the content repo's pgc-covid-exhibit/ folder, and
+ * the lab map is a self-contained page from its lab-map/ folder.
  */
 export const revalidate = 300;
 
@@ -21,11 +22,18 @@ export const metadata: Metadata = {
 
 export default async function TourPage() {
   const [{ content }, stats] = await Promise.all([getTourContent(), getTourCovidStats()]);
-  const [phylo, virus] = await Promise.all([
+  const [phylo, virus, labMap] = await Promise.all([
     getTourPhylo(content.nextstrain?.tree),
     getTourVirus(content.virusModel),
+    getTourLabMap(content.labMap),
   ]);
   return (
-    <TourExperience content={content} stats={stats} phylo={phylo ? summarizePhylo(phylo) : null} virus={virus} />
+    <TourExperience
+      content={content}
+      stats={stats}
+      phylo={phylo ? summarizePhylo(phylo) : null}
+      virus={virus}
+      labMap={labMap !== null}
+    />
   );
 }
