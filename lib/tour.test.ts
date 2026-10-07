@@ -46,7 +46,6 @@ function minimalTour(overrides: Record<string, unknown> = {}) {
       title: "Team",
       intro: "The lab",
       members: [{ id: "micah", nickname: "Micah", fullName: "Micah Danielle Lojera", position: "Senior Research Associate", image: "images/team/micah.jpg" }],
-      joinCard: { title: "Could this be you?", body: "We host interns." },
     },
     videos: { title: "Videos", items: [] },
     contact: {

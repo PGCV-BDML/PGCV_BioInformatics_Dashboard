@@ -878,16 +878,6 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
             </li>
           );
         })}
-        {team.joinCard && (
-          <li
-            className={`${styles.enter} flex flex-col justify-center gap-2 rounded-2xl bg-[linear-gradient(150deg,#2b3278,#5e205e)] p-6 text-white`}
-            style={stagger(team.members.length)}
-          >
-            <span className="mb-2 h-1 w-10 rounded-full bg-[#12ca99]" aria-hidden="true" />
-            <p className="text-xl font-black md:text-2xl">{team.joinCard.title}</p>
-            <p className="text-sm leading-relaxed text-white/85 md:text-base">{team.joinCard.body}</p>
-          </li>
-        )}
       </ul>
     </LightSection>
   );

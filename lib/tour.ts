@@ -121,7 +121,6 @@ export type TourContent = {
     title: string;
     intro: TourText;
     members: TourMember[];
-    joinCard: { title: string; body: string } | null;
   };
   videos: { title: string; items: TourVideo[] };
   contact: {
@@ -296,7 +295,6 @@ export function parseTourContent(raw: unknown): TourContent {
   const nextstrain = root.nextstrain ? obj(root.nextstrain, "nextstrain") : null;
   const virusModel = root.virusModel ? obj(root.virusModel, "virusModel") : null;
   const contact = obj(root.contact, "contact");
-  const joinCard = team.joinCard ? obj(team.joinCard, "team.joinCard") : null;
   const social = contact.social ? obj(contact.social, "contact.social") : null;
 
   return {
@@ -401,9 +399,6 @@ export function parseTourContent(raw: unknown): TourContent {
           image: image(o.image),
         };
       }),
-      joinCard: joinCard
-        ? { title: str(joinCard.title, "team.joinCard.title"), body: str(joinCard.body, "team.joinCard.body") }
-        : null,
     },
     videos: {
       title: optStr(videos.title) ?? "Videos",
@@ -500,7 +495,7 @@ export const FALLBACK_TOUR: TourContent = {
   },
   nextstrain: null,
   virusModel: null,
-  team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [], joinCard: null },
+  team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [] },
   videos: { title: "Videos", items: [] },
   contact: {
     title: "Have a sample, a dataset or a question?",
