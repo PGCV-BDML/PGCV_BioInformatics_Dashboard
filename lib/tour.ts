@@ -123,6 +123,8 @@ export type TourContent = {
     intro: TourText;
     emails: { label: string; address: string }[];
     social: { handle: string; platforms: string[] } | null;
+    /** Links shown as QR codes so visitors can scan them on the way out. */
+    qrCodes: { label: string; url: string }[];
   };
 };
 
@@ -419,6 +421,11 @@ export function parseTourContent(raw: unknown): TourContent {
             ),
           }
         : null,
+      qrCodes: arr(contact.qrCodes ?? [], "contact.qrCodes").flatMap((q, i) => {
+        const o = obj(q, `contact.qrCodes[${i}]`);
+        const url = httpsUrl(o.url);
+        return url ? [{ label: str(o.label, `contact.qrCodes[${i}].label`), url }] : [];
+      }),
     },
   };
 }
@@ -479,5 +486,6 @@ export const FALLBACK_TOUR: TourContent = {
     intro: "Request a service, join a training, or apply for an internship.",
     emails: [{ label: "Bioinformatics Laboratory", address: "bioinfo.pgc.upvisayas@up.edu.ph" }],
     social: { handle: "@PGCVisayas", platforms: [] },
+    qrCodes: [],
   },
 };
