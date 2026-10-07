@@ -250,9 +250,10 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
         </p>
         {/*
-          Present mode: the machines side by side as two matching cards. Both
-          stretch to the same height, photos fill the same box and the specs
-          sit along the bottom, so the two line up whatever the text length.
+          Present mode: the machines side by side as two matching cards. Each
+          card is a grid (the text column becomes `contents`), with the photo
+          beside the text and the specs in a full-width row along the bottom,
+          so the tiles have room and line up whatever the text length.
         */}
         <div
           className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
@@ -263,22 +264,22 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
               <article
                 key={item.id}
                 style={stagger(itemIndex)}
-                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:items-stretch! group-data-[presenting]/tour:md:gap-6! group-data-[presenting]/tour:md:p-6!`}
+                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
               >
                 {src && (
-                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:min-h-[300px] group-data-[presenting]/tour:md:w-[200px]!">
-                    <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[300px]" />
+                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[180px]!">
+                    <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[220px]" />
                   </div>
                 )}
-                <div className="flex flex-1 flex-col">
+                <div className="flex flex-1 flex-col group-data-[presenting]/tour:md:contents">
                   {item.kicker && (
-                    <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99]">
+                    <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-1">
                       {item.kicker}
                     </p>
                   )}
-                  <h3 className="mt-1 text-3xl font-black">{item.name}</h3>
-                  <p className="mt-2 text-lg text-white/70">{resolveText(item.description, audience)}</p>
-                  <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-auto group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:pt-6">
+                  <h3 className="mt-1 text-3xl font-black group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
+                  <p className="mt-2 text-lg text-white/70 group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                  <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-6 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
                     {item.specs.map((spec, i) => {
                       const color = SPEC_COLORS[i % SPEC_COLORS.length];
                       const Icon = specIcon(spec);
@@ -292,8 +293,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                           <dt className="order-last mt-1 text-sm font-medium leading-snug text-white/70">{spec.label}</dt>
                           <dd>
                             {Icon && <Icon className="mb-2 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />}
-                            {/* Present-mode tiles are narrow, so the unit always goes under the number rather than wrapping on some tiles only. */}
-                            <span className="flex flex-wrap items-baseline gap-x-1.5 group-data-[presenting]/tour:flex-col group-data-[presenting]/tour:items-start">
+                            <span className="flex flex-wrap items-baseline gap-x-1.5">
                               <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-4xl" style={{ color }}>
                                 <CountUp value={spec.value} />
                               </span>
