@@ -7,6 +7,7 @@ import { resolveText, TOUR_LAB_MAP_URL, tourAssetUrl, type Audience, type TourCo
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
+import { SHOWCASE_COPY, SHOWCASE_INTRO } from "@/lib/tour-showcase";
 import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
 import { FeaturedProject } from "./project-feature";
@@ -14,6 +15,7 @@ import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import type { LightMotif } from "./light-motifs";
 import { ServiceIcon } from "./service-icons";
+import { ShowcaseFigures } from "./service-showcase";
 import { SocialIcon, hasSocialIcon } from "./social-icons";
 import { useReveal } from "./use-reveal";
 import { CountUp } from "./count-up";
@@ -65,6 +67,7 @@ const PRESENT_COLUMNS = {
   services: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]!",
   trainings: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]!",
   team: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]!",
+  showcase: "group-data-[presenting]/tour:grid-cols-4!",
 };
 
 
@@ -209,6 +212,38 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${PRESENT_GAP} ${PRESENT_COLUMNS.services}`}>
         {services.items.map((service, i) => (
           <ServiceCard key={service.id} service={service} audience={audience} order={i} />
+        ))}
+      </ul>
+    </LightSection>
+  );
+}
+
+export function ShowcaseSection({ audience, index }: { audience: Audience; index: number }) {
+  return (
+    <LightSection index={index} motif="network" lavender>
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>What you get</Eyebrow>
+          <SectionHeading title="Sample results" />
+        </div>
+        <div className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} ${styles.enter}`} style={delay(160)}>
+          <p className="text-lg leading-relaxed text-[#5b6770]">{resolveText(SHOWCASE_INTRO, audience)}</p>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a7558]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
+            Sample data for illustration, not from a real project
+          </p>
+        </div>
+      </div>
+      <ul className={`mt-10 grid gap-5 md:grid-cols-2 2xl:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.showcase}`}>
+        {SHOWCASE_COPY.map((item, i) => (
+          <li key={item.id} className={`${CARD} ${styles.enter} flex flex-col gap-4 p-5`} style={stagger(i)}>
+            <div>
+              <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558]">{item.service}</p>
+              <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{resolveText(item.title, audience)}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-[#5b6770]">{resolveText(item.caption, audience)}</p>
+            </div>
+            <ShowcaseFigures id={item.id} />
+          </li>
         ))}
       </ul>
     </LightSection>

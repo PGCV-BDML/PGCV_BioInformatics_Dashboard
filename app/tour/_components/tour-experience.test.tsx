@@ -164,11 +164,11 @@ describe("TourExperience", () => {
     expect(screen.queryByRole("region", { name: "3D virus" })).not.toBeInTheDocument();
   });
 
-  it("puts the lab map right after Welcome in a sandboxed frame, and hides it when the page didn't load", () => {
+  it("puts the lab map after the services and sample results, in a sandboxed frame, and hides it when the page didn't load", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
     const { unmount } = render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 3)).toEqual(["welcome", "lab-map", "services"]);
+    expect(ids.slice(0, 4)).toEqual(["welcome", "services", "showcase", "lab-map"]);
     const frame = screen.getByTitle("Explore the lab");
     expect(frame).toHaveAttribute("src", "/api/tour/lab-map");
     expect(frame).toHaveAttribute("sandbox", "allow-scripts");
