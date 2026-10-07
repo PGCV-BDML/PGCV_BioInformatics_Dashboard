@@ -1,11 +1,13 @@
 /* eslint-disable @next/next/no-img-element -- tour images come from our own
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Cpu, HardDrive, MemoryStick, type LucideIcon } from "lucide-react";
+import { Cpu, HardDrive, MemoryStick, Pause, Play, RotateCw, type LucideIcon } from "lucide-react";
 import { resolveText, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
+import type { TourVirusSummary } from "@/lib/tour-virus";
+import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
 import { FeaturedProject } from "./project-feature";
 import { LogoHelix } from "./logo-helix";
@@ -27,6 +29,9 @@ const PhyloTree = dynamic(() => import("./phylo-tree").then((m) => m.PhyloTree),
     </div>
   ),
 });
+
+// WebGL viewer and its ~2 MB of model data load only near the slide.
+const VirusViewer = dynamic(() => import("./virus-viewer").then((m) => m.VirusViewer), { ssr: false });
 
 type SectionProps = { content: TourContent; audience: Audience };
 
@@ -405,6 +410,211 @@ export function VariantTreeSection({
         rounded to the month; no sample IDs or patient details are included.
       </p>
     </LightSection>
+  );
+}
+
+/** Seconds each mutation stays up while the timeline plays. */
+const VIRUS_STEP_MS = 7000;
+
+const VIRUS_VIEWS: { id: VirusView; label: string }[] = [
+  { id: "virus", label: "Whole virus" },
+  { id: "spike", label: "Spike detail" },
+];
+
+export function VirusModelSection({
+  content,
+  audience,
+  index,
+  summary,
+}: SectionProps & { index: number; summary: TourVirusSummary }) {
+  const virusModel = content.virusModel!;
+  const { mutations } = summary;
+  const [view, setView] = useState<VirusView>("virus");
+  const [siteIndex, setSiteIndex] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [rotating, setRotating] = useState(true);
+  const site = siteIndex === null ? null : (mutations[siteIndex] ?? null);
+
+  const showView = (next: VirusView) => {
+    setPlaying(false);
+    setView(next);
+    if (next === "virus") setSiteIndex(null);
+  };
+  const pick = (i: number) => {
+    setPlaying(false);
+    setView("spike");
+    setSiteIndex(i === siteIndex ? null : i);
+  };
+  const openSpike = useCallback(() => {
+    setPlaying(false);
+    setView("spike");
+  }, []);
+  const togglePlay = () => {
+    if (playing) return setPlaying(false);
+    setView("spike");
+    setSiteIndex((i) => (i === null || i >= mutations.length - 1 ? 0 : i));
+    setPlaying(true);
+  };
+
+  // Steps through the mutations in date order, then starts over. A hidden tab holds the step.
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) setSiteIndex((i) => (i === null || i + 1 >= mutations.length ? 0 : i + 1));
+    }, VIRUS_STEP_MS);
+    return () => window.clearInterval(timer);
+  }, [playing, mutations.length]);
+
+  const first = mutations[0]?.firstMonth;
+  const last = mutations.at(-1)?.firstMonth;
+
+  return (
+    <div className="relative overflow-hidden bg-[#1c2152] text-white">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(18,202,153,0.16),transparent_45%),radial-gradient(circle_at_100%_100%,rgba(94,32,94,0.5),transparent_55%)]"
+        aria-hidden="true"
+      />
+      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
+        <Eyebrow index={index} onDark>
+          Up close
+        </Eyebrow>
+        <SectionHeading title={virusModel.title} onDark />
+        <p className={`mt-3 max-w-3xl text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
+          {resolveText(virusModel.intro, audience)}
+        </p>
+
+        <div className={`mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] ${PRESENT_GAP}`}>
+          <figure
+            className={`${styles.enter} relative h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] bg-[radial-gradient(circle_at_50%_50%,rgba(42,119,151,0.35),transparent_65%)] md:h-[540px] group-data-[presenting]/tour:md:h-[480px]!`}
+            style={delay(240)}
+          >
+            <VirusViewer
+              view={view}
+              site={site}
+              mutations={mutations}
+              spinning={rotating && !playing && !site}
+              onOpenSpike={openSpike}
+            />
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
+              <div
+                role="radiogroup"
+                aria-label="Choose the 3D view"
+                className="pointer-events-auto flex rounded-full border border-white/15 bg-[#1c2152]/70 p-1 backdrop-blur"
+              >
+                {VIRUS_VIEWS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={view === option.id}
+                    onClick={() => showView(option.id)}
+                    className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                      view === option.id ? "bg-[#12ca99] text-[#1c2152]" : "text-white/80 hover:bg-white/10"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                aria-pressed={rotating}
+                onClick={() => setRotating((on) => !on)}
+                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/70 px-3.5 py-2 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
+              >
+                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {rotating ? "Stop turning" : "Turn"}
+              </button>
+            </div>
+
+            <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
+              <span
+                className={`inline-flex items-center gap-2 rounded-full bg-[#1c2152]/70 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur ${site ? "max-sm:hidden" : ""}`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ff8601]" aria-hidden="true" />
+                {view === "virus" ? "Spike (S) protein · click the orange one to look closer" : "Mutation sites on the spike"}
+              </span>
+              {site && (
+                <span
+                  key={site.name}
+                  role="status"
+                  className="rounded-2xl border-l-4 border-[#ff8601] bg-[#1c2152]/85 px-4 py-2.5 backdrop-blur md:px-5 md:py-3"
+                >
+                  <span className="block font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
+                    Spike mutation
+                  </span>
+                  <span className="block text-2xl font-black tracking-tight md:text-3xl">{site.name}</span>
+                  <span className="block text-sm text-white/75">
+                    First seen {formatMonth(site.firstMonth)} · {site.count.toLocaleString("en-PH")} genomes
+                  </span>
+                  {!site.chains.length && (
+                    <span className="mt-1 block text-xs text-white/60">Not resolved in this structure, so not marked.</span>
+                  )}
+                </span>
+              )}
+            </figcaption>
+          </figure>
+
+          <aside
+            className={`${styles.enter} flex flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-7`}
+            style={delay(320)}
+          >
+            <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99]">Mutations across time</p>
+            <h3 className="mt-1 text-2xl font-black">{mutations.length} spike changes we saw</h3>
+            {first && last && (
+              <p className="mt-1 text-sm text-white/65">
+                First seen between {formatMonth(first)} and {formatMonth(last)}
+              </p>
+            )}
+            <button
+              type="button"
+              aria-pressed={playing}
+              onClick={togglePlay}
+              className="mt-5 inline-flex items-center justify-center gap-2 self-start rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)]"
+            >
+              {playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+              {playing ? "Pause timeline" : "Play timeline"}
+            </button>
+            <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Spike mutations, earliest first">
+              {mutations.map((m, i) => {
+                const active = i === siteIndex;
+                return (
+                  <li key={m.name}>
+                    <button
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => pick(i)}
+                      className={`w-full rounded-xl border px-2.5 py-2 text-left transition-colors ${
+                        active
+                          ? "border-[#12ca99] bg-[#12ca99] text-[#1c2152]"
+                          : "border-white/10 bg-white/[0.06] text-white hover:border-[#12ca99]/60"
+                      }`}
+                    >
+                      <span className="block text-sm font-black tabular-nums">{m.name}</span>
+                      <span className={`block text-[11px] font-medium ${active ? "text-[#1c2152]/75" : "text-white/60"}`}>
+                        {formatMonth(m.firstMonth)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-5 text-sm leading-relaxed text-white/70" aria-live="polite">
+              {site
+                ? [site.description, site.region].filter(Boolean).join(" · ")
+                : "Pick a change to see where it sits on the spike, the part of the virus that grabs our cells."}
+            </p>
+          </aside>
+        </div>
+        <p className="mt-4 text-xs text-white/55">
+          The whole virus is a simplified drawing. The spike is a measured protein structure (PDB {summary.structure.id}
+          {summary.structure.method ? `, ${summary.structure.method}` : ""}); orange dots mark where each change sits, not its
+          new shape. Months are the earliest in our available records
+          {summary.coverage ? ` (${summary.coverage})` : ""}; counts are sequenced genomes, not cases.
+        </p>
+      </div>
+    </div>
   );
 }
 

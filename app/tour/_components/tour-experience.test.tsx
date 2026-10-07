@@ -123,6 +123,47 @@ describe("TourExperience", () => {
     vi.unstubAllGlobals();
   });
 
+  it("puts the 3D virus right after the Variant tree, and hides it without data", () => {
+    const virusModel = {
+      title: "Meet the virus up close",
+      intro: "Turn it around",
+      scene: "pgc-covid-exhibit/models/virus-scene.json",
+      structure: "pgc-covid-exhibit/models/spike-7KJ2.pdb",
+      data: "pgc-covid-exhibit/public-data.json",
+    };
+    const phylo = {
+      tipCount: 10,
+      firstMonth: "2022-01",
+      lastMonth: "2023-09",
+      sourceUpdated: null,
+      groups: [],
+      provinces: [],
+    };
+    const { unmount } = render(
+      <TourExperience
+        content={{ ...content, nextstrain: { title: "Tree", intro: "I", tree: "nextstrain/tree.json" }, virusModel }}
+        stats={null}
+        phylo={phylo}
+        virus={{
+          mutations: [
+            { name: "D614G", position: 614, region: null, description: "At spike position 614…", firstMonth: "2022-01", count: 5861, chains: ["A", "B", "C"] },
+          ],
+          sampleCount: 5903,
+          coverage: null,
+          structure: { id: "7KJ2", url: null, method: null, resolution: null },
+        }}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Meet the virus up close" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /D614G/ })).toBeInTheDocument();
+    const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
+    expect(ids.indexOf("variant-tree") + 1).toBe(ids.indexOf("virus-model"));
+    unmount();
+
+    render(<TourExperience content={{ ...content, virusModel }} stats={null} virus={null} />);
+    expect(screen.queryByRole("region", { name: "3D virus" })).not.toBeInTheDocument();
+  });
+
   it("hides the Variant tree without a loaded tree", () => {
     render(
       <TourExperience

@@ -6,6 +6,7 @@
  */
 
 import { isSafeTourPhyloPath } from "@/lib/tour-phylo";
+import { isSafeTourVirusPath } from "@/lib/tour-virus";
 
 export const AUDIENCES = ["students", "general", "technical"] as const;
 export type Audience = (typeof AUDIENCES)[number];
@@ -111,6 +112,11 @@ export type TourContent = {
   covid: { title: string; intro: TourText };
   /** Variant tree slide; `tree` is a nextstrain/*.json path in the content repo. */
   nextstrain: { title: string; intro: TourText; tree: string } | null;
+  /**
+   * 3D virus slide; `scene`, `structure` and `data` are pgc-covid-exhibit/
+   * paths in the content repo (the virus recipe, spike PDB and public data).
+   */
+  virusModel: { title: string; intro: TourText; scene: string; structure: string; data: string } | null;
   team: {
     title: string;
     intro: TourText;
@@ -288,6 +294,7 @@ export function parseTourContent(raw: unknown): TourContent {
   const videos = obj(root.videos ?? { title: "Videos", items: [] }, "videos");
   const projects = obj(root.projects ?? { title: "Projects", intro: "Projects", items: [] }, "projects");
   const nextstrain = root.nextstrain ? obj(root.nextstrain, "nextstrain") : null;
+  const virusModel = root.virusModel ? obj(root.virusModel, "virusModel") : null;
   const contact = obj(root.contact, "contact");
   const joinCard = team.joinCard ? obj(team.joinCard, "team.joinCard") : null;
   const social = contact.social ? obj(contact.social, "contact.social") : null;
@@ -366,6 +373,19 @@ export function parseTourContent(raw: unknown): TourContent {
             title: str(nextstrain.title, "nextstrain.title"),
             intro: text(nextstrain.intro, "nextstrain.intro"),
             tree: str(nextstrain.tree, "nextstrain.tree"),
+          }
+        : null,
+    virusModel:
+      virusModel &&
+      isSafeTourVirusPath(optStr(virusModel.scene) ?? "", "json") &&
+      isSafeTourVirusPath(optStr(virusModel.structure) ?? "", "pdb") &&
+      isSafeTourVirusPath(optStr(virusModel.data) ?? "", "json")
+        ? {
+            title: str(virusModel.title, "virusModel.title"),
+            intro: text(virusModel.intro, "virusModel.intro"),
+            scene: str(virusModel.scene, "virusModel.scene"),
+            structure: str(virusModel.structure, "virusModel.structure"),
+            data: str(virusModel.data, "virusModel.data"),
           }
         : null,
     team: {
@@ -479,6 +499,7 @@ export const FALLBACK_TOUR: TourContent = {
     intro: "Our lab was at the forefront of the region's biosurveillance effort during the pandemic.",
   },
   nextstrain: null,
+  virusModel: null,
   team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [], joinCard: null },
   videos: { title: "Videos", items: [] },
   contact: {
