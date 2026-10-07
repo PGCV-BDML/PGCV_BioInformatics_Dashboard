@@ -124,7 +124,50 @@
   opacity: 0.8;
 }
 
+/* --- What is bioinformatics?: field symbols ------------------------------- */
+
+.glyphs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  /* Quieter in the middle, where the diagram and copy sit. */
+  mask-image: radial-gradient(ellipse 45% 40% at 50% 50%, rgb(0 0 0 / 0.35), #000 100%);
+}
+
+.glyph {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  color: var(--c);
+  font-size: var(--s);
+  line-height: 1;
+  opacity: 0.16;
+  translate: -50% -50%;
+}
+
+.glyph::before {
+  content: attr(data-glyph);
+}
+
+/* On phones the copy sits right over them; on the container so the fade still applies. */
+@media (max-width: 767px) {
+  .glyphs {
+    opacity: 0.55;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  /* Each symbol wanders on its own loop and fades on a different one, so they never move in step. */
+  .glyph {
+    animation:
+      glyph-wander calc(var(--t) * 0.6) ease-in-out infinite,
+      glyph-fade calc(var(--t) * 0.35) ease-in-out infinite alternate;
+    animation-delay: var(--d);
+  }
+
   .read {
     animation: assemble 9s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) infinite both;
     animation-delay: var(--d);
@@ -177,6 +220,31 @@
     opacity: 0;
     animation: rise var(--t) linear infinite;
     animation-delay: var(--d);
+  }
+}
+
+@keyframes glyph-wander {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(28px, -36px) rotate(var(--r));
+  }
+  50% {
+    transform: translate(-14px, -60px) rotate(calc(var(--r) * -1.5));
+  }
+  75% {
+    transform: translate(-32px, -22px) rotate(calc(var(--r) * 0.5));
+  }
+}
+
+@keyframes glyph-fade {
+  from {
+    opacity: 0.07;
+  }
+  to {
+    opacity: 0.26;
   }
 }
 

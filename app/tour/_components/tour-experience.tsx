@@ -12,6 +12,7 @@ import {
   CovidSection,
   HeroSection,
   InfrastructureSection,
+  IntroSection,
   LabMapSection,
   ProjectsSection,
   ServicesSection,
@@ -29,6 +30,7 @@ import styles from "./tour-motion.module.css";
 
 type SectionId =
   | "welcome"
+  | "intro"
   | "lab-map"
   | "services"
   | "showcase"
@@ -44,6 +46,7 @@ type SectionId =
 
 const NAV_LABELS: Record<SectionId, string> = {
   welcome: "Welcome",
+  intro: "Bioinformatics",
   "lab-map": "Lab map",
   services: "Services",
   showcase: "Sample results",
@@ -66,7 +69,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Plain light sections; a light section right after another gets a divider rule. */
-const LIGHT_SECTIONS = new Set<SectionId>(["services", "showcase", "trainings", "projects", "variant-tree", "team", "videos"]);
+const LIGHT_SECTIONS = new Set<SectionId>(["intro", "services", "showcase", "trainings", "projects", "variant-tree", "team", "videos"]);
 
 /** Who the copy is written for; shown in the header, and in the controls while presenting. */
 function AudienceToggle({
@@ -134,7 +137,7 @@ export function TourExperience({
 
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
-    const ids: SectionId[] = ["welcome", "services", "showcase"];
+    const ids: SectionId[] = ["welcome", "intro", "services", "showcase"];
     if (content.labMap && labMap) ids.push("lab-map");
     ids.push("infrastructure");
     if (content.trainings.items.length) ids.push("trainings");
@@ -283,6 +286,8 @@ export function TourExperience({
     switch (id) {
       case "welcome":
         return <HeroSection content={content} audience={audience} />;
+      case "intro":
+        return <IntroSection audience={audience} index={index} />;
       case "lab-map":
         return <LabMapSection {...props} />;
       case "services":

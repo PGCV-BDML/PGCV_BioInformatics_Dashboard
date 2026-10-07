@@ -8,7 +8,7 @@ import styles from "./motifs.module.css";
  * tech and pauses it off screen; motifs.module.css stops it for reduced motion.
  */
 
-export type LightMotif = "assembly" | "network" | "contours" | "radar" | "bokeh";
+export type LightMotif = "assembly" | "network" | "contours" | "radar" | "bokeh" | "glyphs";
 
 const LOGO_CYCLE = [LOGO.orange, LOGO.crimson, LOGO.magenta, LOGO.purple, LOGO.blue, BRAND.teal];
 
@@ -242,6 +242,84 @@ function Bokeh() {
   );
 }
 
+/* --- What is bioinformatics?: symbols of the three fields, drifting ----- */
+
+/**
+ * [symbol, left %, top %, size px, seconds, delay seconds], grouped by field
+ * and laid out like the Venn: statistics top left, code top right, DNA along
+ * the bottom. They keep to the edges, clear of the diagram and the copy.
+ */
+type Glyph = [string, number, number, number, number, number];
+
+const GLYPH_FIELDS: { color: string; glyphs: Glyph[] }[] = [
+  {
+    color: BRAND.navy,
+    glyphs: [
+      ["Σ", 4, 12, 46, 19, 0],
+      ["μ", 18, 6, 30, 23, 6],
+      ["σ²", 3, 38, 26, 21, 3],
+      ["p < 0.05", 31, 5, 18, 25, 10],
+      ["x̄", 43, 8, 28, 22, 14],
+      ["χ²", 3, 62, 24, 24, 8],
+      ["r²", 52, 16, 20, 20, 2],
+      ["∫", 4, 86, 34, 26, 17],
+    ],
+  },
+  {
+    color: "#912a8c",
+    glyphs: [
+      ["{ }", 88, 9, 40, 20, 4],
+      ["</>", 74, 22, 28, 24, 11],
+      ["01", 98, 32, 26, 22, 1],
+      ["λ", 98, 54, 34, 21, 15],
+      ["if", 66, 10, 22, 25, 7],
+      ["[ ]", 97, 76, 24, 23, 18],
+      ["=>", 62, 7, 20, 19, 12],
+    ],
+  },
+  {
+    color: BRAND.tealInk,
+    glyphs: [
+      ["ATG", 18, 94, 26, 22, 5],
+      ["GC", 33, 92, 22, 24, 13],
+      ["TTAGC", 52, 92, 20, 21, 0],
+      ["5′", 64, 90, 26, 25, 9],
+      ["AUG", 78, 88, 24, 20, 16],
+      ["CGTA", 88, 93, 18, 23, 3],
+      ["3′", 44, 95, 22, 26, 20],
+    ],
+  },
+];
+
+function Glyphs() {
+  return (
+    <span className={styles.glyphs}>
+      {GLYPH_FIELDS.flatMap(({ color, glyphs }) =>
+        glyphs.map(([symbol, x, y, size, seconds, delay]) => (
+          <span
+            key={symbol}
+            // Generated content, so the symbols never become page text.
+            data-glyph={symbol}
+            className={styles.glyph}
+            style={
+              {
+                "--x": `${x}%`,
+                "--y": `${y}%`,
+                "--s": `${size}px`,
+                "--c": color,
+                "--t": `${seconds}s`,
+                "--d": `-${delay}s`,
+                // Every other one sways the other way.
+                "--r": `${(x + y) % 2 ? -12 : 12}deg`,
+              } as Vars
+            }
+          />
+        )),
+      )}
+    </span>
+  );
+}
+
 export function LightMotifArt({ motif }: { motif: LightMotif }) {
   switch (motif) {
     case "assembly":
@@ -254,5 +332,7 @@ export function LightMotifArt({ motif }: { motif: LightMotif }) {
       return <Radar />;
     case "bokeh":
       return <Bokeh />;
+    case "glyphs":
+      return <Glyphs />;
   }
 }
