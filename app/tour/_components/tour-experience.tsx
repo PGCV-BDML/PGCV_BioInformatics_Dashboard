@@ -15,6 +15,7 @@ import {
   LabMapSection,
   ProjectsSection,
   ServicesSection,
+  ShowcaseSection,
   TeamSection,
   TrainingsSection,
   VariantTreeSection,
@@ -30,6 +31,7 @@ type SectionId =
   | "welcome"
   | "lab-map"
   | "services"
+  | "showcase"
   | "infrastructure"
   | "trainings"
   | "projects"
@@ -44,6 +46,7 @@ const NAV_LABELS: Record<SectionId, string> = {
   welcome: "Welcome",
   "lab-map": "Lab map",
   services: "Services",
+  showcase: "Sample results",
   infrastructure: "Infrastructure",
   trainings: "Trainings",
   projects: "Projects",
@@ -63,7 +66,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Plain light sections; a light section right after another gets a divider rule. */
-const LIGHT_SECTIONS = new Set<SectionId>(["services", "trainings", "projects", "variant-tree", "team", "videos"]);
+const LIGHT_SECTIONS = new Set<SectionId>(["services", "showcase", "trainings", "projects", "variant-tree", "team", "videos"]);
 
 /** Who the copy is written for; shown in the header, and in the controls while presenting. */
 function AudienceToggle({
@@ -131,9 +134,9 @@ export function TourExperience({
 
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
-    const ids: SectionId[] = ["welcome"];
+    const ids: SectionId[] = ["welcome", "services", "showcase"];
     if (content.labMap && labMap) ids.push("lab-map");
-    ids.push("services", "infrastructure");
+    ids.push("infrastructure");
     if (content.trainings.items.length) ids.push("trainings");
     if (content.projects.items.length) ids.push("projects");
     ids.push("covid-19");
@@ -284,6 +287,8 @@ export function TourExperience({
         return <LabMapSection {...props} />;
       case "services":
         return <ServicesSection {...props} />;
+      case "showcase":
+        return <ShowcaseSection audience={audience} index={index} />;
       case "infrastructure":
         return <InfrastructureSection {...props} />;
       case "trainings":
@@ -325,30 +330,12 @@ export function TourExperience({
               priority
               className="h-10 w-auto shrink-0 md:h-12"
             />
-            <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block xl:hidden">
+            <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block">
               Bioinformatics &amp;
               <br />
               Data Management Lab
             </span>
           </a>
-
-          <nav aria-label="Tour sections" className="hidden xl:block">
-            <ul className="flex gap-4 whitespace-nowrap text-sm font-semibold text-[#5b6770] 2xl:gap-5">
-              {sectionIds.slice(1).map((id, i) => (
-                <li key={id}>
-                  <a
-                    href={`#${id}`}
-                    onClick={(e) => { e.preventDefault(); goTo(i + 1); }}
-                    className={`border-b-2 py-1 transition-colors hover:text-[#2b3278] ${
-                      current === i + 1 ? "border-[#12ca99] text-[#2b3278]" : "border-transparent"
-                    }`}
-                  >
-                    {NAV_LABELS[id]}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
 
           <div className="flex items-center gap-2">
             {!presenting && <AudienceToggle audience={audience} onChange={setAudience} />}
