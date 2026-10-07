@@ -178,16 +178,20 @@ describe("TourExperience", () => {
     expect(screen.queryByRole("region", { name: "Lab map" })).not.toBeInTheDocument();
   });
 
-  it("introduces bioinformatics right after the welcome, with copy for each audience", async () => {
-    render(<TourExperience content={content} stats={null} />);
+  it("puts the research agenda right before the team, with partners for technical visitors", async () => {
+    const team = {
+      ...content.team,
+      members: [{ id: "m1", nickname: "Ana", fullName: "Ana Cruz", position: "Analyst", image: null }],
+    };
+    render(<TourExperience content={{ ...content, team }} stats={null} />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 3)).toEqual(["welcome", "intro", "services"]);
-    expect(screen.getByRole("heading", { name: "What is bioinformatics?" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Statistics, Computer science, Biology overlap/ })).toBeInTheDocument();
-    expect(screen.getByText(/tells real signal from noise/)).toBeInTheDocument();
+    expect(ids.indexOf("agenda")).toBe(ids.indexOf("team") - 1);
 
-    await userEvent.click(screen.getByRole("radio", { name: "Students" }));
-    expect(screen.getByText(/real or just luck/)).toBeInTheDocument();
+    expect(screen.getByText("Angelwing clam")).toBeInTheDocument();
+    expect(screen.queryByText("Aklan State University")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "Technical" }));
+    expect(screen.getByText("Aklan State University")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evolutionary and population genetics" })).toBeInTheDocument();
   });
 
   it("hides the Variant tree without a loaded tree", () => {

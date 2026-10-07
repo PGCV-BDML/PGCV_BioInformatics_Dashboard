@@ -8,6 +8,7 @@ import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
 import {
+  AgendaSection,
   ContactSection,
   CovidSection,
   HeroSection,
@@ -40,6 +41,7 @@ type SectionId =
   | "covid-19"
   | "variant-tree"
   | "virus-model"
+  | "agenda"
   | "team"
   | "videos"
   | "contact";
@@ -56,6 +58,7 @@ const NAV_LABELS: Record<SectionId, string> = {
   "covid-19": "COVID-19",
   "variant-tree": "Variant tree",
   "virus-model": "3D virus",
+  agenda: "Research agenda",
   team: "Team",
   videos: "Videos",
   contact: "Contact",
@@ -69,7 +72,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Plain light sections; a light section right after another gets a divider rule. */
-const LIGHT_SECTIONS = new Set<SectionId>(["intro", "services", "showcase", "trainings", "projects", "variant-tree", "team", "videos"]);
+const LIGHT_SECTIONS = new Set<SectionId>(["services", "showcase", "trainings", "projects", "variant-tree", "agenda", "team", "videos"]);
 
 /** Who the copy is written for; shown in the header, and in the controls while presenting. */
 function AudienceToggle({
@@ -145,6 +148,7 @@ export function TourExperience({
     ids.push("covid-19");
     if (content.nextstrain && phylo) ids.push("variant-tree");
     if (content.virusModel && virus) ids.push("virus-model");
+    ids.push("agenda");
     if (content.team.members.length) ids.push("team");
     if (content.videos.items.length) ids.push("videos");
     ids.push("contact");
@@ -306,6 +310,8 @@ export function TourExperience({
         return phylo ? <VariantTreeSection {...props} summary={phylo} /> : null;
       case "virus-model":
         return virus ? <VirusModelSection {...props} summary={virus} /> : null;
+      case "agenda":
+        return <AgendaSection audience={audience} index={index} />;
       case "team":
         return <TeamSection {...props} />;
       case "videos":
