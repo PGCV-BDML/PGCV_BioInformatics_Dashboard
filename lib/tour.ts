@@ -117,6 +117,11 @@ export type TourContent = {
    * paths in the content repo (the virus recipe, spike PDB and public data).
    */
   virusModel: { title: string; intro: TourText; scene: string; structure: string; data: string } | null;
+  /**
+   * Lab map slide; `src` is a self-contained lab-map/*.html page in the
+   * content repo, served sandboxed by /api/tour/lab-map.
+   */
+  labMap: { title: string; intro: TourText; src: string } | null;
   team: {
     title: string;
     intro: TourText;
@@ -146,6 +151,36 @@ export function isSafeTourAssetPath(path: string): boolean {
   if (!segments.every((s) => s.length > 0 && !s.startsWith("."))) return false;
   return /\.(jpe?g|png|webp)$/i.test(path);
 }
+
+/** The one kind of HTML page the lab map slide may load from the content repo. */
+export function isSafeTourLabMapPath(path: string): boolean {
+  if (!path || path.length > 256 || path.includes("\\")) return false;
+  const segments = path.split("/");
+  if (segments[0] !== "lab-map" || segments.length < 2) return false;
+  if (!segments.every((s) => s.length > 0 && !s.startsWith("."))) return false;
+  return /\.html$/i.test(path);
+}
+
+/** Where the tour frames the lab map page. */
+export const TOUR_LAB_MAP_URL = "/api/tour/lab-map";
+
+/**
+ * Policy the lab map page is served with. `sandbox` without allow-same-origin
+ * gives it an opaque origin; it may run its own inline code plus three.js from
+ * jsDelivr, and nothing else leaves the page.
+ */
+export const LAB_MAP_CSP = [
+  "sandbox allow-scripts",
+  "default-src 'none'",
+  "script-src 'unsafe-inline' https://cdn.jsdelivr.net",
+  "connect-src https://cdn.jsdelivr.net",
+  "style-src 'unsafe-inline'",
+  "img-src data: blob:",
+  "font-src data:",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'self'",
+].join("; ");
 
 export function tourAssetUrl(path: string | null): string | null {
   if (!path || !isSafeTourAssetPath(path)) return null;
@@ -294,6 +329,7 @@ export function parseTourContent(raw: unknown): TourContent {
   const projects = obj(root.projects ?? { title: "Projects", intro: "Projects", items: [] }, "projects");
   const nextstrain = root.nextstrain ? obj(root.nextstrain, "nextstrain") : null;
   const virusModel = root.virusModel ? obj(root.virusModel, "virusModel") : null;
+  const labMap = root.labMap ? obj(root.labMap, "labMap") : null;
   const contact = obj(root.contact, "contact");
   const social = contact.social ? obj(contact.social, "contact.social") : null;
 
@@ -384,6 +420,14 @@ export function parseTourContent(raw: unknown): TourContent {
             scene: str(virusModel.scene, "virusModel.scene"),
             structure: str(virusModel.structure, "virusModel.structure"),
             data: str(virusModel.data, "virusModel.data"),
+          }
+        : null,
+    labMap:
+      labMap && isSafeTourLabMapPath(optStr(labMap.src) ?? "")
+        ? {
+            title: str(labMap.title, "labMap.title"),
+            intro: text(labMap.intro, "labMap.intro"),
+            src: str(labMap.src, "labMap.src"),
           }
         : null,
     team: {
@@ -495,6 +539,7 @@ export const FALLBACK_TOUR: TourContent = {
   },
   nextstrain: null,
   virusModel: null,
+  labMap: null,
   team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [] },
   videos: { title: "Videos", items: [] },
   contact: {
