@@ -9,6 +9,7 @@ import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
 import { SHOWCASE_COPY, SHOWCASE_INTRO } from "@/lib/tour-showcase";
 import { AGENDA, AGENDA_INTRO, AGENDA_TITLE } from "@/lib/tour-agenda";
+import { INTRO_DEFINITION, INTRO_FIELDS, INTRO_TITLE } from "@/lib/tour-intro";
 import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
 import { BioinfoVenn, INTRO_FIELD_COLORS } from "./bioinfo-venn";
