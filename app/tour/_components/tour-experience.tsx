@@ -325,30 +325,12 @@ export function TourExperience({
               priority
               className="h-10 w-auto shrink-0 md:h-12"
             />
-            <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block xl:hidden">
+            <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block">
               Bioinformatics &amp;
               <br />
               Data Management Lab
             </span>
           </a>
-
-          <nav aria-label="Tour sections" className="hidden xl:block">
-            <ul className="flex gap-4 whitespace-nowrap text-sm font-semibold text-[#5b6770] 2xl:gap-5">
-              {sectionIds.slice(1).map((id, i) => (
-                <li key={id}>
-                  <a
-                    href={`#${id}`}
-                    onClick={(e) => { e.preventDefault(); goTo(i + 1); }}
-                    className={`border-b-2 py-1 transition-colors hover:text-[#2b3278] ${
-                      current === i + 1 ? "border-[#12ca99] text-[#2b3278]" : "border-transparent"
-                    }`}
-                  >
-                    {NAV_LABELS[id]}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
 
           <div className="flex items-center gap-2">
             {!presenting && <AudienceToggle audience={audience} onChange={setAudience} />}
