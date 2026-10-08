@@ -1,218 +1,87 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type SVGProps } from "react";
-import {
-  ArrowUpRight,
-  Check,
-  Dna,
-  FileOutput,
-  Layers3,
-  Pencil,
-  SlidersHorizontal,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Check, FileOutput, Pencil, Plus, Trash2, X } from "lucide-react";
 import { usePortal } from "./portal-context";
 import { useToast } from "./toast";
+import DeleteModal from "./deletemodal";
+import { GeneratorTemplateModal } from "./generator-template-modal";
+import {
+  GENERATOR_INPUT_CLASS,
+  GeneratorCard,
+} from "./service-report-generator-card";
 import { describeSaveError } from "@/lib/db-errors";
 import {
   applySharedHost,
   catalogHrefById,
-  displayGeneratorHref,
+  createGeneratorTemplate,
+  deleteGeneratorTemplate,
   generatorsWithHrefs,
-  isGeneratorHrefReady,
-  loadGeneratorHrefMap,
-  normalizeGeneratorHref,
+  hrefsOf,
+  loadGenerators,
   normalizeHostInput,
   saveGeneratorHrefMap,
   sharedGeneratorHost,
+  updateGeneratorTemplate,
+  type GeneratorTemplateInput,
   type ServiceReportGenerator,
 } from "@/lib/service-report-generators";
 
-const INPUT_CLASS =
-  "w-full h-10 px-3.5 bg-slate-50 border border-slate-300/80 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#4ec2bb]/10 focus:border-[#4ec2bb] outline-none text-xs font-bold text-slate-800 placeholder:text-slate-400/80 transition-all shadow-sm";
+type TemplateDialog =
+  | { mode: "create" }
+  | { mode: "edit"; generator: ServiceReportGenerator };
 
-/** Simple rod bacterium so it still reads at card size. */
-function BacteriaIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <rect x="7" y="8" width="14" height="8" rx="4" />
-      <path d="M7 12H3" />
-      <path d="M7.4 10 3.5 7.5" />
-      <path d="M7.4 14 3.5 16.5" />
-    </svg>
-  );
-}
-
-const GENERATOR_ICONS: Record<string, LucideIcon | typeof BacteriaIcon> = {
-  "amplicon-assembly": Layers3,
-  "whole-genome-assembly": Dna,
-  "16s-metabarcoding": BacteriaIcon,
-  "custom-service-report": SlidersHorizontal,
-};
-
-function GeneratorCard({
-  generator,
-  editing,
-  draftHref,
-  onDraftChange,
+function CardActionButton({
+  label,
+  tone = "default",
+  onClick,
+  children,
 }: {
-  generator: ServiceReportGenerator;
-  editing: boolean;
-  draftHref: string;
-  onDraftChange: (href: string) => void;
+  label: string;
+  tone?: "default" | "danger";
+  onClick: () => void;
+  children: ReactNode;
 }) {
-  const Icon = GENERATOR_ICONS[generator.id] ?? Dna;
-  const href = normalizeGeneratorHref(editing ? draftHref : generator.href);
-  const ready = isGeneratorHrefReady(href);
-  const shownAddress = displayGeneratorHref(editing ? draftHref : generator.href);
-
-  const content = (
-    <>
-      <div
-        className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full opacity-40 blur-2xl transition-opacity duration-300 group-hover:opacity-70"
-        style={{ backgroundColor: generator.accent }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 opacity-[0.12]"
-        style={{
-          background: `radial-gradient(120% 80% at 80% 120%, ${generator.accent}, transparent 70%)`,
-        }}
-        aria-hidden
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <div
-          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-[0_10px_24px_rgba(23,33,38,0.18)] ring-1 ring-white/40"
-          style={{ backgroundColor: generator.accent }}
-        >
-          <Icon className="h-7 w-7 stroke-[2.25]" aria-hidden />
-        </div>
-        <span
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white/80 transition-all duration-200 ${
-            !editing && ready
-              ? "border-slate-200 text-slate-500 group-hover:border-transparent group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-[var(--generator-accent)]"
-              : "border-slate-200 text-slate-300"
-          }`}
-          style={
-            !editing && ready
-              ? { ["--generator-accent" as string]: generator.accent }
-              : undefined
-          }
-        >
-          <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
-        </span>
-      </div>
-
-      <div className="relative mt-6 flex-1 space-y-2">
-        <h2 className="text-xl font-extrabold leading-snug tracking-tight text-[#172126] font-aileron group-hover:text-[#2a7797] transition-colors">
-          {generator.title}
-        </h2>
-        <p className="text-[13px] leading-relaxed text-slate-500 font-medium">
-          {generator.description}
-        </p>
-      </div>
-
-      {editing ? (
-        <div className="relative mt-6 space-y-1.5">
-          <label
-            htmlFor={`generator-href-${generator.id}`}
-            className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-[#2a7797] font-quicksand"
-          >
-            Address
-          </label>
-          <input
-            id={`generator-href-${generator.id}`}
-            type="text"
-            value={draftHref}
-            onChange={(event) => onDraftChange(event.target.value)}
-            placeholder="10.49.42.113:5050"
-            autoComplete="off"
-            className={INPUT_CLASS}
-          />
-        </div>
-      ) : (
-        <div className="relative mt-6 flex items-center justify-between gap-3">
-          <span
-            className={`min-w-0 truncate text-[12px] font-bold font-quicksand ${
-              ready ? "text-[#2a7797]" : "text-slate-400"
-            }`}
-            title={shownAddress || undefined}
-          >
-            {shownAddress || "Link not set"}
-          </span>
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: ready ? generator.accent : "#cbd5e1" }}
-            aria-hidden
-          />
-        </div>
-      )}
-    </>
-  );
-
-  const className = `group relative flex h-full flex-col overflow-hidden rounded-[28px] border p-6 shadow-[0_12px_32px_rgba(23,33,38,0.06)] transition-all duration-300 ${
-    editing
-      ? "bg-surface border-slate-300/70"
-      : ready
-        ? "bg-surface border-slate-300/70 hover:-translate-y-1 hover:border-[rgba(42,119,151,0.35)] hover:shadow-[0_18px_40px_rgba(42,119,151,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ec2bb] focus-visible:ring-offset-2"
-        : "bg-surface/80 border-dashed border-slate-300 cursor-not-allowed"
-  }`;
-
-  if (editing) {
-    return <div className={className}>{content}</div>;
-  }
-
-  if (!ready) {
-    return (
-      <div
-        className={className}
-        aria-disabled="true"
-        title="This generator's link has not been attached yet"
-      >
-        {content}
-      </div>
-    );
-  }
-
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={className}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/80 shadow-sm transition-colors ${
+        tone === "danger"
+          ? "text-red-500 hover:border-red-200 hover:bg-red-50"
+          : "text-[#2a7797] hover:bg-brand-tint"
+      }`}
     >
-      <span className="sr-only">Open {generator.title} in a new tab</span>
-      {content}
-    </a>
+      {children}
+    </button>
   );
 }
 
 export function ServiceReportGeneratorGrid() {
   const { isStaff, profile } = usePortal();
   const { showToast } = useToast();
-  const [hrefById, setHrefById] = useState<Record<string, string>>(
-    catalogHrefById,
+  const [generators, setGenerators] = useState<ServiceReportGenerator[]>(() =>
+    generatorsWithHrefs(catalogHrefById()),
   );
   const [draftById, setDraftById] = useState<Record<string, string>>({});
   const [sharedHost, setSharedHost] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [templateDialog, setTemplateDialog] = useState<TemplateDialog | null>(
+    null,
+  );
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [removing, setRemoving] = useState<ServiceReportGenerator | null>(null);
+  const [removingBusy, setRemovingBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const next = await loadGeneratorHrefMap();
+      const next = await loadGenerators();
       if (cancelled) return;
-      setHrefById(next);
+      setGenerators(next);
     };
     void load();
     return () => {
@@ -220,16 +89,13 @@ export function ServiceReportGeneratorGrid() {
     };
   }, []);
 
-  const generators = useMemo(
-    () => generatorsWithHrefs(hrefById),
-    [hrefById],
-  );
+  const hrefById = useMemo(() => hrefsOf(generators), [generators]);
 
   const beginEdit = useCallback(() => {
     setDraftById(hrefById);
-    setSharedHost(sharedGeneratorHost(hrefById));
+    setSharedHost(sharedGeneratorHost(hrefById, generators));
     setEditing(true);
-  }, [hrefById]);
+  }, [hrefById, generators]);
 
   const cancelEdit = useCallback(() => {
     setDraftById({});
@@ -238,17 +104,23 @@ export function ServiceReportGeneratorGrid() {
   }, []);
 
   const applyHostToAll = useCallback(() => {
-    const next = applySharedHost(draftById, sharedHost);
+    const next = applySharedHost(draftById, sharedHost, generators);
     setDraftById(next);
-    setSharedHost(sharedGeneratorHost(next) || normalizeHostInput(sharedHost));
-  }, [draftById, sharedHost]);
+    setSharedHost(
+      sharedGeneratorHost(next, generators) || normalizeHostInput(sharedHost),
+    );
+  }, [draftById, sharedHost, generators]);
 
   const save = useCallback(async () => {
     if (saving) return;
     setSaving(true);
     try {
-      const saved = await saveGeneratorHrefMap(draftById, profile?.id ?? null);
-      setHrefById(saved);
+      const saved = await saveGeneratorHrefMap(
+        draftById,
+        profile?.id ?? null,
+        generators,
+      );
+      setGenerators((current) => generatorsWithHrefs(saved, current));
       setEditing(false);
       setDraftById({});
       showToast("Generator addresses updated.", "success");
@@ -260,7 +132,83 @@ export function ServiceReportGeneratorGrid() {
     } finally {
       setSaving(false);
     }
-  }, [draftById, profile, saving, showToast]);
+  }, [draftById, generators, profile, saving, showToast]);
+
+  const closeTemplateDialog = useCallback(() => {
+    setTemplateDialog(null);
+  }, []);
+
+  const submitTemplate = useCallback(
+    async (input: GeneratorTemplateInput) => {
+      if (!templateDialog || savingTemplate) return;
+      setSavingTemplate(true);
+      try {
+        if (templateDialog.mode === "create") {
+          const created = await createGeneratorTemplate(input, {
+            existing: generators,
+            updatedBy: profile?.id ?? null,
+          });
+          setGenerators((current) => [...current, created]);
+          showToast(`Added "${created.title}".`, "success");
+        } else {
+          const updated = await updateGeneratorTemplate(
+            templateDialog.generator.id,
+            input,
+            profile?.id ?? null,
+          );
+          setGenerators((current) =>
+            current.map((generator) =>
+              generator.id === updated.id ? updated : generator,
+            ),
+          );
+          setDraftById((current) =>
+            updated.id in current
+              ? { ...current, [updated.id]: updated.href }
+              : current,
+          );
+          showToast(`Updated "${updated.title}".`, "success");
+        }
+        setTemplateDialog(null);
+      } catch (error) {
+        showToast(
+          describeSaveError(error, "service_report_generator"),
+          "error",
+        );
+      } finally {
+        setSavingTemplate(false);
+      }
+    },
+    [generators, profile, savingTemplate, showToast, templateDialog],
+  );
+
+  const confirmRemove = useCallback(async () => {
+    if (!removing || removingBusy) return;
+    setRemovingBusy(true);
+    try {
+      await deleteGeneratorTemplate(removing.id);
+      setGenerators((current) =>
+        current.filter((generator) => generator.id !== removing.id),
+      );
+      setDraftById((current) => {
+        const next = { ...current };
+        delete next[removing.id];
+        return next;
+      });
+      showToast(`Removed "${removing.title}".`, "success");
+      setRemoving(null);
+    } catch (error) {
+      showToast(
+        describeSaveError(error, "service_report_generator"),
+        "error",
+      );
+    } finally {
+      setRemovingBusy(false);
+    }
+  }, [removing, removingBusy, showToast]);
+
+  const openCreate = useCallback(() => {
+    setTemplateDialog({ mode: "create" });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -293,14 +241,24 @@ export function ServiceReportGeneratorGrid() {
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={beginEdit}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-surface px-4 text-xs font-bold text-[#2a7797] shadow-sm transition-all hover:bg-brand-tint"
-              >
-                <Pencil className="h-3.5 w-3.5 stroke-[2.5]" />
-                Edit addresses
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={beginEdit}
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-surface px-4 text-xs font-bold text-[#2a7797] shadow-sm transition-all hover:bg-brand-tint"
+                >
+                  <Pencil className="h-3.5 w-3.5 stroke-[2.5]" />
+                  Edit addresses
+                </button>
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-slate-900 px-4 text-xs font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-black"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                  Add template
+                </button>
+              </div>
             )
           ) : (
             <p className="hidden max-w-sm text-right text-[11px] leading-relaxed font-medium text-slate-400 sm:block">
@@ -327,7 +285,7 @@ export function ServiceReportGeneratorGrid() {
               onChange={(event) => setSharedHost(event.target.value)}
               placeholder="10.49.42.113"
               autoComplete="off"
-              className={INPUT_CLASS}
+              className={GENERATOR_INPUT_CLASS}
             />
             <p className="text-[11px] font-medium leading-relaxed text-slate-400">
               When the lab IP changes, type the new host and apply it to every
@@ -354,9 +312,75 @@ export function ServiceReportGeneratorGrid() {
             onDraftChange={(href) =>
               setDraftById((current) => ({ ...current, [generator.id]: href }))
             }
+            actions={
+              editing && generator.custom ? (
+                <div className="flex items-center gap-1.5">
+                  <CardActionButton
+                    label={`Edit ${generator.title}`}
+                    onClick={() =>
+                      setTemplateDialog({ mode: "edit", generator })
+                    }
+                  >
+                    <Pencil className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </CardActionButton>
+                  <CardActionButton
+                    label={`Remove ${generator.title}`}
+                    tone="danger"
+                    onClick={() => setRemoving(generator)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </CardActionButton>
+                </div>
+              ) : undefined
+            }
           />
         ))}
+        {isStaff && !editing ? (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-slate-300 bg-transparent p-6 text-center transition-all hover:border-[#4ec2bb] hover:bg-brand-tint/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ec2bb] focus-visible:ring-offset-2"
+          >
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-surface text-slate-500 transition-colors group-hover:border-[#4ec2bb] group-hover:text-[#2a7797]">
+              <Plus className="h-5 w-5 stroke-[2.5]" />
+            </span>
+            <span className="space-y-1">
+              <span className="block text-sm font-extrabold text-[#172126]">
+                New template
+              </span>
+              <span className="block text-[12px] font-medium text-slate-400">
+                Add a card for another report generator
+              </span>
+            </span>
+          </button>
+        ) : null}
       </div>
+
+      {/* Keyed so each open starts from a fresh form. */}
+      <GeneratorTemplateModal
+        key={
+          templateDialog?.mode === "edit"
+            ? `edit-${templateDialog.generator.id}`
+            : (templateDialog?.mode ?? "closed")
+        }
+        isOpen={templateDialog !== null}
+        generator={
+          templateDialog?.mode === "edit" ? templateDialog.generator : null
+        }
+        saving={savingTemplate}
+        onClose={closeTemplateDialog}
+        onSubmit={(input) => void submitTemplate(input)}
+      />
+
+      <DeleteModal
+        isOpen={removing !== null}
+        itemName={removing?.title ?? ""}
+        isDeleting={removingBusy}
+        onClose={() => {
+          if (!removingBusy) setRemoving(null);
+        }}
+        onConfirm={() => void confirmRemove()}
+      />
     </div>
   );
 }

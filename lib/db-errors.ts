@@ -56,8 +56,8 @@ const TABLE_LABELS: Partial<
     many: "checklist analysts",
   },
   service_report_generator: {
-    one: "generator address",
-    many: "generator addresses",
+    one: "report generator",
+    many: "report generators",
   },
   training_program: { one: "training program", many: "training programs" },
   training_session: { one: "training session", many: "training sessions" },
