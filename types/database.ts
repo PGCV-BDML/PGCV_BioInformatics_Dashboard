@@ -940,6 +940,14 @@ export const INCIDENT_LOCATION_OPTIONS: {
 export type ServiceReportGeneratorRow = {
   id: string;
   href: string;
+  /** Set only on staff-added templates; built-in rows store the address alone. */
+  title?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  accent?: string | null;
+  share_host?: boolean | null;
+  sort_order?: number | null;
+  created_at?: string | null;
   updated_at?: string | null;
   updated_by?: string | null;
 };
