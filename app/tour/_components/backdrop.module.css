@@ -95,7 +95,7 @@
 }
 
 .trace {
-  stroke: rgb(255 255 255 / 0.07);
+  stroke: rgb(43 50 120 / 0.08);
 }
 
 .pulse {
@@ -105,12 +105,12 @@
 }
 
 .node {
-  fill: #1c2152;
-  stroke: rgb(255 255 255 / 0.18);
+  fill: #f7f6fa;
+  stroke: rgb(43 50 120 / 0.2);
 }
 
 .light {
-  opacity: 0.25;
+  opacity: 0.35;
 }
 
 @media (prefers-reduced-motion: no-preference) {

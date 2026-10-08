@@ -3,12 +3,14 @@ import deerExample from "@/docs/tour-content/visayan-spotted-deer.json";
 import {
   FALLBACK_TOUR,
   isSafeTourAssetPath,
+  isSafeTourAudioPath,
   isSafeTourLabMapPath,
   LAB_MAP_CSP,
   parseTourContent,
   resolveText,
   TourContentError,
   tourAssetUrl,
+  tourMusicUrl,
 } from "@/lib/tour";
 
 function minimalTour(overrides: Record<string, unknown> = {}) {
@@ -147,6 +149,23 @@ describe("tour asset paths", () => {
     expect(tourAssetUrl("images/team/micah.jpg")).toBe("/api/tour/asset/images/team/micah.jpg");
     expect(tourAssetUrl("README.md")).toBeNull();
     expect(tourAssetUrl(null)).toBeNull();
+  });
+
+  it("only allows music under audio/", () => {
+    expect(isSafeTourAudioPath("audio/corporate.mp3")).toBe(true);
+    expect(isSafeTourAudioPath("audio/loop.M4A")).toBe(true);
+    expect(isSafeTourAudioPath("images/team/micah.jpg")).toBe(false);
+    expect(isSafeTourAudioPath("audio/../tour.json")).toBe(false);
+    expect(isSafeTourAudioPath("audio/notes.txt")).toBe(false);
+    expect(tourMusicUrl("audio/corporate.mp3")).toBe("/api/tour/asset/audio/corporate.mp3");
+    expect(tourMusicUrl("images/team/micah.jpg")).toBeNull();
+    expect(tourAssetUrl("audio/corporate.mp3")).toBeNull();
+  });
+
+  it("keeps a safe music path and drops anything else", () => {
+    expect(parseTourContent(minimalTour({ music: "audio/corporate.mp3" })).music).toBe("audio/corporate.mp3");
+    expect(parseTourContent(minimalTour({ music: "tour.json" })).music).toBeNull();
+    expect(parseTourContent(minimalTour()).music).toBeNull();
   });
 });
 

@@ -24,6 +24,25 @@ const content: TourContent = {
 };
 
 describe("TourExperience", () => {
+  it("offers background music in Present mode only when the content names a track", async () => {
+    // jsdom does not play media.
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    const { unmount } = render(<TourExperience content={content} stats={null} />);
+    await userEvent.click(screen.getByRole("button", { name: /Present/ }));
+    expect(screen.queryByRole("button", { name: "Music" })).not.toBeInTheDocument();
+    unmount();
+
+    render(<TourExperience content={{ ...content, music: "audio/corporate.mp3" }} stats={null} />);
+    expect(screen.queryByRole("button", { name: "Music" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Present/ }));
+    const toggle = screen.getByRole("button", { name: "Music" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(play).toHaveBeenCalled();
+    play.mockRestore();
+  });
+
   it("switches copy when a different audience is picked", async () => {
     render(<TourExperience content={content} stats={null} />);
     expect(screen.getByText("General intro")).toBeInTheDocument();
