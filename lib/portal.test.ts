@@ -35,9 +35,12 @@ describe("canViewSequenceAnalysis / canEditSequenceAnalysis", () => {
 });
 
 describe("isSequenceAnalysisReadPath", () => {
-  it("allows the dashboard, tracker, and analysis detail", () => {
+  it("allows the dashboard, tracker, checklist, and analysis detail", () => {
     expect(isSequenceAnalysisReadPath("/dashboard/services")).toBe(true);
     expect(isSequenceAnalysisReadPath("/dashboard/services/tracker")).toBe(true);
+    expect(
+      isSequenceAnalysisReadPath("/dashboard/services/sequencing-run-checklist"),
+    ).toBe(true);
     expect(
       isSequenceAnalysisReadPath(
         "/dashboard/services/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -45,15 +48,12 @@ describe("isSequenceAnalysisReadPath", () => {
     ).toBe(true);
   });
 
-  it("blocks generator, COVID tracker, and sequencing run checklist", () => {
+  it("blocks generator and COVID tracker", () => {
     expect(
       isSequenceAnalysisReadPath("/dashboard/services/report-generator"),
     ).toBe(false);
     expect(
       isSequenceAnalysisReadPath("/dashboard/services/covid-sample-tracker"),
-    ).toBe(false);
-    expect(
-      isSequenceAnalysisReadPath("/dashboard/services/sequencing-run-checklist"),
     ).toBe(false);
   });
 });

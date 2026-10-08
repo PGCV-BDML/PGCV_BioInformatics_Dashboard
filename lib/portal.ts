@@ -52,6 +52,16 @@ export function canViewSequenceAnalysis(
   return isStaffRole(role) || role === "reviewing_officer";
 }
 
+/**
+ * Staff may create, edit, and tick off Sequencing Run Checklist rows.
+ * Reviewing officers can open the checklist view-only.
+ */
+export function canEditSequencingRunChecklist(
+  role: UserRole | null | undefined,
+): boolean {
+  return isStaffRole(role);
+}
+
 /** Staff may create and edit COVID-19 Sample Tracker runs. */
 export function canEditCovidSampleTracker(
   role: UserRole | null | undefined,
@@ -79,10 +89,12 @@ export function isCovidSampleTrackerPath(pathname: string): boolean {
 const SEQUENCE_ANALYSIS_STAFF_ONLY_SLUGS = new Set([
   "report-generator",
   "covid-sample-tracker",
-  "sequencing-run-checklist",
 ]);
 
-/** Dashboard, tracker, and `/dashboard/services/:id` — not generator or COVID. */
+/**
+ * Dashboard, tracker, Sequencing Run Checklist, and `/dashboard/services/:id`
+ * — not generator or COVID.
+ */
 export function isSequenceAnalysisReadPath(pathname: string): boolean {
   if (pathname === "/dashboard/services" || pathname === "/dashboard/services/") {
     return true;

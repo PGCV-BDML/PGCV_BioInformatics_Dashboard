@@ -259,7 +259,8 @@ export default function Sidebar({
             children: item.children.filter(
               (child) =>
                 child.href === "/dashboard/services" ||
-                child.href === "/dashboard/services/tracker",
+                child.href === "/dashboard/services/tracker" ||
+                child.href === "/dashboard/services/sequencing-run-checklist",
             ),
           };
         });
