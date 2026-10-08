@@ -333,7 +333,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
       <Eyebrow index={index}>Under the hood</Eyebrow>
       <SectionHeading title={infrastructure.title} />
       <p
-        className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/40 bg-[#e6f7f1]/90 backdrop-blur-sm px-5 py-3 text-[#2b3278]`}
+        className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/40 bg-[#e6f7f1]/90 backdrop-blur-sm px-5 py-3 text-[#2b3278] group-data-[presenting]/tour:py-2 group-data-[presenting]/tour:text-[0.95rem]`}
         style={delay(160)}
       >
         <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
@@ -347,10 +347,11 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
         beside the text and the specs in a full-width row along the bottom,
         so the tiles have room and line up whatever the text length.
         Cards are near-opaque so the circuit pulses run under them, not
-        through the numbers.
+        through the numbers, and stop short of the right edge so the
+        backdrop's blinking rack lights stay in view.
       */}
       <div
-        className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
+        className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(26rem,1fr))] group-data-[presenting]/tour:gap-5 group-data-[presenting]/tour:space-y-0! group-data-[presenting]/tour:mr-[6%]`}
       >
         {infrastructure.items.map((item, itemIndex) => {
           const src = tourAssetUrl(item.image);
@@ -358,40 +359,40 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
             <article
               key={item.id}
               style={stagger(itemIndex)}
-              className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-[#2b3278]/10 bg-white/90 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] backdrop-blur-sm p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
+              className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-[#2b3278]/10 bg-white/90 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] backdrop-blur-sm p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-5!`}
             >
               {src && (
-                <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[180px]!">
-                  <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[220px]" />
+                <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[150px]!">
+                  <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[180px]" />
                 </div>
               )}
               <div className="flex flex-1 flex-col group-data-[presenting]/tour:md:contents">
                 {item.kicker && (
-                  <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-1">
+                  <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558] group-data-[presenting]/tour:text-[11px] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-1">
                     {item.kicker}
                   </p>
                 )}
-                <h3 className="mt-1 text-3xl font-black text-[#2b3278] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
-                <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
-                <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-6 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
+                <h3 className="mt-1 text-3xl font-black text-[#2b3278] group-data-[presenting]/tour:text-2xl group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
+                <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:text-base group-data-[presenting]/tour:leading-relaxed group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-5 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
                   {item.specs.map((spec, i) => {
                     const color = SPEC_COLORS[i % SPEC_COLORS.length];
                     const Icon = specIcon(spec);
                     return (
                       <div
                         key={spec.label || i}
-                        className="flex flex-col rounded-2xl border-l-4 bg-[#f7f6fa] px-5 py-4"
+                        className="flex flex-col rounded-2xl border-l-4 bg-[#f7f6fa] px-5 py-4 group-data-[presenting]/tour:px-4 group-data-[presenting]/tour:py-3"
                         style={{ borderColor: color }}
                       >
                         {/* Value first on screen, label under it; the label stays first for screen readers. */}
-                        <dt className="order-last mt-1 text-sm font-medium leading-snug text-[#5b6770]">{spec.label}</dt>
+                        <dt className="order-last mt-1 text-sm font-medium leading-snug text-[#5b6770] group-data-[presenting]/tour:text-xs">{spec.label}</dt>
                         <dd>
-                          {Icon && <Icon className="mb-2 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />}
+                          {Icon && <Icon className="mb-2 h-5 w-5 opacity-70 group-data-[presenting]/tour:mb-1 group-data-[presenting]/tour:h-4 group-data-[presenting]/tour:w-4" style={{ color }} aria-hidden="true" />}
                           <span className="flex flex-wrap items-baseline gap-x-1.5">
-                            <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-4xl" style={{ color }}>
+                            <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-3xl" style={{ color }}>
                               <CountUp value={spec.value} />
                             </span>
-                            <span className="text-xl font-bold text-[#2b3278]/80">{spec.unit}</span>
+                            <span className="text-xl font-bold text-[#2b3278]/80 group-data-[presenting]/tour:text-base">{spec.unit}</span>
                           </span>
                         </dd>
                       </div>
