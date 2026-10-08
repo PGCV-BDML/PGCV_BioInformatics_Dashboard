@@ -128,6 +128,8 @@ export type TourContent = {
     members: TourMember[];
   };
   videos: { title: string; items: TourVideo[] };
+  /** Optional Present-mode background track; an audio/* path in the content repo. */
+  music: string | null;
   contact: {
     title: string;
     intro: TourText;
@@ -150,6 +152,15 @@ export function isSafeTourAssetPath(path: string): boolean {
   if (segments[0] !== "images" || segments.length < 2) return false;
   if (!segments.every((s) => s.length > 0 && !s.startsWith("."))) return false;
   return /\.(jpe?g|png|webp)$/i.test(path);
+}
+
+/** Background music for Present mode: audio/*.{mp3,m4a,ogg} in the content repo. */
+export function isSafeTourAudioPath(path: string): boolean {
+  if (!path || path.length > 256 || path.includes("\\")) return false;
+  const segments = path.split("/");
+  if (segments[0] !== "audio" || segments.length < 2) return false;
+  if (!segments.every((s) => s.length > 0 && !s.startsWith("."))) return false;
+  return /\.(mp3|m4a|ogg)$/i.test(path);
 }
 
 /** The one kind of HTML page the lab map slide may load from the content repo. */
@@ -182,9 +193,14 @@ export const LAB_MAP_CSP = [
   "frame-ancestors 'self'",
 ].join("; ");
 
+const assetUrl = (path: string) => `/api/tour/asset/${path.split("/").map(encodeURIComponent).join("/")}`;
+
 export function tourAssetUrl(path: string | null): string | null {
-  if (!path || !isSafeTourAssetPath(path)) return null;
-  return `/api/tour/asset/${path.split("/").map(encodeURIComponent).join("/")}`;
+  return path && isSafeTourAssetPath(path) ? assetUrl(path) : null;
+}
+
+export function tourMusicUrl(path: string | null): string | null {
+  return path && isSafeTourAudioPath(path) ? assetUrl(path) : null;
 }
 
 // --- Parsing -----------------------------------------------------------------
@@ -462,6 +478,7 @@ export function parseTourContent(raw: unknown): TourContent {
         }];
       }),
     },
+    music: isSafeTourAudioPath(optStr(root.music) ?? "") ? str(root.music, "music") : null,
     contact: {
       title: str(contact.title, "contact.title"),
       intro: text(contact.intro, "contact.intro"),
@@ -542,6 +559,7 @@ export const FALLBACK_TOUR: TourContent = {
   labMap: null,
   team: { title: "Meet our bioinfo team", intro: "The Bioinformatics and Data Management Laboratory, PGC Visayas.", members: [] },
   videos: { title: "Videos", items: [] },
+  music: null,
   contact: {
     title: "Have a sample, a dataset or a question?",
     intro: "Request a service, join a training, or apply for an internship.",

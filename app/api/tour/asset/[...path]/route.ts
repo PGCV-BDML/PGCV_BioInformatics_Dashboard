@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSafeTourAssetPath } from "@/lib/tour";
+import { isSafeTourAssetPath, isSafeTourAudioPath } from "@/lib/tour";
 import { fetchTourRepoFile, isTourContentConfigured } from "@/lib/tour-content";
 
 export const runtime = "nodejs";
@@ -9,12 +9,16 @@ const CONTENT_TYPES: Record<string, string> = {
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  ogg: "audio/ogg",
 };
 
 /**
- * Public proxy for tour images in the private pgcv-tour-content repo. Only
- * images/*.{jpg,jpeg,png,webp} are served, and the CDN keeps them for a day
- * so a tour group loading the page doesn't hit GitHub per visitor.
+ * Public proxy for tour images and music in the private pgcv-tour-content
+ * repo. Only images/*.{jpg,jpeg,png,webp} and audio/*.{mp3,m4a,ogg} are
+ * served, and the CDN keeps them for a day so a tour group loading the page
+ * doesn't hit GitHub per visitor.
  */
 export async function GET(
   _request: Request,
@@ -23,7 +27,7 @@ export async function GET(
   const { path: segments } = await params;
   const path = segments.join("/");
 
-  if (!isSafeTourAssetPath(path) || !isTourContentConfigured()) {
+  if (!(isSafeTourAssetPath(path) || isSafeTourAudioPath(path)) || !isTourContentConfigured()) {
     return new NextResponse("Not found", { status: 404 });
   }
 

@@ -109,7 +109,7 @@ const TRACES = [
 const RACK_LIGHTS = Array.from({ length: 12 }, (_, i) => ({
   x: 1392 + (i % 2) * 14,
   y: 420 + Math.floor(i / 2) * 18,
-  color: i % 3 === 0 ? "#6cc4e6" : BRAND.teal,
+  color: i % 3 === 0 ? BRAND.deepTeal : BRAND.teal,
   delay: (i * 0.37) % 2.8,
 }));
 
@@ -120,7 +120,7 @@ function Circuit() {
       <defs>
         <linearGradient id={pulseId} x1="0" x2="1">
           <stop offset="0" stopColor={BRAND.teal} />
-          <stop offset="1" stopColor="#6cc4e6" />
+          <stop offset="1" stopColor={BRAND.deepTeal} />
         </linearGradient>
       </defs>
       {TRACES.map((trace) => (
@@ -187,7 +187,12 @@ export function SectionBackdrop({
           {motif && <LightMotifArt motif={motif} />}
         </>
       )}
-      {variant === "infrastructure" && <Circuit />}
+      {variant === "infrastructure" && (
+        <>
+          <LightLayers index={index} />
+          <Circuit />
+        </>
+      )}
     </span>
   );
 }

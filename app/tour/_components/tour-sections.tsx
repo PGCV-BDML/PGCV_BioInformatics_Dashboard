@@ -109,18 +109,21 @@ function LightSection({
   index,
   lavender,
   motif,
+  circuit,
   className = "py-16 md:py-24",
   children,
 }: {
   index: number;
   lavender?: boolean;
   motif?: LightMotif;
+  /** Circuit traces in place of a motif (the infrastructure slide). */
+  circuit?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={`relative overflow-hidden ${lavender ? "bg-[#f0e8f2]" : ""}`}>
-      <SectionBackdrop variant="light" index={index} motif={motif} />
+      <SectionBackdrop variant={circuit ? "infrastructure" : "light"} index={index} motif={motif} />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 hidden px-4 md:px-8 [[data-tone=light]+[data-tone=light]_&]:block"
@@ -197,7 +200,11 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
       <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{service.name}</h3>
       <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>
       {service.tag && (
-        <span className="self-start rounded-full px-3 py-1 text-xs font-semibold" style={{ color, backgroundColor: `${color}14` }}>
+        // One line, pinned to the card's foot, so the pills in a row line up.
+        <span
+          className="mt-auto self-start whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none"
+          style={{ color, backgroundColor: `${color}14` }}
+        >
           {service.tag}
         </span>
       )}
@@ -308,7 +315,7 @@ export function AgendaSection({ audience, index }: { audience: Audience; index: 
   );
 }
 
-const SPEC_COLORS = [BRAND.teal, "#6cc4e6", "#d7a6d7"];
+const SPEC_COLORS = [BRAND.tealInk, BRAND.deepTeal, BRAND.purple];
 
 /** Specs carry no id, so the icon is picked from the unit and label wording. */
 function specIcon(spec: { unit: string; label: string }): LucideIcon | null {
@@ -322,90 +329,81 @@ function specIcon(spec: { unit: string; label: string }): LucideIcon | null {
 export function InfrastructureSection({ content, audience, index }: SectionProps & { index: number }) {
   const { infrastructure } = content;
   return (
-    <div className="relative overflow-hidden bg-[#1c2152] text-white">
+    <LightSection index={index} circuit>
+      <Eyebrow index={index}>Under the hood</Eyebrow>
+      <SectionHeading title={infrastructure.title} />
+      <p
+        className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/40 bg-[#e6f7f1]/90 backdrop-blur-sm px-5 py-3 text-[#2b3278]`}
+        style={delay(160)}
+      >
+        <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
+          In simple terms
+        </span>
+        <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
+      </p>
+      {/*
+        Present mode: the machines side by side as two matching cards. Each
+        card is a grid (the text column becomes `contents`), with the photo
+        beside the text and the specs in a full-width row along the bottom,
+        so the tiles have room and line up whatever the text length.
+        Cards are near-opaque so the circuit pulses run under them, not
+        through the numbers.
+      */}
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(18,202,153,0.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(94,32,94,0.45),transparent_50%)]"
-        aria-hidden="true"
-      />
-      <SectionBackdrop variant="infrastructure" />
-      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
-        <Eyebrow index={index} onDark>
-          Under the hood
-        </Eyebrow>
-        <SectionHeading title={infrastructure.title} onDark />
-        <p
-          className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/35 bg-[#1b3259]/90 backdrop-blur-sm px-5 py-3 text-white/90`}
-          style={delay(160)}
-        >
-          <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
-            In simple terms
-          </span>
-          <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
-        </p>
-        {/*
-          Present mode: the machines side by side as two matching cards. Each
-          card is a grid (the text column becomes `contents`), with the photo
-          beside the text and the specs in a full-width row along the bottom,
-          so the tiles have room and line up whatever the text length.
-          Cards are near-opaque so the circuit pulses run under them, not
-          through the numbers.
-        */}
-        <div
-          className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
-        >
-          {infrastructure.items.map((item, itemIndex) => {
-            const src = tourAssetUrl(item.image);
-            return (
-              <article
-                key={item.id}
-                style={stagger(itemIndex)}
-                className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-white/10 bg-[#252a5a]/90 backdrop-blur-sm p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
-              >
-                {src && (
-                  <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[180px]!">
-                    <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[220px]" />
-                  </div>
-                )}
-                <div className="flex flex-1 flex-col group-data-[presenting]/tour:md:contents">
-                  {item.kicker && (
-                    <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-1">
-                      {item.kicker}
-                    </p>
-                  )}
-                  <h3 className="mt-1 text-3xl font-black group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
-                  <p className="mt-2 text-lg text-white/70 group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
-                  <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-6 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
-                    {item.specs.map((spec, i) => {
-                      const color = SPEC_COLORS[i % SPEC_COLORS.length];
-                      const Icon = specIcon(spec);
-                      return (
-                        <div
-                          key={spec.label || i}
-                          className="flex flex-col rounded-2xl border-l-4 bg-white/[0.06] px-5 py-4"
-                          style={{ borderColor: color }}
-                        >
-                          {/* Value first on screen, label under it; the label stays first for screen readers. */}
-                          <dt className="order-last mt-1 text-sm font-medium leading-snug text-white/70">{spec.label}</dt>
-                          <dd>
-                            {Icon && <Icon className="mb-2 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />}
-                            <span className="flex flex-wrap items-baseline gap-x-1.5">
-                              <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-4xl" style={{ color }}>
-                                <CountUp value={spec.value} />
-                              </span>
-                              <span className="text-xl font-bold text-white/80">{spec.unit}</span>
-                            </span>
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
+        className={`mt-10 space-y-6 ${PRESENT_GAP} group-data-[presenting]/tour:grid group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(28rem,1fr))] group-data-[presenting]/tour:gap-6 group-data-[presenting]/tour:space-y-0!`}
+      >
+        {infrastructure.items.map((item, itemIndex) => {
+          const src = tourAssetUrl(item.image);
+          return (
+            <article
+              key={item.id}
+              style={stagger(itemIndex)}
+              className={`${styles.enter} flex flex-col gap-8 rounded-3xl border border-[#2b3278]/10 bg-white/90 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] backdrop-blur-sm p-6 md:flex-row md:items-center md:gap-14 md:p-10 group-data-[presenting]/tour:md:grid! group-data-[presenting]/tour:md:grid-cols-[auto_minmax(0,1fr)] group-data-[presenting]/tour:md:row-span-4 group-data-[presenting]/tour:md:grid-rows-subgrid group-data-[presenting]/tour:md:gap-x-6! group-data-[presenting]/tour:md:items-start! group-data-[presenting]/tour:md:gap-y-0! group-data-[presenting]/tour:md:p-6!`}
+            >
+              {src && (
+                <div className="flex h-80 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle,#ffffff_0%,#dff3ee_100%)] p-6 md:h-[460px] md:w-[360px] group-data-[presenting]/tour:p-4! group-data-[presenting]/tour:md:row-span-3 group-data-[presenting]/tour:md:row-start-1 group-data-[presenting]/tour:md:self-stretch group-data-[presenting]/tour:md:h-auto! group-data-[presenting]/tour:md:w-[180px]!">
+                  <img src={src} alt={`${item.name} photo`} loading="lazy" className="h-full w-auto object-contain group-data-[presenting]/tour:md:h-[220px]" />
                 </div>
-              </article>
-            );
-          })}
-        </div>
+              )}
+              <div className="flex flex-1 flex-col group-data-[presenting]/tour:md:contents">
+                {item.kicker && (
+                  <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-1">
+                    {item.kicker}
+                  </p>
+                )}
+                <h3 className="mt-1 text-3xl font-black text-[#2b3278] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
+                <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-6 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
+                  {item.specs.map((spec, i) => {
+                    const color = SPEC_COLORS[i % SPEC_COLORS.length];
+                    const Icon = specIcon(spec);
+                    return (
+                      <div
+                        key={spec.label || i}
+                        className="flex flex-col rounded-2xl border-l-4 bg-[#f7f6fa] px-5 py-4"
+                        style={{ borderColor: color }}
+                      >
+                        {/* Value first on screen, label under it; the label stays first for screen readers. */}
+                        <dt className="order-last mt-1 text-sm font-medium leading-snug text-[#5b6770]">{spec.label}</dt>
+                        <dd>
+                          {Icon && <Icon className="mb-2 h-5 w-5 opacity-70" style={{ color }} aria-hidden="true" />}
+                          <span className="flex flex-wrap items-baseline gap-x-1.5">
+                            <span className="text-5xl font-black tracking-tight group-data-[presenting]/tour:text-4xl" style={{ color }}>
+                              <CountUp value={spec.value} />
+                            </span>
+                            <span className="text-xl font-bold text-[#2b3278]/80">{spec.unit}</span>
+                          </span>
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </div>
+            </article>
+          );
+        })}
       </div>
-    </div>
+    </LightSection>
   );
 }
 
@@ -416,49 +414,41 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
 export function LabMapSection({ content, audience, index }: SectionProps & { index: number }) {
   const labMap = content.labMap!;
   return (
-    <div className="relative overflow-hidden bg-[#1c2152] text-white">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,rgba(18,202,153,0.16),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(42,119,151,0.4),transparent_55%)]"
-        aria-hidden="true"
-      />
-      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
-        <div className={PRESENT_SPLIT_HEADER}>
-          <div className="shrink-0">
-            <Eyebrow index={index} onDark>
-              Step inside
-            </Eyebrow>
-            <SectionHeading title={labMap.title} onDark />
-          </div>
-          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
-            {resolveText(labMap.intro, audience)}
-          </p>
+    <LightSection index={index} motif="contours">
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>Step inside</Eyebrow>
+          <SectionHeading title={labMap.title} />
         </div>
-
-        <figure
-          className={`${styles.enter} relative mt-10 h-[70vh] min-h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-[#073e3e] ${PRESENT_GAP}`}
-          style={delay(240)}
-        >
-          <iframe
-            src={TOUR_LAB_MAP_URL}
-            title={labMap.title}
-            loading="lazy"
-            // Same policy as the route's CSP header, so an old cached copy is boxed in too.
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            className="h-full w-full"
-          />
-          <a
-            href={TOUR_LAB_MAP_URL}
-            target="_blank"
-            rel="noopener"
-            className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/80 px-3.5 py-2 text-xs font-semibold text-white/85 backdrop-blur transition-colors hover:bg-[#1c2152] group-data-[presenting]/tour:hidden"
-          >
-            <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Open on its own
-          </a>
-        </figure>
+        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(labMap.intro, audience)}
+        </p>
       </div>
-    </div>
+
+      <figure
+        className={`${styles.enter} relative mt-10 h-[70vh] min-h-[420px] overflow-hidden rounded-3xl border border-[#2b3278]/10 bg-[#073e3e] shadow-[0_18px_40px_-16px_rgba(43,50,120,0.35)] ${PRESENT_GAP}`}
+        style={delay(240)}
+      >
+        <iframe
+          src={TOUR_LAB_MAP_URL}
+          title={labMap.title}
+          loading="lazy"
+          // Same policy as the route's CSP header, so an old cached copy is boxed in too.
+          sandbox="allow-scripts"
+          referrerPolicy="no-referrer"
+          className="h-full w-full"
+        />
+        <a
+          href={TOUR_LAB_MAP_URL}
+          target="_blank"
+          rel="noopener"
+          className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/80 px-3.5 py-2 text-xs font-semibold text-white/85 backdrop-blur transition-colors hover:bg-[#1c2152] group-data-[presenting]/tour:hidden"
+        >
+          <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+          Open on its own
+        </a>
+      </figure>
+    </LightSection>
   );
 }
 
@@ -638,159 +628,151 @@ export function VirusModelSection({
   const last = mutations.at(-1)?.firstMonth;
 
   return (
-    <div className="relative overflow-hidden bg-[#1c2152] text-white">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(18,202,153,0.16),transparent_45%),radial-gradient(circle_at_100%_100%,rgba(94,32,94,0.5),transparent_55%)]"
-        aria-hidden="true"
-      />
-      <div className={`relative mx-auto w-full max-w-6xl px-4 py-16 md:px-8 md:py-24 ${PRESENT_WIDE}`}>
-        <div className={PRESENT_SPLIT_HEADER}>
-          <div className="shrink-0">
-            <Eyebrow index={index} onDark>
-              Up close
-            </Eyebrow>
-            <SectionHeading title={virusModel.title} onDark />
-          </div>
-          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-white/70 ${styles.enter}`} style={delay(160)}>
-            {resolveText(virusModel.intro, audience)}
-          </p>
+    <LightSection index={index} motif="radar">
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>Up close</Eyebrow>
+          <SectionHeading title={virusModel.title} />
         </div>
-
-        <div className={`mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] ${PRESENT_GAP}`}>
-          <figure
-            className={`${styles.enter} relative h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] bg-[radial-gradient(circle_at_50%_50%,rgba(42,119,151,0.35),transparent_65%)] md:h-[540px] group-data-[presenting]/tour:md:h-[480px]!`}
-            style={delay(240)}
-          >
-            <VirusViewer
-              view={view}
-              site={site}
-              mutations={mutations}
-              spinning={rotating && !playing && !site}
-              onOpenSpike={openSpike}
-              onInteractiveChange={setInteractive}
-            />
-
-            <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
-              <div
-                role="radiogroup"
-                aria-label="Choose the 3D view"
-                className="pointer-events-auto flex rounded-full border border-white/15 bg-[#1c2152]/70 p-1 backdrop-blur"
-              >
-                {VIRUS_VIEWS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={view === option.id}
-                    onClick={() => showView(option.id)}
-                    className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                      view === option.id ? "bg-[#12ca99] text-[#1c2152]" : "text-white/80 hover:bg-white/10"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              {interactive && (
-                <button
-                  type="button"
-                  aria-pressed={rotating}
-                  onClick={() => setRotating((on) => !on)}
-                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/70 px-3.5 py-2 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
-                >
-                  <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-                  {rotating ? "Stop turning" : "Turn"}
-                </button>
-              )}
-            </div>
-
-            <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
-              <span
-                className={`inline-flex items-center gap-2 rounded-full bg-[#1c2152]/70 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur ${site ? "max-sm:hidden" : ""}`}
-              >
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ff8601]" aria-hidden="true" />
-                {view === "virus" ? "Spike (S) protein · click the orange one to look closer" : "Mutation sites on the spike"}
-              </span>
-              {site && (
-                <span
-                  key={site.name}
-                  role="status"
-                  className="rounded-2xl border-l-4 border-[#ff8601] bg-[#1c2152]/85 px-4 py-2.5 backdrop-blur md:px-5 md:py-3"
-                >
-                  <span className="block font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
-                    Spike mutation
-                  </span>
-                  <span className="block text-2xl font-black tracking-tight md:text-3xl">{site.name}</span>
-                  <span className="block text-sm text-white/75">
-                    First seen {formatMonth(site.firstMonth)} · {site.count.toLocaleString("en-PH")} genomes
-                  </span>
-                  {!site.chains.length && (
-                    <span className="mt-1 block text-xs text-white/60">Not resolved in this structure, so not marked.</span>
-                  )}
-                </span>
-              )}
-            </figcaption>
-          </figure>
-
-          <aside
-            className={`${styles.enter} flex flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-7`}
-            style={delay(320)}
-          >
-            <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#12ca99]">Mutations across time</p>
-            <h3 className="mt-1 text-2xl font-black">{mutations.length} spike changes we saw</h3>
-            {first && last && (
-              <p className="mt-1 text-sm text-white/65">
-                First seen between {formatMonth(first)} and {formatMonth(last)}
-              </p>
-            )}
-            <button
-              type="button"
-              aria-pressed={playing}
-              onClick={togglePlay}
-              className="mt-5 inline-flex items-center justify-center gap-2 self-start rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)]"
-            >
-              {playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
-              {playing ? "Pause timeline" : "Play timeline"}
-            </button>
-            <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Spike mutations, earliest first">
-              {mutations.map((m, i) => {
-                const active = i === siteIndex;
-                return (
-                  <li key={m.name}>
-                    <button
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => pick(i)}
-                      className={`w-full rounded-xl border px-2.5 py-2 text-left transition-colors ${
-                        active
-                          ? "border-[#12ca99] bg-[#12ca99] text-[#1c2152]"
-                          : "border-white/10 bg-white/[0.06] text-white hover:border-[#12ca99]/60"
-                      }`}
-                    >
-                      <span className="block text-sm font-black tabular-nums">{m.name}</span>
-                      <span className={`block text-[11px] font-medium ${active ? "text-[#1c2152]/75" : "text-white/60"}`}>
-                        {formatMonth(m.firstMonth)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="mt-5 text-sm leading-relaxed text-white/70" aria-live="polite">
-              {site
-                ? [site.description, site.region].filter(Boolean).join(" · ")
-                : "Pick a change to see where it sits on the spike, the part of the virus that grabs our cells."}
-            </p>
-          </aside>
-        </div>
-        <p className="mt-4 text-xs text-white/55">
-          The whole virus is a simplified drawing. The spike is a measured protein structure (PDB {summary.structure.id}
-          {summary.structure.method ? `, ${summary.structure.method}` : ""}); orange dots mark where each change sits, not its
-          new shape. Months are the earliest in our available records
-          {summary.coverage ? ` (${summary.coverage})` : ""}; counts are sequenced genomes, not cases.
+        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(virusModel.intro, audience)}
         </p>
       </div>
-    </div>
+
+      <div className={`mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] ${PRESENT_GAP}`}>
+        <figure
+          className={`${styles.enter} relative h-[420px] overflow-hidden rounded-3xl border border-[#2b3278]/10 bg-[#1c2152] bg-[radial-gradient(circle_at_50%_50%,rgba(42,119,151,0.45),transparent_65%)] text-white shadow-[0_18px_40px_-16px_rgba(43,50,120,0.35)] md:h-[540px] group-data-[presenting]/tour:md:h-[480px]!`}
+          style={delay(240)}
+        >
+          <VirusViewer
+            view={view}
+            site={site}
+            mutations={mutations}
+            spinning={rotating && !playing && !site}
+            onOpenSpike={openSpike}
+            onInteractiveChange={setInteractive}
+          />
+
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
+            <div
+              role="radiogroup"
+              aria-label="Choose the 3D view"
+              className="pointer-events-auto flex rounded-full border border-white/15 bg-[#1c2152]/70 p-1 backdrop-blur"
+            >
+              {VIRUS_VIEWS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={view === option.id}
+                  onClick={() => showView(option.id)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                    view === option.id ? "bg-[#12ca99] text-[#1c2152]" : "text-white/80 hover:bg-white/10"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {interactive && (
+              <button
+                type="button"
+                aria-pressed={rotating}
+                onClick={() => setRotating((on) => !on)}
+                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#1c2152]/70 px-3.5 py-2 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-white/10"
+              >
+                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {rotating ? "Stop turning" : "Turn"}
+              </button>
+            )}
+          </div>
+
+          <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full bg-[#1c2152]/70 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur ${site ? "max-sm:hidden" : ""}`}
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff8601]" aria-hidden="true" />
+              {view === "virus" ? "Spike (S) protein · click the orange one to look closer" : "Mutation sites on the spike"}
+            </span>
+            {site && (
+              <span
+                key={site.name}
+                role="status"
+                className="rounded-2xl border-l-4 border-[#ff8601] bg-[#1c2152]/85 px-4 py-2.5 backdrop-blur md:px-5 md:py-3"
+              >
+                <span className="block font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#12ca99]">
+                  Spike mutation
+                </span>
+                <span className="block text-2xl font-black tracking-tight md:text-3xl">{site.name}</span>
+                <span className="block text-sm text-white/75">
+                  First seen {formatMonth(site.firstMonth)} · {site.count.toLocaleString("en-PH")} genomes
+                </span>
+                {!site.chains.length && (
+                  <span className="mt-1 block text-xs text-white/60">Not resolved in this structure, so not marked.</span>
+                )}
+              </span>
+            )}
+          </figcaption>
+        </figure>
+
+        <aside
+          className={`${styles.enter} ${CARD} flex flex-col rounded-3xl p-6 md:p-7`}
+          style={delay(320)}
+        >
+          <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558]">Mutations across time</p>
+          <h3 className="mt-1 text-2xl font-black text-[#2b3278]">{mutations.length} spike changes we saw</h3>
+          {first && last && (
+            <p className="mt-1 text-sm text-[#5b6770]">
+              First seen between {formatMonth(first)} and {formatMonth(last)}
+            </p>
+          )}
+          <button
+            type="button"
+            aria-pressed={playing}
+            onClick={togglePlay}
+            className="mt-5 inline-flex items-center justify-center gap-2 self-start rounded-full bg-[#2a7797] px-4 py-2 text-sm font-semibold text-white transition-shadow hover:bg-[#236681] hover:shadow-[0_0_20px_rgba(18,202,153,0.35)]"
+          >
+            {playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+            {playing ? "Pause timeline" : "Play timeline"}
+          </button>
+          <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Spike mutations, earliest first">
+            {mutations.map((m, i) => {
+              const active = i === siteIndex;
+              return (
+                <li key={m.name}>
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => pick(i)}
+                    className={`w-full rounded-xl border px-2.5 py-2 text-left transition-colors ${
+                      active
+                        ? "border-[#12ca99] bg-[#12ca99] text-[#1c2152]"
+                        : "border-[#2b3278]/10 bg-[#f7f6fa] text-[#2b3278] hover:border-[#12ca99]/60"
+                    }`}
+                  >
+                    <span className="block text-sm font-black tabular-nums">{m.name}</span>
+                    <span className={`block text-[11px] font-medium ${active ? "text-[#1c2152]/75" : "text-[#5b6770]"}`}>
+                      {formatMonth(m.firstMonth)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-5 text-sm leading-relaxed text-[#5b6770]" aria-live="polite">
+            {site
+              ? [site.description, site.region].filter(Boolean).join(" · ")
+              : "Pick a change to see where it sits on the spike, the part of the virus that grabs our cells."}
+          </p>
+        </aside>
+      </div>
+      <p className="mt-4 text-xs text-[#5b6770]">
+        The whole virus is a simplified drawing. The spike is a measured protein structure (PDB {summary.structure.id}
+        {summary.structure.method ? `, ${summary.structure.method}` : ""}); orange dots mark where each change sits, not its
+        new shape. Months are the earliest in our available records
+        {summary.coverage ? ` (${summary.coverage})` : ""}; counts are sequenced genomes, not cases.
+      </p>
+    </LightSection>
   );
 }
 

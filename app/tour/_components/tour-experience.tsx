@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Maximize2, Pause, Play, X } from "lucide-react";
-import { AUDIENCE_LABELS, AUDIENCES, type Audience, type TourContent } from "@/lib/tour";
+import { Maximize2, Music, Pause, Play, VolumeX, X } from "lucide-react";
+import { AUDIENCE_LABELS, AUDIENCES, tourMusicUrl, type Audience, type TourContent } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
@@ -67,12 +67,71 @@ const NAV_LABELS: Record<SectionId, string> = {
 /** How long each slide stays up when auto-advance is on. */
 const AUTO_ADVANCE_MS = 20_000;
 
+/** Background music: quiet under the presenter, quieter still on the Videos slide. */
+const MUSIC_VOLUME = 0.25;
+const MUSIC_DUCKED_VOLUME = 0.04;
+const MUSIC_STORAGE_KEY = "pgcv-tour-music";
+
+const fades = new WeakMap<HTMLAudioElement, () => void>();
+
+/** Eases the volume to `target`, replacing any fade already running. */
+function fadeTo(audio: HTMLAudioElement, target: number, ms: number, done?: () => void) {
+  fades.get(audio)?.();
+  const from = audio.volume;
+  const start = performance.now();
+  let frame = 0;
+  const step = (now: number) => {
+    // A frame stamp can predate start, so clamp at 0 too: volume outside [0, 1] throws.
+    const t = Math.min(1, Math.max(0, (now - start) / ms));
+    audio.volume = from + (target - from) * t;
+    if (t < 1) {
+      frame = requestAnimationFrame(step);
+    } else {
+      fades.delete(audio);
+      done?.();
+    }
+  };
+  frame = requestAnimationFrame(step);
+  fades.set(audio, () => cancelAnimationFrame(frame));
+}
+
+/** Fades the track in while `playing`, down while `ducked`, and out (then pauses) otherwise. */
+function useBackgroundMusic(audioRef: React.RefObject<HTMLAudioElement | null>, playing: boolean, ducked: boolean) {
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      if (audio.paused) {
+        audio.volume = 0;
+        audio.play().catch(() => {
+          // Blocked or missing file; the presentation carries on in silence.
+        });
+      }
+      fadeTo(audio, ducked ? MUSIC_DUCKED_VOLUME : MUSIC_VOLUME, 1200);
+    } else if (!audio.paused) {
+      fadeTo(audio, 0, 800, () => audio.pause());
+    }
+  }, [audioRef, playing, ducked]);
+}
+
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
 /** Plain light sections; a light section right after another gets a divider rule. */
-const LIGHT_SECTIONS = new Set<SectionId>(["services", "showcase", "trainings", "projects", "variant-tree", "agenda", "team", "videos"]);
+const LIGHT_SECTIONS = new Set<SectionId>([
+  "lab-map",
+  "services",
+  "showcase",
+  "infrastructure",
+  "trainings",
+  "projects",
+  "variant-tree",
+  "virus-model",
+  "agenda",
+  "team",
+  "videos",
+]);
 
 /** Who the copy is written for; shown in the header, and in the controls while presenting. */
 function AudienceToggle({
@@ -132,6 +191,18 @@ export function TourExperience({
   const [presenting, setPresenting] = useState(false);
   const [current, setCurrent] = useState(0);
   const [autoAdvance, setAutoAdvance] = useState(false);
+  // Opt-in, remembered per browser. Its button only renders in Present mode,
+  // never in the server HTML, so reading storage up front can't mismatch.
+  const [music, setMusic] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(MUSIC_STORAGE_KEY) === "on";
+    } catch {
+      return false;
+    }
+  });
+  const musicSrc = tourMusicUrl(content.music);
+  const musicRef = useRef<HTMLAudioElement>(null);
   // Entrance state per section; one not listed yet is "pending". The opening
   // slide starts "visible" so it plays straight from the server HTML.
   const [reveal, setReveal] = useState<ReadonlyMap<number, RevealState>>(() => new Map([[0, "visible"]]));
@@ -225,6 +296,19 @@ export function TourExperience({
     });
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [sectionIds]);
+
+  const toggleMusic = () => {
+    setMusic((on) => {
+      try {
+        localStorage.setItem(MUSIC_STORAGE_KEY, on ? "off" : "on");
+      } catch {
+        // Storage blocked; the choice lasts for this visit.
+      }
+      return !on;
+    });
+  };
+
+  useBackgroundMusic(musicRef, presenting && music, sectionIds[current] === "videos");
 
   // In Present mode each slide shrinks, if needed, to fit the screen.
   useSlideFit(presenting, sectionRefs, headerRef, sectionIds);
@@ -415,6 +499,20 @@ export function TourExperience({
             <HelixProgress labels={sectionIds.map((id) => NAV_LABELS[id])} current={current} onSelect={goTo} />
             <span className="hidden text-xs text-white/70 2xl:inline">← → to navigate · Esc to exit</span>
             <AudienceToggle audience={audience} onChange={setAudience} onDark />
+            {musicSrc && (
+              <button
+                type="button"
+                aria-pressed={music}
+                onClick={toggleMusic}
+                title={music ? "Turn the background music off" : "Play background music"}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  music ? "bg-[#12ca99] text-[#1c2152]" : "bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                {music ? <Music className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />}
+                Music
+              </button>
+            )}
             <button
               type="button"
               aria-pressed={autoAdvance}
@@ -447,6 +545,8 @@ export function TourExperience({
           </div>
         </div>
       )}
+      {/* Loaded only once the music is first turned on. */}
+      {musicSrc && <audio ref={musicRef} src={musicSrc} loop preload="none" />}
     </div>
   );
 }
