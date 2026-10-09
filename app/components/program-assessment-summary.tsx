@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardCheck, MessageSquareText, Trash2 } from "lucide-react";
+import { ClipboardCheck, Lock, MessageSquareText, Trash2, Unlock } from "lucide-react";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
@@ -13,7 +13,12 @@ import {
 } from "@/lib/assessment-summary";
 import { describeDeleteError } from "@/lib/db-errors";
 import type { ProgramType } from "@/lib/routes";
-import { getRowsFromDB, getUsersFromDB, supabase } from "@/lib/supabase";
+import {
+  getRowsFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+  supabase,
+} from "@/lib/supabase";
 import type { Assessment, AssessmentResponse, Question, User } from "@/types/database";
 
 type ProgramAssessmentSummaryProps = {
@@ -41,6 +46,55 @@ function ScoreCard({
           <span className="text-xs font-bold text-slate-400">{suffix}</span>
         ) : null}
       </p>
+    </div>
+  );
+}
+
+function AccessToggle({
+  title,
+  assessment,
+  isSaving,
+  onToggle,
+}: {
+  title: string;
+  assessment: Assessment;
+  isSaving: boolean;
+  onToggle: () => void;
+}) {
+  const isOpen = assessment.is_open ?? true;
+  const Icon = isOpen ? Unlock : Lock;
+  return (
+    <div className="flex items-center justify-between gap-3 bg-white/80 border border-slate-200/80 rounded-xl px-4 py-3">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon
+          className={`w-4 h-4 shrink-0 ${isOpen ? "text-[#359b95]" : "text-slate-400"}`}
+        />
+        <div className="min-w-0">
+          <p className="text-xs font-extrabold text-slate-700">{title}</p>
+          <p className="text-[11px] text-slate-500">
+            {isOpen
+              ? "Open: participants can submit"
+              : "Closed: participants can't start it yet"}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOpen}
+        aria-label={`${title} open for submissions`}
+        disabled={isSaving}
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+          isOpen ? "bg-[#4ec2bb]" : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            isOpen ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
     </div>
   );
 }
@@ -144,6 +198,10 @@ export default function ProgramAssessmentSummary({
   );
   const [confirmClear, setConfirmClear] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [tests, setTests] = useState<{ pre?: Assessment; post?: Assessment }>(
+    {},
+  );
+  const [savingAccessId, setSavingAccessId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -158,6 +216,7 @@ export default function ProgramAssessmentSummary({
       );
       const pre = programAssessments.find((row) => row.type === "pre_test");
       const post = programAssessments.find((row) => row.type === "post_test");
+      setTests({ pre, post });
       const nameByUserId: Record<string, string> = {};
       for (const user of users) {
         nameByUserId[user.id] = user.name;
@@ -195,6 +254,29 @@ export default function ProgramAssessmentSummary({
 
   const responseIds = [...summary.pre.responseIds, ...summary.post.responseIds];
   const responseCount = summary.pre.responseCount + summary.post.responseCount;
+
+  const handleToggleAccess = async (kind: "pre" | "post") => {
+    const assessment = tests[kind];
+    if (!assessment) return;
+    const nextOpen = !(assessment.is_open ?? true);
+    setSavingAccessId(assessment.id);
+    try {
+      await saveDataToDB("assessment", assessment.id, { is_open: nextOpen });
+      setTests((prev) => ({
+        ...prev,
+        [kind]: { ...assessment, is_open: nextOpen },
+      }));
+      showToast(
+        `${kind === "pre" ? "Pre-test" : "Post-test"} ${nextOpen ? "opened" : "closed"}.`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Error updating test access:", error);
+      showToast("Failed to update test access.", "error");
+    } finally {
+      setSavingAccessId(null);
+    }
+  };
 
   const handleClearResponses = async () => {
     if (responseIds.length === 0) return;
@@ -255,9 +337,34 @@ export default function ProgramAssessmentSummary({
         </div>
         <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
           Multiple-choice items are scored as a percent correct. Written answers
-          are listed as submitted.
+          are listed as submitted. Participants can submit each test once, and
+          only while it is open.
         </p>
       </div>
+
+      {!isLoading && (tests.pre || tests.post) && (
+        <section className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3">
+          <h3 className="text-xs font-extrabold text-slate-700">Test access</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {tests.pre && (
+              <AccessToggle
+                title="Pre-Test"
+                assessment={tests.pre}
+                isSaving={savingAccessId === tests.pre.id}
+                onToggle={() => void handleToggleAccess("pre")}
+              />
+            )}
+            {tests.post && (
+              <AccessToggle
+                title="Post-Test"
+                assessment={tests.post}
+                isSaving={savingAccessId === tests.post.id}
+                onToggle={() => void handleToggleAccess("post")}
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">

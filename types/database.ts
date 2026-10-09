@@ -414,6 +414,8 @@ export interface Assessment {
   program_id: string;
   type: AssessmentType;
   questions: Question[] | null;
+  /** Whether learners can submit it; staff toggle this per test. */
+  is_open?: boolean;
   created_at?: string;
   updated_at?: string;
 }

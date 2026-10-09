@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   asStringArray,
+  formatAnswer,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "./assessment-form";
@@ -62,5 +63,26 @@ describe("asStringArray", () => {
       "R or RStudio",
     ]);
     expect(asStringArray("QIIME 2")).toEqual([]);
+  });
+});
+
+describe("formatAnswer", () => {
+  it("formats each question type and flags blanks", () => {
+    const [choice, mcq] = questions as [Question, Question];
+    expect(formatAnswer(mcq, 1)).toBe("pwd");
+    expect(formatAnswer(choice, "Faculty")).toBe("Faculty");
+    expect(
+      formatAnswer(
+        { ...choice, multiple: true } as Question,
+        ["Student", "Faculty"],
+      ),
+    ).toBe("Student, Faculty");
+    expect(
+      formatAnswer({ type: "rating", id: "r", question: "Rate", scale: 5 } as Question, 4),
+    ).toBe("4 / 5");
+    expect(
+      formatAnswer({ type: "text", id: "t", question: "Why?" } as Question, "  "),
+    ).toBeNull();
+    expect(formatAnswer(mcq, undefined)).toBeNull();
   });
 });

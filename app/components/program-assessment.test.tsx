@@ -127,4 +127,82 @@ describe("ProgramAssessment", () => {
       screen.getByText(/Why is the command line especially useful/),
     ).toBeInTheDocument();
   });
+
+  it("hides closed tests and locks submitted ones", async () => {
+    vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
+      if (table === "assessment") {
+        return [
+          {
+            id: "pre-id",
+            program_id: "prog-1",
+            type: "pre_test",
+            is_open: true,
+            questions: INTRO_BIOINFORMATICS_PRE_QUESTIONS,
+          },
+          {
+            id: "post-id",
+            program_id: "prog-1",
+            type: "post_test",
+            is_open: false,
+            questions: INTRO_BIOINFORMATICS_POST_QUESTIONS,
+          },
+        ] as never;
+      }
+      return [
+        {
+          id: "resp-1",
+          assessment_id: "pre-id",
+          participant_id: "user-1",
+          answers: {},
+          score: 40,
+          submitted_at: "2026-10-01T00:00:00Z",
+        },
+      ] as never;
+    });
+
+    render(<ProgramAssessment programId="prog-1" programType="training" />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Submitted · Score 40%/)).toBeInTheDocument();
+    });
+    expect(screen.getByText("Not open yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Start/ })).not.toBeInTheDocument();
+  });
+
+  it("shows a review step before the final submit", async () => {
+    const user = userEvent.setup();
+    render(<ProgramAssessment programId="prog-1" programType="training" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Start Pre-Test" })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: "Start Pre-Test" }));
+    await user.click(screen.getByRole("checkbox", { name: "QIIME 2" }));
+    await user.click(screen.getByRole("button", { name: "Review Answers" }));
+
+    expect(screen.getByText("Review your answers")).toBeInTheDocument();
+    expect(screen.getByText("QIIME 2")).toBeInTheDocument();
+    expect(saveDataToDB).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Edit Answers" }));
+    expect(screen.getByRole("checkbox", { name: "QIIME 2" })).toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Review Answers" }));
+    await user.click(screen.getByRole("button", { name: "Submit Final Answers" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Assessment Submitted")).toBeInTheDocument();
+    });
+    expect(saveDataToDB).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(saveDataToDB).mock.calls[0]?.[2]).toMatchObject({
+      assessment_id: "pre-id",
+      participant_id: "user-1",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Return to tests" }));
+    expect(screen.getByText(/Submitted · Score/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start Pre-Test" }),
+    ).not.toBeInTheDocument();
+  });
 });
