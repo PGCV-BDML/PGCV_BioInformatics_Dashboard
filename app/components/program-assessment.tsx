@@ -4,8 +4,10 @@ import { Fragment, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Award,
+  CheckCircle2,
   ClipboardCheck,
   HelpCircle,
+  Lock,
   Star,
 } from "lucide-react";
 import { usePortal } from "@/app/components/portal-context";
@@ -13,6 +15,7 @@ import ProgramAssessmentSummary from "@/app/components/program-assessment-summar
 import { useToast } from "@/app/components/toast";
 import {
   asStringArray,
+  formatAnswer,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "@/lib/assessment-form";
@@ -29,6 +32,8 @@ function suggestedTimeHint(questions: Question[]): string | null {
 }
 
 type AssessmentAnswer = number | string | string[];
+
+type TestKind = "pre" | "post";
 
 type ProgramAssessmentProps = {
   programId: string;
@@ -69,7 +74,8 @@ function LearnerAssessmentForm({
 }: ProgramAssessmentProps) {
   const { showToast } = useToast();
   const isTraining = programType === "training";
-  const [activeTest, setActiveTest] = useState<"pre" | "post" | null>(null);
+  const [activeTest, setActiveTest] = useState<TestKind | null>(null);
+  const [isReviewing, setIsReviewing] = useState(false);
   const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
   const [postTestQuestions, setPostTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
@@ -84,6 +90,10 @@ function LearnerAssessmentForm({
     pre?: string;
     post?: string;
   }>({});
+  const [openTests, setOpenTests] = useState<Record<TestKind, boolean>>({
+    pre: false,
+    post: false,
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -101,6 +111,10 @@ function LearnerAssessmentForm({
         setPreTestQuestions(pre?.questions ?? []);
         setPostTestQuestions(post?.questions ?? []);
         setAssessmentIds({ pre: pre?.id, post: post?.id });
+        setOpenTests({
+          pre: pre?.is_open ?? true,
+          post: post?.is_open ?? true,
+        });
         setExistingResponses(
           responses.filter((row) => row.participant_id === user?.id),
         );
@@ -112,8 +126,17 @@ function LearnerAssessmentForm({
     void load();
   }, [programId, showToast]);
 
-  const handleStartTest = (type: "pre" | "post") => {
+  const submittedResponse = (type: TestKind) => {
+    const assessmentId = type === "pre" ? assessmentIds.pre : assessmentIds.post;
+    return assessmentId
+      ? existingResponses.find((row) => row.assessment_id === assessmentId)
+      : undefined;
+  };
+
+  const handleStartTest = (type: TestKind) => {
+    if (submittedResponse(type) || !openTests[type]) return;
     setActiveTest(type);
+    setIsReviewing(false);
     setSelectedAnswers({});
     setScoreResult(null);
   };
@@ -318,6 +341,7 @@ function LearnerAssessmentForm({
   };
 
   const calculateScore = async () => {
+    if (!activeTest) return;
     setIsSubmitting(true);
     try {
       const questions =
@@ -325,6 +349,10 @@ function LearnerAssessmentForm({
       const assessmentId =
         activeTest === "pre" ? assessmentIds.pre : assessmentIds.post;
       if (!assessmentId || questions.length === 0) return;
+      if (submittedResponse(activeTest)) {
+        showToast("You have already submitted this test.", "error");
+        return;
+      }
       const user = await getCurrentUser();
       if (!user) {
         showToast("You need to be signed in to submit.", "error");
@@ -338,54 +366,67 @@ function LearnerAssessmentForm({
         typedAnswers[key] = val;
       }
 
-      const existingResponse = existingResponses.find(
-        (row) =>
-          row.assessment_id === assessmentId && row.participant_id === user.id,
-      );
-      const responseId = existingResponse?.id ?? crypto.randomUUID();
-
+      const responseId = crypto.randomUUID();
+      const submittedAt = new Date().toISOString();
       await saveDataToDB("assessment_response", responseId, {
         assessment_id: assessmentId,
         participant_id: user.id,
         answers: typedAnswers,
         score: finalScore,
-        submitted_at: new Date().toISOString(),
+        submitted_at: submittedAt,
       });
 
       setScoreResult(finalScore);
-
-      if (!existingResponse) {
-        setExistingResponses((prev) => [
-          ...prev,
-          {
-            id: responseId,
-            assessment_id: assessmentId,
-            participant_id: user.id,
-            answers: typedAnswers,
-            score: finalScore,
-            submitted_at: new Date().toISOString(),
-          },
-        ]);
-      } else {
-        setExistingResponses((prev) =>
-          prev.map((row) =>
-            row.id === responseId
-              ? {
-                  ...row,
-                  score: finalScore,
-                  answers: typedAnswers,
-                  submitted_at: new Date().toISOString(),
-                }
-              : row,
-          ),
-        );
-      }
+      setExistingResponses((prev) => [
+        ...prev,
+        {
+          id: responseId,
+          assessment_id: assessmentId,
+          participant_id: user.id,
+          answers: typedAnswers,
+          score: finalScore,
+          submitted_at: submittedAt,
+        },
+      ]);
     } catch (error) {
       console.error("Assessment submission failed:", error);
-      showToast("Failed to submit assessment. Please try again.", "error");
+      showToast(
+        "Failed to submit. The test may be closed or already submitted.",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const renderReviewList = (questions: Question[]) => {
+    let number = 0;
+    return questions.map((question) => {
+      if (question.section) number = 0;
+      number += 1;
+      const answer = formatAnswer(question, selectedAnswers[question.id]);
+      return (
+        <Fragment key={question.id}>
+          {question.section ? (
+            <h3 className="pt-2 text-[11px] font-extrabold text-[#2a7797] uppercase tracking-[1.5px]">
+              {question.section}
+            </h3>
+          ) : null}
+          <div className="bg-white border border-slate-200 p-4 rounded-[16px] space-y-1.5 shadow-sm">
+            <p className="text-xs font-bold text-slate-800 leading-snug">
+              {number}. {question.question}
+            </p>
+            {answer ? (
+              <p className="text-xs text-slate-600 pl-4">{answer}</p>
+            ) : (
+              <p className="text-xs font-semibold text-amber-600 pl-4">
+                No answer
+              </p>
+            )}
+          </div>
+        </Fragment>
+      );
+    });
   };
 
   const emptyPreLabel = isTraining
@@ -396,6 +437,59 @@ function LearnerAssessmentForm({
     : "No post-test configured for this internship.";
   const preTimeHint = suggestedTimeHint(preTestQuestions);
   const postTimeHint = suggestedTimeHint(postTestQuestions);
+
+  const renderTestCard = (type: TestKind) => {
+    const isPre = type === "pre";
+    const label = isPre ? "Pre-Test" : "Post-Test";
+    const questions = isPre ? preTestQuestions : postTestQuestions;
+    const timeHint = isPre ? preTimeHint : postTimeHint;
+    const submitted = submittedResponse(type);
+    const isOpen = openTests[type];
+    return (
+      <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <ClipboardCheck
+            className={`w-4 h-4 ${isPre ? "text-[#4ec2bb]" : "text-[#2a7797]"}`}
+          />
+          <h3 className="text-sm font-bold text-slate-800">{label}</h3>
+        </div>
+        <p className="text-xs text-slate-500">
+          {questions.length > 0
+            ? `${questions.length} questions`
+            : isPre
+              ? emptyPreLabel
+              : emptyPostLabel}
+        </p>
+        {timeHint ? <p className="text-xs text-slate-500">{timeHint}</p> : null}
+        {questions.length > 0 &&
+          (submitted ? (
+            <div className="flex items-center justify-center gap-1.5 w-full text-[11px] font-bold px-4 py-2 bg-slate-100 text-slate-600 rounded-xl">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#359b95]" />
+              Submitted
+              {submitted.score != null ? ` · Score ${submitted.score}%` : ""}
+            </div>
+          ) : !isOpen ? (
+            <div className="flex items-center justify-center gap-1.5 w-full text-[11px] font-bold px-4 py-2 bg-slate-100 text-slate-400 rounded-xl">
+              <Lock className="w-3.5 h-3.5" />
+              Not open yet
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleStartTest(type)}
+              className={
+                isPre
+                  ? "w-full text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
+                  : "w-full text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
+              }
+            >
+              Start {label}
+            </button>
+          ))}
+      </div>
+    );
+  };
+
 
   return (
     <div className="bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-xl shadow-slate-400/10">
@@ -414,65 +508,13 @@ function LearnerAssessmentForm({
           </div>
           <p className="text-xs text-slate-500 leading-relaxed">
             Complete both tests while signed in. Your dashboard account identifies
-            you and pairs pre- and post-test responses.
+            you and pairs pre- and post-test responses. Each test can be
+            submitted once, so review your answers before submitting.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="w-4 h-4 text-[#4ec2bb]" />
-                <h3 className="text-sm font-bold text-slate-800">Pre-Test</h3>
-              </div>
-              <p className="text-xs text-slate-500">
-                {preTestQuestions.length > 0
-                  ? `${preTestQuestions.length} questions`
-                  : emptyPreLabel}
-              </p>
-              {preTimeHint ? (
-                <p className="text-xs text-slate-500">{preTimeHint}</p>
-              ) : null}
-              {preTestQuestions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleStartTest("pre")}
-                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#4ec2bb] text-white rounded-xl hover:bg-[#3db0a9] transition-all"
-                >
-                  {existingResponses.some(
-                    (row) => row.assessment_id === assessmentIds.pre,
-                  )
-                    ? "Review Pre-Test"
-                    : "Start Pre-Test"}
-                </button>
-              )}
-            </div>
-
-            <div className="w-full rounded-[20px] p-5 border border-slate-200/90 bg-white space-y-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="w-4 h-4 text-[#2a7797]" />
-                <h3 className="text-sm font-bold text-slate-800">Post-Test</h3>
-              </div>
-              <p className="text-xs text-slate-500">
-                {postTestQuestions.length > 0
-                  ? `${postTestQuestions.length} questions`
-                  : emptyPostLabel}
-              </p>
-              {postTimeHint ? (
-                <p className="text-xs text-slate-500">{postTimeHint}</p>
-              ) : null}
-              {postTestQuestions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleStartTest("post")}
-                  className="w-full text-[11px] font-bold px-4 py-2 bg-[#eaf7f6] text-[#247974] border border-[#4ec2bb]/20 rounded-xl hover:bg-[#deefed] transition-all"
-                >
-                  {existingResponses.some(
-                    (row) => row.assessment_id === assessmentIds.post,
-                  )
-                    ? "Review Post-Test"
-                    : "Start Post-Test"}
-                </button>
-              )}
-            </div>
+            {renderTestCard("pre")}
+            {renderTestCard("post")}
           </div>
         </div>
       ) : (
@@ -490,7 +532,7 @@ function LearnerAssessmentForm({
             </span>
           </div>
 
-          {scoreResult === null ? (
+          {scoreResult === null && !isReviewing ? (
             <div className="space-y-6 max-w-3xl">
               {renderQuestionList(
                 activeTest === "pre" ? preTestQuestions : postTestQuestions,
@@ -498,18 +540,53 @@ function LearnerAssessmentForm({
 
               <button
                 type="button"
-                onClick={() => void calculateScore()}
-                disabled={isSubmitting}
-                className={`px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-sm transition-all ${
-                  isSubmitting
-                    ? "bg-slate-400 cursor-not-allowed"
-                    : "bg-[#2a7797] hover:bg-[#1f5a73]"
-                }`}
+                onClick={() => {
+                  setIsReviewing(true);
+                  window.scrollTo?.({ top: 0, behavior: "smooth" });
+                }}
+                className="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-sm transition-all bg-[#2a7797] hover:bg-[#1f5a73]"
               >
-                {isSubmitting
-                  ? "Submitting..."
-                  : "Submit Answers & Calculate Score"}
+                Review Answers
               </button>
+            </div>
+          ) : scoreResult === null ? (
+            <div className="space-y-6 max-w-3xl">
+              <div className="rounded-[16px] border border-amber-200 bg-amber-50 p-4 space-y-1">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Review your answers
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Check your answers below. Once you submit, you can&apos;t
+                  change them or take this test again.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {renderReviewList(
+                  activeTest === "pre" ? preTestQuestions : postTestQuestions,
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsReviewing(false)}
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 font-bold text-xs rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
+                >
+                  Edit Answers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void calculateScore()}
+                  disabled={isSubmitting}
+                  className={`px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-sm transition-all ${
+                    isSubmitting
+                      ? "bg-slate-400 cursor-not-allowed"
+                      : "bg-[#2a7797] hover:bg-[#1f5a73]"
+                  }`}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit Final Answers"}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-8 max-w-md mx-auto text-center space-y-4 shadow-sm">

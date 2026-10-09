@@ -35,3 +35,27 @@ export function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");
 }
+
+/** A learner's answer as display text, or null when it was left blank. */
+export function formatAnswer(
+  question: Question,
+  answer: unknown,
+): string | null {
+  if (question.type === "mcq") {
+    return typeof answer === "number" ? (question.options[answer] ?? null) : null;
+  }
+  if (question.type === "choice") {
+    if (typeof answer === "string") return answer || null;
+    const values = asStringArray(answer);
+    return values.length > 0 ? values.join(", ") : null;
+  }
+  if (question.type === "rating") {
+    return typeof answer === "number"
+      ? `${answer} / ${question.scale || 5}`
+      : null;
+  }
+  if (question.type === "text") {
+    return typeof answer === "string" && answer.trim() ? answer.trim() : null;
+  }
+  return null;
+}
