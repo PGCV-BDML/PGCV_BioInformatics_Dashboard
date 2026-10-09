@@ -1,4 +1,5 @@
 import {
+  NOTIFICATION_ACCESS_REQUESTED,
   NOTIFICATION_APPROVED,
   NOTIFICATION_CHANGES_REQUESTED,
   NOTIFICATION_FAQ_ANSWER_ADDED,
@@ -10,6 +11,7 @@ import {
   NOTIFICATION_REVISION_REQUESTED,
   NOTIFICATION_TASK_COMING_UP,
   NOTIFICATION_TASK_PAST_DUE,
+  accessRequestLabel,
 } from "@/lib/notifications";
 import {
   taskComingUpNotificationCopy,
@@ -36,6 +38,8 @@ export type PushNotificationInput = {
     task_time?: string | null;
     categories?: unknown;
     when?: string | null;
+    user_name?: string | null;
+    user_email?: string | null;
   };
 };
 
@@ -170,6 +174,16 @@ export function buildWebPushPayload(
         title: "New Forum question",
         body: clip(author ? `${author}: ${title}` : title),
         path: faqId ? routes.forum.byId(faqId) : routes.forum.list,
+        tag,
+      };
+    }
+    case NOTIFICATION_ACCESS_REQUESTED: {
+      return {
+        title: "Access requested",
+        body: clip(
+          `${accessRequestLabel(notification.payload)} signed in and needs a role.`,
+        ),
+        path: routes.accessRequests,
         tag,
       };
     }

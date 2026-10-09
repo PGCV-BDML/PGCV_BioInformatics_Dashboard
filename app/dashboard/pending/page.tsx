@@ -33,8 +33,9 @@ export default function PendingAccessPage() {
           </h1>
           <p className="text-sm text-slate-600 leading-relaxed">
             {profile?.name ? `Hi ${profile.name}. ` : ""}
-            Your account is signed in, but a team lead still needs to assign
-            your role and enroll you in a training or internship program.
+            Your account is signed in, and the team lead has been notified. You
+            will get access once they assign your role and enroll you in a
+            training or internship program.
           </p>
         </div>
         <div className="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-left space-y-1">

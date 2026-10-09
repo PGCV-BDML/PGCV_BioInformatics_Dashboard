@@ -9,6 +9,7 @@ export const routes = {
   team: {
     list: "/dashboard/team",
   },
+  accessRequests: "/dashboard/access-requests",
   clients: {
     list: "/dashboard/clients",
     /** Prefill Clients module search (e.g. soft-matched Client ID). */

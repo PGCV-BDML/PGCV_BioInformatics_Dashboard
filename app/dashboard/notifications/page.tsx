@@ -16,6 +16,7 @@ import {
   Check,
   Clock,
   CircleHelp,
+  UserPlus,
 } from "lucide-react";
 import { PageHeader } from "../../components/pageheader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/state-views";
@@ -35,6 +36,8 @@ import {
   isApprovalCompleteNotification,
   isIncidentAssignedNotification,
   isFaqNotification,
+  isAccessRequestedNotification,
+  accessRequestLabel,
   isSentBackNotification,
   isTaskComingUpNotification,
   isTaskPastDueNotification,
@@ -104,6 +107,8 @@ function kindTitle(kind: NotificationKind, n: AppNotification): string {
       return "New comment in the Forum";
     case "faq_question_added":
       return "New Forum question";
+    case "access_requested":
+      return "Access requested";
   }
 }
 
@@ -111,6 +116,7 @@ function kindBadgeClasses(kind: NotificationKind, n: AppNotification): string {
   if (isSentBackNotification(n)) return "bg-amber-100 text-amber-900";
   if (kind === "approval_complete") return "bg-emerald-100 text-emerald-800";
   if (kind === "incident_assigned") return "bg-amber-100 text-amber-900";
+  if (kind === "access_requested") return "bg-amber-100 text-amber-900";
   if (kind === "task_coming_up") {
     return taskComingUpWhen(n.payload) === "today"
       ? "bg-amber-100 text-amber-900"
@@ -141,6 +147,7 @@ function kindIcon(kind: NotificationKind, n: AppNotification) {
   if (isSentBackNotification(n)) return MessageSquareWarning;
   if (kind === "approval_complete") return BadgeCheck;
   if (kind === "incident_assigned") return ShieldAlert;
+  if (kind === "access_requested") return UserPlus;
   if (kind === "task_coming_up") return Calendar;
   if (kind === "task_past_due") return Clock;
   if (
@@ -601,6 +608,7 @@ export default function NotificationsPage() {
               kind === "faq_answer_added" ||
               kind === "faq_comment_added" ||
               kind === "faq_question_added";
+            const accessRequested = isAccessRequestedNotification(notification);
             const taskComingUp =
               isTaskComingUpNotification(notification) ||
               kind === "task_coming_up";
@@ -629,6 +637,7 @@ export default function NotificationsPage() {
             const isAmber =
               sentBack ||
               incidentAssigned ||
+              accessRequested ||
               (taskComingUp && taskComingUpWhen(notification.payload) === "today") ||
               reviewState === "in_review" ||
               approvalState === "under_review";
@@ -638,7 +647,7 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`rounded-[22px] border p-5 shadow-[0_10px_24px_rgba(23,33,38,0.06)] ${
-                  sentBack || incidentAssigned
+                  sentBack || incidentAssigned || accessRequested
                     ? "border-amber-200 bg-amber-50/40"
                     : taskPastDue
                       ? "border-rose-200 bg-rose-50/40"
@@ -692,7 +701,11 @@ export default function NotificationsPage() {
                         {kindTitle(kind, notification)}
                       </p>
                       <h2 className="mt-2 text-lg font-bold text-slate-900 truncate">
-                        {incidentAssigned
+                        {accessRequested
+                          ? notification.payload.user_name ||
+                            notification.payload.user_email ||
+                            "New user"
+                          : incidentAssigned
                           ? notification.payload.title || "Incident report"
                           : faqNote
                             ? notification.payload.title || "Forum"
@@ -701,7 +714,9 @@ export default function NotificationsPage() {
                           : notification.payload.client_name || "Unnamed analysis"}
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        {incidentAssigned
+                        {accessRequested
+                          ? `${accessRequestLabel(notification.payload)} signed in and is waiting for a role.`
+                          : incidentAssigned
                           ? [
                               notification.payload.reporter_name
                                 ? `Reported by ${notification.payload.reporter_name}`
@@ -765,7 +780,15 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {incidentAssigned ? (
+                    {accessRequested ? (
+                      <Link
+                        href={routes.accessRequests}
+                        className="inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-[#2a7797] hover:bg-[#1c5c59] text-white text-xs font-bold rounded-full shadow-md transition-all whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Assign role
+                      </Link>
+                    ) : incidentAssigned ? (
                       <Link
                         href={
                           notification.payload.incident_id

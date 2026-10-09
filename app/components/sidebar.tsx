@@ -37,6 +37,7 @@ import {
   CircleHelp,
   MessagesSquare,
   Presentation,
+  UserPlus,
 } from "lucide-react";
 import MySignatureModal from "./my-signature-modal";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -71,6 +72,12 @@ const navItems: NavItem[] = [
     icon: Bell,
     animationClass:
       "group-hover:-translate-y-0.5 transition-transform duration-200",
+  },
+  {
+    name: "Access Requests",
+    href: "/dashboard/access-requests",
+    icon: UserPlus,
+    animationClass: "group-hover:scale-110 transition-transform duration-200",
   },
   {
     name: "Tasks",
@@ -296,7 +303,11 @@ export default function Sidebar({
         ...items.slice(wishlistIndex),
       ];
     }
-    return navItems;
+    if (effectiveRole === "team_lead") return navItems;
+    // Only team leads can assign roles.
+    return navItems.filter(
+      (item) => item.href !== "/dashboard/access-requests",
+    );
   }, [effectiveRole]);
 
   useEffect(() => {

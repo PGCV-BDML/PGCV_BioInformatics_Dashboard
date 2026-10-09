@@ -35,6 +35,8 @@ export const NOTIFICATION_FAQ_ANSWER_ADDED = "faq_answer_added";
 export const NOTIFICATION_FAQ_COMMENT_ADDED = "faq_comment_added";
 /** Sent to other staff when someone posts a new Forum question. */
 export const NOTIFICATION_FAQ_QUESTION_ADDED = "faq_question_added";
+/** Sent to team leads when someone signs in and is waiting for a role. */
+export const NOTIFICATION_ACCESS_REQUESTED = "access_requested";
 
 export type AppNotification = {
   id: string;
@@ -70,6 +72,10 @@ export type AppNotification = {
     details?: string | null;
     categories?: string[] | null;
     when?: string | null;
+    /** Present on access_requested. */
+    user_id?: string;
+    user_name?: string | null;
+    user_email?: string | null;
   };
   target_user_id: string;
   is_read: boolean;
@@ -96,7 +102,8 @@ export type NotificationKind =
   | "task_past_due"
   | "faq_answer_added"
   | "faq_comment_added"
-  | "faq_question_added";
+  | "faq_question_added"
+  | "access_requested";
 
 export function getNotificationKind(n: AppNotification): NotificationKind {
   switch (n.type) {
@@ -120,6 +127,8 @@ export function getNotificationKind(n: AppNotification): NotificationKind {
       return "faq_comment_added";
     case NOTIFICATION_FAQ_QUESTION_ADDED:
       return "faq_question_added";
+    case NOTIFICATION_ACCESS_REQUESTED:
+      return "access_requested";
     case NOTIFICATION_READY_FOR_REVIEW:
     default:
       return "review_request";
@@ -136,6 +145,21 @@ export function isTaskComingUpNotification(n: AppNotification): boolean {
 
 export function isTaskPastDueNotification(n: AppNotification): boolean {
   return n.type === NOTIFICATION_TASK_PAST_DUE;
+}
+
+export function isAccessRequestedNotification(n: AppNotification): boolean {
+  return n.type === NOTIFICATION_ACCESS_REQUESTED;
+}
+
+/** "Name (email)" for an access request, falling back to whichever is set. */
+export function accessRequestLabel(payload: {
+  user_name?: string | null;
+  user_email?: string | null;
+}): string {
+  const name = payload.user_name?.trim();
+  const email = payload.user_email?.trim();
+  if (name && email) return `${name} (${email})`;
+  return name || email || "Someone";
 }
 
 export function isFaqNotification(n: AppNotification): boolean {
