@@ -128,3 +128,8 @@ export function protocolDetailBreadcrumbs(title: string): BreadcrumbItem[] {
     { label: title },
   ];
 }
+
+export const accessRequestsBreadcrumbs: BreadcrumbItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Access Requests" },
+];

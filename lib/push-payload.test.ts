@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  NOTIFICATION_ACCESS_REQUESTED,
   NOTIFICATION_APPROVED,
   NOTIFICATION_INCIDENT_ASSIGNED,
   NOTIFICATION_READY_FOR_REVIEW,
@@ -14,6 +15,20 @@ import { buildWebPushPayload } from "./push-payload";
 import { getPushSetupState, isIosUserAgent } from "./push-support";
 
 describe("buildWebPushPayload", () => {
+  it("sends access requests to the pending access page", () => {
+    const payload = buildWebPushPayload({
+      id: "n-access",
+      type: NOTIFICATION_ACCESS_REQUESTED,
+      payload: { user_name: "Juan Dela Cruz", user_email: "juan@up.edu.ph" },
+    });
+    expect(payload).toEqual({
+      title: "Access requested",
+      body: "Juan Dela Cruz (juan@up.edu.ph) signed in and needs a role.",
+      path: "/dashboard/access-requests",
+      tag: "n-access",
+    });
+  });
+
   it("routes analysis alerts to the notifications inbox", () => {
     const payload = buildWebPushPayload({
       id: "n-1",
