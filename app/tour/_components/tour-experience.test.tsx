@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { FALLBACK_TOUR, type TourContent } from "@/lib/tour";
@@ -187,7 +187,7 @@ describe("TourExperience", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
     const { unmount } = render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 5)).toEqual(["welcome", "intro", "services", "showcase", "lab-map"]);
+    expect(ids.slice(0, 6)).toEqual(["welcome", "intro", "sample-to-sequence", "services", "showcase", "lab-map"]);
     const frame = screen.getByTitle("Explore the lab");
     expect(frame).toHaveAttribute("src", "/api/tour/lab-map");
     expect(frame).toHaveAttribute("sandbox", "allow-scripts");
@@ -211,6 +211,57 @@ describe("TourExperience", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Technical" }));
     expect(screen.getByText("Aklan State University")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evolutionary and population genetics" })).toBeInTheDocument();
+  });
+
+  it("steps through the sample-to-sequence scenes with the arrow keys before moving on", async () => {
+    render(<TourExperience content={content} stats={null} />);
+    await userEvent.click(screen.getByRole("button", { name: /Present/ }));
+    const press = (key: string) => fireEvent.keyDown(window, { key });
+    const onSlide = (label: string) => screen.getByRole("button", { name: `Go to ${label}` }).getAttribute("aria-current") === "step";
+    const scene = () =>
+      screen.getAllByRole("button", { name: /^Step \d: / }).findIndex((b) => b.getAttribute("aria-current") === "step");
+
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(onSlide("Sample to sequence")).toBe(true);
+    expect(scene()).toBe(0);
+
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(onSlide("Sample to sequence")).toBe(true);
+    expect(scene()).toBe(3);
+    // The server step names the HPC specs from the content.
+    expect(screen.getByText("120 cores · 640 GB · 360 TB")).toBeInTheDocument();
+
+    press("ArrowRight");
+    expect(onSlide("Services")).toBe(true);
+
+    // Coming back lands on the last scene, then steps back through them.
+    press("ArrowLeft");
+    expect(onSlide("Sample to sequence")).toBe(true);
+    expect(scene()).toBe(3);
+    press("ArrowLeft");
+    press("ArrowLeft");
+    press("ArrowLeft");
+    expect(scene()).toBe(0);
+    press("ArrowLeft");
+    expect(onSlide("Bioinformatics")).toBe(true);
+
+    // A step clicked while presenting is where the keys carry on from.
+    press("ArrowRight");
+    await userEvent.click(screen.getByRole("button", { name: "Step 3: Server" }));
+    expect(scene()).toBe(2);
+    press("ArrowRight");
+    expect(scene()).toBe(3);
+
+    // With auto-advance on, the scenes play by themselves and the keys move whole slides.
+    await userEvent.click(screen.getByRole("button", { name: "Auto-advance" }));
+    press("ArrowLeft");
+    expect(onSlide("Bioinformatics")).toBe(true);
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(onSlide("Services")).toBe(true);
   });
 
   it("hides the Variant tree without a loaded tree", () => {

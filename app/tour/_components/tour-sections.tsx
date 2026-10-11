@@ -10,10 +10,12 @@ import type { TourVirusSummary } from "@/lib/tour-virus";
 import { SHOWCASE_COPY, SHOWCASE_INTRO } from "@/lib/tour-showcase";
 import { AGENDA, AGENDA_INTRO, AGENDA_TITLE } from "@/lib/tour-agenda";
 import { INTRO_DEFINITION, INTRO_FIELDS, INTRO_TITLE } from "@/lib/tour-intro";
+import { JOURNEY_INTRO, JOURNEY_TITLE } from "@/lib/tour-journey";
 import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
 import { BioinfoVenn, INTRO_FIELD_COLORS } from "./bioinfo-venn";
 import { FeaturedProject } from "./project-feature";
+import { SampleJourney } from "./sample-journey";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import type { LightMotif } from "./light-motifs";
@@ -241,6 +243,50 @@ export function IntroSection({ audience, index }: { audience: Audience; index: n
             })}
           </ul>
         </div>
+      </div>
+    </LightSection>
+  );
+}
+
+/** The HPC server's specs as one line ("120 cores · 640 GB · 360 TB"), or null without one. */
+function serverSpecs(content: TourContent): string | null {
+  const hpc = content.infrastructure.items.find((item) => item.id === "hpc" || /\bHPC\b/.test(item.name));
+  if (!hpc?.specs.length) return null;
+  return hpc.specs.map((spec) => `${spec.value} ${spec.unit}`.trim()).join(" · ");
+}
+
+export function JourneySection({
+  content,
+  audience,
+  index,
+  active,
+  step,
+  onStepChange,
+}: SectionProps & {
+  index: number;
+  active: boolean;
+  step: number | null;
+  onStepChange: (step: number) => void;
+}) {
+  return (
+    <LightSection index={index} motif="bokeh" lavender>
+      <div className={PRESENT_SPLIT_HEADER}>
+        <div className="shrink-0">
+          <Eyebrow index={index}>How it works</Eyebrow>
+          <SectionHeading title={JOURNEY_TITLE} />
+        </div>
+        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(JOURNEY_INTRO, audience)}
+        </p>
+      </div>
+      <div className={`mt-10 ${PRESENT_GAP} ${styles.enter}`} style={delay(240)}>
+        <SampleJourney
+          audience={audience}
+          active={active}
+          step={step}
+          onStepChange={onStepChange}
+          serverSpecs={serverSpecs(content)}
+        />
       </div>
     </LightSection>
   );

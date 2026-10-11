@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Maximize2, Music, Pause, Play, VolumeX, X } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, tourMusicUrl, type Audience, type TourContent } from "@/lib/tour";
+import { JOURNEY_STEPS } from "@/lib/tour-journey";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
@@ -14,6 +15,7 @@ import {
   HeroSection,
   InfrastructureSection,
   IntroSection,
+  JourneySection,
   LabMapSection,
   ProjectsSection,
   ServicesSection,
@@ -32,6 +34,7 @@ import styles from "./tour-motion.module.css";
 type SectionId =
   | "welcome"
   | "intro"
+  | "sample-to-sequence"
   | "lab-map"
   | "services"
   | "showcase"
@@ -49,6 +52,7 @@ type SectionId =
 const NAV_LABELS: Record<SectionId, string> = {
   welcome: "Welcome",
   intro: "Bioinformatics",
+  "sample-to-sequence": "Sample to sequence",
   "lab-map": "Lab map",
   services: "Services",
   showcase: "Sample results",
@@ -66,6 +70,14 @@ const NAV_LABELS: Record<SectionId, string> = {
 
 /** How long each slide stays up when auto-advance is on. */
 const AUTO_ADVANCE_MS = 20_000;
+
+/**
+ * Slides with steps of their own. In Present mode (without auto-advance) the
+ * arrow keys go through a slide's steps before moving to the next slide.
+ */
+const SLIDE_STEPS: Partial<Record<SectionId, number>> = {
+  "sample-to-sequence": JOURNEY_STEPS.length,
+};
 
 /** Background music: quiet under the presenter, quieter still on the Videos slide. */
 const MUSIC_VOLUME = 0.25;
@@ -190,6 +202,8 @@ export function TourExperience({
   const [audience, setAudience] = useState<Audience>("general");
   const [presenting, setPresenting] = useState(false);
   const [current, setCurrent] = useState(0);
+  // The step reached on a slide with steps; any other slide is at its first.
+  const [slideStep, setSlideStep] = useState({ index: 0, step: 0 });
   const [autoAdvance, setAutoAdvance] = useState(false);
   // Opt-in, remembered per browser. Its button only renders in Present mode,
   // never in the server HTML, so reading storage up front can't mismatch.
@@ -211,7 +225,7 @@ export function TourExperience({
 
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
-    const ids: SectionId[] = ["welcome", "intro", "services", "showcase"];
+    const ids: SectionId[] = ["welcome", "intro", "sample-to-sequence", "services", "showcase"];
     if (content.labMap && labMap) ids.push("lab-map");
     ids.push("infrastructure");
     if (content.trainings.items.length) ids.push("trainings");
@@ -226,10 +240,12 @@ export function TourExperience({
     return ids;
   }, [content, phylo, virus, labMap]);
 
+  /** Scrolls to a slide, at its first step unless told otherwise. */
   const goTo = useCallback(
-    (index: number) => {
+    (index: number, step = 0) => {
       const clamped = Math.max(0, Math.min(sectionIds.length - 1, index));
       setCurrent(clamped);
+      setSlideStep({ index: clamped, step });
       sectionRefs.current[clamped]?.scrollIntoView({
         behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "start",
@@ -342,14 +358,23 @@ export function TourExperience({
 
   useEffect(() => {
     if (!presenting) return;
+    // Auto-advance plays a slide's steps on their own, so then the keys move whole slides.
+    const lastStep = (index: number) => {
+      const id = sectionIds[index];
+      return autoAdvance || !id ? 0 : (SLIDE_STEPS[id] ?? 1) - 1;
+    };
+    const step = slideStep.index === current ? slideStep.step : 0;
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest("input, textarea, iframe, video")) return;
       if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
         event.preventDefault();
-        goTo(current + 1);
+        if (step < lastStep(current)) setSlideStep({ index: current, step: step + 1 });
+        else goTo(current + 1);
       } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
         event.preventDefault();
-        goTo(current - 1);
+        // Going back lands on the previous slide's last step, as if it had just been played.
+        if (step > 0 && !autoAdvance) setSlideStep({ index: current, step: step - 1 });
+        else goTo(current - 1, lastStep(current - 1));
       } else if (event.key === "Home") {
         goTo(0);
       } else if (event.key === "End") {
@@ -367,7 +392,7 @@ export function TourExperience({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
-  }, [presenting, current, goTo, sectionIds.length, stopPresenting]);
+  }, [presenting, autoAdvance, current, slideStep, goTo, sectionIds, stopPresenting]);
 
   const renderSection = (id: SectionId, index: number) => {
     const props = { content, audience, index };
@@ -376,6 +401,16 @@ export function TourExperience({
         return <HeroSection content={content} audience={audience} />;
       case "intro":
         return <IntroSection audience={audience} index={index} />;
+      case "sample-to-sequence":
+        return (
+          <JourneySection
+            {...props}
+            active={current === index}
+            // Stepped by the arrow keys while presenting; otherwise its scenes play on a timer.
+            step={presenting && !autoAdvance ? (slideStep.index === index ? slideStep.step : 0) : null}
+            onStepChange={(step) => setSlideStep({ index, step })}
+          />
+        );
       case "lab-map":
         return <LabMapSection {...props} />;
       case "services":

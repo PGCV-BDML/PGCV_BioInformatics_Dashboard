@@ -21,17 +21,28 @@
 .bob,
 .express,
 .drift,
-.driftAlt {
+.driftAlt,
+.flicker,
+.pulse {
   transform-box: fill-box;
 }
 
-.growX {
+.growX,
+.stepFill {
   transform-origin: left;
 }
 
 .rung,
-.pop {
+.pop,
+.flicker,
+.pulse {
   transform-origin: center;
+}
+
+/* Sample-to-sequence slide: the camera flash and the ring round "your sample" only show animated. */
+.snap,
+.pulse {
+  opacity: 0;
 }
 
 .rise,
@@ -114,6 +125,32 @@
     visibility: visible;
     transform-origin: left;
     animation: tour-countdown var(--t) linear both;
+  }
+
+  /*
+   * Sample-to-sequence slide: the step bar fills while its scene plays, each
+   * flow-cell round flickers on under a camera flash, the server's lights
+   * blink and a ring pulses round "your sample" on the tree.
+   */
+  .stepFill {
+    animation: tour-countdown var(--t) linear both;
+  }
+
+  .flicker {
+    animation: tour-flicker 0.4s ease-out both;
+  }
+
+  .snap {
+    animation: tour-snap 0.45s ease-out both;
+  }
+
+  .ledBlink {
+    animation: tour-blink 1.2s steps(1) infinite;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .pulse {
+    animation: tour-pulse 1.8s ease-out infinite;
   }
 
   /* Hover loops: only while the card is pointed at, snapping back on leave. */
@@ -292,6 +329,33 @@
 @keyframes tour-countdown {
   from {
     transform: scaleX(0);
+  }
+}
+
+@keyframes tour-flicker {
+  from {
+    transform: scale(0.6);
+    opacity: 0.35;
+  }
+}
+
+@keyframes tour-snap {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes tour-pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
   }
 }
 
