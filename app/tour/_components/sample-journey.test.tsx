@@ -28,7 +28,7 @@ describe("SampleJourney", () => {
     rerender(journey());
     wait(1);
     expect(scene()).toBe(1);
-    wait(3);
+    wait(4);
     expect(scene()).toBe(0);
     wait(2);
     expect(scene()).toBe(2);
@@ -42,10 +42,10 @@ describe("SampleJourney", () => {
   it("stops playing once the visitor picks a step", () => {
     vi.useFakeTimers();
     render(journey());
-    fireEvent.click(screen.getByRole("button", { name: "Step 3: Server" }));
-    expect(scene()).toBe(2);
+    fireEvent.click(screen.getByRole("button", { name: "Step 4: Analysis" }));
+    expect(scene()).toBe(3);
     wait(3);
-    expect(scene()).toBe(2);
+    expect(scene()).toBe(3);
   });
 
   it("shows the presenter's step and hands clicks back instead of playing", () => {
@@ -55,18 +55,26 @@ describe("SampleJourney", () => {
     expect(scene()).toBe(1);
     wait(2);
     expect(scene()).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Step 4: Results" }));
-    expect(onStepChange).toHaveBeenCalledWith(3);
+    fireEvent.click(screen.getByRole("button", { name: "Step 5: Results" }));
+    expect(onStepChange).toHaveBeenCalledWith(4);
   });
 
   it("switches copy with the audience and names the machines under their steps", () => {
-    const { rerender } = render(journey({ serverSpecs: "120 cores · 640 GB · 360 TB" }));
+    const { rerender } = render(
+      journey({ serverSpecs: "120 cores · 640 GB · 360 TB", storageSpecs: "360 TB of storage" }),
+    );
     expect(screen.getByText("Millions of short reads")).toBeInTheDocument();
     expect(screen.getByText("Illumina NextSeq 1000 · iSeq 100")).toBeInTheDocument();
+    expect(screen.getByText("360 TB of storage")).toBeInTheDocument();
     expect(screen.getByText("120 cores · 640 GB · 360 TB")).toBeInTheDocument();
 
     rerender(journey({ audience: "technical" }));
     expect(screen.getByText("FASTQ files: millions of reads with quality scores")).toBeInTheDocument();
+  });
+
+  it("types the made-up HPC address on the laptop in the analysis scene", () => {
+    render(journey({ step: 3 }));
+    expect(screen.getByText(/ssh 10\.0\.0\.25/)).toBeInTheDocument();
   });
 });
 

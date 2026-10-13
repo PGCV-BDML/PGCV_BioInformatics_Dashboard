@@ -27,6 +27,7 @@ import {
   VirusModelSection,
 } from "./tour-sections";
 import { HelixProgress } from "./helix-progress";
+import { JOURNEY_SCENE_MS } from "./sample-journey";
 import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
 import { useSlideFit } from "./slide-fit";
 import styles from "./tour-motion.module.css";
@@ -70,6 +71,11 @@ const NAV_LABELS: Record<SectionId, string> = {
 
 /** How long each slide stays up when auto-advance is on. */
 const AUTO_ADVANCE_MS = 20_000;
+
+/** Slides that stay up longer, so their scenes can all play. */
+const SLIDE_MS: Partial<Record<SectionId, number>> = {
+  "sample-to-sequence": JOURNEY_STEPS.length * JOURNEY_SCENE_MS,
+};
 
 /**
  * Slides with steps of their own. In Present mode (without auto-advance) the
@@ -350,9 +356,12 @@ export function TourExperience({
     };
   }, [presenting]);
 
-  // Auto-advance for a lobby screen: next slide every 20s, back to the start
-  // after the last. Any slide change restarts the clock. A video someone is
-  // watching (focus inside its iframe) or a hidden tab holds the slide.
+  const currentSlideMs = SLIDE_MS[sectionIds[current]!] ?? AUTO_ADVANCE_MS;
+
+  // Auto-advance for a lobby screen: next slide every 20s (longer for slides
+  // in SLIDE_MS), back to the start after the last. Any slide change restarts
+  // the clock. A video someone is watching (focus inside its iframe) or a
+  // hidden tab holds the slide.
   useEffect(() => {
     if (!presenting || !autoAdvance) return;
     let timer = 0;
@@ -360,11 +369,11 @@ export function TourExperience({
       timer = window.setTimeout(() => {
         if (document.hidden || document.activeElement?.matches("iframe, video")) arm();
         else goTo(current + 1 >= sectionIds.length ? 0 : current + 1);
-      }, AUTO_ADVANCE_MS);
+      }, currentSlideMs);
     };
     arm();
     return () => window.clearTimeout(timer);
-  }, [presenting, autoAdvance, current, goTo, sectionIds.length]);
+  }, [presenting, autoAdvance, current, currentSlideMs, goTo, sectionIds.length]);
 
   useEffect(() => {
     if (!presenting) return;
@@ -584,7 +593,7 @@ export function TourExperience({
                 // Restarts with every slide change.
                 key={current}
                 className={`${styles.countdown} absolute inset-x-0 bottom-0 h-0.5 bg-[#12ca99]`}
-                style={{ "--t": `${AUTO_ADVANCE_MS}ms` } as React.CSSProperties}
+                style={{ "--t": `${currentSlideMs}ms` } as React.CSSProperties}
                 aria-hidden="true"
               />
             )}

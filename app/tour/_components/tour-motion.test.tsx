@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { FALLBACK_TOUR } from "@/lib/tour";
+import { JOURNEY_STEPS } from "@/lib/tour-journey";
 import { CountUp, formatCount, parseCount } from "./count-up";
 import { HelixProgress } from "./helix-progress";
+import { JOURNEY_SCENE_MS } from "./sample-journey";
 import { TourExperience } from "./tour-experience";
 
 beforeAll(() => {
@@ -56,7 +58,7 @@ describe("HelixProgress", () => {
 });
 
 describe("auto-advance", () => {
-  it("moves to the next slide every 20 seconds and wraps to the start", () => {
+  it("moves to the next slide every 20 seconds, longer for sample to sequence, and wraps to the start", () => {
     vi.useFakeTimers();
     render(<TourExperience content={FALLBACK_TOUR} stats={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Present" }));
@@ -73,7 +75,16 @@ describe("auto-advance", () => {
     act(() => vi.advanceTimersByTime(1_000));
     expect(currentSlide()).toBe(1);
 
-    for (let i = 2; i < slides.length; i++) act(() => vi.advanceTimersByTime(20_000));
+    // Sample to sequence stays up until all its scenes have played.
+    const journeyMs = JOURNEY_STEPS.length * JOURNEY_SCENE_MS;
+    expect(slides[currentSlide() + 1]).toHaveAccessibleName("Go to Sample to sequence");
+    act(() => vi.advanceTimersByTime(20_000));
+    act(() => vi.advanceTimersByTime(journeyMs - 1_000));
+    expect(slides[currentSlide()]).toHaveAccessibleName("Go to Sample to sequence");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(currentSlide()).toBe(3);
+
+    for (let i = 4; i < slides.length; i++) act(() => vi.advanceTimersByTime(20_000));
     expect(currentSlide()).toBe(slides.length - 1);
     act(() => vi.advanceTimersByTime(20_000));
     expect(currentSlide()).toBe(0);
