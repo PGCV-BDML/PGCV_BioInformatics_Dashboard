@@ -29,6 +29,8 @@ interface DataTableProps<T> {
    * `auto` sizes columns to content for denser, content-fit tables.
    */
   layout?: "fixed" | "auto";
+  /** Replaces the default striped row background, e.g. to highlight a row. */
+  rowClassName?: (item: T) => string | undefined;
 }
 
 function DataTableInner<T extends { id: string | number }>({
@@ -38,6 +40,7 @@ function DataTableInner<T extends { id: string | number }>({
   onSort,
   emptyMessage = "No active records found matching your criteria.",
   layout = "fixed",
+  rowClassName,
 }: DataTableProps<T>) {
   const isAuto = layout === "auto";
 
@@ -97,7 +100,10 @@ function DataTableInner<T extends { id: string | number }>({
           {data.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-surface even:bg-[#F6F4EE]/40 border-b border-gray-200/40 transition-colors hover:bg-[#F1EFE8]/70"
+              className={`border-b border-gray-200/40 transition-colors ${
+                rowClassName?.(item) ??
+                "odd:bg-surface even:bg-[#F6F4EE]/40 hover:bg-[#F1EFE8]/70"
+              }`}
             >
               {columns.map((col, colIndex) => {
                 const clipLongText = !isAuto || Boolean(col.maxWidth);

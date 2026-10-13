@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, UserCheck, UserPlus } from "lucide-react";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { PageHeader } from "@/app/components/pageheader";
@@ -11,32 +12,47 @@ import {
   LoadingState,
 } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
+import UserRolesTable, {
+  type RoleTableUser,
+} from "@/app/components/user-roles-table";
 import {
   ASSIGNABLE_ROLE_OPTIONS,
   enrollablePrograms,
+  roleChangeErrorMessage,
+  updateUserRole,
+  userRoleLabel,
   type AssignableRole,
 } from "@/lib/access-requests";
 import { accessRequestsBreadcrumbs } from "@/lib/breadcrumbs";
+import { ALL_USER_ROLES } from "@/lib/portal";
+import { routes } from "@/lib/routes";
 import { getRowsFromDB, getUsersFromDB, saveDataToDB } from "@/lib/supabase";
-import type { TrainingProgram, User } from "@/types/database";
+import type {
+  ProgramEnrollment,
+  TrainingProgram,
+  UserRole,
+} from "@/types/database";
 
-type PendingUser = Pick<User, "id" | "name" | "email" | "created_at">;
+type Tab = "pending" | "users";
 
 type Draft = { role: AssignableRole; programId: string };
 
 const DEFAULT_DRAFT: Draft = { role: "trainee", programId: "" };
 
-function roleLabel(role: AssignableRole): string {
-  return (
-    ASSIGNABLE_ROLE_OPTIONS.find((option) => option.value === role)?.label ??
-    role
-  );
-}
-
 function formatSignedIn(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function groupByUser(
+  rows: ProgramEnrollment[],
+): Record<string, ProgramEnrollment[]> {
+  const grouped: Record<string, ProgramEnrollment[]> = {};
+  for (const row of rows) {
+    (grouped[row.user_id] ??= []).push(row);
+  }
+  return grouped;
 }
 
 export default function AccessRequestsPage() {
@@ -47,49 +63,52 @@ export default function AccessRequestsPage() {
     <div className="space-y-8 max-w-[1240px] mx-auto pb-16 px-4 font-aileron">
       <PageHeader
         breadcrumbTrail={accessRequestsBreadcrumbs}
-        title="Access Requests"
-        subtitle="People who signed in and are waiting for a role"
+        title="Users & Access"
+        subtitle="Assign roles to new sign-ins and change anyone's role"
       />
       {portalLoading ? (
-        <LoadingState message="Loading access requests…" />
+        <LoadingState message="Loading users…" />
       ) : !isTeamLead ? (
         <EmptyState
           icon={Lock}
           title="Team leads only"
-          description="Only team leads can assign roles to new users."
+          description="Only team leads can assign or change roles."
         />
       ) : (
-        <AccessRequestList currentUserId={profile?.id ?? null} />
+        <Suspense fallback={<LoadingState message="Loading users…" />}>
+          <UsersAndAccess currentUserId={profile?.id ?? null} />
+        </Suspense>
       )}
     </div>
   );
 }
 
-function AccessRequestList({ currentUserId }: { currentUserId: string | null }) {
-  const { showToast } = useToast();
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+function UsersAndAccess({ currentUserId }: { currentUserId: string | null }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab: Tab = searchParams.get("tab") === "users" ? "users" : "pending";
+
+  const [users, setUsers] = useState<RoleTableUser[]>([]);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [enrollments, setEnrollments] = useState<ProgramEnrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [confirmUser, setConfirmUser] = useState<PendingUser | null>(null);
-  const [isAssigning, setIsAssigning] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [users, programRows] = await Promise.all([
-        getUsersFromDB<PendingUser>(["none"]),
+      const [userRows, programRows, enrollmentRows] = await Promise.all([
+        getUsersFromDB<RoleTableUser>(ALL_USER_ROLES),
         getRowsFromDB<TrainingProgram>("training_program"),
+        getRowsFromDB<ProgramEnrollment>("program_enrollment"),
       ]);
-      setPendingUsers(
-        [...users].sort((a, b) => b.created_at.localeCompare(a.created_at)),
-      );
+      setUsers(userRows);
       setPrograms(programRows);
+      setEnrollments(enrollmentRows);
     } catch (error) {
-      console.error("Failed to load access requests:", error);
-      setLoadError("Failed to load access requests.");
+      console.error("Failed to load users:", error);
+      setLoadError("Failed to load users.");
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +117,129 @@ function AccessRequestList({ currentUserId }: { currentUserId: string | null }) 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const selectTab = (next: Tab) => {
+    router.replace(
+      next === "users" ? `${routes.accessRequests}?tab=users` : routes.accessRequests,
+      { scroll: false },
+    );
+  };
+
+  const setUserRole = (userId: string, role: UserRole) => {
+    setUsers((prev) =>
+      prev.map((user) => (user.id === userId ? { ...user, role } : user)),
+    );
+  };
+
+  const addEnrollment = (enrollment: ProgramEnrollment) => {
+    setEnrollments((prev) => [...prev, enrollment]);
+  };
+
+  const pendingUsers = users
+    .filter((user) => user.role === "none")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: "pending", label: "Pending", count: pendingUsers.length },
+    { id: "users", label: "All users", count: users.length },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div
+        role="tablist"
+        aria-label="Users and access"
+        className="flex gap-1 border-b border-slate-200"
+      >
+        {tabs.map((item) => {
+          const selected = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`access-tab-${item.id}`}
+              aria-selected={selected}
+              aria-controls={`access-panel-${item.id}`}
+              onClick={() => selectTab(item.id)}
+              className={`-mb-px inline-flex items-center gap-2 border-b-2 px-3.5 pb-3 pt-2 text-sm font-bold transition-colors ${
+                selected
+                  ? "border-[#2a7797] text-[#2a7797]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {item.label}
+              {!isLoading && (
+                <span
+                  className={`rounded-full px-2 py-px text-[11px] font-extrabold tabular-nums ${
+                    item.id === "pending" && item.count > 0
+                      ? "bg-amber-100 text-amber-800"
+                      : selected
+                        ? "bg-[#dceaf0] text-[#2a7797]"
+                        : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {item.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`access-panel-${tab}`}
+        aria-labelledby={`access-tab-${tab}`}
+      >
+        {isLoading ? (
+          <LoadingState message="Loading users…" />
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => void load()} />
+        ) : tab === "pending" ? (
+          <PendingRequests
+            pendingUsers={pendingUsers}
+            programs={programs}
+            currentUserId={currentUserId}
+            onAssigned={setUserRole}
+            onEnrolled={addEnrollment}
+            onStale={() => void load()}
+          />
+        ) : (
+          <UserRolesTable
+            users={users}
+            programs={programs}
+            enrollmentsByUser={groupByUser(enrollments)}
+            currentUserId={currentUserId}
+            onRoleChanged={setUserRole}
+            onEnrolled={addEnrollment}
+            onStale={() => void load()}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PendingRequests({
+  pendingUsers,
+  programs,
+  currentUserId,
+  onAssigned,
+  onEnrolled,
+  onStale,
+}: {
+  pendingUsers: RoleTableUser[];
+  programs: TrainingProgram[];
+  currentUserId: string | null;
+  onAssigned: (userId: string, role: UserRole) => void;
+  onEnrolled: (enrollment: ProgramEnrollment) => void;
+  onStale: () => void;
+}) {
+  const { showToast } = useToast();
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [confirmUser, setConfirmUser] = useState<RoleTableUser | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const draftFor = (userId: string) => drafts[userId] ?? DEFAULT_DRAFT;
 
@@ -115,50 +257,68 @@ function AccessRequestList({ currentUserId }: { currentUserId: string | null }) 
     const user = confirmUser;
     const draft = draftFor(user.id);
     setIsAssigning(true);
+
+    let updated: boolean;
     try {
-      await saveDataToDB("users", user.id, { role: draft.role });
+      updated = await updateUserRole(user.id, "none", draft.role);
     } catch (error) {
       console.error("Failed to assign role:", error);
-      showToast("Failed to assign the role. Please try again.", "error");
+      showToast(roleChangeErrorMessage(error), "error");
       setIsAssigning(false);
+      return;
+    }
+
+    if (!updated) {
+      setConfirmUser(null);
+      setIsAssigning(false);
+      showToast(
+        `${user.name} already has a role. The list has been refreshed.`,
+        "error",
+      );
+      onStale();
       return;
     }
 
     let enrollFailed = false;
     if (draft.programId) {
+      const enrollment: ProgramEnrollment = {
+        id: crypto.randomUUID(),
+        program_id: draft.programId,
+        user_id: user.id,
+        status: "enrolled",
+        enrolled_at: new Date().toISOString(),
+        enrolled_by: currentUserId,
+      };
       try {
-        await saveDataToDB("program_enrollment", crypto.randomUUID(), {
-          program_id: draft.programId,
-          user_id: user.id,
-          status: "enrolled",
-          enrolled_by: currentUserId,
+        await saveDataToDB("program_enrollment", enrollment.id, {
+          program_id: enrollment.program_id,
+          user_id: enrollment.user_id,
+          status: enrollment.status,
+          enrolled_by: enrollment.enrolled_by,
         });
+        onEnrolled(enrollment);
       } catch (error) {
         console.error("Failed to enroll new user:", error);
         enrollFailed = true;
       }
     }
 
-    setPendingUsers((prev) => prev.filter((row) => row.id !== user.id));
+    onAssigned(user.id, draft.role);
     setConfirmUser(null);
     setIsAssigning(false);
     if (enrollFailed) {
       showToast(
-        `${user.name} now has the ${roleLabel(draft.role)} role, but enrollment failed. Enroll them from the program's Participants page.`,
+        `${user.name} now has the ${userRoleLabel(draft.role)} role, but enrollment failed. Enroll them from the program's Participants page.`,
         "error",
       );
     } else {
       showToast(
-        `${user.name} now has the ${roleLabel(draft.role)} role.`,
+        `${user.name} now has the ${userRoleLabel(draft.role)} role.`,
         "success",
       );
     }
   };
 
-  if (isLoading) return <LoadingState message="Loading access requests…" />;
-  if (loadError) {
-    return <ErrorState message={loadError} onRetry={() => void load()} />;
-  }
   if (pendingUsers.length === 0) {
     return (
       <EmptyState
@@ -261,11 +421,12 @@ function AccessRequestList({ currentUserId }: { currentUserId: string | null }) 
       <ConfirmModal
         isOpen={confirmUser !== null}
         title="Assign role"
+        icon={UserCheck}
         message={
           confirmUser && confirmDraft ? (
-            <>
+            <p>
               Give <strong>{confirmUser.name}</strong> ({confirmUser.email})
-              the <strong>{roleLabel(confirmDraft.role)}</strong> role
+              the <strong>{userRoleLabel(confirmDraft.role)}</strong> role
               {confirmProgram ? (
                 <>
                   {" "}
@@ -273,7 +434,7 @@ function AccessRequestList({ currentUserId }: { currentUserId: string | null }) 
                 </>
               ) : null}
               ?
-            </>
+            </p>
           ) : null
         }
         confirmLabel="Assign"

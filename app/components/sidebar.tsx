@@ -74,7 +74,7 @@ const navItems: NavItem[] = [
       "group-hover:-translate-y-0.5 transition-transform duration-200",
   },
   {
-    name: "Access Requests",
+    name: "Users & Access",
     href: "/dashboard/access-requests",
     icon: UserPlus,
     animationClass: "group-hover:scale-110 transition-transform duration-200",
