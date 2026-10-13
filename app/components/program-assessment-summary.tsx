@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardCheck, Lock, MessageSquareText, Trash2, Unlock } from "lucide-react";
+import Link from "next/link";
+import {
+  ChevronRight,
+  ClipboardCheck,
+  Lock,
+  MessageSquareText,
+  Trash2,
+  Unlock,
+} from "lucide-react";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
@@ -12,7 +20,7 @@ import {
   type TestSummary,
 } from "@/lib/assessment-summary";
 import { describeDeleteError } from "@/lib/db-errors";
-import type { ProgramType } from "@/lib/routes";
+import { programRoutes, type ProgramType } from "@/lib/routes";
 import {
   getRowsFromDB,
   getUsersFromDB,
@@ -26,14 +34,16 @@ type ProgramAssessmentSummaryProps = {
   programType: ProgramType;
 };
 
-function ScoreCard({
+export function ScoreCard({
   label,
   value,
   suffix,
+  hint,
 }: {
   label: string;
   value: string;
   suffix?: string;
+  hint?: string;
 }) {
   return (
     <div className="bg-[#f2f2f2] border border-slate-300/40 rounded-[20px] p-5">
@@ -46,6 +56,9 @@ function ScoreCard({
           <span className="text-xs font-bold text-slate-400">{suffix}</span>
         ) : null}
       </p>
+      {hint ? (
+        <p className="text-[11px] font-semibold text-slate-400 mt-1">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -184,7 +197,9 @@ function TestSection({
 
 export default function ProgramAssessmentSummary({
   programId,
+  programType,
 }: ProgramAssessmentSummaryProps) {
+  const paths = programRoutes(programType);
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<ProgramAssessmentSummaryData>(() =>
@@ -401,9 +416,14 @@ export default function ProgramAssessmentSummary({
 
           {summary.participants.length > 0 && (
             <section className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3">
-              <h3 className="text-xs font-extrabold text-slate-700">
-                Participant scores
-              </h3>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-xs font-extrabold text-slate-700">
+                  Participant scores
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Select a name to see that person&apos;s answers.
+                </p>
+              </div>
               <div className="overflow-x-auto bg-white/80 border border-slate-200/80 rounded-xl">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -411,6 +431,9 @@ export default function ProgramAssessmentSummary({
                       <th className="px-3 py-2 font-extrabold">Name</th>
                       <th className="px-3 py-2 font-extrabold">Pre</th>
                       <th className="px-3 py-2 font-extrabold">Post</th>
+                      <th className="px-3 py-2 font-extrabold">
+                        <span className="sr-only">Answers</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -420,13 +443,34 @@ export default function ProgramAssessmentSummary({
                         className="border-b border-slate-100 last:border-0"
                       >
                         <td className="px-3 py-2 font-semibold text-slate-700">
-                          {row.name}
+                          <Link
+                            href={paths.assessmentParticipant(
+                              programId,
+                              row.participantId,
+                            )}
+                            className="hover:text-[#2a7797] hover:underline"
+                          >
+                            {row.name}
+                          </Link>
                         </td>
                         <td className="px-3 py-2 tabular-nums font-bold text-[#2a7797]">
                           {row.preScore == null ? "—" : `${row.preScore}%`}
                         </td>
                         <td className="px-3 py-2 tabular-nums font-bold text-[#2a7797]">
                           {row.postScore == null ? "—" : `${row.postScore}%`}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Link
+                            href={paths.assessmentParticipant(
+                              programId,
+                              row.participantId,
+                            )}
+                            aria-label={`View ${row.name}'s answers`}
+                            className="inline-flex items-center gap-0.5 text-[11px] font-bold text-[#2a7797] hover:text-[#1f5a73] whitespace-nowrap"
+                          >
+                            View answers
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </Link>
                         </td>
                       </tr>
                     ))}

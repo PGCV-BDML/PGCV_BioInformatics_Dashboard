@@ -84,6 +84,9 @@ export const routes = {
     onboarding: (id: string) => `/dashboard/training/${id}/onboarding`,
     participants: (id: string) => `/dashboard/training/${id}/participants`,
     assessment: (id: string) => `/dashboard/training/${id}/assessment`,
+    /** One learner's pre/post test answers (staff only). */
+    assessmentParticipant: (id: string, participantId: string) =>
+      `/dashboard/training/${id}/assessment/${encodeURIComponent(participantId)}`,
     evaluation: (id: string) => `/dashboard/training/${id}/evaluation`,
     certificate: (id: string) => `/dashboard/training/${id}/certificate`,
     prep: (id: string) => `/dashboard/training/${id}/prep`,
@@ -94,6 +97,9 @@ export const routes = {
     onboarding: (id: string) => `/dashboard/internship/${id}/onboarding`,
     participants: (id: string) => `/dashboard/internship/${id}/participants`,
     assessment: (id: string) => `/dashboard/internship/${id}/assessment`,
+    /** One learner's pre/post test answers (staff only). */
+    assessmentParticipant: (id: string, participantId: string) =>
+      `/dashboard/internship/${id}/assessment/${encodeURIComponent(participantId)}`,
     evaluation: (id: string) => `/dashboard/internship/${id}/evaluation`,
     certificate: (id: string) => `/dashboard/internship/${id}/certificate`,
   },
