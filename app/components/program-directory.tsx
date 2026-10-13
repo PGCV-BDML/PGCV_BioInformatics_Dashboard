@@ -24,6 +24,7 @@ import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import { seedDefaultTrainingPrepItems } from "@/lib/training-prep-checklist";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
 import type {
+  ProgramEnrollment,
   TrainingProgram,
   TrainingProgramFormData,
   TrainingProgramStatus,
@@ -32,9 +33,22 @@ import type {
   UserOption,
 } from "@/types/database";
 
+/** Same rule as the Participants tab: enrolled or completed, not dropped. */
+function countEnrollmentsByProgram(
+  enrollments: ProgramEnrollment[],
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const e of enrollments) {
+    if (e.status !== "enrolled" && e.status !== "completed") continue;
+    counts.set(e.program_id, (counts.get(e.program_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 function mapProgramCard(
   program: TrainingProgram,
   userNameById: Map<string, string>,
+  enrollmentCounts: Map<string, number>,
 ): ProgramCard {
   return {
     id: program.id,
@@ -47,7 +61,7 @@ function mapProgramCard(
     training_code: program.training_code ?? "",
     start_date: program.start_date ?? "",
     end_date: program.end_date ?? "",
-    participant_count: 0,
+    participant_count: enrollmentCounts.get(program.id) ?? 0,
     status: program.status ?? "ongoing",
   };
 }
@@ -72,6 +86,9 @@ export default function ProgramDirectory({
   const [userNameById, setUserNameById] = useState<Map<string, string>>(
     () => new Map(),
   );
+  const [enrollmentCounts, setEnrollmentCounts] = useState<
+    Map<string, number>
+  >(() => new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -92,8 +109,11 @@ export default function ProgramDirectory({
   const canManage = isStaff && !isLearnerView;
 
   const programsList = useMemo(
-    () => rawPrograms.map((program) => mapProgramCard(program, userNameById)),
-    [rawPrograms, userNameById],
+    () =>
+      rawPrograms.map((program) =>
+        mapProgramCard(program, userNameById, enrollmentCounts),
+      ),
+    [rawPrograms, userNameById, enrollmentCounts],
   );
 
   const directoryTitle = isLearnerView ? `My ${title} Courses` : title;
@@ -111,9 +131,10 @@ export default function ProgramDirectory({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [programs, staff] = await Promise.all([
+        const [programs, staff, enrollments] = await Promise.all([
           getRowsFromDB<TrainingProgram>("training_program"),
           getUsersFromDB<UserType>(["team_lead", "team_member"]),
+          getRowsFromDB<ProgramEnrollment>("program_enrollment"),
         ]);
 
         const filtered = programs.filter((p) => p.type === programType);
@@ -123,6 +144,7 @@ export default function ProgramDirectory({
 
         setRawPrograms(filtered);
         setUserNameById(nameMap);
+        setEnrollmentCounts(countEnrollmentsByProgram(enrollments));
         setInstructors(staff.map((u) => ({ id: u.id, name: u.name })));
       } catch (error) {
         console.error(`Failed to load ${programType} programs:`, error);
@@ -378,6 +400,7 @@ export default function ProgramDirectory({
             type={programType}
             canManage={canManage}
             showStatusFilters={!isLearnerView}
+            showParticipantCount={!isLearnerView}
             onEdit={(prog) => {
               setSelectedProgram(prog);
               setIsAdding(false);

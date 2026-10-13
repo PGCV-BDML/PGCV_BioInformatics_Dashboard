@@ -72,6 +72,8 @@ interface ProgramSearchGridProps {
   canManage?: boolean;
   /** Staff cohort filters (All / Upcoming / Completed). Hidden for trainee/intern. */
   showStatusFilters?: boolean;
+  /** Learners can only read their own enrollment, so hide the count for them. */
+  showParticipantCount?: boolean;
   onEdit?: (program: ProgramCard) => void;
   onMarkDone?: (program: ProgramCard) => void;
   onArchive?: (program: ProgramCard) => void;
@@ -204,6 +206,7 @@ export default function ProgramSearchGrid({
   type,
   canManage = false,
   showStatusFilters = true,
+  showParticipantCount = true,
   onEdit,
   onMarkDone,
   onArchive,
@@ -313,12 +316,14 @@ export default function ProgramSearchGrid({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                      <Users className="w-3.5 h-3.5 text-slate-300" />
-                      <span>
-                        {prog.participant_count} {participantLabel}
-                      </span>
-                    </div>
+                    {showParticipantCount && (
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                        <Users className="w-3.5 h-3.5 text-slate-300" />
+                        <span>
+                          {prog.participant_count} {participantLabel}
+                        </span>
+                      </div>
+                    )}
                     {canManage && (
                       <ProgramCardMenu
                         prog={prog}
