@@ -6,6 +6,7 @@ import {
   Award,
   BarChart3,
   CheckCircle,
+  Lock,
   Send,
 } from "lucide-react";
 import { DataPrivacyNotice } from "@/app/components/data-privacy-notice";
@@ -24,6 +25,7 @@ import {
   type EvaluationAnswerValue,
   type PostActivityQuestion,
 } from "@/lib/evaluation-form";
+import { hasEvaluationAnswers } from "@/lib/evaluation-summary";
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
@@ -34,7 +36,8 @@ import {
   supabase,
 } from "@/lib/supabase";
 import type {
-  Certificate,
+  Assessment,
+  AssessmentResponse,
   EvaluationRatingValue,
   TrainingProgram,
   User,
@@ -50,6 +53,35 @@ type ProgramEvaluationFormProps = {
   programId: string;
   programType: ProgramType;
 };
+
+type EvaluationStatus = {
+  evaluation: Assessment | null;
+  submitted: boolean;
+  user: Awaited<ReturnType<typeof getCurrentUser>>;
+};
+
+// Whether the program's evaluation exists, and whether this learner has
+// already submitted it. A cleared evaluation (answers wiped) doesn't count.
+async function loadEvaluationStatus(
+  programId: string,
+): Promise<EvaluationStatus> {
+  const [evaluation, responses, user] = await Promise.all([
+    ensureProgramEvaluation(programId),
+    getRowsFromDB<AssessmentResponse>("assessment_response"),
+    getCurrentUser(),
+  ]);
+  const submitted = Boolean(
+    evaluation &&
+      user &&
+      responses.some(
+        (row) =>
+          row.assessment_id === evaluation.id &&
+          row.participant_id === user.id &&
+          hasEvaluationAnswers(row.answers),
+      ),
+  );
+  return { evaluation, submitted, user };
+}
 
 function isRequired(question: PostActivityQuestion): boolean {
   return question.required !== false;
@@ -170,28 +202,28 @@ function LearnerEvaluationForm({
   const questions = POST_ACTIVITY_EVALUATION_QUESTIONS;
 
   const [answers, setAnswers] = useState<EvaluationAnswers>({});
-  const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [evaluation, setEvaluation] = useState<Assessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [missingIds, setMissingIds] = useState<string[]>([]);
 
   const isTraining = programType === "training";
-  const submitLabel = isTraining
-    ? "Submit Evaluation & Generate Award Certificate"
-    : "Submit Evaluation & Generate Internship Certificate";
+  const teamLabel = isTraining ? "training team" : "internship team";
+  const isOpen = evaluation ? (evaluation.is_open ?? true) : false;
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
       try {
-        const [programs, authUser, evaluationId] = await Promise.all([
+        const [programs, status] = await Promise.all([
           getRowsFromDB<TrainingProgram>("training_program"),
-          getCurrentUser(),
-          ensureProgramEvaluation(programId),
+          loadEvaluationStatus(programId),
         ]);
+        const authUser = status.user;
 
-        setAssessmentId(evaluationId);
+        setEvaluation(status.evaluation);
+        setIsSubmitted(status.submitted);
 
         const program = programs.find((row) => row.id === programId);
         let profile: Pick<
@@ -257,6 +289,35 @@ function LearnerEvaluationForm({
     );
   };
 
+  const signInExpiredMessage =
+    "Your sign-in has expired. Sign in again in a new tab, then come back here and click Submit Evaluation. Your answers are still on this page.";
+
+  // RLS rejects a submission when the evaluation is closed, was already
+  // submitted, or the session has lapsed. Re-read it so the learner hears which.
+  const explainSubmitFailure = async (error: unknown): Promise<string> => {
+    try {
+      const latest = await loadEvaluationStatus(programId);
+      if (!latest.user) {
+        return signInExpiredMessage;
+      }
+      if (latest.evaluation) setEvaluation(latest.evaluation);
+      setIsSubmitted(latest.submitted);
+      if (latest.submitted) {
+        return "You have already submitted this evaluation. Your earlier answers were kept.";
+      }
+      if (latest.evaluation?.is_open === false) {
+        return `The evaluation has been closed by the ${teamLabel}. Please contact them if you think this is a mistake.`;
+      }
+    } catch (reloadError) {
+      console.error("Failed to re-check the evaluation after submit:", reloadError);
+    }
+    const detail =
+      error && typeof error === "object" && "message" in error
+        ? String(error.message)
+        : "";
+    return `Could not submit${detail ? ` (${detail})` : ""}. Your answers are still here, so please try again.`;
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const missing = missingRequiredAnswers(questions, answers);
@@ -265,55 +326,27 @@ function LearnerEvaluationForm({
       showToast("Please complete all required questions.", "error");
       return;
     }
-    if (!assessmentId) {
-      showToast(
-        "This program does not have an evaluation yet. Ask a team lead to open this page once so it can be set up.",
-        "error",
-      );
-      return;
-    }
+    if (!evaluation) return;
 
     setIsSubmitting(true);
     try {
       const user = await getCurrentUser();
       if (!user) {
-        showToast("You need to be signed in to submit.", "error");
+        showToast(signInExpiredMessage, "error");
         return;
       }
 
       await saveDataToDB("assessment_response", crypto.randomUUID(), {
-        assessment_id: assessmentId,
+        assessment_id: evaluation.id,
         participant_id: user.id,
         answers,
         score: null,
         submitted_at: new Date().toISOString(),
       });
-
-      try {
-        const existingCerts = await getRowsFromDB<Certificate>("certificate");
-        const alreadyHasCert = existingCerts.some(
-          (cert) =>
-            cert.participant_id === user.id && cert.program_id === programId,
-        );
-        if (!alreadyHasCert) {
-          await saveDataToDB("certificate", crypto.randomUUID(), {
-            participant_id: user.id,
-            program_id: programId,
-            issued_at: new Date().toISOString(),
-            pdf_link: null,
-          });
-        }
-      } catch (certError) {
-        console.error(
-          "Certificate creation failed (evaluation still saved):",
-          certError,
-        );
-      }
-
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting evaluation:", error);
-      showToast("Failed to submit evaluation. Please try again.", "error");
+      showToast(await explainSubmitFailure(error), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -549,7 +582,34 @@ function LearnerEvaluationForm({
           <div className="flex items-center justify-center py-16">
             <div className="h-8 w-8 rounded-full border-2 border-[#4ec2bb] border-t-transparent animate-spin" />
           </div>
-        ) : !isSubmitted ? (
+        ) : isSubmitted ? (
+          <div className="bg-[#f2f2f2] border border-slate-300/60 rounded-[24px] p-8 text-center space-y-4 max-w-md mx-auto">
+            <CheckCircle className="w-12 h-12 text-[#4ec2bb] mx-auto" />
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 font-sans">
+                Evaluation Submitted
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Thank you for your feedback. The {teamLabel} will release your
+                {isTraining ? " certificate" : " internship certificate"} once
+                it&apos;s ready.
+              </p>
+            </div>
+          </div>
+        ) : !isOpen ? (
+          <div className="bg-[#f2f2f2] border border-slate-300/60 rounded-[24px] p-8 text-center space-y-4 max-w-md mx-auto">
+            <Lock className="w-10 h-10 text-slate-400 mx-auto" />
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 font-sans">
+                Evaluation Not Open Yet
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                The {teamLabel} will open the evaluation at the end of the
+                program. Please check back then.
+              </p>
+            </div>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             {questionBlocks.map(({ question, showSection }) => (
               <React.Fragment key={question.id}>
@@ -584,6 +644,10 @@ function LearnerEvaluationForm({
 
             <DataPrivacyNotice />
             <p className="text-[11px] text-slate-400">{EVALUATION_DATA_PRIVACY}</p>
+            <p className="text-[11px] font-bold text-slate-500">
+              You can submit the evaluation once, so please check your answers
+              first.
+            </p>
 
             <button
               type="submit"
@@ -595,42 +659,9 @@ function LearnerEvaluationForm({
               }`}
             >
               <Send className="w-3.5 h-3.5" />
-              {isSubmitting ? "Submitting..." : submitLabel}
+              {isSubmitting ? "Submitting..." : "Submit Evaluation"}
             </button>
           </form>
-        ) : (
-          <div className="bg-[#f2f2f2] border border-slate-300/60 rounded-[24px] p-8 text-center space-y-4 max-w-md mx-auto">
-            <CheckCircle className="w-12 h-12 text-[#4ec2bb] mx-auto" />
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 font-sans">
-                Evaluation Submitted
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Your post-activity evaluation has been logged
-                {isTraining
-                  ? ". A certificate record has been added to the registry."
-                  : ". A formal internship certificate has been created."}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Link
-                href={routes.certificate(programId)}
-                className="w-full py-2 bg-[#4ec2bb] text-white font-bold text-xs rounded-xl hover:bg-[#3db0a9] transition-colors shadow-sm text-center block"
-              >
-                Go View Certificate Registry
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSubmitted(false);
-                  setMissingIds([]);
-                }}
-                className="w-full py-2 bg-white text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 border border-slate-200 transition-colors"
-              >
-                Submit New Evaluation Track
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Award, BarChart3, MessageSquareText, Trash2 } from "lucide-react";
+import AssessmentAccessToggle from "@/app/components/assessment-access-toggle";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
@@ -22,8 +23,13 @@ import {
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes } from "@/lib/routes";
 import { describeDeleteError } from "@/lib/db-errors";
-import { getRowsFromDB, getUsersFromDB, supabase } from "@/lib/supabase";
-import type { AssessmentResponse, User } from "@/types/database";
+import {
+  getRowsFromDB,
+  getUsersFromDB,
+  saveDataToDB,
+  supabase,
+} from "@/lib/supabase";
+import type { Assessment, AssessmentResponse, User } from "@/types/database";
 
 type ProgramEvaluationSummaryProps = {
   programId: string;
@@ -146,11 +152,15 @@ export default function ProgramEvaluationSummary({
   const [responseIds, setResponseIds] = useState<string[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [evaluation, setEvaluation] = useState<Assessment | null>(null);
+  const [isSavingAccess, setIsSavingAccess] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const evaluationId = await ensureProgramEvaluation(programId);
+      const programEvaluation = await ensureProgramEvaluation(programId);
+      setEvaluation(programEvaluation);
+      const evaluationId = programEvaluation?.id;
       const [responses, users] = await Promise.all([
         getRowsFromDB<AssessmentResponse>("assessment_response"),
         getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
@@ -180,6 +190,22 @@ export default function ProgramEvaluationSummary({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleToggleAccess = async () => {
+    if (!evaluation) return;
+    const nextOpen = !(evaluation.is_open ?? true);
+    setIsSavingAccess(true);
+    try {
+      await saveDataToDB("assessment", evaluation.id, { is_open: nextOpen });
+      setEvaluation({ ...evaluation, is_open: nextOpen });
+      showToast(`Evaluation ${nextOpen ? "opened" : "closed"}.`, "success");
+    } catch (error) {
+      console.error("Error updating evaluation access:", error);
+      showToast("Failed to update evaluation access.", "error");
+    } finally {
+      setIsSavingAccess(false);
+    }
+  };
 
   const handleClearResponses = async () => {
     if (responseIds.length === 0) return;
@@ -260,9 +286,26 @@ export default function ProgramEvaluationSummary({
           </div>
           <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
             Average ratings exclude N/A. Written comments and suggestions are
-            listed as submitted.
+            listed as submitted. Participants can submit the evaluation once,
+            and only while it is open.
           </p>
         </div>
+
+        {!isLoading && evaluation && (
+          <section className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-700">
+              Evaluation access
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <AssessmentAccessToggle
+                title="Evaluation"
+                assessment={evaluation}
+                isSaving={isSavingAccess}
+                onToggle={() => void handleToggleAccess()}
+              />
+            </div>
+          </section>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -352,8 +395,7 @@ export default function ProgramEvaluationSummary({
           <>
             Remove all {summary.responseCount} submitted evaluation
             {summary.responseCount === 1 ? "" : "s"} for this program? This
-            cannot be undone. Certificates are not deleted — remove a test
-            certificate from the Certificate tab if needed.
+            cannot be undone, and participants will be able to submit again.
           </>
         }
         confirmLabel="Clear responses"
