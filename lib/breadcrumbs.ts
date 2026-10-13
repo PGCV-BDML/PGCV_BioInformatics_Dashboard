@@ -131,5 +131,5 @@ export function protocolDetailBreadcrumbs(title: string): BreadcrumbItem[] {
 
 export const accessRequestsBreadcrumbs: BreadcrumbItem[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Access Requests" },
+  { label: "Users & Access" },
 ];
