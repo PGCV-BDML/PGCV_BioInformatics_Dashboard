@@ -203,18 +203,31 @@ export function hasServiceIcon(id: string): boolean {
 
 /**
  * The service's icon tile. Services added to the content repo without a
- * drawn icon fall back to their two-letter code.
+ * drawn icon fall back to their two-letter code. `large` is the Visual
+ * audience's size, where the icon stands in for the description.
  */
-export function ServiceIcon({ id, code, color, delay = 0 }: { id: string; code: string; color: string; delay?: number }) {
+export function ServiceIcon({
+  id,
+  code,
+  color,
+  delay = 0,
+  large = false,
+}: {
+  id: string;
+  code: string;
+  color: string;
+  delay?: number;
+  large?: boolean;
+}) {
   const Icon = SERVICE_ICONS[id];
   return (
     <span
-      className="flex h-16 w-16 items-center justify-center rounded-2xl"
+      className={`flex items-center justify-center ${large ? "h-32 w-32 rounded-3xl [&_svg]:h-20 [&_svg]:w-20" : "h-16 w-16 rounded-2xl"}`}
       style={{ color, backgroundColor: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}26`, "--base": `${delay}ms` } as CSSProperties}
       aria-hidden="true"
       data-service-icon={Icon ? id : "fallback"}
     >
-      {Icon ? <Icon /> : <span className="text-lg font-black">{code}</span>}
+      {Icon ? <Icon /> : <span className={`font-black ${large ? "text-4xl" : "text-lg"}`}>{code}</span>}
     </span>
   );
 }

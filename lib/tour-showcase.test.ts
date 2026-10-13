@@ -3,13 +3,15 @@ import { AUDIENCES, resolveText } from "@/lib/tour";
 import { DEG_HEATMAP, DEG_SAMPLES, META_SAMPLES, META_TAXA, SHOWCASE_COPY, VOLCANO } from "@/lib/tour-showcase";
 
 describe("tour showcase sample data", () => {
-  it("gives every service its own copy for each audience", () => {
+  it("gives every service its own copy for each audience that reads the captions", () => {
+    // Visual shows no captions.
+    const readers = AUDIENCES.filter((a) => a !== "visual");
     expect(SHOWCASE_COPY.map((c) => c.id)).toEqual(["barcoding", "assembly", "metagenomics", "transcriptomics"]);
     for (const item of SHOWCASE_COPY) {
       const titles = AUDIENCES.map((a) => resolveText(item.title, a));
-      const captions = new Set(AUDIENCES.map((a) => resolveText(item.caption, a)));
+      const captions = new Set(readers.map((a) => resolveText(item.caption, a)));
       expect(titles.every(Boolean)).toBe(true);
-      expect(captions.size).toBe(AUDIENCES.length);
+      expect(captions.size).toBe(readers.length);
     }
   });
 

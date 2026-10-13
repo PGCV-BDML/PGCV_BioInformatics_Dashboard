@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Maximize2, Music, Pause, Play, VolumeX, X } from "lucide-react";
+import { ImageIcon, Maximize2, Music, Pause, Play, VolumeX, X } from "lucide-react";
 import { AUDIENCE_LABELS, AUDIENCES, tourMusicUrl, type Audience, type TourContent } from "@/lib/tour";
 import { JOURNEY_STEPS } from "@/lib/tour-journey";
 import type { TourCovidStats } from "@/lib/tour-stats";
@@ -168,7 +168,8 @@ function AudienceToggle({
           role="radio"
           aria-checked={audience === option}
           onClick={() => onChange(option)}
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${onDark ? "" : "sm:px-3.5 sm:text-sm"} ${
+          // Narrow on phones so four options fit beside the logo.
+          className={`inline-flex items-center gap-1 rounded-full py-1 font-semibold transition-colors ${onDark ? "px-2.5 text-xs" : "px-1.5 text-[11px] sm:px-3.5 sm:text-sm"} ${
             audience === option
               ? onDark
                 ? "bg-white text-[#1c2152]"
@@ -178,6 +179,7 @@ function AudienceToggle({
                 : "text-[#2b3278] hover:bg-[#f0e8f2]"
           }`}
         >
+          {option === "visual" && <ImageIcon className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />}
           {AUDIENCE_LABELS[option]}
         </button>
       ))}
@@ -264,6 +266,8 @@ export function TourExperience({
 
   const startPresenting = () => {
     setPresenting(true);
+    // Visual is for a screen nobody presents from, so it plays by itself.
+    setAutoAdvance(audience === "visual");
     document.documentElement.requestFullscreen?.().catch(() => {
       // Fullscreen refused (iframe, iOS) — presentation layout still applies.
     });
@@ -312,6 +316,12 @@ export function TourExperience({
     });
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [sectionIds]);
+
+  /** Visual turns auto-advance on and the others turn it off; the button still overrides either. */
+  const chooseAudience = (next: Audience) => {
+    setAudience(next);
+    setAutoAdvance(next === "visual");
+  };
 
   const toggleMusic = () => {
     setMusic((on) => {
@@ -443,6 +453,7 @@ export function TourExperience({
   return (
     <div
       data-presenting={presenting || undefined}
+      data-audience={audience}
       className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}
     >
       {/* Present mode is full screen: the slides get the whole height, and the controls move to the bottom bar. */}
@@ -458,7 +469,7 @@ export function TourExperience({
               width={1440}
               height={611}
               priority
-              className="h-10 w-auto shrink-0 md:h-12"
+              className="h-8 w-auto shrink-0 sm:h-10 md:h-12"
             />
             <span className="hidden border-l border-[#2b3278]/15 pl-3 font-quicksand text-[10px] font-bold uppercase leading-tight tracking-[0.12em] whitespace-nowrap text-[#2b3278] sm:block">
               Bioinformatics &amp;
@@ -468,7 +479,7 @@ export function TourExperience({
           </a>
 
           <div className="flex items-center gap-2">
-            {!presenting && <AudienceToggle audience={audience} onChange={setAudience} />}
+            {!presenting && <AudienceToggle audience={audience} onChange={chooseAudience} />}
             <button
               type="button"
               onClick={startPresenting}
@@ -533,7 +544,7 @@ export function TourExperience({
           <div className="relative flex items-center gap-3 overflow-hidden rounded-full bg-[#1c2152]/85 py-1.5 pl-4 pr-1.5 text-white shadow-lg backdrop-blur">
             <HelixProgress labels={sectionIds.map((id) => NAV_LABELS[id])} current={current} onSelect={goTo} />
             <span className="hidden text-xs text-white/70 2xl:inline">← → to navigate · Esc to exit</span>
-            <AudienceToggle audience={audience} onChange={setAudience} onDark />
+            <AudienceToggle audience={audience} onChange={chooseAudience} onDark />
             {musicSrc && (
               <button
                 type="button"
