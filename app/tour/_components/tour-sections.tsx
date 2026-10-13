@@ -177,14 +177,19 @@ export function HeroSection({ content, audience }: SectionProps) {
           </p>
         )}
         {hero.facts.length > 0 && (
-          <dl className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          /*
+            From md up, one row of equal cards as wide as the longest label,
+            so labels stay on one line. Wherever a label does wrap, it wraps
+            evenly and the numbers stay level along the top.
+          */
+          <dl className="mt-12 grid grid-cols-2 gap-3 md:w-fit md:grid-flow-col md:auto-cols-fr md:grid-cols-none md:gap-4">
             {hero.facts.map((fact, i) => (
               <div
                 key={fact.label}
-                className={`flex flex-col-reverse rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 backdrop-blur-sm ${styles.enter}`}
+                className={`flex flex-col-reverse justify-end rounded-2xl border border-white/15 bg-white/[0.08] px-5 py-4 backdrop-blur-sm ${styles.enter}`}
                 style={stagger(i, 400)}
               >
-                <dt className="mt-1 text-sm font-medium text-white/75">{fact.label}</dt>
+                <dt className="mt-1 text-balance text-sm font-medium text-white/75">{fact.label}</dt>
                 {/* No count-up here: the hero must not wait for JavaScript to show its numbers. */}
                 <dd className="text-3xl font-black tracking-tight md:text-4xl">{fact.value}</dd>
               </div>
@@ -241,8 +246,7 @@ export function IntroSection({ audience, index }: { audience: Audience; index: n
   }
   return (
     <LightSection index={index} motif="glyphs">
-      <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-12">
-        <BioinfoVenn className="order-last mx-auto w-full max-w-[34rem] md:order-first group-data-[presenting]/tour:max-h-[62vh]" />
+      <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:gap-12">
         <div>
           <Eyebrow index={index}>Before we begin</Eyebrow>
           <SectionHeading title={INTRO_TITLE} />
@@ -267,16 +271,27 @@ export function IntroSection({ audience, index }: { audience: Audience; index: n
             })}
           </ul>
         </div>
+        <BioinfoVenn className="mx-auto w-full max-w-[34rem] group-data-[presenting]/tour:max-h-[62vh]" />
       </div>
     </LightSection>
   );
 }
 
+function hpcItem(content: TourContent) {
+  return content.infrastructure.items.find((item) => item.id === "hpc" || /\bHPC\b/.test(item.name));
+}
+
 /** The HPC server's specs as one line ("120 cores · 640 GB · 360 TB"), or null without one. */
 function serverSpecs(content: TourContent): string | null {
-  const hpc = content.infrastructure.items.find((item) => item.id === "hpc" || /\bHPC\b/.test(item.name));
+  const hpc = hpcItem(content);
   if (!hpc?.specs.length) return null;
   return hpc.specs.map((spec) => `${spec.value} ${spec.unit}`.trim()).join(" · ");
+}
+
+/** The HPC's storage spec ("360 TB of storage"), or null without one. */
+function storageSpecs(content: TourContent): string | null {
+  const spec = hpcItem(content)?.specs.find((s) => specIcon(s) === HardDrive);
+  return spec ? `${spec.value} ${spec.unit} of ${spec.label}` : null;
 }
 
 export function JourneySection({
@@ -312,6 +327,7 @@ export function JourneySection({
           step={step}
           onStepChange={onStepChange}
           serverSpecs={serverSpecs(content)}
+          storageSpecs={storageSpecs(content)}
         />
       </div>
     </LightSection>

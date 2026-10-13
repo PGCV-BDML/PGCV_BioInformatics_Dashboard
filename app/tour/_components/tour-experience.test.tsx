@@ -270,9 +270,11 @@ describe("TourExperience", () => {
     press("ArrowRight");
     press("ArrowRight");
     press("ArrowRight");
+    press("ArrowRight");
     expect(onSlide("Sample to sequence")).toBe(true);
-    expect(scene()).toBe(3);
-    // The server step names the HPC specs from the content.
+    expect(scene()).toBe(4);
+    // The storage and server steps name the HPC specs from the content.
+    expect(screen.getByText("360 TB of storage")).toBeInTheDocument();
     expect(screen.getByText("120 cores · 640 GB · 360 TB")).toBeInTheDocument();
 
     press("ArrowRight");
@@ -281,7 +283,8 @@ describe("TourExperience", () => {
     // Coming back lands on the last scene, then steps back through them.
     press("ArrowLeft");
     expect(onSlide("Sample to sequence")).toBe(true);
-    expect(scene()).toBe(3);
+    expect(scene()).toBe(4);
+    press("ArrowLeft");
     press("ArrowLeft");
     press("ArrowLeft");
     press("ArrowLeft");
@@ -291,10 +294,10 @@ describe("TourExperience", () => {
 
     // A step clicked while presenting is where the keys carry on from.
     press("ArrowRight");
-    await userEvent.click(screen.getByRole("button", { name: "Step 3: Server" }));
-    expect(scene()).toBe(2);
-    press("ArrowRight");
+    await userEvent.click(screen.getByRole("button", { name: "Step 4: Analysis" }));
     expect(scene()).toBe(3);
+    press("ArrowRight");
+    expect(scene()).toBe(4);
 
     // With auto-advance on, the scenes play by themselves and the keys move whole slides.
     await userEvent.click(screen.getByRole("button", { name: "Auto-advance" }));

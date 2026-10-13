@@ -6,7 +6,7 @@
 
 import type { TourText } from "@/lib/tour";
 
-export const JOURNEY_STEP_IDS = ["sample", "sequencer", "server", "results"] as const;
+export const JOURNEY_STEP_IDS = ["sample", "sequencer", "storage", "server", "results"] as const;
 export type JourneyStepId = (typeof JOURNEY_STEP_IDS)[number];
 
 export type JourneyStep = {
@@ -23,11 +23,17 @@ export const JOURNEY_INTRO: TourText = {
   general: "What happens to a sample between the day it arrives and the day we send back results.",
   students: "How do you read DNA? Follow one sample from a tube to an answer.",
   technical:
-    "From specimen to result: extraction, library preparation, sequencing by synthesis, then analysis on our HPC server.",
+    "From specimen to result: extraction, library preparation, sequencing by synthesis, automatic transfer to storage, then analysis on our HPC server.",
 };
 
 /** The machines named under the sequencing step. */
 export const JOURNEY_SEQUENCERS = "Illumina NextSeq 1000 · iSeq 100";
+
+/**
+ * The address typed on the laptop in the analysis scene. Made up on purpose:
+ * the tour is public, so it never shows the HPC server's real address.
+ */
+export const JOURNEY_HPC_ADDRESS = "10.0.0.25";
 
 export const JOURNEY_STEPS: JourneyStep[] = [
   {
@@ -56,14 +62,28 @@ export const JOURNEY_STEPS: JourneyStep[] = [
     now: { general: "Millions of short reads", technical: "FASTQ files: millions of reads with quality scores" },
   },
   {
-    id: "server",
-    name: "Server",
+    id: "storage",
+    name: "Storage",
     text: {
-      general: "Our HPC server lines up the overlapping reads and rebuilds the full sequence, in hours instead of weeks.",
+      general:
+        "When a run finishes, the sequencer sends its files over the lab network straight to our storage server. Nobody has to carry them on a flash drive.",
       students:
-        "The pieces overlap, like a jigsaw. Our HPC server finds where each one fits and rebuilds the whole sequence.",
+        "The sequencer doesn't keep the data. As soon as it finishes, it sends the files down a cable to a giant storage server, all by itself.",
       technical:
-        "Reads are quality-checked and trimmed, then mapped to a reference or assembled de novo on our HPC server.",
+        "At the end of each run, the output is copied automatically over the lab network to the storage server, with no portable drives in between.",
+    },
+    now: { general: "The reads, saved safely", technical: "Run output on the storage server" },
+  },
+  {
+    id: "server",
+    name: "Analysis",
+    text: {
+      general:
+        "From our own laptops, we log in to the HPC server by typing its network (IP) address. It lines up the overlapping reads and rebuilds the full sequence, in hours instead of weeks.",
+      students:
+        "We don't sit at the supercomputer. We connect to it from our laptops by typing its address, then it fits the overlapping pieces together like a jigsaw.",
+      technical:
+        "Analysts connect to the HPC server over SSH from their own machines. Reads are quality-checked and trimmed, then mapped to a reference or assembled de novo.",
     },
     now: { general: "One full sequence, or a genome", technical: "Alignments, assemblies and variant calls" },
   },

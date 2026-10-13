@@ -1,16 +1,16 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { resolveText, type Audience } from "@/lib/tour";
-import { JOURNEY_SEQUENCERS, JOURNEY_STEPS, type JourneyStepId } from "@/lib/tour-journey";
+import { JOURNEY_HPC_ADDRESS, JOURNEY_SEQUENCERS, JOURNEY_STEPS, type JourneyStepId } from "@/lib/tour-journey";
 import { BRAND, CARD, LOGO, SERVICE_HEX } from "./brand";
 import styles from "./tour-motion.module.css";
 
 /*
  * The "From sample to sequence" stage: one scene per step (sample, sequencer,
- * server, results), drawn on a 560×340 grid. Scenes play on a timer, or step
+ * storage, server, results), drawn on a 560×340 grid. Scenes play on a timer, or step
  * with the arrow keys while presenting (tour-experience passes `step`).
  */
 
-/** How long each scene plays on its own: the four together fill the tour's 20 s auto-advance. */
+/** How long each scene plays on its own; with auto-advance on, the slide stays up for all of them. */
 export const JOURNEY_SCENE_MS = 5_000;
 
 /** One sequencing round on the flow cell. */
@@ -152,7 +152,89 @@ function SequencerScene({ running }: { running: boolean }) {
   );
 }
 
-// --- Server: overlapping reads lined up into one sequence ------------------------
+// --- Storage: the sequencer sends its files to the storage server by itself ------
+
+/** Files on the cable, a beat apart. */
+const PACKET_DELAYS = [600, 1200, 1800];
+/** How full each drive gets as the files land. */
+const DRIVE_FILL = [76, 70, 76, 58, 66, 34];
+
+function FileIcon() {
+  return (
+    <>
+      <path d="M0 3a3 3 0 0 1 3-3h11l6 6v17a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z" fill="#ffffff" stroke={NAVY} strokeWidth={2} />
+      <path d="M5 11h10M5 16h10M5 21h6" stroke={BRAND.teal} strokeWidth={2} />
+    </>
+  );
+}
+
+function StorageScene() {
+  return (
+    <>
+      <g className={styles.fadeIn}>
+        <rect x={24} y={104} width={150} height={128} rx={16} fill="#ffffff" stroke={NAVY} strokeWidth={3} />
+        <rect x={40} y={120} width={84} height={52} rx={7} fill={NIGHT} />
+        <circle cx={58} cy={146} r={9} fill={BRAND.teal} />
+        <path d="M53.5 146.5l3 3 6-6.5" stroke={NIGHT} strokeWidth={2.2} />
+        <text x={74} y={143} fontSize={10} fontWeight={700} fill="#ffffff">
+          Run
+        </text>
+        <text x={74} y={156} fontSize={10} fontWeight={700} fill="#ffffff">
+          done
+        </text>
+        <circle cx={154} cy={132} r={5} fill={BRAND.teal} className={styles.ledBlink} />
+        <rect x={40} y={192} width={118} height={12} rx={6} fill="#f7f6fa" stroke={NAVY} strokeWidth={1.5} />
+      </g>
+      <text x={99} y={258} textAnchor="middle" fontSize={13} fontWeight={800} fill={NAVY}>
+        Sequencer
+      </text>
+
+      <text x={286} y={146} textAnchor="middle" fontSize={11} fontWeight={700} letterSpacing={1.6} fill={MUTED}>
+        LAB NETWORK
+      </text>
+      <path d="M174 168H394" stroke={NAVY} strokeOpacity={0.2} strokeWidth={6} pathLength={1} className={styles.draw} style={d(200)} />
+      <path d="M382 158l10 10-10 10" stroke={MUTED} strokeWidth={2.5} />
+      {PACKET_DELAYS.map((ms) => (
+        <g key={ms} className={styles.travel} style={{ ...d(ms), "--dx": "176px" } as CSSProperties}>
+          <g transform="translate(186 155)">
+            <FileIcon />
+          </g>
+        </g>
+      ))}
+      <rect x={240} y={184} width={92} height={24} rx={12} fill={BRAND.teal} fillOpacity={0.15} />
+      <text x={286} y={200} textAnchor="middle" fontSize={12} fontWeight={700} fill={BRAND.tealInk}>
+        Automatic
+      </text>
+
+      <g className={styles.fadeIn} style={d(150)}>
+        <rect x={404} y={66} width={128} height={182} rx={12} fill="#ffffff" stroke={NAVY} strokeWidth={3} />
+        {DRIVE_FILL.map((width, i) => (
+          <g key={i}>
+            <rect x={416} y={80 + i * 27} width={104} height={19} rx={4} fill="#f7f6fa" stroke={NAVY} strokeWidth={1.5} />
+            <circle cx={426} cy={89.5 + i * 27} r={3} fill={BRAND.teal} className={styles.ledBlink} style={d(i * 200)} />
+            {/* Each drive fills up as the files land. */}
+            <rect
+              x={436}
+              y={85 + i * 27}
+              width={width}
+              height={9}
+              rx={2}
+              fill={BRAND.teal}
+              fillOpacity={0.55}
+              className={styles.growX}
+              style={{ ...d(1000 + i * 300), transformBox: "fill-box" }}
+            />
+          </g>
+        ))}
+      </g>
+      <text x={468} y={272} textAnchor="middle" fontSize={13} fontWeight={800} fill={NAVY}>
+        Storage server
+      </text>
+    </>
+  );
+}
+
+// --- Server: a laptop logs in, and overlapping reads are lined up into one sequence
 
 const CONSENSUS = "ACGTTAGCCTAGGATCCA";
 /** Reads as [start in CONSENSUS, length]; each overlaps the next. */
@@ -189,9 +271,32 @@ function BaseCell({ base, x, y, rebuilt }: { base: Base; x: number; y: number; r
 function ServerScene() {
   return (
     <>
-      <g transform="translate(10 90)" className={styles.fadeIn}>
-        <rect x={4} y={4} width={82} height={142} rx={10} fill="#ffffff" stroke={NAVY} strokeWidth={3} />
-        {[0, 1, 2, 3].map((unit) => (
+      {/* A laptop logs in to the server by its address, typed out under a shrinking cover. */}
+      <g className={styles.fadeIn}>
+        <rect x={10} y={30} width={124} height={80} rx={8} fill={NIGHT} stroke={NAVY} strokeWidth={3} />
+        <path d="M2 114h140l-6 8H8Z" fill={NAVY} />
+        <text x={18} y={57} fontFamily={MONO} fontSize={11} fill="#ffffff">
+          <tspan fill={BRAND.teal}>$</tspan> ssh {JOURNEY_HPC_ADDRESS}
+        </text>
+        <rect x={30} y={44} width={100} height={17} fill={NIGHT} className={styles.wipe} style={d(300)} />
+        <text x={18} y={80} fontFamily={MONO} fontSize={11} fontWeight={700} fill={BRAND.teal} className={styles.fadeIn} style={d(1300)}>
+          connected
+        </text>
+      </g>
+      <text x={72} y={140} textAnchor="middle" fontSize={12} fontWeight={600} fill={MUTED}>
+        Our laptop
+      </text>
+      <path d="M72 148V176" stroke={BRAND.teal} strokeWidth={3} pathLength={1} className={styles.draw} style={d(1100)} />
+      {/* What the laptop typed, named for visitors who don't read terminals. */}
+      <g className={styles.fadeIn} style={d(1300)}>
+        <rect x={84} y={152} width={80} height={20} rx={10} fill={BRAND.teal} fillOpacity={0.15} />
+        <text x={124} y={166} textAnchor="middle" fontSize={11} fontWeight={700} fill={BRAND.tealInk}>
+          IP address
+        </text>
+      </g>
+      <g transform="translate(27 176)" className={styles.fadeIn} style={d(500)}>
+        <rect x={4} y={4} width={82} height={110} rx={10} fill="#ffffff" stroke={NAVY} strokeWidth={3} />
+        {[0, 1, 2].map((unit) => (
           <g key={unit}>
             <rect x={14} y={16 + unit * 32} width={62} height={24} rx={4} fill="#f7f6fa" stroke={NAVY} strokeWidth={2} />
             <circle cx={24} cy={28 + unit * 32} r={3.5} fill={BRAND.teal} className={styles.ledBlink} style={d(unit * 300)} />
@@ -199,15 +304,15 @@ function ServerScene() {
           </g>
         ))}
       </g>
-      <text x={55} y={262} textAnchor="middle" fontSize={13} fontWeight={800} fill={NAVY}>
+      <text x={72} y={312} textAnchor="middle" fontSize={13} fontWeight={800} fill={NAVY}>
         HPC server
       </text>
-      <path d="M114 170H140M133 163l7 7-7 7" stroke={MUTED} strokeWidth={2.5} />
+      <path d="M120 200H142M135 193l7 7-7 7" stroke={MUTED} strokeWidth={2.5} />
       <text x={150} y={66} fontSize={11} fontWeight={700} letterSpacing={1.6} fill={MUTED}>
         OVERLAPPING READS
       </text>
       {READS.map(([start, length], row) => (
-        <g key={start} className={styles.slideLeft} style={d(150 + row * 160)}>
+        <g key={start} className={styles.slideLeft} style={d(1500 + row * 140)}>
           {bases(CONSENSUS.slice(start, start + length)).map((base, i) => (
             <BaseCell key={i} base={base} x={150 + (start + i) * PITCH} y={78 + row * 27} />
           ))}
@@ -217,7 +322,7 @@ function ServerScene() {
         REBUILT SEQUENCE
       </text>
       {bases(CONSENSUS).map((base, i) => (
-        <g key={i} className={styles.pop} style={d(1100 + i * 45)}>
+        <g key={i} className={styles.pop} style={d(2300 + i * 40)}>
           <BaseCell base={base} x={150 + i * PITCH} y={246} rebuilt />
         </g>
       ))}
@@ -302,6 +407,8 @@ function SceneArt({ id, running }: { id: JourneyStepId; running: boolean }) {
       return <SampleScene />;
     case "sequencer":
       return <SequencerScene running={running} />;
+    case "storage":
+      return <StorageScene />;
     case "server":
       return <ServerScene />;
     case "results":
@@ -317,6 +424,7 @@ export function SampleJourney({
   step,
   onStepChange,
   serverSpecs,
+  storageSpecs = null,
 }: {
   audience: Audience;
   /** Whether this slide is the one on screen. Scenes only play then, from the first each time. */
@@ -326,6 +434,8 @@ export function SampleJourney({
   onStepChange: (step: number) => void;
   /** The HPC server's specs, shown under the server step. */
   serverSpecs: string | null;
+  /** The storage server's capacity, shown under the storage step. */
+  storageSpecs?: string | null;
 }) {
   // `run` counts each timed showing of a scene; `held` is set once the visitor picks a step themselves.
   const [auto, setAuto] = useState({ scene: 0, run: 0, held: false });
@@ -351,7 +461,11 @@ export function SampleJourney({
     if (step === null) setAuto((a) => ({ scene: index, run: a.run + 1, held: true }));
     else onStepChange(index);
   };
-  const notes: Partial<Record<JourneyStepId, string | null>> = { sequencer: JOURNEY_SEQUENCERS, server: serverSpecs };
+  const notes: Partial<Record<JourneyStepId, string | null>> = {
+    sequencer: JOURNEY_SEQUENCERS,
+    storage: storageSpecs,
+    server: serverSpecs,
+  };
   // Visual lets the scenes tell it: a wider stage and no step description.
   const visual = audience === "visual";
 
@@ -406,7 +520,8 @@ export function SampleJourney({
         </div>
       </div>
 
-      <ol className="mt-5 grid grid-cols-4 gap-2 sm:gap-4">
+      {/* Five names to a row on a phone: tight gaps, and a long name hyphenates on the narrowest screens. */}
+      <ol className="mt-5 grid gap-1 sm:gap-4" style={{ gridTemplateColumns: `repeat(${JOURNEY_STEPS.length}, minmax(0, 1fr))` }}>
         {JOURNEY_STEPS.map((item, i) => (
           <li key={item.id}>
             <button
@@ -428,7 +543,7 @@ export function SampleJourney({
                 >
                   {i + 1}
                 </span>
-                <span className={`text-xs font-bold sm:text-sm ${i <= scene ? "text-[#2b3278]" : "text-[#5b6770]"}`}>{item.name}</span>
+                <span className={`hyphens-auto text-[11px] font-bold sm:text-sm ${i <= scene ? "text-[#2b3278]" : "text-[#5b6770]"}`}>{item.name}</span>
               </span>
               <span className="block h-1.5 overflow-hidden rounded-full bg-[#2b3278]/10">
                 <span

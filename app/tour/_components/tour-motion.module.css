@@ -39,10 +39,25 @@
   transform-origin: center;
 }
 
-/* Sample-to-sequence slide: the camera flash and the ring round "your sample" only show animated. */
+/*
+ * Sample-to-sequence slide: the camera flash, the ring round "your sample",
+ * the files on the network cable and the cover that types out the address
+ * only show animated.
+ */
 .snap,
-.pulse {
+.pulse,
+.travel,
+.wipe {
   opacity: 0;
+}
+
+.travel,
+.wipe {
+  transform-box: fill-box;
+}
+
+.wipe {
+  transform-origin: right;
 }
 
 .rise,
@@ -153,6 +168,18 @@
     animation: tour-pulse 1.8s ease-out infinite;
   }
 
+  /* Files ride the cable from the sequencer to the storage server, one after another. */
+  .travel {
+    animation: tour-travel 1.8s linear infinite;
+    animation-delay: var(--d, 0ms);
+  }
+
+  /* A cover over the laptop's command shrinks a letter at a time, as if typed. */
+  .wipe {
+    animation: tour-wipe 0.9s steps(15) both;
+    animation-delay: var(--d, 0ms);
+  }
+
   /* Hover loops: only while the card is pointed at, snapping back on leave. */
   .hoverable:hover .bob {
     animation: tour-bob 1.6s ease-in-out infinite;
@@ -182,11 +209,11 @@
 }
 
 @media (scripting: enabled) {
-  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
+  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
     animation-play-state: paused;
   }
 
-  [data-reveal="reset"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
+  [data-reveal="reset"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
     animation: none;
   }
 }
@@ -345,6 +372,32 @@
   }
   to {
     opacity: 0;
+  }
+}
+
+@keyframes tour-travel {
+  from {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(var(--dx, 0px));
+  }
+}
+
+@keyframes tour-wipe {
+  from {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(0);
   }
 }
 
