@@ -78,7 +78,7 @@ export function latestResponsesByParticipant(
   return [...latest.values()];
 }
 
-function hasAnswerPayload(
+export function hasAnswerPayload(
   answers: Record<string, unknown> | null | undefined,
 ): boolean {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) {

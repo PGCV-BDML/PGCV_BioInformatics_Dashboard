@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -130,10 +130,18 @@ export default function ProgramWorkspaceLayout({
   }, [program, programType, isLearnerView, isTraining]);
 
   const tabCount = workspaceTabs.length || 1;
+  // Sub-pages (e.g. one trainee's test answers) keep their parent tab active.
+  // Modules is the program's base path, so it only matches exactly.
+  const isTabActive = useCallback(
+    (tab: { id: string; href: string }) =>
+      pathname === tab.href ||
+      (tab.id !== "modules" && pathname.startsWith(`${tab.href}/`)),
+    [pathname],
+  );
   const activeIndex = useMemo(() => {
-    const index = workspaceTabs.findIndex((tab) => pathname === tab.href);
+    const index = workspaceTabs.findIndex(isTabActive);
     return index !== -1 ? index : 0;
-  }, [pathname, workspaceTabs]);
+  }, [isTabActive, workspaceTabs]);
 
   if (!program) {
     return (
@@ -235,7 +243,7 @@ export default function ProgramWorkspaceLayout({
 
           {workspaceTabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = pathname === tab.href;
+            const isActive = isTabActive(tab);
             return (
               <Link
                 key={tab.id}
