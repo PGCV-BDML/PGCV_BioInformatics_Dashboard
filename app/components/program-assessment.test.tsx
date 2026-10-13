@@ -205,4 +205,120 @@ describe("ProgramAssessment", () => {
       screen.queryByRole("button", { name: "Start Pre-Test" }),
     ).not.toBeInTheDocument();
   });
+
+  describe("when the submission is rejected", () => {
+    // First load shows an open, unsubmitted pre-test; the re-check after the
+    // failed submit sees `afterFailure`.
+    function mockStateChange(afterFailure: {
+      isOpen?: boolean;
+      submitted?: boolean;
+    }) {
+      let assessmentLoads = 0;
+      vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
+        if (table === "assessment") {
+          assessmentLoads += 1;
+          return [
+            {
+              id: "pre-id",
+              program_id: "prog-1",
+              type: "pre_test",
+              is_open: assessmentLoads === 1 ? true : (afterFailure.isOpen ?? true),
+              questions: SIXTEEN_S_PRE_QUESTIONS,
+            },
+          ] as never;
+        }
+        return (
+          assessmentLoads > 1 && afterFailure.submitted
+            ? [
+                {
+                  id: "resp-1",
+                  assessment_id: "pre-id",
+                  participant_id: "user-1",
+                  answers: {},
+                  score: 30,
+                  submitted_at: "2026-10-12T00:00:00Z",
+                },
+              ]
+            : []
+        ) as never;
+      });
+    }
+
+    async function submitPreTest() {
+      const user = userEvent.setup();
+      render(<ProgramAssessment programId="prog-1" programType="training" />);
+      await user.click(await screen.findByRole("button", { name: "Start Pre-Test" }));
+      await user.click(screen.getByRole("button", { name: "Review Answers" }));
+      await user.click(screen.getByRole("button", { name: "Submit Final Answers" }));
+    }
+
+    beforeEach(() => {
+      vi.mocked(saveDataToDB).mockRejectedValue({
+        message: "new row violates row-level security policy",
+      });
+    });
+
+    it("says the test was already submitted and shows it as submitted", async () => {
+      mockStateChange({ submitted: true });
+      await submitPreTest();
+
+      await waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringMatching(/already submitted this test/),
+          "error",
+        );
+      });
+      expect(screen.getByText(/Submitted · Score 30%/)).toBeInTheDocument();
+    });
+
+    it("says the test was closed and shows it as not open", async () => {
+      mockStateChange({ isOpen: false });
+      await submitPreTest();
+
+      await waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringMatching(/closed by the training team/),
+          "error",
+        );
+      });
+      expect(screen.getByText("Not open yet")).toBeInTheDocument();
+    });
+
+    it("says the session expired when the learner is signed out", async () => {
+      mockStateChange({});
+      const learner = { id: "user-1", name: "Ada", role: "trainee" } as never;
+      vi.mocked(getCurrentUser)
+        .mockResolvedValueOnce(learner) // initial load
+        .mockResolvedValueOnce(learner) // submit
+        .mockResolvedValue(null); // re-check after the failed submit
+      await submitPreTest();
+
+      await waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringMatching(/sign-in has expired/),
+          "error",
+        );
+      });
+      expect(
+        screen.getByRole("button", { name: "Submit Final Answers" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the error and keeps the answers for anything else", async () => {
+      mockStateChange({});
+      await submitPreTest();
+
+      await waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringMatching(
+            /Could not submit \(new row violates row-level security policy\)/,
+          ),
+          "error",
+        );
+      });
+      expect(
+        screen.getByRole("button", { name: "Submit Final Answers" }),
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Award,
@@ -95,36 +95,70 @@ function LearnerAssessmentForm({
     post: false,
   });
 
+  const loadTests = useCallback(async () => {
+    const [assessments, responses, user] = await Promise.all([
+      getRowsFromDB<Assessment>("assessment"),
+      getRowsFromDB<AssessmentResponse>("assessment_response"),
+      getCurrentUser(),
+    ]);
+    const programAssessments = assessments.filter(
+      (row) => row.program_id === programId,
+    );
+    const pre = programAssessments.find((row) => row.type === "pre_test");
+    const post = programAssessments.find((row) => row.type === "post_test");
+    const mine = responses.filter((row) => row.participant_id === user?.id);
+    setPreTestQuestions(pre?.questions ?? []);
+    setPostTestQuestions(post?.questions ?? []);
+    setAssessmentIds({ pre: pre?.id, post: post?.id });
+    setOpenTests({
+      pre: pre?.is_open ?? true,
+      post: post?.is_open ?? true,
+    });
+    setExistingResponses(mine);
+    return { pre, post, mine, user };
+  }, [programId]);
+
   useEffect(() => {
     const load = async () => {
       try {
-        const [assessments, responses, user] = await Promise.all([
-          getRowsFromDB<Assessment>("assessment"),
-          getRowsFromDB<AssessmentResponse>("assessment_response"),
-          getCurrentUser(),
-        ]);
-        const programAssessments = assessments.filter(
-          (row) => row.program_id === programId,
-        );
-        const pre = programAssessments.find((row) => row.type === "pre_test");
-        const post = programAssessments.find((row) => row.type === "post_test");
-        setPreTestQuestions(pre?.questions ?? []);
-        setPostTestQuestions(post?.questions ?? []);
-        setAssessmentIds({ pre: pre?.id, post: post?.id });
-        setOpenTests({
-          pre: pre?.is_open ?? true,
-          post: post?.is_open ?? true,
-        });
-        setExistingResponses(
-          responses.filter((row) => row.participant_id === user?.id),
-        );
+        await loadTests();
       } catch (error) {
         console.error("Failed to load assessment data:", error);
         showToast("Failed to load the tests.", "error");
       }
     };
     void load();
-  }, [programId, showToast]);
+  }, [loadTests, showToast]);
+
+  // RLS rejects a submission when the test is closed, was already submitted,
+  // or the session has lapsed. Re-read the test so the learner hears which.
+  const explainSubmitFailure = async (
+    type: TestKind,
+    error: unknown,
+  ): Promise<string> => {
+    try {
+      const latest = await loadTests();
+      const test = type === "pre" ? latest.pre : latest.post;
+      if (!latest.user) {
+        return "Your sign-in has expired. Sign in again in a new tab, then come back here and click Submit Final Answers. Your answers are still on this page.";
+      }
+      if (test && latest.mine.some((row) => row.assessment_id === test.id)) {
+        setActiveTest(null);
+        return "You have already submitted this test. Your earlier answers were kept.";
+      }
+      if (test && test.is_open === false) {
+        setActiveTest(null);
+        return "This test has been closed by the training team. Please contact them if you think this is a mistake.";
+      }
+    } catch (reloadError) {
+      console.error("Failed to re-check the test after submit:", reloadError);
+    }
+    const detail =
+      error && typeof error === "object" && "message" in error
+        ? String(error.message)
+        : "";
+    return `Could not submit${detail ? ` (${detail})` : ""}. Your answers are still here, so please try again.`;
+  };
 
   const submittedResponse = (type: TestKind) => {
     const assessmentId = type === "pre" ? assessmentIds.pre : assessmentIds.post;
@@ -390,10 +424,7 @@ function LearnerAssessmentForm({
       ]);
     } catch (error) {
       console.error("Assessment submission failed:", error);
-      showToast(
-        "Failed to submit. The test may be closed or already submitted.",
-        "error",
-      );
+      showToast(await explainSubmitFailure(activeTest, error), "error");
     } finally {
       setIsSubmitting(false);
     }
