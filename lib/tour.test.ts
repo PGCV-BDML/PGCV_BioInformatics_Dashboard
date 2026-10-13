@@ -131,6 +131,8 @@ describe("resolveText", () => {
     expect(resolveText(text, "students")).toBe("Students");
     expect(resolveText(text, "technical")).toBe("General");
     expect(resolveText("Plain", "technical")).toBe("Plain");
+    expect(resolveText(text, "visual")).toBe("General");
+    expect(resolveText({ general: "General", visual: "Short" }, "visual")).toBe("Short");
   });
 });
 

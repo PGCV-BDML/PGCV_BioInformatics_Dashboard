@@ -107,7 +107,8 @@ function ProjectPhoto({ project }: { project: TourProject }) {
   );
 }
 
-function StepTimeline({ steps }: { steps: TourProjectStep[] }) {
+/** `brief` leaves out each step's note, keeping its icon and label. */
+function StepTimeline({ steps, brief = false }: { steps: TourProjectStep[]; brief?: boolean }) {
   // The teal line runs from the first step to the last one that is done or underway.
   const reached = steps.reduce((last, step, i) => (step.state === "next" ? last : i), 0);
   const fill = steps.length > 1 ? reached / (steps.length - 1) : 0;
@@ -146,7 +147,7 @@ function StepTimeline({ steps }: { steps: TourProjectStep[] }) {
               </span>
               <span className="text-xs leading-snug text-[#5b6770]">
                 <span className="block text-[13px] font-bold text-[#2b3278]">{step.label}</span>
-                {step.note}
+                {!brief && step.note}
                 <span className="sr-only">
                   {step.state === "done" ? " (done)" : step.state === "now" ? " (in progress)" : " (coming next)"}
                 </span>
@@ -161,6 +162,8 @@ function StepTimeline({ steps }: { steps: TourProjectStep[] }) {
 
 /** The first project, shown large: photo, story, numbers, timeline and citation. */
 export function FeaturedProject({ project, audience }: { project: TourProject; audience: Audience }) {
+  // Visual: photo, title, big numbers and the timeline's labels; no story, notes or partners.
+  const visual = audience === "visual";
   const hasPhotoPanel =
     Boolean(tourAssetUrl(project.image)) || Boolean(project.conservation) || Boolean(project.range) || project.facts.length > 0;
   return (
@@ -186,10 +189,10 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
               {project.commonName && <span className="not-italic text-[15px] text-[#5b6770]"> · {project.commonName}</span>}
             </p>
           )}
-          <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+          {!visual && <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(project.summary, audience)}</p>}
 
           {project.highlights.length > 0 && (
-            <dl className="mt-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <dl className={`mt-7 grid grid-cols-2 gap-3 ${visual ? "" : "xl:grid-cols-4"}`}>
               {project.highlights.map((h, i) => (
                 <div
                   key={h.label || i}
@@ -198,7 +201,7 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
                 >
                   <dt className="mt-0.5 text-xs font-medium text-[#5b6770]">{h.label}</dt>
                   <dd className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black tracking-tight text-[#2b3278] tabular-nums">
+                    <span className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-4xl" : "text-2xl"}`}>
                       <CountUp value={h.value} />
                     </span>
                     {h.unit && <span className="text-sm font-bold text-[#5b6770]">{h.unit}</span>}
@@ -213,8 +216,8 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
           {project.steps.length > 0 && (
             <div className="mt-8 group-data-[presenting]/tour:mt-1!">
               <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">From sample to genome</p>
-              <StepTimeline steps={project.steps} />
-              {project.next && (
+              <StepTimeline steps={project.steps} brief={visual} />
+              {project.next && !visual && (
                 <p className="mt-4 text-sm text-[#5b6770]">
                   <span className="font-bold text-[#0a7558]">What&rsquo;s next: </span>
                   {resolveText(project.next, audience)}
@@ -225,7 +228,7 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
 
           {(project.partners.length > 0 || project.citation) && (
             <div className="mt-auto pt-7">
-              {project.partners.length > 0 && (
+              {project.partners.length > 0 && !visual && (
                 <div className="flex flex-wrap items-center gap-2 border-t border-[#2b3278]/10 pt-5">
                   <span className="mr-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#5b6770]">
                     In partnership with
@@ -254,8 +257,12 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
                       {project.citation.text}
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </a>
-                    <span className="block break-all">{project.citation.url.replace(/^https?:\/\//, "")}</span>
-                    {project.citation.note && <span className="block">{project.citation.note}</span>}
+                    {!visual && (
+                      <>
+                        <span className="block break-all">{project.citation.url.replace(/^https?:\/\//, "")}</span>
+                        {project.citation.note && <span className="block">{project.citation.note}</span>}
+                      </>
+                    )}
                   </p>
                 </div>
               )}

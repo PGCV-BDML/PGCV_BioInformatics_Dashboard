@@ -352,10 +352,14 @@ export function SampleJourney({
     else onStepChange(index);
   };
   const notes: Partial<Record<JourneyStepId, string | null>> = { sequencer: JOURNEY_SEQUENCERS, server: serverSpecs };
+  // Visual lets the scenes tell it: a wider stage and no step description.
+  const visual = audience === "visual";
 
   return (
     <div className={`${CARD} p-4 sm:p-6`}>
-      <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:gap-10">
+      <div
+        className={`grid items-center gap-6 md:gap-10 ${visual ? "md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]"}`}
+      >
         <div className="overflow-hidden rounded-2xl bg-[#f0e8f2]">
           {/* Remounted per scene, so each one's entrance plays when it comes up. */}
           <svg
@@ -386,9 +390,11 @@ export function SampleJourney({
                 <h3 className={`text-3xl font-black tracking-tight text-[#2b3278] md:text-4xl ${styles.enter}`} style={d(80)}>
                   {item.name}
                 </h3>
-                <p className={`text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={d(160)}>
-                  {resolveText(item.text, audience)}
-                </p>
+                {!visual && (
+                  <p className={`text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={d(160)}>
+                    {resolveText(item.text, audience)}
+                  </p>
+                )}
                 <div className={`self-start rounded-xl bg-[#f7f6fa] px-3.5 py-2.5 ${styles.enter}`} style={d(260)}>
                   <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#0a7558]">What we have now</p>
                   <p className="mt-0.5 font-bold text-[#2b3278]">{resolveText(item.now, audience)}</p>

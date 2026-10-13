@@ -55,6 +55,25 @@ describe("TourExperience", () => {
     expect(screen.getByText("Technical intro")).toBeInTheDocument();
   });
 
+  it("drops the words for Visual and plays itself in Present mode", async () => {
+    render(<TourExperience content={content} stats={null} />);
+    await userEvent.click(screen.getByRole("radio", { name: "Visual" }));
+    expect(screen.getByRole("radio", { name: "Visual" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByText("General intro")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: content.hero.title })).toBeInTheDocument();
+    // "What is bioinformatics?" becomes a picture sum.
+    expect(
+      screen.getByRole("img", { name: "Biology plus Computer science plus Statistics make bioinformatics." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/tells real signal from noise/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Present/ }));
+    expect(screen.getByRole("button", { name: "Auto-advance" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("radio", { name: "General" }));
+    expect(screen.getByRole("button", { name: "Auto-advance" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("General intro")).toBeInTheDocument();
+  });
+
   it("hides sections with nothing to show and omits COVID numbers without stats", () => {
     render(<TourExperience content={content} stats={null} />);
     // Fallback content has no trainings, team or videos.
@@ -81,6 +100,28 @@ describe("TourExperience", () => {
     );
     expect(screen.getByText("4,812")).toBeInTheDocument();
     expect(screen.getByText("93.5%")).toBeInTheDocument();
+    expect(screen.getByText(/Samples sequenced per quarter/)).toBeInTheDocument();
+  });
+
+  it("keeps only the headline COVID number for Visual", async () => {
+    render(
+      <TourExperience
+        content={content}
+        stats={{
+          totalRuns: 85,
+          totalSamples: 4812,
+          lineageAssigned: 4500,
+          pctLineageAssigned: 93.5,
+          firstRunDate: "2022-01-27",
+          lastRunDate: "2023-06-30",
+          quarterly: [{ label: "Q1 2022", samples: 400 }],
+        }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Visual" }));
+    expect(screen.getByText("4,812")).toBeInTheDocument();
+    expect(screen.queryByText("93.5%")).not.toBeInTheDocument();
+    expect(screen.queryByText("sequencing runs")).not.toBeInTheDocument();
     expect(screen.getByText(/Samples sequenced per quarter/)).toBeInTheDocument();
   });
 

@@ -13,7 +13,7 @@ import { INTRO_DEFINITION, INTRO_FIELDS, INTRO_TITLE } from "@/lib/tour-intro";
 import { JOURNEY_INTRO, JOURNEY_TITLE } from "@/lib/tour-journey";
 import type { VirusView } from "./virus-viewer";
 import { BRAND, CARD, SERVICE_HEX } from "./brand";
-import { BioinfoVenn, INTRO_FIELD_COLORS } from "./bioinfo-venn";
+import { BioinfoEquation, BioinfoVenn, INTRO_FIELD_COLORS } from "./bioinfo-venn";
 import { FeaturedProject } from "./project-feature";
 import { SampleJourney } from "./sample-journey";
 import { LogoHelix } from "./logo-helix";
@@ -77,6 +77,13 @@ const PRESENT_COLUMNS = {
   agenda: "group-data-[presenting]/tour:grid-cols-5!",
 };
 
+/**
+ * The Visual audience (data-audience="visual" on the tour root) drops
+ * intros, captions and descriptions, so its titles grow to carry the slide.
+ */
+const VISUAL_TITLE =
+  "group-data-[audience=visual]/tour:text-4xl! group-data-[audience=visual]/tour:leading-none! group-data-[audience=visual]/tour:md:text-7xl!";
+
 
 function Eyebrow({ index, children, onDark }: { index: number; children: React.ReactNode; onDark?: boolean }) {
   return (
@@ -85,7 +92,9 @@ function Eyebrow({ index, children, onDark }: { index: number; children: React.R
     >
       <span className={`h-0.5 w-8 rounded-full bg-[#12ca99] ${styles.growX}`} aria-hidden="true" />
       <span className={styles.fadeIn} style={delay(150)}>
-        {String(index).padStart(2, "0")} · {children}
+        {String(index).padStart(2, "0")}
+        {/* Visual keeps just the number. */}
+        <span className="group-data-[audience=visual]/tour:hidden"> · {children}</span>
       </span>
     </p>
   );
@@ -94,7 +103,7 @@ function Eyebrow({ index, children, onDark }: { index: number; children: React.R
 function SectionHeading({ title, onDark }: { title: string; onDark?: boolean }) {
   return (
     <h2
-      className={`mt-3 text-3xl font-black tracking-tight md:text-[44px] md:leading-[1.1] ${onDark ? "text-white" : "text-[#2b3278]"} ${styles.enter}`}
+      className={`mt-3 text-3xl font-black tracking-tight md:text-[44px] md:leading-[1.1] ${VISUAL_TITLE} ${onDark ? "text-white" : "text-[#2b3278]"} ${styles.enter}`}
       style={delay(80)}
     >
       {title}
@@ -159,12 +168,14 @@ export function HeroSection({ content, audience }: SectionProps) {
           <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
           {hero.eyebrow}
         </p>
-        <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight md:text-6xl md:leading-[1.05]">
+        <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight md:text-6xl md:leading-[1.05] group-data-[audience=visual]/tour:max-w-4xl! group-data-[audience=visual]/tour:md:text-7xl!">
           {hero.title}
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
-          {resolveText(hero.intro, audience)}
-        </p>
+        {audience !== "visual" && (
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
+            {resolveText(hero.intro, audience)}
+          </p>
+        )}
         {hero.facts.length > 0 && (
           <dl className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {hero.facts.map((fact, i) => (
@@ -189,19 +200,21 @@ export function HeroSection({ content, audience }: SectionProps) {
 function ServiceCard({ service, audience, order }: { service: TourService; audience: Audience; order: number }) {
   const [ref, reveal] = useReveal<HTMLLIElement>();
   const color = SERVICE_HEX[service.color];
+  // Visual: a big icon and the name, nothing to read.
+  const visual = audience === "visual";
   return (
     <li
       ref={ref}
       data-reveal={reveal}
-      className={`${CARD} ${styles.hoverable} ${styles.enter} relative flex flex-col gap-3 overflow-hidden p-7 transition-transform duration-300 ease-tour hover:-translate-y-1`}
+      className={`${CARD} ${styles.hoverable} ${styles.enter} relative flex flex-col gap-3 overflow-hidden transition-transform duration-300 ease-tour hover:-translate-y-1 ${visual ? "items-center px-5 py-8 text-center" : "p-7"}`}
       style={delay((order % 3) * 90)}
     >
       <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden="true" />
       {/* Cards in the same row start their icons a beat apart. */}
-      <ServiceIcon id={service.id} code={service.code} color={color} delay={(order % 3) * 90} />
-      <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{service.name}</h3>
-      <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>
-      {service.tag && (
+      <ServiceIcon id={service.id} code={service.code} color={color} delay={(order % 3) * 90} large={visual} />
+      <h3 className={`mt-1 font-bold text-[#2b3278] ${visual ? "text-2xl leading-tight" : "text-xl"}`}>{service.name}</h3>
+      {!visual && <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>}
+      {!visual && service.tag && (
         // One line, pinned to the card's foot, so the pills in a row line up.
         <span
           className="mt-auto self-start whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none"
@@ -215,6 +228,17 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
 }
 
 export function IntroSection({ audience, index }: { audience: Audience; index: number }) {
+  if (audience === "visual") {
+    return (
+      <LightSection index={index} motif="glyphs">
+        <Eyebrow index={index}>Before we begin</Eyebrow>
+        <SectionHeading title={INTRO_TITLE} />
+        <div className={`mt-12 ${PRESENT_GAP}`}>
+          <BioinfoEquation />
+        </div>
+      </LightSection>
+    );
+  }
   return (
     <LightSection index={index} motif="glyphs">
       <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-12">
@@ -275,9 +299,11 @@ export function JourneySection({
           <Eyebrow index={index}>How it works</Eyebrow>
           <SectionHeading title={JOURNEY_TITLE} />
         </div>
-        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(JOURNEY_INTRO, audience)}
-        </p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+            {resolveText(JOURNEY_INTRO, audience)}
+          </p>
+        )}
       </div>
       <div className={`mt-10 ${PRESENT_GAP} ${styles.enter}`} style={delay(240)}>
         <SampleJourney
@@ -298,9 +324,11 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
     <LightSection index={index} motif="assembly">
       <Eyebrow index={index}>What we do</Eyebrow>
       <SectionHeading title={services.title} />
-      <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-        {resolveText(services.intro, audience)}
-      </p>
+      {audience !== "visual" && (
+        <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(services.intro, audience)}
+        </p>
+      )}
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${PRESENT_GAP} ${PRESENT_COLUMNS.services}`}>
         {services.items.map((service, i) => (
           <ServiceCard key={service.id} service={service} audience={audience} order={i} />
@@ -319,7 +347,7 @@ export function ShowcaseSection({ audience, index }: { audience: Audience; index
           <SectionHeading title="Sample results" />
         </div>
         <div className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} ${styles.enter}`} style={delay(160)}>
-          <p className="text-lg leading-relaxed text-[#5b6770]">{resolveText(SHOWCASE_INTRO, audience)}</p>
+          {audience !== "visual" && <p className="text-lg leading-relaxed text-[#5b6770]">{resolveText(SHOWCASE_INTRO, audience)}</p>}
           <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a7558]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
             Sample data for illustration, not from a real project
@@ -332,7 +360,9 @@ export function ShowcaseSection({ audience, index }: { audience: Audience; index
             <div>
               <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558]">{item.service}</p>
               <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{resolveText(item.title, audience)}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-[#5b6770]">{resolveText(item.caption, audience)}</p>
+              {audience !== "visual" && (
+                <p className="mt-1 text-sm leading-relaxed text-[#5b6770]">{resolveText(item.caption, audience)}</p>
+              )}
             </div>
             <ShowcaseFigures id={item.id} />
           </li>
@@ -347,9 +377,11 @@ export function AgendaSection({ audience, index }: { audience: Audience; index: 
     <LightSection index={index} motif="contours">
       <Eyebrow index={index}>Genomics for a better Philippines</Eyebrow>
       <SectionHeading title={AGENDA_TITLE} />
-      <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-        {resolveText(AGENDA_INTRO, audience)}
-      </p>
+      {audience !== "visual" && (
+        <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(AGENDA_INTRO, audience)}
+        </p>
+      )}
       <ul className={`mt-10 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 ${PRESENT_GAP} ${PRESENT_COLUMNS.agenda}`}>
         {AGENDA.map((area, i) => (
           <li key={area.id} className={styles.enter} style={stagger(i)}>
@@ -378,15 +410,17 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
     <LightSection index={index} circuit>
       <Eyebrow index={index}>Under the hood</Eyebrow>
       <SectionHeading title={infrastructure.title} />
-      <p
-        className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/40 bg-[#e6f7f1]/90 backdrop-blur-sm px-5 py-3 text-[#2b3278] group-data-[presenting]/tour:py-2 group-data-[presenting]/tour:text-[0.95rem]`}
-        style={delay(160)}
-      >
-        <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
-          In simple terms
-        </span>
-        <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
-      </p>
+      {audience !== "visual" && (
+        <p
+          className={`${styles.enter} mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-[#12ca99]/40 bg-[#e6f7f1]/90 backdrop-blur-sm px-5 py-3 text-[#2b3278] group-data-[presenting]/tour:py-2 group-data-[presenting]/tour:text-[0.95rem]`}
+          style={delay(160)}
+        >
+          <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
+            In simple terms
+          </span>
+          <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
+        </p>
+      )}
       {/*
         Present mode: the machines side by side as two matching cards. Each
         card is a grid (the text column becomes `contents`), with the photo
@@ -419,7 +453,9 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                   </p>
                 )}
                 <h3 className="mt-1 text-3xl font-black text-[#2b3278] group-data-[presenting]/tour:text-2xl group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
-                <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:text-base group-data-[presenting]/tour:leading-relaxed group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                {audience !== "visual" && (
+                  <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:text-base group-data-[presenting]/tour:leading-relaxed group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                )}
                 <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-5 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
                   {item.specs.map((spec, i) => {
                     const color = SPEC_COLORS[i % SPEC_COLORS.length];
@@ -467,9 +503,11 @@ export function LabMapSection({ content, audience, index }: SectionProps & { ind
           <Eyebrow index={index}>Step inside</Eyebrow>
           <SectionHeading title={labMap.title} />
         </div>
-        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(labMap.intro, audience)}
-        </p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+            {resolveText(labMap.intro, audience)}
+          </p>
+        )}
       </div>
 
       <figure
@@ -505,9 +543,11 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
     <LightSection index={index} motif="network">
       <Eyebrow index={index}>Learn with us</Eyebrow>
       <SectionHeading title={trainings.title} />
-      <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-        {resolveText(trainings.intro, audience)}
-      </p>
+      {audience !== "visual" && (
+        <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+          {resolveText(trainings.intro, audience)}
+        </p>
+      )}
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6 ${PRESENT_GAP} ${PRESENT_COLUMNS.trainings}`}>
         {trainings.items.map((training, i) => {
           const src = tourAssetUrl(training.image);
@@ -550,7 +590,9 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
           <Eyebrow index={index}>Research highlights</Eyebrow>
           <SectionHeading title={projects.title} />
         </div>
-        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
+        )}
       </div>
 
       <FeaturedProject project={lead} audience={audience} />
@@ -564,7 +606,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
               )}
               <h3 className="mt-2 text-xl font-black text-[#2b3278]">{project.title}</h3>
               {project.species && <p className="italic text-[#5e205e]">{project.species}</p>}
-              <p className="mt-2 text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+              {audience !== "visual" && <p className="mt-2 text-[#5b6770]">{resolveText(project.summary, audience)}</p>}
             </li>
           ))}
         </ul>
@@ -587,7 +629,9 @@ export function VariantTreeSection({
         <div className={`max-w-3xl ${PRESENT_INTRO}`}>
           <Eyebrow index={index}>Tracking the variants</Eyebrow>
           <SectionHeading title={nextstrain.title} />
-          <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(nextstrain.intro, audience)}</p>
+          {audience !== "visual" && (
+            <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(nextstrain.intro, audience)}</p>
+          )}
         </div>
         <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[#2b3278] lg:mt-0 lg:shrink-0 lg:flex-col lg:text-right">
           <div className="flex items-baseline gap-1.5 lg:justify-end">
@@ -681,9 +725,11 @@ export function VirusModelSection({
           <Eyebrow index={index}>Up close</Eyebrow>
           <SectionHeading title={virusModel.title} />
         </div>
-        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(virusModel.intro, audience)}
-        </p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+            {resolveText(virusModel.intro, audience)}
+          </p>
+        )}
       </div>
 
       <div className={`mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] ${PRESENT_GAP}`}>
@@ -960,9 +1006,10 @@ export function CovidSection({
   stats,
 }: SectionProps & { index: number; stats: TourCovidStats | null }) {
   const { covid } = content;
+  const visual = audience === "visual";
   const from = formatMonthYear(stats?.firstRunDate ?? null);
   const to = formatMonthYear(stats?.lastRunDate ?? null);
-  const tiles = stats
+  const allTiles = stats
     ? [
         { value: stats.totalSamples.toLocaleString("en-PH"), label: "samples sequenced", color: BRAND.deepTeal },
         { value: stats.totalRuns.toLocaleString("en-PH"), label: "sequencing runs", color: BRAND.purple },
@@ -972,17 +1019,21 @@ export function CovidSection({
           : []),
       ]
     : [];
+  // Visual keeps the headline number only.
+  const tiles = visual ? allTiles.slice(0, 1) : allTiles;
 
   return (
     <LightSection index={index} motif="radar" lavender>
         <Eyebrow index={index}>Public health impact</Eyebrow>
         <SectionHeading title={covid.title} />
-        <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(covid.intro, audience)}
-        </p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
+            {resolveText(covid.intro, audience)}
+          </p>
+        )}
         {stats && (
           <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.6fr)]">
-            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
+            <dl className={`grid gap-4 lg:grid-cols-1 ${visual ? "content-center" : "grid-cols-2"}`}>
               {tiles.map((tile, i) => (
                 <div
                   key={tile.label}
@@ -991,7 +1042,7 @@ export function CovidSection({
                 >
                   <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: tile.color }} aria-hidden="true" />
                   <dt className="mt-0.5 text-sm font-medium text-[#5b6770]">{tile.label}</dt>
-                  <dd className="text-3xl font-black tracking-tight text-[#2b3278] tabular-nums">
+                  <dd className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-6xl md:text-7xl" : "text-3xl"}`}>
                     <CountUp value={tile.value} />
                   </dd>
                 </div>
@@ -1027,7 +1078,9 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           <Eyebrow index={index}>The people</Eyebrow>
           <SectionHeading title={team.title} />
         </div>
-        <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
+        {audience !== "visual" && (
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
+        )}
       </div>
       <ul className={`mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.team}`}>
         {team.members.map((member, i) => {
@@ -1046,11 +1099,17 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
                 )}
               </div>
               <div className="flex flex-1 flex-col gap-0.5 border-t-4 border-[#12ca99] px-4 py-4">
-                <p className="text-lg font-black text-[#2b3278] md:text-xl">{member.nickname}</p>
-                <p className="text-xs font-medium text-[#333333] md:text-[13px]">{member.fullName}</p>
-                <p className="mt-1 font-quicksand text-[10px] font-bold uppercase tracking-[0.1em] text-[#0a7558] md:text-[11px]">
-                  {member.position}
-                </p>
+                {audience === "visual" ? (
+                  <p className="text-center text-xl font-black text-[#2b3278] md:text-2xl">{member.nickname}</p>
+                ) : (
+                  <>
+                    <p className="text-lg font-black text-[#2b3278] md:text-xl">{member.nickname}</p>
+                    <p className="text-xs font-medium text-[#333333] md:text-[13px]">{member.fullName}</p>
+                    <p className="mt-1 font-quicksand text-[10px] font-bold uppercase tracking-[0.1em] text-[#0a7558] md:text-[11px]">
+                      {member.position}
+                    </p>
+                  </>
+                )}
               </div>
             </li>
           );
@@ -1111,6 +1170,8 @@ function ContactHelix() {
 
 export function ContactSection({ content, audience, index }: SectionProps & { index: number }) {
   const { contact } = content;
+  // Visual turns the slide into its QR codes: scan and go, nothing to copy down.
+  const scanOnly = audience === "visual" && contact.qrCodes.length > 0;
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(120deg,#2b3278_0%,#5e205e_55%,#2a7797_100%)] text-white">
       <SectionBackdrop variant="contact" />
@@ -1119,15 +1180,16 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
         <div>
           <p className="flex items-center gap-3 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8]">
             <span className="h-0.5 w-8 rounded-full bg-[#12ca99]" aria-hidden="true" />
-            {String(index).padStart(2, "0")} · Work with us
+            {String(index).padStart(2, "0")}
+            <span className="group-data-[audience=visual]/tour:hidden"> · Work with us</span>
           </p>
           <h2
-            className={`${styles.enter} mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-[40px] md:leading-[1.15]`}
+            className={`${styles.enter} mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-[40px] md:leading-[1.15] ${VISUAL_TITLE}`}
             style={delay(80)}
           >
-            {contact.title}
+            {scanOnly ? "Scan to connect" : contact.title}
           </h2>
-          <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>
+          {audience !== "visual" && <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>}
           {contact.social && (
             <div className="mt-6">
               <p className="text-sm font-medium text-white/80">
@@ -1156,7 +1218,7 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
             </div>
           )}
         </div>
-        <ul className="space-y-3">
+        <ul className={`space-y-3 ${scanOnly ? "hidden" : ""}`}>
           {contact.emails.map((email, i) => (
             <li key={email.address} className={styles.enter} style={stagger(i, 250)}>
               <a

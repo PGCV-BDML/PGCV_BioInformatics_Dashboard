@@ -93,7 +93,9 @@ export function AgendaAreaCard({ area, audience }: { area: AgendaArea; audience:
             <li key={project.id} className="flex flex-1 flex-col items-center gap-1 border-t border-[#2b3278]/10 px-1 py-3">
               <Icon className="h-6 w-6 shrink-0" style={{ color: ink }} strokeWidth={1.75} aria-hidden="true" />
               <p className="text-sm font-semibold leading-snug text-[#333333]">{project.name}</p>
-              <p className="text-xs leading-snug text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+              {audience !== "visual" && (
+                <p className="text-xs leading-snug text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+              )}
               {audience === "technical" && (
                 <p className="text-[11px] font-semibold leading-snug" style={{ color: ink }}>
                   {project.partners}

@@ -8,13 +8,20 @@
 import { isSafeTourPhyloPath } from "@/lib/tour-phylo";
 import { isSafeTourVirusPath } from "@/lib/tour-virus";
 
-export const AUDIENCES = ["students", "general", "technical"] as const;
+/**
+ * Who the tour is written for. Visual is for a screen nobody reads aloud
+ * (a lobby, a noisy room): slides keep their pictures and numbers and drop
+ * most of their words, and Present mode starts with auto-advance on. What
+ * text it does show is the General copy unless a `visual` version is given.
+ */
+export const AUDIENCES = ["students", "general", "technical", "visual"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
 export const AUDIENCE_LABELS: Record<Audience, string> = {
   students: "Students",
   general: "General",
   technical: "Technical",
+  visual: "Visual",
 };
 
 /** A plain string, or one string per audience with `general` required. */
