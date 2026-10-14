@@ -494,8 +494,30 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
  * The content repo's self-contained 3D lab map, framed whole. It scrolls on
  * its own; tour-experience leaves the arrow keys to it while it has focus.
  */
-export function LabMapSection({ content, audience, index }: SectionProps & { index: number }) {
+export function LabMapSection({
+  content,
+  audience,
+  index,
+  holdPageScroll,
+}: SectionProps & { index: number; holdPageScroll: boolean }) {
   const labMap = content.labMap!;
+  const [pointerOver, setPointerOver] = useState(false);
+
+  // A scroll the map doesn't use up carries on to the page, and in Present mode
+  // that snaps to another slide. So while presenting, the page holds still with
+  // the pointer over the map; the keys and the progress bar still move it. The
+  // reserved gutter stops the slide shifting sideways as the scrollbar goes.
+  useEffect(() => {
+    if (!holdPageScroll || !pointerOver) return;
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    html.style.scrollbarGutter = "stable";
+    return () => {
+      html.style.overflow = "";
+      html.style.scrollbarGutter = "";
+    };
+  }, [holdPageScroll, pointerOver]);
+
   return (
     <LightSection index={index} motif="contours">
       <div className={PRESENT_SPLIT_HEADER}>
@@ -513,6 +535,8 @@ export function LabMapSection({ content, audience, index }: SectionProps & { ind
       <figure
         className={`${styles.enter} relative mt-10 h-[70vh] min-h-[420px] overflow-hidden rounded-3xl border border-[#2b3278]/10 bg-[#073e3e] shadow-[0_18px_40px_-16px_rgba(43,50,120,0.35)] ${PRESENT_GAP}`}
         style={delay(240)}
+        onPointerEnter={() => setPointerOver(true)}
+        onPointerLeave={() => setPointerOver(false)}
       >
         <iframe
           src={TOUR_LAB_MAP_URL}
