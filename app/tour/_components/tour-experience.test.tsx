@@ -238,6 +238,38 @@ describe("TourExperience", () => {
     expect(screen.queryByRole("region", { name: "Lab map" })).not.toBeInTheDocument();
   });
 
+  it("holds the page still while the pointer is over the lab map in Present mode", async () => {
+    const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
+    render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
+    const html = document.documentElement;
+    const map = screen.getByTitle("Explore the lab").parentElement!;
+
+    // Scrolling the page past the map is left alone outside Present mode.
+    fireEvent.pointerEnter(map);
+    expect(html.style.overflow).toBe("");
+    fireEvent.pointerLeave(map);
+
+    await userEvent.click(screen.getByRole("button", { name: /Present/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Go to Lab map" }));
+    fireEvent.pointerEnter(map);
+    expect(html.style.overflow).toBe("hidden");
+    fireEvent.pointerLeave(map);
+    expect(html.style.overflow).toBe("");
+
+    // Moving on to another slide lets the page go, even if the pointer never left.
+    fireEvent.pointerEnter(map);
+    await userEvent.click(screen.getByRole("button", { name: "Go to Infrastructure" }));
+    expect(html.style.overflow).toBe("");
+  });
+
+  it("puts the trainings right after the sample results, ahead of the lab map and infrastructure", () => {
+    const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
+    const trainings = { ...content.trainings, items: [{ name: "Intro to Linux", image: null }] };
+    render(<TourExperience content={{ ...content, labMap, trainings }} stats={null} labMap />);
+    const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
+    expect(ids.slice(4, 8)).toEqual(["showcase", "trainings", "lab-map", "infrastructure"]);
+  });
+
   it("puts the research agenda right before the team, with partners for technical visitors", async () => {
     const team = {
       ...content.team,

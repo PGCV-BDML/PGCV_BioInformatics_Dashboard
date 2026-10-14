@@ -234,9 +234,10 @@ export function TourExperience({
   // Sections with nothing to show are skipped entirely.
   const sectionIds = useMemo(() => {
     const ids: SectionId[] = ["welcome", "intro", "sample-to-sequence", "services", "showcase"];
+    // Training is the one service the sample results can't show, so it follows them.
+    if (content.trainings.items.length) ids.push("trainings");
     if (content.labMap && labMap) ids.push("lab-map");
     ids.push("infrastructure");
-    if (content.trainings.items.length) ids.push("trainings");
     if (content.projects.items.length) ids.push("projects");
     ids.push("covid-19");
     if (content.nextstrain && phylo) ids.push("variant-tree");
@@ -431,7 +432,7 @@ export function TourExperience({
           />
         );
       case "lab-map":
-        return <LabMapSection {...props} />;
+        return <LabMapSection {...props} holdPageScroll={presenting && current === index} />;
       case "services":
         return <ServicesSection {...props} />;
       case "showcase":
