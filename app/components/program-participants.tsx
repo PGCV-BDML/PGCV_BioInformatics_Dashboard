@@ -16,6 +16,7 @@ import DataTable, { Column } from "@/app/components/datatable";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
+import { isListedParticipant } from "@/lib/program-enrollment";
 import { programRoutes, type ProgramType } from "@/lib/routes";
 import {
   deleteDataFromDB,
@@ -93,10 +94,11 @@ export default function ProgramParticipants({
           getUsersFromDB<User>(["trainee", "intern"]),
         ]);
 
+      const learnerIds = new Set(users.map((user) => user.id));
       const programEnrollments = enrollments.filter(
         (e) =>
           e.program_id === programId &&
-          (e.status === "enrolled" || e.status === "completed"),
+          isListedParticipant(e.status, e.user_id, learnerIds),
       );
       const enrolledIds = new Set(programEnrollments.map((e) => e.user_id));
 

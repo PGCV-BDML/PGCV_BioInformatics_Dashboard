@@ -45,7 +45,15 @@ describe("ProgramDirectory", () => {
   beforeEach(() => {
     portal.isStaff = true;
     portal.isLearnerView = false;
-    vi.mocked(getUsersFromDB).mockResolvedValue([] as never);
+    vi.mocked(getUsersFromDB).mockImplementation(async (roles) => {
+      if (roles.includes("trainee")) {
+        return [
+          { id: "u1", role: "trainee", name: "Ada" },
+          { id: "u2", role: "trainee", name: "Grace" },
+        ] as never;
+      }
+      return [] as never;
+    });
     vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
       if (table === "training_program") {
         return [
@@ -58,13 +66,14 @@ describe("ProgramDirectory", () => {
           { id: "e1", program_id: "prog-16s", user_id: "u1", status: "enrolled" },
           { id: "e2", program_id: "prog-16s", user_id: "u2", status: "completed" },
           { id: "e3", program_id: "prog-16s", user_id: "u3", status: "dropped" },
+          { id: "e4", program_id: "prog-16s", user_id: "staff-1", status: "enrolled" },
         ] as never;
       }
       return [] as never;
     });
   });
 
-  it("counts enrolled and completed participants per program, not dropped", async () => {
+  it("counts listed trainees and interns, not dropped or former learners", async () => {
     renderDirectory();
 
     expect(await screen.findByText("2 Active Enrolled")).toBeInTheDocument();

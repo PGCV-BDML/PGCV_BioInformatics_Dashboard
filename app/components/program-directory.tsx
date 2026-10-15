@@ -20,6 +20,7 @@ import {
 } from "@/lib/supabase";
 import { loadUserNameMap } from "@/lib/user-names";
 import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
+import { countListedParticipantsByProgram } from "@/lib/program-enrollment";
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import { seedDefaultTrainingPrepItems } from "@/lib/training-prep-checklist";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
@@ -32,18 +33,6 @@ import type {
   User as UserType,
   UserOption,
 } from "@/types/database";
-
-/** Same rule as the Participants tab: enrolled or completed, not dropped. */
-function countEnrollmentsByProgram(
-  enrollments: ProgramEnrollment[],
-): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const e of enrollments) {
-    if (e.status !== "enrolled" && e.status !== "completed") continue;
-    counts.set(e.program_id, (counts.get(e.program_id) ?? 0) + 1);
-  }
-  return counts;
-}
 
 function mapProgramCard(
   program: TrainingProgram,
@@ -131,9 +120,10 @@ export default function ProgramDirectory({
     const loadData = async () => {
       setLoadError(null);
       try {
-        const [programs, staff, enrollments] = await Promise.all([
+        const [programs, staff, learners, enrollments] = await Promise.all([
           getRowsFromDB<TrainingProgram>("training_program"),
           getUsersFromDB<UserType>(["team_lead", "team_member"]),
+          getUsersFromDB<UserType>(["trainee", "intern"]),
           getRowsFromDB<ProgramEnrollment>("program_enrollment"),
         ]);
 
@@ -144,7 +134,12 @@ export default function ProgramDirectory({
 
         setRawPrograms(filtered);
         setUserNameById(nameMap);
-        setEnrollmentCounts(countEnrollmentsByProgram(enrollments));
+        setEnrollmentCounts(
+          countListedParticipantsByProgram(
+            enrollments,
+            new Set(learners.map((user) => user.id)),
+          ),
+        );
         setInstructors(staff.map((u) => ({ id: u.id, name: u.name })));
       } catch (error) {
         console.error(`Failed to load ${programType} programs:`, error);
