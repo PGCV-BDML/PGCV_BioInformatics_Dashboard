@@ -1,14 +1,16 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Download,
   GitCompareArrows,
   MinusCircle,
   XCircle,
@@ -23,13 +25,20 @@ import {
   type AnswerSheetItem,
 } from "@/lib/assessment-answers";
 import {
+  buildResponseExportRows,
+  downloadCsv,
+  responseExportFileName,
+  toCsv,
+  type ResponseExportUser,
+} from "@/lib/assessment-export";
+import {
   formatAssessmentAverage,
   summarizeProgramAssessments,
   type AssessmentResponseRow,
 } from "@/lib/assessment-summary";
 import { programRoutes, type ProgramType } from "@/lib/routes";
 import { supabase } from "@/lib/supabase";
-import { loadUserNameMap } from "@/lib/user-names";
+import { loadUserProfiles } from "@/lib/user-names";
 import type { Assessment, Question } from "@/types/database";
 
 type ParticipantAssessmentAnswersProps = {
@@ -43,7 +52,77 @@ type LoadedTests = {
   post: Pick<Assessment, "id" | "questions"> | null;
   responses: AssessmentResponseRow[];
   nameByUserId: Record<string, string>;
+  usersById: Record<string, ResponseExportUser>;
 };
+
+function ResponseDownloadMenu({
+  onThisLearner,
+  onAll,
+}: {
+  onThisLearner: () => void;
+  onAll: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const items = [
+    { label: "This learner", onClick: onThisLearner },
+    { label: "All responses", onClick: onAll },
+  ];
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-bold hover:bg-slate-50 transition-colors"
+      >
+        <Download className="w-3.5 h-3.5" />
+        Download
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-10 z-20 min-w-[160px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              className="flex w-full items-center px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function submittedDate(value: string | null): string {
   return value ? value.slice(0, 10) : "";
@@ -275,14 +354,21 @@ export default function ParticipantAssessmentAnswers({
         responses = (data ?? []) as AssessmentResponseRow[];
       }
 
-      const nameMap = await loadUserNameMap(
+      const profiles = await loadUserProfiles(
         responses.map((row) => row.participant_id),
       );
+      const nameByUserId: Record<string, string> = {};
+      const usersById: Record<string, ResponseExportUser> = {};
+      for (const [id, profile] of profiles) {
+        nameByUserId[id] = profile.name;
+        usersById[id] = profile;
+      }
       setTests({
         pre,
         post,
         responses,
-        nameByUserId: Object.fromEntries(nameMap),
+        nameByUserId,
+        usersById,
       });
       setLoadError(null);
     } catch (error) {
@@ -371,6 +457,27 @@ export default function ParticipantAssessmentAnswers({
     current?.preScore != null && current.postScore != null
       ? current.postScore - current.preScore
       : null;
+  const downloadResponses = (
+    onlyParticipantId?: string,
+    participantName?: string,
+  ) => {
+    if (!tests) return;
+    downloadCsv(
+      responseExportFileName({ participantName }),
+      toCsv(
+        buildResponseExportRows({
+          preId: tests.pre?.id ?? null,
+          postId: tests.post?.id ?? null,
+          preQuestions: (tests.pre?.questions ?? []) as Question[],
+          postQuestions: (tests.post?.questions ?? []) as Question[],
+          responses: tests.responses,
+          usersById: tests.usersById,
+          participantId: onlyParticipantId,
+        }),
+      ),
+    );
+  };
+
   const navButtonClass =
     "inline-flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors";
   const navButtonDisabledClass =
@@ -441,18 +548,26 @@ export default function ParticipantAssessmentAnswers({
         />
       ) : (
         <>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
-              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-                {current.name}
-              </h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
+                <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
+                  {current.name}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500">
+                Pre / post test answers ·{" "}
+                {programType === "training" ? "Trainee" : "Intern"} {index + 1} of{" "}
+                {participants.length}
+              </p>
             </div>
-            <p className="text-xs text-slate-500">
-              Pre / post test answers ·{" "}
-              {programType === "training" ? "Trainee" : "Intern"} {index + 1} of{" "}
-              {participants.length}
-            </p>
+            <ResponseDownloadMenu
+              onThisLearner={() =>
+                downloadResponses(participantId, current.name)
+              }
+              onAll={() => downloadResponses()}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

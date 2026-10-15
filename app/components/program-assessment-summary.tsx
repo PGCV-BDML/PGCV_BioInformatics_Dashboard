@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ChevronRight,
   ClipboardCheck,
+  Download,
   MessageSquareText,
   Trash2,
 } from "lucide-react";
@@ -13,8 +14,16 @@ import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
 import {
+  buildResponseExportRows,
+  downloadCsv,
+  responseExportFileName,
+  toCsv,
+  type ResponseExportUser,
+} from "@/lib/assessment-export";
+import {
   formatAssessmentAverage,
   summarizeProgramAssessments,
+  type AssessmentResponseRow,
   type ProgramAssessmentSummaryData,
   type TestSummary,
 } from "@/lib/assessment-summary";
@@ -32,6 +41,24 @@ type ProgramAssessmentSummaryProps = {
   programId: string;
   programType: ProgramType;
 };
+
+type AssessmentExportSource = {
+  preId: string | null;
+  postId: string | null;
+  preQuestions: Question[];
+  postQuestions: Question[];
+  responses: AssessmentResponseRow[];
+  usersById: Record<string, ResponseExportUser>;
+};
+
+const emptyExportSource = (): AssessmentExportSource => ({
+  preId: null,
+  postId: null,
+  preQuestions: [],
+  postQuestions: [],
+  responses: [],
+  usersById: {},
+});
 
 export function ScoreCard({
   label,
@@ -166,6 +193,9 @@ export default function ProgramAssessmentSummary({
   const [tests, setTests] = useState<{ pre?: Assessment; post?: Assessment }>(
     {},
   );
+  const [exportSource, setExportSource] = useState<AssessmentExportSource>(
+    emptyExportSource,
+  );
   const [savingAccessId, setSavingAccessId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -174,7 +204,10 @@ export default function ProgramAssessmentSummary({
       const [assessments, responses, users] = await Promise.all([
         getRowsFromDB<Assessment>("assessment"),
         getRowsFromDB<AssessmentResponse>("assessment_response"),
-        getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
+        getUsersFromDB<Pick<User, "id" | "name" | "email" | "institution">>([
+          "trainee",
+          "intern",
+        ]),
       ]);
       const programAssessments = assessments.filter(
         (row) => row.program_id === programId,
@@ -183,15 +216,33 @@ export default function ProgramAssessmentSummary({
       const post = programAssessments.find((row) => row.type === "post_test");
       setTests({ pre, post });
       const nameByUserId: Record<string, string> = {};
+      const usersById: Record<string, ResponseExportUser> = {};
       for (const user of users) {
         nameByUserId[user.id] = user.name;
+        usersById[user.id] = {
+          name: user.name,
+          email: user.email,
+          institution: user.institution,
+        };
       }
+      const preQuestions = (pre?.questions ?? []) as Question[];
+      const postQuestions = (post?.questions ?? []) as Question[];
+      setExportSource({
+        preId: pre?.id ?? null,
+        postId: post?.id ?? null,
+        preQuestions,
+        postQuestions,
+        responses: responses.filter(
+          (row) => row.assessment_id === pre?.id || row.assessment_id === post?.id,
+        ),
+        usersById,
+      });
       setSummary(
         summarizeProgramAssessments({
           preId: pre?.id ?? null,
           postId: post?.id ?? null,
-          preQuestions: (pre?.questions ?? []) as Question[],
-          postQuestions: (post?.questions ?? []) as Question[],
+          preQuestions,
+          postQuestions,
           responses,
           nameByUserId,
         }),
@@ -199,6 +250,7 @@ export default function ProgramAssessmentSummary({
     } catch (error) {
       console.error("Error loading assessment summary:", error);
       showToast("Failed to load test responses.", "error");
+      setExportSource(emptyExportSource());
       setSummary(
         summarizeProgramAssessments({
           preId: null,
@@ -219,6 +271,13 @@ export default function ProgramAssessmentSummary({
 
   const responseIds = [...summary.pre.responseIds, ...summary.post.responseIds];
   const responseCount = summary.pre.responseCount + summary.post.responseCount;
+
+  const handleDownloadAll = () => {
+    downloadCsv(
+      responseExportFileName(),
+      toCsv(buildResponseExportRows(exportSource)),
+    );
+  };
 
   const handleToggleAccess = async (kind: "pre" | "post") => {
     const assessment = tests[kind];
@@ -290,14 +349,24 @@ export default function ProgramAssessmentSummary({
             </h2>
           </div>
           {!isLoading && responseCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setConfirmClear(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-rose-200 bg-white text-rose-600 text-[11px] font-bold hover:bg-rose-50 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear responses
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadAll}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-bold hover:bg-slate-50 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download all
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-rose-200 bg-white text-rose-600 text-[11px] font-bold hover:bg-rose-50 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear responses
+              </button>
+            </div>
           )}
         </div>
         <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">

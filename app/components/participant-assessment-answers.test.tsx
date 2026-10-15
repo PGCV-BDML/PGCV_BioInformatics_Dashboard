@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import ParticipantAssessmentAnswers from "./participant-assessment-answers";
+import * as assessmentExport from "@/lib/assessment-export";
 import type { Question } from "@/types/database";
 
 const { tables, portal, router } = vi.hoisted(() => ({
@@ -33,11 +34,11 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 vi.mock("@/lib/user-names", () => ({
-  loadUserNameMap: async () =>
+  loadUserProfiles: async () =>
     new Map([
-      ["u-ada", "Ada Lovelace"],
-      ["u-ben", "Ben Cruz"],
-      ["u-cy", "Cy Reyes"],
+      ["u-ada", { name: "Ada Lovelace", email: "ada@example.com", institution: "PGCV" }],
+      ["u-ben", { name: "Ben Cruz", email: "ben@example.com", institution: "UP" }],
+      ["u-cy", { name: "Cy Reyes", email: null, institution: null }],
     ]),
 }));
 
@@ -140,6 +141,24 @@ describe("ParticipantAssessmentAnswers", () => {
     expect(screen.getByText("Why Linux?")).toBeInTheDocument();
     expect(screen.getAllByText("Correct answer: pwd")).toHaveLength(1);
     expect(screen.getAllByLabelText("Incorrect").length).toBeGreaterThan(0);
+
+    const download = vi
+      .spyOn(assessmentExport, "downloadCsv")
+      .mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "This learner" }));
+    expect(download).toHaveBeenCalledOnce();
+    const [learnerFile, learnerCsv] = download.mock.calls[0]!;
+    expect(learnerFile).toMatch(/^pre-post-responses-ben-cruz-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(learnerCsv).toContain("Ben Cruz");
+    expect(learnerCsv).not.toContain("Ada Lovelace");
+
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "All responses" }));
+    const [, allCsv] = download.mock.calls[1]!;
+    expect(allCsv).toContain("Ada Lovelace");
+    expect(allCsv).toContain("Cy Reyes");
+    download.mockRestore();
   });
 
   it("links to the previous and next trainee by name", async () => {

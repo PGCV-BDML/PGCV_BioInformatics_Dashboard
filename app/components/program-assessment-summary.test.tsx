@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ProgramAssessmentSummary from "./program-assessment-summary";
+import * as assessmentExport from "@/lib/assessment-export";
 import { getRowsFromDB, getUsersFromDB } from "@/lib/supabase";
 
 vi.mock("./toast", () => ({
@@ -17,7 +18,12 @@ vi.mock("@/lib/supabase", () => ({
 describe("ProgramAssessmentSummary", () => {
   it("links each participant to their individual answers", async () => {
     vi.mocked(getUsersFromDB).mockResolvedValue([
-      { id: "u-ada", name: "Ada Lovelace" },
+      {
+        id: "u-ada",
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        institution: "PGCV",
+      },
     ] as never);
     vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
       if (table === "assessment") {
@@ -61,5 +67,17 @@ describe("ProgramAssessmentSummary", () => {
     expect(
       screen.getByRole("link", { name: "View Ada Lovelace's answers" }),
     ).toHaveAttribute("href", "/dashboard/internship/prog-1/assessment/u-ada");
+
+    const download = vi
+      .spyOn(assessmentExport, "downloadCsv")
+      .mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Download all" }));
+    expect(download).toHaveBeenCalledOnce();
+    const [filename, csv] = download.mock.calls[0]!;
+    expect(filename).toMatch(/^pre-post-responses-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(csv).toContain("Ada Lovelace");
+    expect(csv).toContain("ada@example.com");
+    expect(csv).toContain("pwd");
+    download.mockRestore();
   });
 });
