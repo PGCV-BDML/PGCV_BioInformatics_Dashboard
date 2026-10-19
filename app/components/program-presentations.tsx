@@ -128,7 +128,7 @@ export default function ProgramPresentations({
     }
     setOpeningId(deck.id);
     try {
-      const href = await getGithubPresentationViewUrl(id);
+      const href = await getGithubPresentationViewUrl(id, programId);
       window.open(href, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to open presentation:", error);
