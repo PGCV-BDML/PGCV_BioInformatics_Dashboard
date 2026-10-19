@@ -93,7 +93,7 @@ export default function ProgramWorkspaceLayout({
         : []),
       {
         id: "onboarding",
-        label: "Onboarding Docs",
+        label: isTraining ? "Training Files" : "Onboarding Docs",
         icon: FileText,
         href: programPaths.onboarding(program.id),
       },

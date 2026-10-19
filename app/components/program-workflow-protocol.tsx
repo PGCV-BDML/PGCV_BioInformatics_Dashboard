@@ -127,7 +127,7 @@ const TRAINING_TOC = [
   { id: "create", label: "1. Create the program" },
   { id: "workspace", label: "2. Open the workspace" },
   { id: "prep", label: "Prep checklist" },
-  { id: "onboarding", label: "3. Onboarding documents" },
+  { id: "onboarding", label: "3. Training files" },
   { id: "modules", label: "4. Modules" },
   { id: "enroll", label: "5. Enroll participants" },
   { id: "assessments", label: "6. Pre/Post tests" },
@@ -495,7 +495,9 @@ export default function ProgramWorkflowProtocol({
             <strong className="text-[#172126]">Modules</strong>
           </li>
           <li>
-            <strong className="text-[#172126]">Onboarding Docs</strong>
+            <strong className="text-[#172126]">
+              {kind === "training" ? "Training Files" : "Onboarding Docs"}
+            </strong>
           </li>
           {kind === "training" ? (
             <li>
@@ -544,10 +546,20 @@ export default function ProgramWorkflowProtocol({
         </Section>
       ) : null}
 
-      <Section id="onboarding" title="3. Onboarding documents">
+      <Section
+        id="onboarding"
+        title={
+          kind === "training" ? "3. Training files" : "3. Onboarding documents"
+        }
+      >
         <p>
-          Staff click <strong className="text-[#172126]">Add document</strong>.
-          Give it a title and choose a source:
+          {kind === "training"
+            ? "The team and enrolled trainees click "
+            : "Staff click "}
+          <strong className="text-[#172126]">
+            {kind === "training" ? "Add" : "Add document"}
+          </strong>
+          . Give it a title and choose a source:
         </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
@@ -564,6 +576,9 @@ export default function ProgramWorkflowProtocol({
           when the file must be read (for example a code of conduct). Required
           docs show a red Required chip. {copy.learnerTitle}s open them with the
           download or external-link button.
+          {kind === "training"
+            ? " Each file shows who added it and when. A trainee can change only their own file. Sort by Newest, Oldest, By person, or Mine."
+            : ""}
         </p>
         <Callout tone="warning" title="Required is a label, not a lock">
           Marking a document Required does not currently block later tabs. Walk

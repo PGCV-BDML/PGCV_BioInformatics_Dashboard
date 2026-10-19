@@ -33,7 +33,15 @@ import {
   deleteDataFromDB,
   getRowsFromDB,
   saveDataToDB,
+  supabase,
 } from "@/lib/supabase";
+import {
+  groupTrainingFilesByPerson,
+  trainingFileAttribution,
+  trainingFileRoleLabel,
+  visibleTrainingFiles,
+  type TrainingFileSort,
+} from "@/lib/training-files";
 import type { OnboardingDocument } from "@/types/database";
 
 type SourceMode = "link" | "file";
@@ -212,11 +220,26 @@ export default function ProgramOnboarding({
   programId,
   programLabel,
 }: ProgramOnboardingProps) {
-  const { isStaff, isLearnerView } = usePortal();
+  const { isStaff, isLearnerView, effectiveRole, enrollments, profile } =
+    usePortal();
   const { showToast } = useToast();
-  const canManage = isStaff && !isLearnerView;
+  const isTrainingFiles = programLabel === "training";
+  const enrolledHere = enrollments.some(
+    (row) => row.program_id === programId,
+  );
+  const isTraineeHere =
+    isTrainingFiles && effectiveRole === "trainee" && enrolledHere;
+  const canAdd = isTrainingFiles
+    ? isStaff || isTraineeHere
+    : isStaff && !isLearnerView;
+  const canMarkRequired = isStaff && !isLearnerView;
+  const noun = isTrainingFiles ? "training file" : "onboarding document";
 
   const [documents, setDocuments] = useState<OnboardingDocument[]>([]);
+  const [authors, setAuthors] = useState<
+    Map<string, { name: string; role: string | null }>
+  >(new Map());
+  const [sort, setSort] = useState<TrainingFileSort>("newest");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<OnboardingDocument | null>(null);
@@ -234,15 +257,7 @@ export default function ProgramOnboarding({
     setLoadError(null);
     try {
       const docs = await getRowsFromDB<OnboardingDocument>("onboarding_document");
-      setDocuments(
-        docs
-          .filter((d) => d.program_id === programId)
-          .sort((a, b) =>
-            (a.title ?? "").localeCompare(b.title ?? "", undefined, {
-              sensitivity: "base",
-            }),
-          ),
-      );
+      setDocuments(docs.filter((d) => d.program_id === programId));
     } catch (err) {
       console.error("Error loading onboarding documents:", err);
       setLoadError("Failed to load onboarding documents. Please refresh.");
@@ -252,6 +267,78 @@ export default function ProgramOnboarding({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const ids = [
+      ...new Set(
+        documents
+          .map((doc) => doc.created_by)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void supabase
+      .from("users")
+      .select("id, name, role")
+      .in("id", ids)
+      .then(({ data, error }) => {
+        if (cancelled || error) {
+          if (error) console.error("Failed to load file authors:", error);
+          return;
+        }
+        const next = new Map<string, { name: string; role: string | null }>();
+        for (const row of data ?? []) {
+          next.set(row.id as string, {
+            name: row.name as string,
+            role: (row.role as string | null) ?? null,
+          });
+        }
+        setAuthors(next);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [documents]);
+
+  const canChange = useCallback(
+    (doc: OnboardingDocument) => {
+      if (!isTrainingFiles) return isStaff && !isLearnerView;
+      if (canMarkRequired) return true;
+      return doc.created_by != null && doc.created_by === profile?.id;
+    },
+    [canMarkRequired, isLearnerView, isStaff, isTrainingFiles, profile?.id],
+  );
+
+  const attributionFor = useCallback(
+    (doc: OnboardingDocument) => {
+      const author = doc.created_by ? authors.get(doc.created_by) : undefined;
+      const self =
+        doc.created_by && doc.created_by === profile?.id ? profile : null;
+      return trainingFileAttribution({
+        name: author?.name ?? self?.name ?? null,
+        role: author?.role ?? self?.role ?? null,
+        createdAt: doc.created_at,
+      });
+    },
+    [authors, profile],
+  );
+
+  const shownDocuments = isTrainingFiles
+    ? visibleTrainingFiles(documents, sort, profile?.id ?? null)
+    : [...documents].sort((a, b) =>
+        (a.title ?? "").localeCompare(b.title ?? "", undefined, {
+          sensitivity: "base",
+        }),
+      );
+  const personGroups = isTrainingFiles
+    ? groupTrainingFilesByPerson(shownDocuments, (doc) => {
+        const author = doc.created_by ? authors.get(doc.created_by) : undefined;
+        const name = author?.name ?? "Unknown";
+        const role = trainingFileRoleLabel(author?.role);
+        return role ? `${name} · ${role}` : name;
+      })
+    : [];
 
   const openCreate = () => {
     setEditing(null);
@@ -304,7 +391,13 @@ export default function ProgramOnboarding({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManage || isSaving) return;
+    if (isSaving) return;
+    if (editing ? !canChange(editing) : !canAdd) return;
+    const userId = profile?.id;
+    if (!userId) {
+      showToast("Sign in to add a file.", "error");
+      return;
+    }
 
     const title = form.title.trim();
     if (!title) {
@@ -356,6 +449,7 @@ export default function ProgramOnboarding({
       if (form.source === "file" && form.file) {
         const uploaded = await uploadOnboardingDocumentFile({
           programId,
+          userId,
           file: form.file,
         });
         uploadedPath = uploaded.file_path;
@@ -367,11 +461,12 @@ export default function ProgramOnboarding({
       await saveDataToDB("onboarding_document", id, {
         program_id: programId,
         title,
-        is_required: form.isRequired,
+        is_required: canMarkRequired ? form.isRequired : false,
         link: nextLink,
         file_path: nextFile.file_path,
         file_name: nextFile.file_name,
         file_size: nextFile.file_size,
+        ...(editing ? {} : { created_by: userId }),
       });
 
       if (
@@ -390,7 +485,9 @@ export default function ProgramOnboarding({
       }
 
       showToast(
-        editing ? "Onboarding document updated." : "Onboarding document added.",
+        editing
+          ? `${noun[0]?.toUpperCase()}${noun.slice(1)} updated.`
+          : `${noun[0]?.toUpperCase()}${noun.slice(1)} added.`,
         "success",
       );
       setIsModalOpen(false);
@@ -418,7 +515,7 @@ export default function ProgramOnboarding({
   };
 
   const handleRemove = async () => {
-    if (!removeTarget || !canManage || isRemoving) return;
+    if (!removeTarget || !canChange(removeTarget) || isRemoving) return;
     setIsRemoving(true);
     try {
       await deleteDataFromDB("onboarding_document", removeTarget.id);
@@ -432,7 +529,10 @@ export default function ProgramOnboarding({
           );
         }
       }
-      showToast("Onboarding document removed.", "success");
+      showToast(
+        `${noun[0]?.toUpperCase()}${noun.slice(1)} removed.`,
+        "success",
+      );
       setRemoveTarget(null);
       await load();
     } catch (err) {
@@ -443,6 +543,103 @@ export default function ProgramOnboarding({
     }
   };
 
+  const renderDocumentCard = (doc: OnboardingDocument) => {
+    const hasFile = hasUploadedOnboardingFile(doc.file_path);
+    const hasLink = Boolean(doc.link?.trim());
+    const canOpen = hasFile || hasLink;
+    const editable = canChange(doc);
+
+    return (
+      <div
+        key={doc.id}
+        className="flex items-start justify-between gap-3 p-4 bg-surface border border-slate-200 rounded-[20px] shadow-sm"
+      >
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-800 truncate">
+              {doc.title?.trim() || "Untitled"}
+            </span>
+            {doc.is_required && (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-rose-50 border border-rose-100 text-rose-600 text-[9px] font-bold rounded-md">
+                <AlertCircle className="w-2.5 h-2.5" /> Required
+              </span>
+            )}
+          </div>
+          {isTrainingFiles && (
+            <p className="text-[11px] font-semibold text-slate-500">
+              {attributionFor(doc)}
+            </p>
+          )}
+          <p className="text-[11px] text-slate-400 flex items-center gap-1.5 min-w-0">
+            {hasFile ? (
+              <>
+                <FileText className="w-3 h-3 shrink-0" />
+                <span className="truncate">
+                  {doc.file_name ?? "Uploaded file"}
+                  {doc.file_size != null
+                    ? ` · ${formatOnboardingFileSize(doc.file_size)}`
+                    : ""}
+                </span>
+              </>
+            ) : hasLink ? (
+              <>
+                <Link2 className="w-3 h-3 shrink-0" />
+                <span className="truncate">{doc.link}</span>
+              </>
+            ) : (
+              <span>No file or link attached</span>
+            )}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {editable && (
+            <>
+              <button
+                type="button"
+                onClick={() => openEdit(doc)}
+                aria-label={`Edit ${doc.title ?? "document"}`}
+                className="p-2 text-slate-400 hover:text-[#2a7797] bg-surface hover:bg-brand-tint border border-slate-200 rounded-xl transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setRemoveTarget(doc)}
+                aria-label={`Remove ${doc.title ?? "document"}`}
+                className="p-2 text-slate-400 hover:text-rose-600 bg-surface hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+          {canOpen ? (
+            <button
+              type="button"
+              onClick={() => void handleOpen(doc)}
+              disabled={openingId === doc.id}
+              aria-label={`Open ${doc.title ?? "document"}`}
+              className="p-2 text-slate-400 hover:text-white bg-surface hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-60"
+            >
+              {hasFile ? (
+                <Download className="w-4 h-4" />
+              ) : (
+                <ExternalLink className="w-4 h-4" />
+              )}
+            </button>
+          ) : (
+            <span
+              className="p-2 text-slate-300 bg-slate-50 border border-slate-100 rounded-xl cursor-not-allowed"
+              title="No file or link attached"
+            >
+              <Download className="w-4 h-4" />
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="bg-surface border border-slate-300/70 rounded-[24px] p-6 shadow-xl space-y-4">
@@ -451,22 +648,23 @@ export default function ProgramOnboarding({
             <FileText className="w-5 h-5 text-[#4ec2bb]" />
             <div>
               <h3 className="text-lg font-bold text-slate-800 tracking-tight">
-                Onboarding Documents
+                {isTrainingFiles ? "Training Files" : "Onboarding Documents"}
               </h3>
               <p className="text-[11px] font-medium text-slate-400">
-                Compliance records and onboarding materials for this{" "}
-                {programLabel} cohort. Attach a link or upload a file.
+                {isTrainingFiles
+                  ? "Links and files for this training. Anyone enrolled can add one."
+                  : `Compliance records and onboarding materials for this ${programLabel} cohort. Attach a link or upload a file.`}
               </p>
             </div>
           </div>
-          {canManage && (
+          {canAdd && (
             <button
               type="button"
               onClick={openCreate}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[#2a7797] text-white text-xs font-bold shadow-sm hover:bg-[#1f5f79] transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add document
+              {isTrainingFiles ? "Add" : "Add document"}
             </button>
           )}
         </div>
@@ -477,101 +675,63 @@ export default function ProgramOnboarding({
           </p>
         ) : documents.length === 0 ? (
           <p className="text-xs text-slate-400 italic py-2">
-            No onboarding documents yet
-            {canManage ? " — add a link or upload a file to get started." : "."}
+            {isTrainingFiles
+              ? "No training files yet"
+              : "No onboarding documents yet"}
+            {canAdd ? " — add a link or upload a file to get started." : "."}
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {documents.map((doc) => {
-              const hasFile = hasUploadedOnboardingFile(doc.file_path);
-              const hasLink = Boolean(doc.link?.trim());
-              const canOpen = hasFile || hasLink;
-
-              return (
-                <div
-                  key={doc.id}
-                  className="flex items-start justify-between gap-3 p-4 bg-surface border border-slate-200 rounded-[20px] shadow-sm"
-                >
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800 truncate">
-                        {doc.title?.trim() || "Untitled"}
-                      </span>
-                      {doc.is_required && (
-                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-rose-50 border border-rose-100 text-rose-600 text-[9px] font-bold rounded-md">
-                          <AlertCircle className="w-2.5 h-2.5" /> Required
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1.5 min-w-0">
-                      {hasFile ? (
-                        <>
-                          <FileText className="w-3 h-3 shrink-0" />
-                          <span className="truncate">
-                            {doc.file_name ?? "Uploaded file"}
-                            {doc.file_size != null
-                              ? ` · ${formatOnboardingFileSize(doc.file_size)}`
-                              : ""}
-                          </span>
-                        </>
-                      ) : hasLink ? (
-                        <>
-                          <Link2 className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{doc.link}</span>
-                        </>
-                      ) : (
-                        <span>No file or link attached</span>
-                      )}
-                    </p>
+          <div className="space-y-4">
+            {isTrainingFiles && (
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label="Sort training files"
+              >
+                {(
+                  [
+                    ["newest", "Newest"],
+                    ["oldest", "Oldest"],
+                    ["person", "By person"],
+                    ["mine", "Mine"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={sort === id}
+                    onClick={() => setSort(id)}
+                    className={`h-8 px-3 rounded-full border text-[11px] font-bold transition-colors ${
+                      sort === id
+                        ? "border-[#2a7797] bg-[#e6f7f5] text-[#2a7797]"
+                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {isTrainingFiles && sort === "mine" && shownDocuments.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-2">
+                You haven&apos;t added a file yet.
+              </p>
+            ) : sort === "person" && isTrainingFiles ? (
+              personGroups.map((group) => (
+                <section key={group.key} className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-[#2a7797] uppercase tracking-[1.5px] font-quicksand">
+                    {group.label}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {group.items.map((doc) => renderDocumentCard(doc))}
                   </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {canManage && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(doc)}
-                          aria-label={`Edit ${doc.title ?? "document"}`}
-                          className="p-2 text-slate-400 hover:text-[#2a7797] bg-surface hover:bg-brand-tint border border-slate-200 rounded-xl transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRemoveTarget(doc)}
-                          aria-label={`Remove ${doc.title ?? "document"}`}
-                          className="p-2 text-slate-400 hover:text-rose-600 bg-surface hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
-                    {canOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleOpen(doc)}
-                        disabled={openingId === doc.id}
-                        aria-label={`Open ${doc.title ?? "document"}`}
-                        className="p-2 text-slate-400 hover:text-white bg-surface hover:bg-[#4ec2bb] border border-slate-200 hover:border-[#4ec2bb] rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-60"
-                      >
-                        {hasFile ? (
-                          <Download className="w-4 h-4" />
-                        ) : (
-                          <ExternalLink className="w-4 h-4" />
-                        )}
-                      </button>
-                    ) : (
-                      <span
-                        className="p-2 text-slate-300 bg-slate-50 border border-slate-100 rounded-xl cursor-not-allowed"
-                        title="No file or link attached"
-                      >
-                        <Download className="w-4 h-4" />
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                </section>
+              ))
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {shownDocuments.map((doc) => renderDocumentCard(doc))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -579,10 +739,18 @@ export default function ProgramOnboarding({
       <SlideOverModal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={editing ? "Edit onboarding document" : "Add onboarding document"}
+        title={
+          editing
+            ? isTrainingFiles
+              ? "Edit training file"
+              : "Edit onboarding document"
+            : isTrainingFiles
+              ? "Add training file"
+              : "Add onboarding document"
+        }
         subtitle="Choose a link or upload a file"
         onSubmit={handleSave}
-        submitLabel={editing ? "Save changes" : "Add document"}
+        submitLabel={editing ? "Save changes" : isTrainingFiles ? "Add" : "Add document"}
         isSaving={isSaving}
         submitDisabled={isSaving}
       >
@@ -602,20 +770,22 @@ export default function ProgramOnboarding({
               className="mt-1.5 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2a7797]/30 focus:border-[#2a7797]"
               required
             />
-            <label className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.isRequired}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    isRequired: e.target.checked,
-                  }))
-                }
-                className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
-              />
-              Required for participants
-            </label>
+            {canMarkRequired && (
+              <label className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.isRequired}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      isRequired: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-slate-300 text-[#2a7797] focus:ring-[#2a7797]"
+                />
+                Required for participants
+              </label>
+            )}
           </div>
 
           <div>
@@ -704,7 +874,7 @@ export default function ProgramOnboarding({
 
       <ConfirmModal
         isOpen={Boolean(removeTarget)}
-        title="Remove onboarding document"
+        title={isTrainingFiles ? "Remove training file" : "Remove onboarding document"}
         message={
           <>
             Remove{" "}

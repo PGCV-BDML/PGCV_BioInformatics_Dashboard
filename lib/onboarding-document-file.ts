@@ -64,13 +64,20 @@ function slugifyFileBase(name: string): string {
   return slug || "document";
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function buildOnboardingDocumentPath(
   programId: string,
+  userId: string,
   fileName: string,
 ): string {
+  if (!UUID_PATTERN.test(programId) || !UUID_PATTERN.test(userId)) {
+    throw new Error("Couldn't upload the document. Please try again.");
+  }
   const ext = fileExtension(fileName) || ".bin";
   const slug = slugifyFileBase(fileName);
-  return `${programId}/${Date.now()}-${slug}${ext}`;
+  return `${programId}/${userId}/${Date.now()}-${slug}${ext}`;
 }
 
 export function validateOnboardingDocumentFile(file: File): string | null {
@@ -107,16 +114,17 @@ export function validateExternalDocumentLink(raw: string): string | null {
 
 export async function uploadOnboardingDocumentFile(options: {
   programId: string;
+  userId: string;
   file: File;
 }): Promise<OnboardingFileMeta> {
-  const { programId, file } = options;
+  const { programId, userId, file } = options;
 
   const validationError = validateOnboardingDocumentFile(file);
   if (validationError) {
     throw new Error(validationError);
   }
 
-  const path = buildOnboardingDocumentPath(programId, file.name);
+  const path = buildOnboardingDocumentPath(programId, userId, file.name);
   const { error } = await supabase.storage
     .from(ONBOARDING_DOCUMENTS_BUCKET)
     .upload(path, file, {

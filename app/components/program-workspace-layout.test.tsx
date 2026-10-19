@@ -53,6 +53,8 @@ describe("program workspace tabs", () => {
       "/dashboard/training/prog-1/presentations",
     );
     expect(screen.queryByRole("link", { name: "Certificate" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Training Files" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Onboarding Docs" })).toBeNull();
   });
 
   it("does not show Presentations on an internship", () => {
@@ -64,6 +66,8 @@ describe("program workspace tabs", () => {
 
     expect(screen.queryByRole("link", { name: "Presentations" })).toBeNull();
     expect(screen.getByRole("link", { name: "Modules" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Onboarding Docs" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Training Files" })).toBeNull();
     expect(screen.getByRole("link", { name: "Certificate" })).toHaveAttribute(
       "href",
       "/dashboard/internship/prog-1/certificate",

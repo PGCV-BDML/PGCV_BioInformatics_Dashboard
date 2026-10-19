@@ -36,14 +36,17 @@ describe("validateOnboardingDocumentFile", () => {
 });
 
 describe("buildOnboardingDocumentPath", () => {
-  it("nests the object under the program id", () => {
+  it("nests the object under the program id and the uploader", () => {
     const path = buildOnboardingDocumentPath(
       "11111111-1111-1111-1111-111111111111",
+      "22222222-2222-2222-2222-222222222222",
       "Code of Conduct.pdf",
     );
-    expect(path.startsWith("11111111-1111-1111-1111-111111111111/")).toBe(
-      true,
-    );
+    expect(
+      path.startsWith(
+        "11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/",
+      ),
+    ).toBe(true);
     expect(path.endsWith(".pdf")).toBe(true);
     expect(path).toMatch(/code-of-conduct/);
   });

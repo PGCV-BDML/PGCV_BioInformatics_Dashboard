@@ -342,6 +342,8 @@ export interface OnboardingDocument {
   file_name: string | null;
   file_size: number | null;
   is_required: boolean;
+  /** User who added the link or file. Null on rows created before authors were stored. */
+  created_by: string | null;
   created_at?: string;
   updated_at?: string;
 }
