@@ -495,6 +495,25 @@ export interface ProgramEnrollment {
   updated_at?: string | null;
 }
 
+/**
+ * Checklist progress a learner reports from a library module (one row per
+ * user × modules.json id × checklist item), written through /module-bridge.
+ */
+export interface ModuleProgress {
+  id: string;
+  user_id: string;
+  /** modules.json id, e.g. "nfdi-software-setup" */
+  module_id: string;
+  item_id: string;
+  done: boolean;
+  /** Output the learner pasted from the step's check command. */
+  evidence: string | null;
+  platform: "windows" | "macos" | "linux" | null;
+  completed_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // ============================================================
 // 3.5 Core table types (Client, Service, User, AuditLog)
 // ============================================================

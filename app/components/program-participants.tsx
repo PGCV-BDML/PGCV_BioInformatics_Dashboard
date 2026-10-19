@@ -14,8 +14,16 @@ import {
 } from "lucide-react";
 import DataTable, { Column } from "@/app/components/datatable";
 import ConfirmModal from "@/app/components/confirm-modal";
+import ModuleProgressModal from "@/app/components/module-progress-modal";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
+import { moduleIdFromModuleLink } from "@/lib/module-library";
+import { fetchModuleCatalog } from "@/lib/module-library-client";
+import {
+  progressByUser,
+  type ChecklistItem,
+  type ProgressSummary,
+} from "@/lib/module-progress";
 import { isListedParticipant } from "@/lib/program-enrollment";
 import { programRoutes, type ProgramType } from "@/lib/routes";
 import {
@@ -29,6 +37,8 @@ import type {
   Assessment,
   AssessmentResponse,
   Certificate,
+  Module,
+  ModuleProgress,
   ProgramEnrollment,
   User,
 } from "@/types/database";
@@ -43,6 +53,52 @@ interface ParticipantRow {
   post_test_score: number | null;
   has_certificate: boolean;
   status: ProgramEnrollment["status"];
+  /** Checklist progress per library module that reports one (by modules.json id). */
+  setup: Record<string, ProgressSummary>;
+  /** Steps done in the first checklist module, for sorting. */
+  setup_done: number | null;
+}
+
+/** A module in this program whose modules.json entry has a `checklist`. */
+type SetupModule = { id: string; title: string; checklist: ChecklistItem[] };
+
+/**
+ * Library modules in the program that report checklist progress (e.g. the
+ * NFDI Software Setup module). Empty when there are none or the library
+ * can't be reached, so the rest of the participants list still loads.
+ */
+async function loadSetupModules(programId: string): Promise<SetupModule[]> {
+  try {
+    const modules = (await getRowsFromDB<Module>("module")).filter(
+      (m) => m.program_id === programId,
+    );
+    const ids = new Set(
+      modules
+        .map((m) => moduleIdFromModuleLink(m.html_content_link))
+        .filter((id): id is string => Boolean(id)),
+    );
+    if (!ids.size) return [];
+    const catalog = await fetchModuleCatalog();
+    return catalog.modules
+      .filter((item) => ids.has(item.id) && item.checklist?.length)
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        checklist: item.checklist ?? [],
+      }));
+  } catch (error) {
+    console.error("Failed to load module checklists:", error);
+    return [];
+  }
+}
+
+async function loadModuleProgress(): Promise<ModuleProgress[]> {
+  try {
+    return await getRowsFromDB<ModuleProgress>("module_progress");
+  } catch (error) {
+    console.error("Failed to load module progress:", error);
+    return [];
+  }
 }
 
 interface ProgramParticipantsProps {
@@ -77,6 +133,11 @@ export default function ProgramParticipants({
   const [removeTarget, setRemoveTarget] = useState<ParticipantRow | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [setupModules, setSetupModules] = useState<SetupModule[]>([]);
+  const [progressDetail, setProgressDetail] = useState<{
+    row: ParticipantRow;
+    module: SetupModule;
+  } | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof ParticipantRow;
     direction: "asc" | "desc";
@@ -132,6 +193,17 @@ export default function ProgramParticipants({
           .map((c) => c.participant_id),
       );
 
+      const setup = await loadSetupModules(programId);
+      const progressRows = setup.length ? await loadModuleProgress() : [];
+      const enrolledUserIds = programEnrollments.map((e) => e.user_id);
+      const firstSetup = setup[0];
+      const setupByModule = new Map(
+        setup.map((m) => [
+          m.id,
+          progressByUser(progressRows, m.id, m.checklist, enrolledUserIds),
+        ]),
+      );
+
       const userMap = new Map(users.map((u) => [u.id, u]));
       const rows: ParticipantRow[] = [];
       for (const enrollment of programEnrollments) {
@@ -148,9 +220,19 @@ export default function ProgramParticipants({
           post_test_score: scores?.post ?? null,
           has_certificate: certSet.has(u.id),
           status: enrollment.status,
+          setup: Object.fromEntries(
+            setup.flatMap((m) => {
+              const summary = setupByModule.get(m.id)?.get(u.id);
+              return summary ? [[m.id, summary] as const] : [];
+            }),
+          ),
+          setup_done: firstSetup
+            ? (setupByModule.get(firstSetup.id)?.get(u.id)?.done ?? 0)
+            : null,
         });
       }
 
+      setSetupModules(setup);
       setParticipantsList(rows);
       setCandidateUsers(
         users.filter(
@@ -295,6 +377,36 @@ export default function ProgramParticipants({
         </span>
       ),
     },
+    ...setupModules.map(
+      (m, index): Column<ParticipantRow> => ({
+        key: index === 0 ? "setup_done" : `setup:${m.id}`,
+        label: setupModules.length === 1 ? "Setup" : m.title,
+        width: "14%",
+        sortable: index === 0,
+        render: (p) => {
+          const summary = p.setup[m.id];
+          if (!summary) return <span className="text-slate-400">—</span>;
+          const complete = summary.done === summary.total;
+          const started = summary.done > 0;
+          return (
+            <button
+              type="button"
+              onClick={() => setProgressDetail({ row: p, module: m })}
+              title={`${m.title}: view steps and pasted output`}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold font-mono transition-colors ${
+                complete
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                  : started
+                    ? "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              {summary.done} / {summary.total}
+            </button>
+          );
+        },
+      }),
+    ),
     {
       key: "has_certificate",
       label: "Certificate",
@@ -349,6 +461,8 @@ export default function ProgramParticipants({
             <p className="text-[11px] font-semibold text-slate-400">
               Enrollments are the source of truth for who can access this
               program. Scores and certificates appear once submitted or issued.
+              {setupModules.length > 0 &&
+                " Setup progress updates as learners mark steps done in the module."}
             </p>
           </div>
         </div>
@@ -409,6 +523,18 @@ export default function ProgramParticipants({
           />
         </div>
       )}
+
+      <ModuleProgressModal
+        isOpen={!!progressDetail}
+        participantName={progressDetail?.row.name ?? ""}
+        moduleTitle={progressDetail?.module.title ?? ""}
+        summary={
+          progressDetail
+            ? (progressDetail.row.setup[progressDetail.module.id] ?? null)
+            : null
+        }
+        onClose={() => setProgressDetail(null)}
+      />
 
       <ConfirmModal
         isOpen={!!removeTarget}

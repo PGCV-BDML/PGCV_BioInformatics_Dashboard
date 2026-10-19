@@ -113,6 +113,7 @@ export type TableNames =
   | "assessment_response"
   | "certificate"
   | "program_enrollment"
+  | "module_progress"
   | "task"
   | "task_tag"
   | "task_assignee"

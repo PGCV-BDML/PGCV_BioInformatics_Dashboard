@@ -16,6 +16,10 @@ import { supabase } from "@/lib/supabase";
  */
 export default function SessionAuditor() {
   useEffect(() => {
+    // The hidden /module-bridge page loads inside every library module; its
+    // session restores are not logins, so don't audit them.
+    if (window.location.pathname.startsWith("/module-bridge")) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === "SIGNED_IN") {

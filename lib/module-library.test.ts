@@ -4,6 +4,7 @@ import {
   isSafeModuleId,
   isSafeRepoPath,
   moduleIdFromModuleLink,
+  parseChecklist,
   moduleLinkForId,
   moduleLinkForPath,
   parseModuleManifest,
@@ -167,5 +168,50 @@ describe("groupLibraryItems", () => {
       ["Foundations", ["a", "c"]],
       ["Genomics", ["b"]],
     ]);
+  });
+});
+
+describe("checklists", () => {
+  it("passes a module's checklist through, and leaves it off modules without one", () => {
+    const items = parseModuleManifest({
+      modules: [
+        {
+          id: "nfdi-software-setup",
+          name: "Software Setup for 16S Analysis",
+          folder: "NFDI_Oct2026/Software-Setup",
+          entry: "software-setup-module.html",
+          track: "NFDI · Oct 2026",
+          checklist: [
+            { id: "terminal", label: "Terminal and project folder" },
+            { id: "miniconda", label: "Miniconda" },
+          ],
+        },
+        {
+          id: "basic-coding",
+          name: "Basic Coding",
+          folder: "Basic-Coding",
+          entry: "basic-coding-module.html",
+        },
+      ],
+    });
+    expect(items[0]?.path).toBe("NFDI_Oct2026/Software-Setup/software-setup-module.html");
+    expect(items[0]?.checklist).toEqual([
+      { id: "terminal", label: "Terminal and project folder" },
+      { id: "miniconda", label: "Miniconda" },
+    ]);
+    expect(items[1]).not.toHaveProperty("checklist");
+  });
+
+  it("drops malformed and duplicate checklist entries", () => {
+    expect(
+      parseChecklist([
+        { id: "terminal", label: "Terminal" },
+        { id: "terminal", label: "Again" },
+        { id: "../x", label: "Bad id" },
+        { id: "no-label" },
+        "nope",
+      ]),
+    ).toEqual([{ id: "terminal", label: "Terminal" }]);
+    expect(parseChecklist(null)).toEqual([]);
   });
 });
