@@ -28,11 +28,14 @@ export async function fetchPresentationCatalog(): Promise<PresentationCatalog> {
 }
 
 /** Short-lived viewer URL for a library presentation, by presentations.json id. */
-export async function getGithubPresentationViewUrl(id: string): Promise<string> {
+export async function getGithubPresentationViewUrl(
+  id: string,
+  programId?: string,
+): Promise<string> {
   const response = await fetch("/api/training-presentations/link", {
     method: "POST",
     headers: await authHeaders(),
-    body: JSON.stringify({ id }),
+    body: JSON.stringify({ id, programId }),
   });
   const body = (await response.json().catch(() => null)) as {
     url?: string;
