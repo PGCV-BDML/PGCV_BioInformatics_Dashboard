@@ -38,9 +38,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT
-    get_user_role() = ANY (ARRAY['team_lead'::public.user_roles, 'team_member'::public.user_roles])
+    get_user_role() = ANY (ARRAY['team_lead'::text, 'team_member'::text])
     OR (
-      get_user_role() = ANY (ARRAY['trainee'::public.user_roles, 'intern'::public.user_roles])
+      get_user_role() = ANY (ARRAY['trainee'::text, 'intern'::text])
       AND is_enrolled_in_program(p_program)
     );
 $$;
@@ -52,7 +52,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT get_user_role() = ANY (ARRAY['team_lead'::public.user_roles, 'team_member'::public.user_roles]);
+  SELECT get_user_role() = ANY (ARRAY['team_lead'::text, 'team_member'::text]);
 $$;
 
 CREATE OR REPLACE FUNCTION public.poll_state(p_program uuid, p_deck text)
