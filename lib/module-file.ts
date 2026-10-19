@@ -191,6 +191,7 @@ export async function deleteModuleFile(
  * (a signed viewer URL for github-module:/github: links, or a plain URL).
  */
 export async function resolveModuleHref(module: {
+  id?: string;
   html_content_link?: string | null;
   file_path?: string | null;
 }): Promise<string | null> {
@@ -199,11 +200,11 @@ export async function resolveModuleHref(module: {
   }
   const moduleId = moduleIdFromModuleLink(module.html_content_link);
   if (moduleId) {
-    return getGithubModuleViewUrl({ id: moduleId });
+    return getGithubModuleViewUrl({ id: moduleId, rowId: module.id });
   }
   const repoPath = repoPathFromModuleLink(module.html_content_link);
   if (repoPath) {
-    return getGithubModuleViewUrl({ path: repoPath });
+    return getGithubModuleViewUrl({ path: repoPath, rowId: module.id });
   }
   const html = module.html_content_link?.trim();
   return html || null;

@@ -318,6 +318,8 @@ export interface Module {
   file_size: number | null;
   order: number | null;
   save_log_enabled: boolean;
+  /** Whether enrolled trainees can open it; staff toggle this per module. */
+  is_open?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -329,6 +331,8 @@ export interface Presentation {
   /** `github-presentation:<id>` from presentations.json. */
   content_link: string;
   order: number | null;
+  /** Whether enrolled trainees can open it; staff toggle this per deck. */
+  is_open?: boolean;
   created_at?: string;
   updated_at?: string;
 }

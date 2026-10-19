@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthorizationHeader } from "@/lib/push-auth";
+import {
+  createUserSupabaseClient,
+  getUserFromAuthorizationHeader,
+} from "@/lib/push-auth";
 import {
   createViewToken,
   getModuleCatalog,
@@ -7,7 +10,13 @@ import {
   isGithubModulesConfigured,
   viewUrlForPath,
 } from "@/lib/github-modules";
+import {
+  isStaffRole,
+  MATERIAL_CLOSED_ERROR,
+  moduleRowMatchesTarget,
+} from "@/lib/material-access";
 import { isSafeModuleId, isSafeRepoPath } from "@/lib/module-library";
+import { isProgramId } from "@/lib/training-poll";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,9 +43,23 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     id?: unknown;
     path?: unknown;
+    rowId?: unknown;
   } | null;
   const id = typeof body?.id === "string" ? body.id.trim() : "";
   let path = typeof body?.path === "string" ? body.path.trim() : "";
+  const rowId = typeof body?.rowId === "string" ? body.rowId.trim() : "";
+  if (rowId && !isProgramId(rowId)) {
+    return NextResponse.json({ error: "Invalid module id" }, { status: 400 });
+  }
+
+  const closed = await learnerModuleBlock(auth.accessToken, auth.user.id, {
+    id,
+    path,
+    rowId,
+  });
+  if (closed) {
+    return NextResponse.json({ error: closed }, { status: 403 });
+  }
 
   if (id) {
     if (!isSafeModuleId(id)) {
@@ -64,4 +87,40 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ url: viewUrlForPath(path, createViewToken()) });
+}
+
+/**
+ * Trainees can open only the module row they were given, and only while it
+ * is open. Staff can preview a closed module. The row's stored link has to
+ * match the library item, so an open row can't be used to fetch another module.
+ */
+async function learnerModuleBlock(
+  accessToken: string,
+  userId: string,
+  target: { id: string; path: string; rowId: string },
+): Promise<string | null> {
+  const supabase = createUserSupabaseClient(accessToken);
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !profile) return "You can't open this module.";
+  if (isStaffRole(profile.role)) return null;
+  if (profile.role !== "trainee" && profile.role !== "intern") {
+    return "You can't open this module.";
+  }
+  if (!target.rowId) return MATERIAL_CLOSED_ERROR;
+
+  const { data: row } = await supabase
+    .from("module")
+    .select("html_content_link, is_open")
+    .eq("id", target.rowId)
+    .maybeSingle();
+  if (!row || row.is_open === false) return MATERIAL_CLOSED_ERROR;
+  const matches = moduleRowMatchesTarget(row.html_content_link, {
+    id: target.id || undefined,
+    path: target.path || undefined,
+  });
+  return matches ? null : MATERIAL_CLOSED_ERROR;
 }

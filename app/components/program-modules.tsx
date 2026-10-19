@@ -20,6 +20,9 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import MaterialAccessToggle, {
+  MaterialClosedBadge,
+} from "@/app/components/material-access-toggle";
 import SlideOverModal, {
   renderSectionLabel,
 } from "@/app/components/slidemodal";
@@ -66,6 +69,7 @@ type ModuleRow = {
   fileName: string | null;
   fileSize: number | null;
   order: number;
+  isOpen: boolean;
 };
 
 function toModuleRow(m: Module, index: number): ModuleRow {
@@ -77,6 +81,7 @@ function toModuleRow(m: Module, index: number): ModuleRow {
     fileName: m.file_name ?? null,
     fileSize: m.file_size ?? null,
     order: m.order ?? index + 1,
+    isOpen: m.is_open !== false,
   };
 }
 
@@ -229,6 +234,7 @@ export default function ProgramModules({
   const [isRemoving, setIsRemoving] = useState(false);
   const [busyModuleId, setBusyModuleId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [savingAccessId, setSavingAccessId] = useState<string | null>(null);
 
   const [readModuleIds, setReadModuleIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -324,9 +330,11 @@ export default function ProgramModules({
   };
 
   const openMaterials = async (module: ModuleRow) => {
+    if (!canBuild && !module.isOpen) return;
     setOpeningId(module.id);
     try {
       const href = await resolveModuleHref({
+        id: module.id,
         html_content_link: module.htmlLink,
         file_path: module.filePath,
       });
@@ -468,6 +476,36 @@ export default function ProgramModules({
     }
   };
 
+  const handleToggleAccess = async (module: ModuleRow) => {
+    if (!canBuild || savingAccessId) return;
+    const nextOpen = !module.isOpen;
+    setSavingAccessId(module.id);
+    setModulesList((prev) =>
+      prev.map((row) =>
+        row.id === module.id ? { ...row, isOpen: nextOpen } : row,
+      ),
+    );
+    try {
+      await saveDataToDB("module", module.id, { is_open: nextOpen });
+      showToast(
+        nextOpen
+          ? `${module.title} is open for trainees.`
+          : `${module.title} is closed for trainees.`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to update module access:", error);
+      setModulesList((prev) =>
+        prev.map((row) =>
+          row.id === module.id ? { ...row, isOpen: module.isOpen } : row,
+        ),
+      );
+      showToast("Failed to update module access.", "error");
+    } finally {
+      setSavingAccessId(null);
+    }
+  };
+
   const toggleLibraryId = (id: string) => {
     setSelectedLibraryIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -566,7 +604,7 @@ export default function ProgramModules({
             <p className="text-xs font-semibold text-slate-500">
               {readModuleIds.length} of {modulesList.length} modules completed
               {canBuild
-                ? " • Add modules from the library or upload a file"
+                ? " • Close a module when trainees should not open it yet"
                 : " • Progress saved on this device"}
             </p>
           </div>
@@ -663,6 +701,15 @@ export default function ProgramModules({
                     )}
 
                     {canBuild && (
+                      <MaterialAccessToggle
+                        title={module.title}
+                        isOpen={module.isOpen}
+                        isSaving={savingAccessId === module.id}
+                        onToggle={() => void handleToggleAccess(module)}
+                      />
+                    )}
+
+                    {canBuild && (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
@@ -696,33 +743,41 @@ export default function ProgramModules({
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => toggleMarkAsRead(module.id)}
-                      className={`flex items-center gap-1.5 text-[11px] font-extrabold px-4 py-2 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
-                        isRead
-                          ? "bg-white hover:bg-amber-50 border-[#4ec2bb]/40 text-[#247974] hover:text-amber-600 hover:border-amber-300"
-                          : "bg-white hover:bg-[#4ec2bb] border-slate-200 hover:border-[#4ec2bb] text-slate-700 hover:text-white"
-                      }`}
-                    >
-                      {isRead ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Completed</span>
-                        </>
-                      ) : (
-                        "Mark as Read"
-                      )}
-                    </button>
+                    {!canBuild && !module.isOpen ? (
+                      <MaterialClosedBadge />
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleMarkAsRead(module.id)}
+                          className={`flex items-center gap-1.5 text-[11px] font-extrabold px-4 py-2 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+                            isRead
+                              ? "bg-white hover:bg-amber-50 border-[#4ec2bb]/40 text-[#247974] hover:text-amber-600 hover:border-amber-300"
+                              : "bg-white hover:bg-[#4ec2bb] border-slate-200 hover:border-[#4ec2bb] text-slate-700 hover:text-white"
+                          }`}
+                        >
+                          {isRead ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Completed</span>
+                            </>
+                          ) : (
+                            "Mark as Read"
+                          )}
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void openMaterials(module)}
-                      disabled={openingId === module.id}
-                      className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60"
-                    >
-                      {openingId === module.id ? "Opening…" : "View Materials"}
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => void openMaterials(module)}
+                          disabled={openingId === module.id}
+                          className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60"
+                        >
+                          {openingId === module.id
+                            ? "Opening…"
+                            : "View Materials"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

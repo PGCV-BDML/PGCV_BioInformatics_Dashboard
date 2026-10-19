@@ -8,6 +8,9 @@ import {
   Presentation,
   Trash2,
 } from "lucide-react";
+import MaterialAccessToggle, {
+  MaterialClosedBadge,
+} from "@/app/components/material-access-toggle";
 import SlideOverModal from "@/app/components/slidemodal";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { usePortal } from "@/app/components/portal-context";
@@ -38,6 +41,7 @@ type DeckRow = {
   title: string;
   contentLink: string | null;
   order: number;
+  isOpen: boolean;
 };
 
 function toDeckRow(row: PresentationRow, index: number): DeckRow {
@@ -46,6 +50,7 @@ function toDeckRow(row: PresentationRow, index: number): DeckRow {
     title: row.title?.trim() || `Presentation ${index + 1}`,
     contentLink: row.content_link,
     order: row.order ?? index + 1,
+    isOpen: row.is_open !== false,
   };
 }
 
@@ -67,6 +72,7 @@ export default function ProgramPresentations({
   const [isSaving, setIsSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [savingAccessId, setSavingAccessId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<DeckRow | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
@@ -121,6 +127,7 @@ export default function ProgramPresentations({
   );
 
   const openDeck = async (deck: DeckRow) => {
+    if (!canBuild && !deck.isOpen) return;
     const id = presentationIdFromLink(deck.contentLink);
     if (!id) {
       showToast("This presentation isn't linked to the library.", "error");
@@ -244,6 +251,36 @@ export default function ProgramPresentations({
     }
   };
 
+  const handleToggleAccess = async (deck: DeckRow) => {
+    if (!canBuild || savingAccessId) return;
+    const nextOpen = !deck.isOpen;
+    setSavingAccessId(deck.id);
+    setDecks((prev) =>
+      prev.map((row) =>
+        row.id === deck.id ? { ...row, isOpen: nextOpen } : row,
+      ),
+    );
+    try {
+      await saveDataToDB("presentation", deck.id, { is_open: nextOpen });
+      showToast(
+        nextOpen
+          ? `${deck.title} is open for trainees.`
+          : `${deck.title} is closed for trainees.`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to update presentation access:", error);
+      setDecks((prev) =>
+        prev.map((row) =>
+          row.id === deck.id ? { ...row, isOpen: deck.isOpen } : row,
+        ),
+      );
+      showToast("Failed to update presentation access.", "error");
+    } finally {
+      setSavingAccessId(null);
+    }
+  };
+
   const toggleLibraryId = (id: string) => {
     setSelectedLibraryIds((prev) =>
       prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
@@ -265,7 +302,7 @@ export default function ProgramPresentations({
                 ? "1 presentation"
                 : `${decks.length} presentations`}
               {canBuild
-                ? " • Add decks built in the presentations repo"
+                ? " • Close a deck when trainees should not open it yet"
                 : ""}
             </p>
           </div>
@@ -321,6 +358,15 @@ export default function ProgramPresentations({
 
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   {canBuild && (
+                    <MaterialAccessToggle
+                      title={deck.title}
+                      isOpen={deck.isOpen}
+                      isSaving={savingAccessId === deck.id}
+                      onToggle={() => void handleToggleAccess(deck)}
+                    />
+                  )}
+
+                  {canBuild && (
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -353,14 +399,18 @@ export default function ProgramPresentations({
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => void openDeck(deck)}
-                    disabled={openingId === deck.id}
-                    className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60"
-                  >
-                    {openingId === deck.id ? "Opening…" : "Open"}
-                  </button>
+                  {!canBuild && !deck.isOpen ? (
+                    <MaterialClosedBadge />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void openDeck(deck)}
+                      disabled={openingId === deck.id}
+                      className="text-[11px] font-extrabold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-[#4ec2bb] hover:border-[#4ec2bb] hover:text-white transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      {openingId === deck.id ? "Opening…" : "Open"}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

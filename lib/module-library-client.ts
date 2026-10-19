@@ -32,7 +32,7 @@ export async function fetchModuleCatalog(): Promise<ModuleCatalog> {
  * older links) by repo path.
  */
 export async function getGithubModuleViewUrl(
-  target: { id: string } | { path: string },
+  target: ({ id: string } | { path: string }) & { rowId?: string },
 ): Promise<string> {
   const response = await fetch("/api/training-modules/link", {
     method: "POST",

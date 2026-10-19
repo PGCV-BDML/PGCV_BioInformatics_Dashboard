@@ -10,7 +10,12 @@ import {
   isGithubPresentationsConfigured,
   viewUrlForPath,
 } from "@/lib/github-presentations";
+import {
+  isStaffRole,
+  MATERIAL_CLOSED_ERROR,
+} from "@/lib/material-access";
 import { isSafeModuleId } from "@/lib/module-library";
+import { presentationLinkForId } from "@/lib/presentation-library";
 import { isProgramId, withProgramQuery } from "@/lib/training-poll";
 
 export const runtime = "nodejs";
@@ -55,6 +60,15 @@ export async function POST(request: Request) {
         );
       }
     }
+    const closed = await learnerPresentationBlock(
+      auth.accessToken,
+      auth.user.id,
+      programId,
+      id,
+    );
+    if (closed) {
+      return NextResponse.json({ error: closed }, { status: 403 });
+    }
     const item = (await getPresentationCatalog()).find((deck) => deck.id === id);
     if (!item) {
       return NextResponse.json(
@@ -88,10 +102,42 @@ async function canJoinProgramPoll(
     .eq("id", userId)
     .maybeSingle();
   if (error || !profile) return false;
-  if (profile.role === "team_lead" || profile.role === "team_member") return true;
+  if (isStaffRole(profile.role)) return true;
   if (profile.role !== "trainee" && profile.role !== "intern") return false;
   const { data } = await supabase.rpc("is_enrolled_in_program", {
     p_program_id: programId,
   });
   return data === true;
+}
+
+/** Trainees can open a deck only while that training has it open. Staff can preview a closed one. */
+async function learnerPresentationBlock(
+  accessToken: string,
+  userId: string,
+  programId: string,
+  catalogId: string,
+): Promise<string | null> {
+  const supabase = createUserSupabaseClient(accessToken);
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !profile) return "You can't open this presentation.";
+  if (isStaffRole(profile.role)) return null;
+  if (
+    (profile.role !== "trainee" && profile.role !== "intern") ||
+    !programId
+  ) {
+    return MATERIAL_CLOSED_ERROR;
+  }
+
+  const { data } = await supabase
+    .from("presentation")
+    .select("is_open")
+    .eq("program_id", programId)
+    .eq("content_link", presentationLinkForId(catalogId))
+    .maybeSingle();
+  if (!data || data.is_open === false) return MATERIAL_CLOSED_ERROR;
+  return null;
 }
