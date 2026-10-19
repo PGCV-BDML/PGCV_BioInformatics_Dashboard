@@ -8,8 +8,10 @@ import {
  * Server-only access to the private bioinfo-presentations repo.
  *
  * GITHUB_PRESENTATIONS_TOKEN is a fine-grained PAT with read-only Contents
- * access to that one repo. It never leaves the server: the browser gets
- * short-lived signed viewer URLs (/api/training-presentations/f/<token>/<path>).
+ * access to that repo. If it is unset we use GITHUB_MODULES_TOKEN, so one
+ * PAT granted access to both repos is enough. The token never leaves the
+ * server: the browser gets short-lived signed viewer URLs
+ * (/api/training-presentations/f/<token>/<path>).
  */
 
 const DEFAULT_REPO = "bioinfopgcupvisayas/bioinfo-presentations";
@@ -23,7 +25,11 @@ export const VIEW_TOKEN_TTL_SECONDS = 12 * 60 * 60;
 export const VIEW_ROUTE_PREFIX = "/api/training-presentations/f";
 
 function githubToken(): string {
-  return process.env.GITHUB_PRESENTATIONS_TOKEN?.trim() ?? "";
+  return (
+    process.env.GITHUB_PRESENTATIONS_TOKEN?.trim() ||
+    process.env.GITHUB_MODULES_TOKEN?.trim() ||
+    ""
+  );
 }
 
 export function isGithubPresentationsConfigured(): boolean {

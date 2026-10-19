@@ -9,6 +9,7 @@ import {
 describe("presentation view tokens", () => {
   beforeEach(() => {
     vi.stubEnv("GITHUB_PRESENTATIONS_TOKEN", "test-token-a");
+    vi.stubEnv("GITHUB_MODULES_TOKEN", "");
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -34,9 +35,21 @@ describe("presentation view tokens", () => {
     expect(verifyViewToken(token, now)).toBe(false);
   });
 
-  it("rejects everything when the library isn't configured", () => {
+  it("uses the modules token when no presentations token is set", () => {
+    vi.stubEnv("GITHUB_PRESENTATIONS_TOKEN", "");
+    vi.stubEnv("GITHUB_MODULES_TOKEN", "modules-token");
+    const now = Date.now();
+    const token = createViewToken(now);
+    expect(verifyViewToken(token, now)).toBe(true);
+
+    vi.stubEnv("GITHUB_MODULES_TOKEN", "rotated-modules-token");
+    expect(verifyViewToken(token, now)).toBe(false);
+  });
+
+  it("rejects everything when neither token is set", () => {
     const token = createViewToken();
     vi.stubEnv("GITHUB_PRESENTATIONS_TOKEN", "");
+    vi.stubEnv("GITHUB_MODULES_TOKEN", "");
     expect(verifyViewToken(token)).toBe(false);
   });
 

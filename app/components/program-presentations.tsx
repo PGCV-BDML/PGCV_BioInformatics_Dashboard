@@ -412,9 +412,10 @@ export default function ProgramPresentations({
             </p>
           ) : catalogStatus === "unconfigured" ? (
             <p className="text-sm text-slate-500">
-              The presentation library isn&apos;t connected yet. Set{" "}
-              <code className="text-xs">GITHUB_PRESENTATIONS_TOKEN</code> on
-              the server.
+              The presentation library isn&apos;t connected yet. Add
+              bioinfo-presentations to{" "}
+              <code className="text-xs">GITHUB_MODULES_TOKEN</code>, or set{" "}
+              <code className="text-xs">GITHUB_PRESENTATIONS_TOKEN</code>.
             </p>
           ) : catalogStatus === "error" ? (
             <div className="space-y-3">

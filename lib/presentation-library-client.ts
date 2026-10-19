@@ -12,7 +12,7 @@ async function authHeaders(): Promise<HeadersInit> {
 }
 
 export type PresentationCatalog = {
-  /** False when GITHUB_PRESENTATIONS_TOKEN isn't set on the server. */
+  /** False when neither presentations nor modules GitHub token is set. */
   configured: boolean;
   presentations: PresentationLibraryItem[];
 };
