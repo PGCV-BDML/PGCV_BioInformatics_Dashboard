@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -72,6 +73,42 @@ describe("SlideOverModal", () => {
 
     expect(closeButton).not.toHaveFocus();
     expect(closeButton).toHaveAttribute("data-modal-close");
+  });
+
+  it("keeps focus in a field while typing when onClose changes every render", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [title, setTitle] = useState("");
+      return (
+        <SlideOverModal isOpen={true} onClose={() => {}} title="Title">
+          <input
+            aria-label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </SlideOverModal>
+      );
+    }
+    render(<Harness />);
+
+    const input = screen.getByRole("textbox", { name: "Title" });
+    await user.click(input);
+    await user.keyboard("Lab safety");
+
+    expect(input).toHaveValue("Lab safety");
+    expect(input).toHaveFocus();
+  });
+
+  it("calls onClose on Escape", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <SlideOverModal isOpen={true} onClose={onClose} title="Title">
+        <p>body</p>
+      </SlideOverModal>,
+    );
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("calls onClose when close (X) button is clicked", async () => {
