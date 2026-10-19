@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useEffect, useRef } from "react";
+import React, { memo, useEffect, useEffectEvent, useRef } from "react";
 import { X, Save } from "lucide-react";
 
 /**
@@ -70,6 +70,11 @@ const SlideOverModal = memo(function SlideOverModal({
       ),
     );
 
+  // Callers often pass a fresh onClose each render; reading it through an
+  // effect event keeps the effect below from re-running (and stealing focus)
+  // on every keystroke.
+  const handleClose = useEffectEvent(() => onClose());
+
   // Initial focus + restore on close — only when isOpen toggles, not on parent re-renders.
   useEffect(() => {
     if (!isOpen) return;
@@ -92,7 +97,7 @@ const SlideOverModal = memo(function SlideOverModal({
     // Trap Tab key and handle Escape
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
         return;
       }
       if (e.key === 'Tab' && panel) {
@@ -116,7 +121,7 @@ const SlideOverModal = memo(function SlideOverModal({
       // Restore focus
       previousFocusRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const renderDefaultFooter = () => (
     <div className="flex gap-2.5 justify-end">
