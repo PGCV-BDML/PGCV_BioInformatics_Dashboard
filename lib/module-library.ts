@@ -1,3 +1,5 @@
+import type { ChecklistItem } from "@/lib/module-progress";
+
 /**
  * Training module library, sourced from the private bioinfo-modules GitHub
  * repo. Its modules.json is the single source of truth for which modules
@@ -35,6 +37,12 @@ export type ModuleLibraryItem = {
    * picker, but courses that already include it still open it.
    */
   retired: boolean;
+  /**
+   * modules.json `checklist`: steps the module reports to the dashboard
+   * through /module-bridge (e.g. installs in the NFDI Software Setup module).
+   * Absent for modules without one.
+   */
+  checklist?: ChecklistItem[];
 };
 
 type ManifestEntry = {
@@ -48,10 +56,26 @@ type ManifestEntry = {
   summary?: unknown;
   dataset?: unknown;
   retired?: unknown;
+  checklist?: unknown;
 };
 
 function optionalString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Valid, de-duplicated checklist items; anything malformed is dropped. */
+export function parseChecklist(raw: unknown): ChecklistItem[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const items: ChecklistItem[] = [];
+  for (const entry of raw as { id?: unknown; label?: unknown }[]) {
+    const id = optionalString(entry?.id);
+    const label = optionalString(entry?.label);
+    if (!id || !label || !isSafeModuleId(id) || seen.has(id)) continue;
+    seen.add(id);
+    items.push({ id, label });
+  }
+  return items;
 }
 
 /**
@@ -88,6 +112,7 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
     if (!isSafeRepoPath(path) || seenPaths.has(path)) continue;
     seenPaths.add(path);
 
+    const checklist = parseChecklist(entry.checklist);
     items.push({
       id,
       title,
@@ -98,6 +123,7 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
       summary: optionalString(entry.summary),
       hasDataset: Boolean(optionalString(entry.dataset)),
       retired: Boolean(entry.retired),
+      ...(checklist.length ? { checklist } : {}),
     });
   }
   return items;

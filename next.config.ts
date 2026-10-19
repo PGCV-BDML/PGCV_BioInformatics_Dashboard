@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Embedded (hidden) by library modules served from this origin.
+        source: "/module-bridge",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Robots-Tag", value: "noindex" },
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           {
