@@ -19,6 +19,7 @@ import SlideOverModal, {
   renderSectionLabel,
 } from "@/app/components/slidemodal";
 import { useToast } from "@/app/components/toast";
+import { describeSaveError } from "@/lib/db-errors";
 import {
   MAX_ONBOARDING_FILE_BYTES,
   deleteOnboardingDocumentFile,
@@ -503,12 +504,7 @@ export default function ProgramOnboarding({
           // ignore cleanup failure
         }
       }
-      showToast(
-        err instanceof Error
-          ? err.message
-          : "Couldn't save the document. Please try again.",
-        "error",
-      );
+      showToast(describeSaveError(err, "onboarding_document"), "error");
     } finally {
       setIsSaving(false);
     }

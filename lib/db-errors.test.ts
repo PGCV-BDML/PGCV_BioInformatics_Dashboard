@@ -148,6 +148,20 @@ describe("describeSaveError", () => {
     expect(message).toContain("apply the latest Supabase migration");
   });
 
+  it("points at a missing migration when a column is not in the schema cache", () => {
+    const message = describeSaveError(
+      {
+        code: "PGRST204",
+        message:
+          "Could not find the 'created_by' column of 'onboarding_document' in the schema cache",
+      },
+      "onboarding_document",
+    );
+    expect(message).toBe(
+      "Failed to save onboarding document: apply the latest Supabase migration, then try again.",
+    );
+  });
+
   it("explains a personal sequence-analysis task", () => {
     const message = describeSaveError(
       { message: "Sequence analysis tasks cannot be personal" },
