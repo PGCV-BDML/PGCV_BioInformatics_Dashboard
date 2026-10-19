@@ -322,6 +322,17 @@ export interface Module {
   updated_at?: string;
 }
 
+export interface Presentation {
+  id: string;
+  program_id: string;
+  title: string;
+  /** `github-presentation:<id>` from presentations.json. */
+  content_link: string;
+  order: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface OnboardingDocument {
   id: string;
   program_id: string;

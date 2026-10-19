@@ -81,6 +81,7 @@ export const routes = {
   training: {
     list: "/dashboard/training",
     detail: (id: string) => `/dashboard/training/${id}`,
+    presentations: (id: string) => `/dashboard/training/${id}/presentations`,
     onboarding: (id: string) => `/dashboard/training/${id}/onboarding`,
     participants: (id: string) => `/dashboard/training/${id}/participants`,
     assessment: (id: string) => `/dashboard/training/${id}/assessment`,

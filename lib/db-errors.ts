@@ -71,6 +71,7 @@ const TABLE_LABELS: Partial<
   },
   program_enrollment: { one: "enrollment", many: "enrollments" },
   module: { one: "module", many: "modules" },
+  presentation: { one: "presentation", many: "presentations" },
   assessment: { one: "assessment", many: "assessments" },
   assessment_response: { one: "assessment response", many: "assessment responses" },
   certificate: { one: "certificate", many: "certificates" },

@@ -126,6 +126,7 @@ The app deploys automatically on Vercel when changes are pushed to the `main` br
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push; generate with `npm run vapid:generate`)
    - `PUSH_DISPATCH_SECRET` (random secret, e.g. `openssl rand -hex 32`)
    - `GITHUB_MODULES_TOKEN` (training module library; see below)
+   - `GITHUB_PRESENTATIONS_TOKEN` (training presentation library; see below)
    - `GITHUB_TOUR_TOKEN` (Lab Tour content; optional if `GITHUB_MODULES_TOKEN` can also read `pgcv-tour-content`)
 3. Push to `main` — Vercel builds and deploys automatically.
 
@@ -137,6 +138,15 @@ The course builder's **Add from library** reads `modules.json` from the private 
 - **Renaming or moving a file is fine**, as long as its `folder`/`entry` in `modules.json` is updated in the same commit.
 - **Removing a module from `modules.json` breaks it** in any course that includes it. To retire one, mark it `retired` instead: it disappears from **Add from library**, and courses that already include it still open it.
 - **`GITHUB_MODULES_TOKEN` expires** on the date set when it was created. It's a fine-grained token with read-only Contents access to `bioinfo-modules` only. If **Add from library** stops loading, check that first, then update `GITHUB_MODULES_TOKEN` on Vercel and redeploy.
+
+### Training presentations
+
+A training program's **Presentations** tab (next to Modules) reads `presentations.json` from the private [bioinfo-presentations](https://github.com/bioinfopgcupvisayas/bioinfo-presentations) repo. Decks open through `/api/training-presentations`. Changes on its `main` branch show up within about 5 minutes. A program stores each deck as `github-presentation:<id>`.
+
+- **Never change a presentation's `id`** in `presentations.json`. Programs point at the id.
+- **`entry` is an HTML file**, at the repo root or inside `folder`. Word, PDF, and PowerPoint files stay in the repo and are not offered in **Add from library**.
+- **Retire with `retired: true`** instead of deleting an id that a program already uses.
+- **`GITHUB_PRESENTATIONS_TOKEN`** is a fine-grained PAT with read-only Contents access to `bioinfo-presentations` only. Set it on Vercel and redeploy. `GITHUB_MODULES_TOKEN` cannot read this repo.
 
 ### Lab Tour page
 

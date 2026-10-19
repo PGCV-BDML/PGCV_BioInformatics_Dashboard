@@ -7,6 +7,7 @@ import {
   Calendar,
   User,
   BookOpen,
+  Presentation,
   ClipboardCheck,
   BarChart3,
   Award,
@@ -80,6 +81,16 @@ export default function ProgramWorkspaceLayout({
     const base = programPaths.detail(program.id);
     const allTabs = [
       { id: "modules", label: "Modules", icon: BookOpen, href: base },
+      ...(isTraining
+        ? [
+            {
+              id: "presentations",
+              label: "Presentations",
+              icon: Presentation,
+              href: dashboardRoutes.training.presentations(program.id),
+            },
+          ]
+        : []),
       {
         id: "onboarding",
         label: "Onboarding Docs",
@@ -116,12 +127,17 @@ export default function ProgramWorkspaceLayout({
         icon: BarChart3,
         href: programPaths.evaluation(program.id),
       },
-      {
-        id: "certificate",
-        label: isLearnerView ? "My Certificate" : "Certificate",
-        icon: Award,
-        href: programPaths.certificate(program.id),
-      },
+      // Hidden on training for now; the certificate page remains.
+      ...(!isTraining
+        ? [
+            {
+              id: "certificate",
+              label: isLearnerView ? "My Certificate" : "Certificate",
+              icon: Award,
+              href: programPaths.certificate(program.id),
+            },
+          ]
+        : []),
     ];
 
     return isLearnerView
