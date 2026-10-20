@@ -34,8 +34,6 @@ import {
   saveDataToDB,
 } from "@/lib/supabase";
 import type {
-  Assessment,
-  AssessmentResponse,
   Certificate,
   Module,
   ModuleProgress,
@@ -49,8 +47,6 @@ interface ParticipantRow {
   name: string;
   email: string;
   institution: string | null;
-  pre_test_score: number | null;
-  post_test_score: number | null;
   has_certificate: boolean;
   status: ProgramEnrollment["status"];
   /** Checklist progress per library module that reports one (by modules.json id). */
@@ -146,14 +142,11 @@ export default function ProgramParticipants({
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const [enrollments, assessments, responses, certificates, users] =
-        await Promise.all([
-          getRowsFromDB<ProgramEnrollment>("program_enrollment"),
-          getRowsFromDB<Assessment>("assessment"),
-          getRowsFromDB<AssessmentResponse>("assessment_response"),
-          getRowsFromDB<Certificate>("certificate"),
-          getUsersFromDB<User>(["trainee", "intern"]),
-        ]);
+      const [enrollments, certificates, users] = await Promise.all([
+        getRowsFromDB<ProgramEnrollment>("program_enrollment"),
+        getRowsFromDB<Certificate>("certificate"),
+        getUsersFromDB<User>(["trainee", "intern"]),
+      ]);
 
       const learnerIds = new Set(users.map((user) => user.id));
       const programEnrollments = enrollments.filter(
@@ -162,30 +155,6 @@ export default function ProgramParticipants({
           isListedParticipant(e.status, e.user_id, learnerIds),
       );
       const enrolledIds = new Set(programEnrollments.map((e) => e.user_id));
-
-      const programAssessmentIds = assessments
-        .filter((a) => a.program_id === programId)
-        .map((a) => a.id);
-      const assessmentTypeMap = new Map<string, string>();
-      for (const a of assessments) {
-        if (a.program_id === programId) assessmentTypeMap.set(a.id, a.type);
-      }
-
-      const scoreByUser = new Map<
-        string,
-        { pre: number | null; post: number | null }
-      >();
-      for (const r of responses) {
-        if (!programAssessmentIds.includes(r.assessment_id)) continue;
-        const type = assessmentTypeMap.get(r.assessment_id);
-        const current = scoreByUser.get(r.participant_id) ?? {
-          pre: null,
-          post: null,
-        };
-        if (type === "pre_test") current.pre = r.score;
-        if (type === "post_test") current.post = r.score;
-        scoreByUser.set(r.participant_id, current);
-      }
 
       const certSet = new Set(
         certificates
@@ -209,15 +178,12 @@ export default function ProgramParticipants({
       for (const enrollment of programEnrollments) {
         const u = userMap.get(enrollment.user_id);
         if (!u) continue;
-        const scores = scoreByUser.get(u.id);
         rows.push({
           enrollmentId: enrollment.id,
           id: u.id,
           name: u.name,
           email: u.email,
           institution: u.institution ?? null,
-          pre_test_score: scores?.pre ?? null,
-          post_test_score: scores?.post ?? null,
           has_certificate: certSet.has(u.id),
           status: enrollment.status,
           setup: Object.fromEntries(
@@ -340,7 +306,6 @@ export default function ProgramParticipants({
     {
       key: "name",
       label: isTraining ? "Enrolled Trainee" : "Enrolled Intern",
-      width: canEnroll ? "34%" : "40%",
       sortable: true,
       render: (p) => (
         <div className="flex flex-col gap-0.5 py-1">
@@ -353,28 +318,6 @@ export default function ProgramParticipants({
             {p.institution ?? "—"}
           </span>
         </div>
-      ),
-    },
-    {
-      key: "pre_test_score",
-      label: "Pre-Test Score",
-      width: "18%",
-      sortable: true,
-      render: (p) => (
-        <span className="font-mono font-bold text-slate-600 block pl-1">
-          {p.pre_test_score ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "post_test_score",
-      label: "Post-Test Score",
-      width: "18%",
-      sortable: true,
-      render: (p) => (
-        <span className="font-mono font-bold text-[#2a7797] block pl-1">
-          {p.post_test_score ?? "—"}
-        </span>
       ),
     },
     ...setupModules.map(
@@ -464,10 +407,8 @@ export default function ProgramParticipants({
             </h3>
             <p className="text-[11px] font-semibold text-slate-400">
               Enrollments are the source of truth for who can access this
-              program.{" "}
-              {isTraining
-                ? "Scores appear once submitted."
-                : "Scores and certificates appear once submitted or issued."}
+              program.
+              {!isTraining && " Certificates appear once issued."}
               {setupModules.length > 0 &&
                 " Setup progress updates as learners mark steps done in the module."}
             </p>

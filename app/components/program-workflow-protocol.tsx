@@ -629,8 +629,11 @@ export default function ProgramWorkflowProtocol({
           </li>
         </ol>
         <p>
-          The table shows name, email, institution, pre-test score, post-test
-          score, and whether a certificate is Issued or Pending.{" "}
+          The table shows name, email, and institution.
+          {kind === "internship" &&
+            " Each row also shows whether a certificate is Issued or Pending."}{" "}
+          Test scores are on{" "}
+          <strong className="text-[#172126]">Pre/Post Tests</strong>.{" "}
           <strong className="text-[#172126]">Remove</strong> drops the
           enrollment and they lose access.
         </p>

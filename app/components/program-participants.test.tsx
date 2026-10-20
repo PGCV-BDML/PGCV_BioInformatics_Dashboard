@@ -69,7 +69,12 @@ describe("ProgramParticipants certificate column", () => {
       screen.queryByRole("columnheader", { name: "Certificate" }),
     ).toBeNull();
     expect(screen.queryByText("Pending")).toBeNull();
-    expect(screen.getByText(/Scores appear once submitted/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Pre-Test Score" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Post-Test Score" }),
+    ).toBeNull();
   });
 
   it("keeps the certificate column on an internship", async () => {
@@ -85,5 +90,11 @@ describe("ProgramParticipants certificate column", () => {
       await screen.findByRole("columnheader", { name: "Certificate" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Pre-Test Score" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Post-Test Score" }),
+    ).toBeNull();
   });
 });
