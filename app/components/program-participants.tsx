@@ -407,7 +407,11 @@ export default function ProgramParticipants({
         },
       }),
     ),
-    {
+  ];
+
+  // Certificates are not issued from the training dashboard yet.
+  if (!isTraining) {
+    columns.push({
       key: "has_certificate",
       label: "Certificate",
       width: "18%",
@@ -422,8 +426,8 @@ export default function ProgramParticipants({
             <XCircle className="w-3 h-3" /> Pending
           </span>
         ),
-    },
-  ];
+    });
+  }
 
   if (canEnroll) {
     columns.push({
@@ -460,7 +464,10 @@ export default function ProgramParticipants({
             </h3>
             <p className="text-[11px] font-semibold text-slate-400">
               Enrollments are the source of truth for who can access this
-              program. Scores and certificates appear once submitted or issued.
+              program.{" "}
+              {isTraining
+                ? "Scores appear once submitted."
+                : "Scores and certificates appear once submitted or issued."}
               {setupModules.length > 0 &&
                 " Setup progress updates as learners mark steps done in the module."}
             </p>
