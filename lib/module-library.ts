@@ -1,4 +1,8 @@
-import type { ChecklistItem } from "@/lib/module-progress";
+import {
+  checklistKindForModule,
+  type ChecklistItem,
+  type ChecklistKind,
+} from "@/lib/module-progress";
 
 /**
  * Training module library, sourced from the private bioinfo-modules GitHub
@@ -43,6 +47,11 @@ export type ModuleLibraryItem = {
    * Absent for modules without one.
    */
   checklist?: ChecklistItem[];
+  /**
+   * modules.json `checklistKind`. `quiz` is a pre-test or post-test: each
+   * checklist item is a question, done when the answer is correct.
+   */
+  checklistKind?: ChecklistKind;
 };
 
 type ManifestEntry = {
@@ -57,6 +66,7 @@ type ManifestEntry = {
   dataset?: unknown;
   retired?: unknown;
   checklist?: unknown;
+  checklistKind?: unknown;
 };
 
 function optionalString(value: unknown): string | null {
@@ -113,6 +123,7 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
     seenPaths.add(path);
 
     const checklist = parseChecklist(entry.checklist);
+    const checklistKind = checklistKindForModule(id, entry.checklistKind);
     items.push({
       id,
       title,
@@ -124,6 +135,7 @@ export function parseModuleManifest(raw: unknown): ModuleLibraryItem[] {
       hasDataset: Boolean(optionalString(entry.dataset)),
       retired: Boolean(entry.retired),
       ...(checklist.length ? { checklist } : {}),
+      ...(checklistKind === "quiz" ? { checklistKind } : {}),
     });
   }
   return items;

@@ -200,6 +200,36 @@ describe("checklists", () => {
       { id: "miniconda", label: "Miniconda" },
     ]);
     expect(items[1]).not.toHaveProperty("checklist");
+    expect(items[0]).not.toHaveProperty("checklistKind");
+  });
+
+  it("marks a pre-test as a quiz from checklistKind or from its id", () => {
+    const [declared] = parseModuleManifest({
+      modules: [
+        {
+          id: "custom-check",
+          name: "Custom check",
+          folder: "Custom",
+          entry: "check.html",
+          checklistKind: "quiz",
+          checklist: [{ id: "q1", label: "Q1 · First question" }],
+        },
+      ],
+    });
+    expect(declared?.checklistKind).toBe("quiz");
+
+    const [fromId] = parseModuleManifest({
+      modules: [
+        {
+          id: "nfrdi-pre-test",
+          name: "Pre-Test",
+          folder: "NFRDI_Oct2026/Pre-Test",
+          entry: "pre-test.html",
+          checklist: [{ id: "16s-marker", label: "Q1 · Why the 16S rRNA gene" }],
+        },
+      ],
+    });
+    expect(fromId?.checklistKind).toBe("quiz");
   });
 
   it("drops malformed and duplicate checklist entries", () => {

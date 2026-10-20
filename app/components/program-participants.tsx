@@ -20,8 +20,11 @@ import { useToast } from "@/app/components/toast";
 import { moduleIdFromModuleLink } from "@/lib/module-library";
 import { fetchModuleCatalog } from "@/lib/module-library-client";
 import {
+  checklistKindForModule,
+  quizIsSubmitted,
   progressByUser,
   type ChecklistItem,
+  type ChecklistKind,
   type ProgressSummary,
 } from "@/lib/module-progress";
 import { isListedParticipant } from "@/lib/program-enrollment";
@@ -56,7 +59,31 @@ interface ParticipantRow {
 }
 
 /** A module in this program whose modules.json entry has a `checklist`. */
-type SetupModule = { id: string; title: string; checklist: ChecklistItem[] };
+type SetupModule = {
+  id: string;
+  title: string;
+  checklist: ChecklistItem[];
+  checklistKind: ChecklistKind;
+};
+
+function progressColumnLabel(module: SetupModule, onlyOne: boolean): string {
+  if (module.checklistKind === "quiz") {
+    if (module.id.endsWith("pre-test")) return "Pre-test";
+    if (module.id.endsWith("post-test")) return "Post-test";
+    return module.title;
+  }
+  return onlyOne ? "Setup" : module.title;
+}
+
+function progressHint(modules: SetupModule[]): string {
+  const hasQuiz = modules.some((module) => module.checklistKind === "quiz");
+  const hasSteps = modules.some((module) => module.checklistKind !== "quiz");
+  if (hasQuiz && hasSteps) {
+    return " Test scores count correct answers. Setup steps show as done.";
+  }
+  if (hasQuiz) return " Scores update when learners submit a test from the module.";
+  return " Setup progress updates as learners mark steps done in the module.";
+}
 
 /**
  * Library modules in the program that report checklist progress (e.g. the
@@ -81,6 +108,7 @@ async function loadSetupModules(programId: string): Promise<SetupModule[]> {
         id: item.id,
         title: item.title,
         checklist: item.checklist ?? [],
+        checklistKind: checklistKindForModule(item.id, item.checklistKind),
       }));
   } catch (error) {
     console.error("Failed to load module checklists:", error);
@@ -323,28 +351,36 @@ export default function ProgramParticipants({
     ...setupModules.map(
       (m, index): Column<ParticipantRow> => ({
         key: index === 0 ? "setup_done" : `setup:${m.id}`,
-        label: setupModules.length === 1 ? "Setup" : m.title,
+        label: progressColumnLabel(m, setupModules.length === 1),
         width: "14%",
         sortable: index === 0,
         render: (p) => {
           const summary = p.setup[m.id];
           if (!summary) return <span className="text-slate-400">—</span>;
-          const complete = summary.done === summary.total;
-          const started = summary.done > 0;
+          const isQuiz = m.checklistKind === "quiz";
+          const submitted = isQuiz && quizIsSubmitted(summary.items);
+          const complete = summary.done === summary.total && (!isQuiz || submitted);
+          const started = isQuiz ? submitted : summary.done > 0;
           return (
             <button
               type="button"
               onClick={() => setProgressDetail({ row: p, module: m })}
-              title={`${m.title}: view steps and pasted output`}
+              title={
+                isQuiz
+                  ? `${m.title}: ${submitted ? "view score and answers" : "not submitted"}`
+                  : `${m.title}: view steps and pasted output`
+              }
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold font-mono transition-colors ${
                 complete
                   ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
                   : started
-                    ? "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100"
+                    ? isQuiz
+                      ? "bg-[#e7f3f6] text-[#1f5f79] border-[#c5e0e8] hover:bg-[#d7ebf1]"
+                      : "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100"
                     : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              {summary.done} / {summary.total}
+              {isQuiz && !submitted ? "—" : `${summary.done} / ${summary.total}`}
             </button>
           );
         },
@@ -409,8 +445,7 @@ export default function ProgramParticipants({
               Enrollments are the source of truth for who can access this
               program.
               {!isTraining && " Certificates appear once issued."}
-              {setupModules.length > 0 &&
-                " Setup progress updates as learners mark steps done in the module."}
+              {setupModules.length > 0 && progressHint(setupModules)}
             </p>
           </div>
         </div>
@@ -481,6 +516,7 @@ export default function ProgramParticipants({
             ? (progressDetail.row.setup[progressDetail.module.id] ?? null)
             : null
         }
+        kind={progressDetail?.module.checklistKind ?? "steps"}
         onClose={() => setProgressDetail(null)}
       />
 

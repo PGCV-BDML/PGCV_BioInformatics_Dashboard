@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_EVIDENCE_LENGTH,
+  checklistKindForModule,
+  chosenAnswer,
   progressByUser,
+  quizIsSubmitted,
+  quizItemStatus,
+  quizSubmittedAt,
   sanitizeProgressItems,
   summarizeProgress,
 } from "@/lib/module-progress";
@@ -108,5 +113,41 @@ describe("progressByUser", () => {
     expect(result.get("u1")?.done).toBe(1);
     expect(result.get("u2")?.done).toBe(0);
     expect(result.get("u3")).toMatchObject({ done: 0, total: 3 });
+  });
+});
+
+describe("quiz progress", () => {
+  it("treats pre-test and post-test ids as quizzes, and an explicit kind either way", () => {
+    expect(checklistKindForModule("nfrdi-pre-test")).toBe("quiz");
+    expect(checklistKindForModule("nfrdi-post-test")).toBe("quiz");
+    expect(checklistKindForModule("nfrdi-software-setup")).toBe("steps");
+    expect(checklistKindForModule("custom-check", "quiz")).toBe("quiz");
+  });
+
+  it("reads a wrong answer as incorrect, not as an unfinished step", () => {
+    const correct = {
+      done: true,
+      evidence: "Answer: It combines conserved regions with variable regions",
+    };
+    const wrong = { done: false, evidence: "Answer: Sample descriptions only" };
+    const blank = { done: false, evidence: null };
+    expect(chosenAnswer(correct.evidence)).toBe(
+      "It combines conserved regions with variable regions",
+    );
+    expect(quizItemStatus(correct)).toBe("correct");
+    expect(quizItemStatus(wrong)).toBe("incorrect");
+    expect(quizItemStatus(blank)).toBe("unanswered");
+    expect(quizIsSubmitted([blank])).toBe(false);
+    expect(quizIsSubmitted([wrong, correct])).toBe(true);
+    expect(
+      quizSubmittedAt([
+        { ...wrong, completed_at: null, updated_at: "2026-10-20T05:38:00.000Z" },
+        {
+          ...correct,
+          completed_at: "2026-10-20T05:38:00.000Z",
+          updated_at: "2026-10-20T05:38:00.000Z",
+        },
+      ]),
+    ).toBe("2026-10-20T05:38:00.000Z");
   });
 });

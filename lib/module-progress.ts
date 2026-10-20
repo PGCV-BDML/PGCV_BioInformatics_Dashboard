@@ -32,6 +32,65 @@ export type ModuleProgressItem = {
 
 export type ChecklistItem = { id: string; label: string };
 
+/**
+ * How a checklist should read on the participants page.
+ * `quiz` is a submitted test: done means correct, evidence is the chosen answer.
+ * Pre-test and post-test ids count as quizzes even before modules.json says so.
+ */
+export type ChecklistKind = "steps" | "quiz";
+
+export function checklistKindForModule(
+  id: string,
+  declared?: unknown,
+): ChecklistKind {
+  if (declared === "quiz") return "quiz";
+  if (/(?:^|-)(?:pre|post)-test$/.test(id)) return "quiz";
+  return "steps";
+}
+
+/** The option the trainee chose, without the "Answer:" prefix the module sends. */
+export function chosenAnswer(evidence: string | null | undefined): string | null {
+  if (!evidence?.trim()) return null;
+  const text = evidence.replace(/^Answer:\s*/, "").trim();
+  return text || null;
+}
+
+export type QuizItemStatus = "correct" | "incorrect" | "unanswered";
+
+export function quizItemStatus(item: {
+  done: boolean;
+  evidence: string | null;
+}): QuizItemStatus {
+  if (!chosenAnswer(item.evidence)) return item.done ? "correct" : "unanswered";
+  return item.done ? "correct" : "incorrect";
+}
+
+/** A quiz is submitted once any question has an answer. Nothing is sent before that. */
+export function quizIsSubmitted(
+  items: { done: boolean; evidence: string | null }[],
+): boolean {
+  return items.some(
+    (item) => item.done || Boolean(chosenAnswer(item.evidence)),
+  );
+}
+
+/** Latest timestamp among answered questions. Wrong answers keep only updated_at. */
+export function quizSubmittedAt(
+  items: {
+    evidence: string | null;
+    done: boolean;
+    completed_at: string | null;
+    updated_at: string | null;
+  }[],
+): string | null {
+  const stamps = items
+    .filter((item) => quizItemStatus(item) !== "unanswered")
+    .map((item) => item.completed_at || item.updated_at)
+    .filter((value): value is string => Boolean(value))
+    .sort();
+  return stamps.at(-1) ?? null;
+}
+
 export type ChecklistItemProgress = ChecklistItem & {
   done: boolean;
   evidence: string | null;
