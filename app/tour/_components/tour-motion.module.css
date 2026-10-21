@@ -427,6 +427,19 @@
   --text-lg--line-height: 1.5;
 }
 
+/*
+ * Albert and Christine are framed left in the source photo. Slide and scale
+ * so the face is in the middle of the portrait card. Present mode is square
+ * and already crops top and bottom, so it only shifts sideways.
+ */
+.teamPhotoShift {
+  transform: translate(21%, 13.2%) scale(1.42);
+}
+
+:global([data-presenting]) .teamPhotoShift {
+  transform: translateX(21%) scale(1.25);
+}
+
 /* Printed tours show everything in its final state. */
 @media print {
   .count[data-reveal] {

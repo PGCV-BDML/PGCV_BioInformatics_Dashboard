@@ -1109,6 +1109,13 @@ export function CovidSection({
   );
 }
 
+/**
+ * Albert and Christine sit left of centre in their portraits. The card is the
+ * same shape as the photo, so object-position has nothing to crop. These ids
+ * get `.teamPhotoShift`, which slides the face into the middle of the card.
+ */
+const TEAM_PHOTO_SHIFT = new Set(["albert", "christine"]);
+
 export function TeamSection({ content, audience, index }: SectionProps & { index: number }) {
   const { team } = content;
   return (
@@ -1139,12 +1146,14 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
               {/* Square in Present mode: a shorter row leaves room to show everyone larger. */}
               <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2] group-data-[presenting]/tour:aspect-square!">
                 {src && (
-                  <img
-                    src={src}
-                    alt={member.fullName}
-                    loading="lazy"
-                    className={`${styles.kenBurns} h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105`}
-                  />
+                  <div className={TEAM_PHOTO_SHIFT.has(member.id) ? `h-full w-full ${styles.teamPhotoShift}` : "contents"}>
+                    <img
+                      src={src}
+                      alt={member.fullName}
+                      loading="lazy"
+                      className={`${styles.kenBurns} h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105`}
+                    />
+                  </div>
                 )}
               </div>
               <div className="flex flex-1 flex-col gap-0.5 border-t-4 border-[#12ca99] px-4 py-4">
