@@ -1,5 +1,12 @@
+import { isStaffRole } from "@/lib/portal";
 import { supabase } from "@/lib/supabase";
-import type { ChatMessage, Conversation } from "@/types/database";
+import type {
+  ChatMessage,
+  ChatPerson,
+  Conversation,
+  ProgramConversation,
+  UserRole,
+} from "@/types/database";
 
 /** Newest-N window the panel keeps in memory. */
 export const MESSAGE_PAGE_SIZE = 50;
@@ -181,6 +188,18 @@ export function formatDayDivider(iso: string, now = new Date()): string {
   });
 }
 
+const PROGRAM_PATH =
+  /^\/dashboard\/(?:training|internship)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;
+
+/**
+ * The program whose workspace a path belongs to, so the panel can
+ * offer that program's chat on every one of its tabs. Only UUIDs
+ * match; anything else is not a program page.
+ */
+export function programIdFromPath(pathname: string | null): string | null {
+  return pathname?.match(PROGRAM_PATH)?.[1] ?? null;
+}
+
 // ---- Data access ---------------------------------------------
 
 /**
@@ -205,6 +224,29 @@ export async function getDefaultChannel(): Promise<Conversation | null> {
   return (data as Conversation | null) ?? null;
 }
 
+/**
+ * A program's chat, with the program title and status. Null when
+ * the caller is not staff or enrolled in it — RLS filters it out.
+ */
+export async function getProgramConversation(
+  programId: string,
+): Promise<ProgramConversation | null> {
+  const { data, error } = await supabase
+    .from("conversation")
+    .select("*, program:training_program(title, status, type)")
+    .eq("kind", "program")
+    .eq("program_id", programId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load program chat:", error);
+    return null;
+  }
+  if (!data?.program) return null;
+
+  return data as ProgramConversation;
+}
+
 /** Newest messages first from the database, returned oldest-first for rendering. */
 export async function getMessages(
   conversationId: string,
@@ -223,51 +265,48 @@ export async function getMessages(
   }
 
   const rows = (data ?? []) as ChatMessage[];
-  return withSenderNames(rows.slice().reverse());
+  return rows.slice().reverse();
 }
 
 /**
- * Attach display names. `message` has no FK-embedded select here
- * because users is a separate RLS domain; one batched lookup keeps
- * it to a single extra round trip.
+ * Display names for everyone in a conversation, keyed by user id.
+ *
+ * Goes through conversation_people() because learners cannot read
+ * each other in users. If that function is missing (the program-chat
+ * migration has not run), staff can still read each other directly,
+ * so the team chat keeps its names.
  */
-async function withSenderNames(messages: ChatMessage[]): Promise<ChatMessage[]> {
-  const senderIds = Array.from(new Set(messages.map((m) => m.sender_id)));
-  if (senderIds.length === 0) return messages;
+export async function getConversationPeople(
+  conversationId: string,
+  senderIds: string[],
+): Promise<Map<string, ChatPerson>> {
+  const { data, error } = await supabase.rpc("conversation_people", {
+    conv_id: conversationId,
+  });
 
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, name")
-    .in("id", senderIds);
-
-  if (error) {
-    console.error("Failed to load message senders:", error);
-    return messages;
+  if (!error) {
+    return new Map(((data ?? []) as ChatPerson[]).map((p) => [p.id, p]));
   }
 
-  const nameById = new Map(
-    (data ?? []).map((u) => [u.id as string, (u.name as string | null) ?? null]),
+  const ids = Array.from(new Set(senderIds));
+  if (ids.length === 0) return new Map();
+
+  const fallback = await supabase.from("users").select("id, name, role").in("id", ids);
+  if (fallback.error) {
+    console.error("Failed to load message senders:", fallback.error);
+    return new Map();
+  }
+
+  return new Map(
+    (fallback.data ?? []).map((u) => [
+      u.id as string,
+      {
+        id: u.id as string,
+        name: (u.name as string | null) ?? null,
+        is_staff: isStaffRole(u.role as UserRole),
+      },
+    ]),
   );
-
-  return messages.map((m) => ({
-    ...m,
-    sender_name: nameById.get(m.sender_id) ?? null,
-  }));
-}
-
-/** Look up one display name (for realtime arrivals from unknown senders). */
-export async function getSenderName(userId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("users")
-    .select("name")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to load sender name:", error);
-    return null;
-  }
-  return (data?.name as string | null) ?? null;
 }
 
 export async function sendMessage(
@@ -292,17 +331,30 @@ export async function sendMessage(
   return data as ChatMessage;
 }
 
-/** Soft delete — the row stays for the audit trail. */
-export async function deleteMessage(messageId: string): Promise<void> {
-  const { error } = await supabase
+/**
+ * Soft delete — the row stays for the audit trail. In a program chat
+ * the database also blanks the text. Returns the updated row; throws
+ * if RLS left the message untouched.
+ */
+export async function deleteMessage(messageId: string): Promise<ChatMessage> {
+  const { data, error } = await supabase
     .from("message")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", messageId);
+    .eq("id", messageId)
+    .select()
+    .maybeSingle();
 
   if (error) {
     console.error("Failed to delete message:", error);
     throw error;
   }
+  if (!data) {
+    const denied = new Error("You can't delete this message.");
+    console.error("Failed to delete message:", denied);
+    throw denied;
+  }
+
+  return data as ChatMessage;
 }
 
 /** Read the caller's last_read_at bookmark, if they have one. */

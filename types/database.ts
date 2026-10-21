@@ -874,15 +874,29 @@ export const SCHEDULED_ABSENCE_STATUSES: PresenceStatus[] = [
 ];
 
 //For Chat ============================================================================
-export type ConversationKind = "channel" | "direct";
+export type ConversationKind = "channel" | "direct" | "program";
 
 export type Conversation = {
   id: string;
   kind: ConversationKind;
   name: string | null;
+  /** Set only on 'program' chats. */
+  program_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** A program chat with the program fields the chat panel shows. */
+export type ProgramConversation = Conversation & {
+  program: Pick<TrainingProgram, "title" | "status" | "type">;
+};
+
+/** One row of conversation_people(): what a chat bubble needs. */
+export type ChatPerson = {
+  id: string;
+  name: string | null;
+  is_staff: boolean;
 };
 
 export type ConversationMember = {
@@ -900,8 +914,6 @@ export type ChatMessage = {
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
-  /** Client-enriched from users; not a column on message. */
-  sender_name?: string | null;
 };
 
 // ============================================================
