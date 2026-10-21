@@ -153,6 +153,7 @@ A training program's **Presentations** tab (next to Modules) reads `presentation
 `/tour` is a **public** page (no sign-in) for visiting schools and institutions, with a Students / General / Technical audience switch and a full-screen **Present** mode (arrow keys to move between sections, Esc to exit). Staff reach it from **Lab Tour** in the sidebar.
 
 - **Text and photos** come from `tour.json` and `images/` in the private [pgcv-tour-content](https://github.com/bioinfopgcupvisayas/pgcv-tour-content) repo; edits on its `main` branch show up within about 5 minutes. Images are served through `/api/tour/asset/…`, which only allows `images/*.jpg|png|webp`. Videos are linked (unlisted YouTube or a GitHub Release), never committed.
+- **Scientific names** in any tour text are wrapped in asterisks, e.g. `"scaffolded against *Cervus elaphus*"`, and render in italics. A project's `species` field is already italic, so leave it bare.
 - **Projects:** the first entry in `projects.items` is shown as a large featured card. Besides `title`, `species`, `status`, `image`, `summary`, `highlights` and `partners`, it can take these optional fields:
   - `commonName`
   - `imageFocus` (`"x% y%"`): which part of the photo stays in frame when cropped

@@ -12,10 +12,11 @@ import {
   TestTube,
   type LucideIcon,
 } from "lucide-react";
-import { resolveText, tourAssetUrl, type Audience, type TourProject, type TourProjectStep } from "@/lib/tour";
+import { tourAssetUrl, type Audience, type TourProject, type TourProjectStep } from "@/lib/tour";
 import { BRAND, CARD } from "./brand";
 import { CountUp } from "./count-up";
 import { DoiQr } from "./doi-qr";
+import { TourCopy } from "./tour-copy";
 import styles from "./tour-motion.module.css";
 
 const delay = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
@@ -189,7 +190,7 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
               {project.commonName && <span className="not-italic text-[15px] text-[#5b6770]"> · {project.commonName}</span>}
             </p>
           )}
-          {!visual && <p className="mt-4 text-lg leading-relaxed text-[#5b6770]">{resolveText(project.summary, audience)}</p>}
+          {!visual && <p className="mt-4 text-lg leading-relaxed text-[#5b6770]"><TourCopy text={project.summary} audience={audience} /></p>}
 
           {project.highlights.length > 0 && (
             <dl className={`mt-7 grid grid-cols-2 gap-3 ${visual ? "" : "xl:grid-cols-4"}`}>
@@ -220,7 +221,7 @@ export function FeaturedProject({ project, audience }: { project: TourProject; a
               {project.next && !visual && (
                 <p className="mt-4 text-sm text-[#5b6770]">
                   <span className="font-bold text-[#0a7558]">What&rsquo;s next: </span>
-                  {resolveText(project.next, audience)}
+                  <TourCopy text={project.next} audience={audience} />
                 </p>
               )}
             </div>
