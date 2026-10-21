@@ -20,9 +20,9 @@
         "former": ["Cebu", "Guimaras", "Masbate"]
       },
       "summary": {
-        "general": "From a small ear-tissue sample taken from Abraham, a male in Silliman University's captive herd, we sequenced 157 billion DNA letters and pieced them together on our HPC server. The result is the first genome for the deer, and for its whole genus Rusa: a reference for checking how much genetic diversity this endangered species has left.",
+        "general": "From a small ear-tissue sample taken from Abraham, a male in Silliman University's captive herd, we sequenced 157 billion DNA letters and pieced them together on our HPC server. The result is the first genome for the deer, and for its whole genus *Rusa*: a reference for checking how much genetic diversity this endangered species has left.",
         "students": "Scientists took a tiny piece of ear from Abraham, a deer at Silliman University, and read his DNA: about 2.5 billion letters long. Our computers then pieced the letters together like a giant puzzle. It is the first time anyone has read the full genome of this endangered deer.",
-        "technical": "Illumina NextSeq 1000 short reads (2 × 151 bp, 157 Gbp) were assembled with MaSuRCA and scaffolded with RagTag against Cervus elaphus. RusAlf_1.1 spans 2.52 Gb (scaffold N50 75 Mb, contig N50 46 kb) with 95.5% complete BUSCOs (cetartiodactyla_odb10) and 24,531 genes annotated with GeMoMa and BRAKER. Single-copy orthologs place R. alfredi close to the genus Cervus."
+        "technical": "Illumina NextSeq 1000 short reads (2 × 151 bp, 157 Gbp) were assembled with MaSuRCA and scaffolded with RagTag against *Cervus elaphus*. RusAlf_1.1 spans 2.52 Gb (scaffold N50 75 Mb, contig N50 46 kb) with 95.5% complete BUSCOs (cetartiodactyla_odb10) and 24,531 genes annotated with GeMoMa and BRAKER. Single-copy orthologs place *R. alfredi* close to the genus *Cervus*."
       },
       "highlights": [
         { "value": "2.52", "unit": "Gb", "label": "genome assembled" },

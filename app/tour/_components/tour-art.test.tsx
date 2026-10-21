@@ -113,3 +113,31 @@ describe("FeaturedProject", () => {
     );
   });
 });
+
+describe("scientific names", () => {
+  it("sets them in italics in the deer project's technical summary", async () => {
+    const { parseTourContent } = await import("@/lib/tour");
+    const { FeaturedProject } = await import("./project-feature");
+    const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
+    const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
+    const { container } = render(<FeaturedProject project={tour.projects.items[0]!} audience="technical" />);
+    const italics = [...container.querySelectorAll("i")].map((i) => i.textContent);
+    expect(italics).toEqual(["Cervus elaphus", "R. alfredi", "Cervus"]);
+    expect(container.textContent).not.toContain("*");
+  });
+
+  it("sets them in italics on the research agenda cards", async () => {
+    const { AGENDA } = await import("@/lib/tour-agenda");
+    const { AgendaAreaCard } = await import("./research-agenda");
+    const { container } = render(
+      <>
+        {AGENDA.map((area) => (
+          <AgendaAreaCard key={area.id} area={area} audience="technical" />
+        ))}
+      </>,
+    );
+    const italics = [...container.querySelectorAll("i")].map((i) => i.textContent);
+    expect(italics).toEqual(["Rusa alfredi", "Rusa alfredi", "Pholas orientalis", "Macrobrachium"]);
+    expect(container.textContent).not.toContain("*");
+  });
+});

@@ -152,6 +152,24 @@ export function resolveText(text: TourText, audience: Audience): string {
   return text[audience] || text.general;
 }
 
+export type TextSpan = { text: string; italic: boolean };
+
+/**
+ * Splits tour copy on `*...*` so scientific names can be set in italics, e.g.
+ * "scaffolded against *Cervus elaphus*". A lone asterisk is kept as typed.
+ */
+export function italicSpans(text: string): TextSpan[] {
+  const spans: TextSpan[] = [];
+  let last = 0;
+  for (const match of text.matchAll(/\*([^*\n]+)\*/g)) {
+    if (match.index > last) spans.push({ text: text.slice(last, match.index), italic: false });
+    spans.push({ text: match[1]!, italic: true });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) spans.push({ text: text.slice(last), italic: false });
+  return spans;
+}
+
 /** Repo-relative image paths we are willing to proxy from the content repo. */
 export function isSafeTourAssetPath(path: string): boolean {
   if (!path || path.length > 256 || path.includes("\\")) return false;

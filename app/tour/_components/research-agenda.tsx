@@ -15,9 +15,10 @@ import {
   Wheat,
   type LucideProps,
 } from "lucide-react";
-import { resolveText, type Audience } from "@/lib/tour";
+import type { Audience } from "@/lib/tour";
 import type { AgendaArea, AgendaIcon } from "@/lib/tour-agenda";
 import { BRAND, CARD, LOGO } from "./brand";
+import { TourCopy } from "./tour-copy";
 
 /**
  * Oriental angelwing clam (Pholas orientalis): a long, wing-shaped valve with
@@ -85,7 +86,7 @@ export function AgendaAreaCard({ area, audience }: { area: AgendaArea; audience:
       >
         <AreaIcon className="h-8 w-8" strokeWidth={1.75} />
       </span>
-      <h3 className="mt-3 text-lg font-bold leading-tight text-[#2b3278]">{resolveText(area.name, audience)}</h3>
+      <h3 className="mt-3 text-lg font-bold leading-tight text-[#2b3278]"><TourCopy text={area.name} audience={audience} /></h3>
       <ul className="mt-3 flex flex-1 flex-col">
         {area.projects.map((project) => {
           const Icon = ICONS[project.icon];
@@ -94,7 +95,7 @@ export function AgendaAreaCard({ area, audience }: { area: AgendaArea; audience:
               <Icon className="h-6 w-6 shrink-0" style={{ color: ink }} strokeWidth={1.75} aria-hidden="true" />
               <p className="text-sm font-semibold leading-snug text-[#333333]">{project.name}</p>
               {audience !== "visual" && (
-                <p className="text-xs leading-snug text-[#5b6770]">{resolveText(project.summary, audience)}</p>
+                <p className="text-xs leading-snug text-[#5b6770]"><TourCopy text={project.summary} audience={audience} /></p>
               )}
               {audience === "technical" && (
                 <p className="text-[11px] font-semibold leading-snug" style={{ color: ink }}>

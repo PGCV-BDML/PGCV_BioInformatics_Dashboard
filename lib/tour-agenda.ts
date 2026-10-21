@@ -120,7 +120,7 @@ export const AGENDA: AgendaArea[] = [
         summary: {
           general: "Draft genome of the endangered Visayan spotted deer",
           students: "Reading the DNA of a rare deer found only here",
-          technical: "Draft genome of the endangered Visayan spotted deer (Rusa alfredi), a Philippine endemic species",
+          technical: "Draft genome of the endangered Visayan spotted deer (*Rusa alfredi*), a Philippine endemic species",
         },
         partners: "Silliman University · 2025",
       },
@@ -131,7 +131,7 @@ export const AGENDA: AgendaArea[] = [
         summary: {
           general: "Finding the deer from DNA it leaves behind",
           students: "Finding deer from the DNA they leave in soil and water",
-          technical: "Establishing eDNA-based monitoring for the Visayan spotted deer (Rusa alfredi)",
+          technical: "Establishing eDNA-based monitoring for the Visayan spotted deer (*Rusa alfredi*)",
         },
         partners: "Talarak Foundation · DENR-NIR · Silliman University · 2026",
       },
@@ -180,7 +180,7 @@ export const AGENDA: AgendaArea[] = [
           general: "Population genetics to guide conservation breeding",
           students: "Using DNA to help a rare clam recover",
           technical:
-            "Genomic variation among (meta)populations of the oriental angelwing clam (Pholas orientalis) in Western Visayas: basis for a conservation breeding program",
+            "Genomic variation among (meta)populations of the oriental angelwing clam (*Pholas orientalis*) in Western Visayas: basis for a conservation breeding program",
         },
         partners: "Aklan State University",
       },
@@ -192,7 +192,7 @@ export const AGENDA: AgendaArea[] = [
           general: "Mapping prawn populations for better broodstock",
           students: "Finding the best prawns to raise on farms",
           technical:
-            "Genetic characterization of Macrobrachium populations in the Philippines for broodstock development and seed production",
+            "Genetic characterization of *Macrobrachium* populations in the Philippines for broodstock development and seed production",
         },
         partners: "Western Philippines University",
       },

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Cpu, HardDrive, Maximize2, MemoryStick, Pause, Play, RotateCw, type LucideIcon } from "lucide-react";
-import { resolveText, TOUR_LAB_MAP_URL, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
+import { TOUR_LAB_MAP_URL, tourAssetUrl, type Audience, type TourContent, type TourService } from "@/lib/tour";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import { formatMonth, type TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
@@ -23,6 +23,7 @@ import { ServiceIcon } from "./service-icons";
 import { ShowcaseFigures } from "./service-showcase";
 import { AgendaAreaCard } from "./research-agenda";
 import { SocialIcon, hasSocialIcon } from "./social-icons";
+import { TourCopy } from "./tour-copy";
 import { useReveal } from "./use-reveal";
 import { CountUp } from "./count-up";
 import { DoiQr } from "./doi-qr";
@@ -173,7 +174,7 @@ export function HeroSection({ content, audience }: SectionProps) {
         </h1>
         {audience !== "visual" && (
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
-            {resolveText(hero.intro, audience)}
+            <TourCopy text={hero.intro} audience={audience} />
           </p>
         )}
         {hero.facts.length > 0 && (
@@ -218,7 +219,7 @@ function ServiceCard({ service, audience, order }: { service: TourService; audie
       {/* Cards in the same row start their icons a beat apart. */}
       <ServiceIcon id={service.id} code={service.code} color={color} delay={(order % 3) * 90} large={visual} />
       <h3 className={`mt-1 font-bold text-[#2b3278] ${visual ? "text-2xl leading-tight" : "text-xl"}`}>{service.name}</h3>
-      {!visual && <p className="flex-1 leading-relaxed text-[#5b6770]">{resolveText(service.summary, audience)}</p>}
+      {!visual && <p className="flex-1 leading-relaxed text-[#5b6770]"><TourCopy text={service.summary} audience={audience} /></p>}
       {!visual && service.tag && (
         // One line, pinned to the card's foot, so the pills in a row line up.
         <span
@@ -251,7 +252,7 @@ export function IntroSection({ audience, index }: { audience: Audience; index: n
           <Eyebrow index={index}>Before we begin</Eyebrow>
           <SectionHeading title={INTRO_TITLE} />
           <p className={`mt-4 text-lg leading-relaxed text-[#5b6770] md:text-xl ${styles.enter}`} style={delay(160)}>
-            {resolveText(INTRO_DEFINITION, audience)}
+            <TourCopy text={INTRO_DEFINITION} audience={audience} />
           </p>
           <ul className="mt-6 space-y-3">
             {INTRO_FIELDS.map((field, i) => {
@@ -265,7 +266,7 @@ export function IntroSection({ audience, index }: { audience: Audience; index: n
                   <span className="font-bold" style={{ color }}>
                     {field.name}
                   </span>{" "}
-                  {resolveText(field.role, audience)}
+                  <TourCopy text={field.role} audience={audience} />
                 </li>
               );
             })}
@@ -316,7 +317,7 @@ export function JourneySection({
         </div>
         {audience !== "visual" && (
           <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-            {resolveText(JOURNEY_INTRO, audience)}
+            <TourCopy text={JOURNEY_INTRO} audience={audience} />
           </p>
         )}
       </div>
@@ -342,7 +343,7 @@ export function ServicesSection({ content, audience, index }: SectionProps & { i
       <SectionHeading title={services.title} />
       {audience !== "visual" && (
         <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(services.intro, audience)}
+          <TourCopy text={services.intro} audience={audience} />
         </p>
       )}
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${PRESENT_GAP} ${PRESENT_COLUMNS.services}`}>
@@ -363,7 +364,7 @@ export function ShowcaseSection({ audience, index }: { audience: Audience; index
           <SectionHeading title="Sample results" />
         </div>
         <div className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} ${styles.enter}`} style={delay(160)}>
-          {audience !== "visual" && <p className="text-lg leading-relaxed text-[#5b6770]">{resolveText(SHOWCASE_INTRO, audience)}</p>}
+          {audience !== "visual" && <p className="text-lg leading-relaxed text-[#5b6770]"><TourCopy text={SHOWCASE_INTRO} audience={audience} /></p>}
           <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a7558]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#12ca99]" aria-hidden="true" />
             Sample data for illustration, not from a real project
@@ -375,9 +376,9 @@ export function ShowcaseSection({ audience, index }: { audience: Audience; index
           <li key={item.id} className={`${CARD} ${styles.enter} flex flex-col gap-4 p-5`} style={stagger(i)}>
             <div>
               <p className="font-quicksand text-xs font-bold uppercase tracking-[0.15em] text-[#0a7558]">{item.service}</p>
-              <h3 className="mt-1 text-xl font-bold text-[#2b3278]">{resolveText(item.title, audience)}</h3>
+              <h3 className="mt-1 text-xl font-bold text-[#2b3278]"><TourCopy text={item.title} audience={audience} /></h3>
               {audience !== "visual" && (
-                <p className="mt-1 text-sm leading-relaxed text-[#5b6770]">{resolveText(item.caption, audience)}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#5b6770]"><TourCopy text={item.caption} audience={audience} /></p>
               )}
             </div>
             <ShowcaseFigures id={item.id} />
@@ -395,7 +396,7 @@ export function AgendaSection({ audience, index }: { audience: Audience; index: 
       <SectionHeading title={AGENDA_TITLE} />
       {audience !== "visual" && (
         <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(AGENDA_INTRO, audience)}
+          <TourCopy text={AGENDA_INTRO} audience={audience} />
         </p>
       )}
       <ul className={`mt-10 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 ${PRESENT_GAP} ${PRESENT_COLUMNS.agenda}`}>
@@ -434,7 +435,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
           <span className="font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558]">
             In simple terms
           </span>
-          <span className="font-medium">{resolveText(infrastructure.analogy, audience)}</span>
+          <span className="font-medium"><TourCopy text={infrastructure.analogy} audience={audience} /></span>
         </p>
       )}
       {/*
@@ -470,7 +471,7 @@ export function InfrastructureSection({ content, audience, index }: SectionProps
                 )}
                 <h3 className="mt-1 text-3xl font-black text-[#2b3278] group-data-[presenting]/tour:text-2xl group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-2">{item.name}</h3>
                 {audience !== "visual" && (
-                  <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:text-base group-data-[presenting]/tour:leading-relaxed group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3">{resolveText(item.description, audience)}</p>
+                  <p className="mt-2 text-lg text-[#5b6770] group-data-[presenting]/tour:text-base group-data-[presenting]/tour:leading-relaxed group-data-[presenting]/tour:md:col-start-2 group-data-[presenting]/tour:md:row-start-3"><TourCopy text={item.description} audience={audience} /></p>
                 )}
                 <dl className="mt-8 grid gap-4 sm:grid-cols-3 group-data-[presenting]/tour:mt-5 group-data-[presenting]/tour:gap-3 group-data-[presenting]/tour:md:col-span-full group-data-[presenting]/tour:md:row-start-4 group-data-[presenting]/tour:md:self-stretch">
                   {item.specs.map((spec, i) => {
@@ -543,7 +544,7 @@ export function LabMapSection({
         </div>
         {audience !== "visual" && (
           <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-            {resolveText(labMap.intro, audience)}
+            <TourCopy text={labMap.intro} audience={audience} />
           </p>
         )}
       </div>
@@ -585,7 +586,7 @@ export function TrainingsSection({ content, audience, index }: SectionProps & { 
       <SectionHeading title={trainings.title} />
       {audience !== "visual" && (
         <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-          {resolveText(trainings.intro, audience)}
+          <TourCopy text={trainings.intro} audience={audience} />
         </p>
       )}
       <ul className={`mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6 ${PRESENT_GAP} ${PRESENT_COLUMNS.trainings}`}>
@@ -631,7 +632,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
           <SectionHeading title={projects.title} />
         </div>
         {audience !== "visual" && (
-          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(projects.intro, audience)}</p>
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}><TourCopy text={projects.intro} audience={audience} /></p>
         )}
       </div>
 
@@ -646,7 +647,7 @@ export function ProjectsSection({ content, audience, index }: SectionProps & { i
               )}
               <h3 className="mt-2 text-xl font-black text-[#2b3278]">{project.title}</h3>
               {project.species && <p className="italic text-[#5e205e]">{project.species}</p>}
-              {audience !== "visual" && <p className="mt-2 text-[#5b6770]">{resolveText(project.summary, audience)}</p>}
+              {audience !== "visual" && <p className="mt-2 text-[#5b6770]"><TourCopy text={project.summary} audience={audience} /></p>}
             </li>
           ))}
         </ul>
@@ -670,7 +671,7 @@ export function VariantTreeSection({
           <Eyebrow index={index}>Tracking the variants</Eyebrow>
           <SectionHeading title={nextstrain.title} />
           {audience !== "visual" && (
-            <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(nextstrain.intro, audience)}</p>
+            <p className={`mt-3 text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}><TourCopy text={nextstrain.intro} audience={audience} /></p>
           )}
         </div>
         <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[#2b3278] lg:mt-0 lg:shrink-0 lg:flex-col lg:text-right">
@@ -767,7 +768,7 @@ export function VirusModelSection({
         </div>
         {audience !== "visual" && (
           <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-            {resolveText(virusModel.intro, audience)}
+            <TourCopy text={virusModel.intro} audience={audience} />
           </p>
         )}
       </div>
@@ -1068,7 +1069,7 @@ export function CovidSection({
         <SectionHeading title={covid.title} />
         {audience !== "visual" && (
           <p className={`mt-3 max-w-3xl ${PRESENT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>
-            {resolveText(covid.intro, audience)}
+            <TourCopy text={covid.intro} audience={audience} />
           </p>
         )}
         {stats && (
@@ -1119,7 +1120,7 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           <SectionHeading title={team.title} />
         </div>
         {audience !== "visual" && (
-          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}>{resolveText(team.intro, audience)}</p>
+          <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}><TourCopy text={team.intro} audience={audience} /></p>
         )}
       </div>
       <ul className={`mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.team}`}>
@@ -1229,7 +1230,7 @@ export function ContactSection({ content, audience, index }: SectionProps & { in
           >
             {scanOnly ? "Scan to connect" : contact.title}
           </h2>
-          {audience !== "visual" && <p className="mt-3 text-lg text-white/85">{resolveText(contact.intro, audience)}</p>}
+          {audience !== "visual" && <p className="mt-3 text-lg text-white/85"><TourCopy text={contact.intro} audience={audience} /></p>}
           {contact.social && (
             <div className="mt-6">
               <p className="text-sm font-medium text-white/80">

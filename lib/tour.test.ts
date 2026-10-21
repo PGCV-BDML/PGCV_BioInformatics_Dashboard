@@ -5,6 +5,7 @@ import {
   isSafeTourAssetPath,
   isSafeTourAudioPath,
   isSafeTourLabMapPath,
+  italicSpans,
   LAB_MAP_CSP,
   parseTourContent,
   resolveText,
@@ -133,6 +134,24 @@ describe("resolveText", () => {
     expect(resolveText("Plain", "technical")).toBe("Plain");
     expect(resolveText(text, "visual")).toBe("General");
     expect(resolveText({ general: "General", visual: "Short" }, "visual")).toBe("Short");
+  });
+});
+
+describe("italicSpans", () => {
+  it("sets *...* spans in italics", () => {
+    expect(italicSpans("against *Cervus elaphus*, near *R. alfredi*.")).toEqual([
+      { text: "against ", italic: false },
+      { text: "Cervus elaphus", italic: true },
+      { text: ", near ", italic: false },
+      { text: "R. alfredi", italic: true },
+      { text: ".", italic: false },
+    ]);
+  });
+
+  it("leaves text without a closed pair as typed", () => {
+    expect(italicSpans("Plain text")).toEqual([{ text: "Plain text", italic: false }]);
+    expect(italicSpans("5 * 3")).toEqual([{ text: "5 * 3", italic: false }]);
+    expect(italicSpans("")).toEqual([]);
   });
 });
 

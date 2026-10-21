@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { resolveText, type Audience } from "@/lib/tour";
+import type { Audience } from "@/lib/tour";
 import { JOURNEY_HPC_ADDRESS, JOURNEY_SEQUENCERS, JOURNEY_STEPS, type JourneyStepId } from "@/lib/tour-journey";
 import { BRAND, CARD, LOGO, SERVICE_HEX } from "./brand";
+import { TourCopy } from "./tour-copy";
 import styles from "./tour-motion.module.css";
 
 /*
@@ -506,12 +507,12 @@ export function SampleJourney({
                 </h3>
                 {!visual && (
                   <p className={`text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={d(160)}>
-                    {resolveText(item.text, audience)}
+                    <TourCopy text={item.text} audience={audience} />
                   </p>
                 )}
                 <div className={`self-start rounded-xl bg-[#f7f6fa] px-3.5 py-2.5 ${styles.enter}`} style={d(260)}>
                   <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#0a7558]">What we have now</p>
-                  <p className="mt-0.5 font-bold text-[#2b3278]">{resolveText(item.now, audience)}</p>
+                  <p className="mt-0.5 font-bold text-[#2b3278]"><TourCopy text={item.now} audience={audience} /></p>
                   {note && <p className="mt-0.5 text-xs text-[#5b6770]">{note}</p>}
                 </div>
               </div>
