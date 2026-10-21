@@ -1123,9 +1123,9 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
         )}
       </div>
       {/*
-        Flex, not a fixed column grid: a short last row (7 people is 4 + 3)
-        stays centred instead of sticking to the left. Present mode uses a
-        fixed card width so the same thing happens on a wide screen.
+        Four per row, then a centred row of three. Present mode is wide
+        enough that a smaller card would fit six across, so the width is
+        locked to a quarter of the row.
       */}
       <ul className={`mt-10 flex flex-wrap justify-center gap-4 md:gap-5 ${PRESENT_GAP}`}>
         {team.members.map((member, i) => {
@@ -1133,7 +1133,7 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           return (
             <li
               key={member.id}
-              className={`${CARD} ${styles.enter} group flex w-[calc(50%-0.5rem)] shrink-0 flex-col overflow-hidden md:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)] group-data-[presenting]/tour:w-56! group-data-[presenting]/tour:max-w-[calc(50%-0.625rem)]!`}
+              className={`${CARD} ${styles.enter} group flex w-[calc(50%-0.5rem)] shrink-0 flex-col overflow-hidden md:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)] group-data-[presenting]/tour:w-[calc((100%-3.75rem)/4)]! group-data-[presenting]/tour:max-w-none!`}
               style={stagger(i)}
             >
               {/*
