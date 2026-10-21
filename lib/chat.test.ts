@@ -6,6 +6,7 @@ import {
   mergeMessage,
   normalizeMessageBody,
   parseMessageBody,
+  programIdFromPath,
   shouldGroupWithPrevious,
 } from "./chat";
 import type { ChatMessage } from "@/types/database";
@@ -207,5 +208,27 @@ describe("formatDayDivider", () => {
     expect(label).not.toBe("Today");
     expect(label).not.toBe("Yesterday");
     expect(label).toContain("20");
+  });
+});
+
+describe("programIdFromPath", () => {
+  const id = "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b";
+
+  it("finds the program on its base page and every tab", () => {
+    expect(programIdFromPath(`/dashboard/training/${id}`)).toBe(id);
+    expect(programIdFromPath(`/dashboard/training/${id}/assessment`)).toBe(id);
+    expect(programIdFromPath(`/dashboard/internship/${id}/participants/u1`)).toBe(id);
+  });
+
+  it("ignores program lists and other pages", () => {
+    expect(programIdFromPath("/dashboard/training")).toBeNull();
+    expect(programIdFromPath("/dashboard/internship/")).toBeNull();
+    expect(programIdFromPath(`/dashboard/services/${id}`)).toBeNull();
+    expect(programIdFromPath(null)).toBeNull();
+  });
+
+  it("only accepts a whole UUID segment", () => {
+    expect(programIdFromPath("/dashboard/training/not-a-program")).toBeNull();
+    expect(programIdFromPath(`/dashboard/training/${id}extra`)).toBeNull();
   });
 });
