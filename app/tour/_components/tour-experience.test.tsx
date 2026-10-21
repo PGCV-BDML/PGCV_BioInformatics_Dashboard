@@ -278,6 +278,9 @@ describe("TourExperience", () => {
     render(<TourExperience content={{ ...content, team }} stats={null} />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
     expect(ids.indexOf("agenda")).toBe(ids.indexOf("team") - 1);
+    const teamList = document.querySelector("#team ul");
+    expect(teamList?.className).toContain("justify-center");
+    expect(teamList?.className).toContain("flex-wrap");
 
     expect(screen.getByText("Angelwing clam")).toBeInTheDocument();
     expect(screen.queryByText("Aklan State University")).not.toBeInTheDocument();

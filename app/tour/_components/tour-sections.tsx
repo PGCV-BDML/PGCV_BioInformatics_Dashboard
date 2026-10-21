@@ -73,7 +73,6 @@ const PRESENT_SPLIT_INTRO = "group-data-[presenting]/tour:mt-0! group-data-[pres
 const PRESENT_COLUMNS = {
   services: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]!",
   trainings: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]!",
-  team: "group-data-[presenting]/tour:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]!",
   showcase: "group-data-[presenting]/tour:grid-cols-4!",
   agenda: "group-data-[presenting]/tour:grid-cols-5!",
 };
@@ -1123,11 +1122,20 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
           <p className={`mt-3 max-w-3xl ${PRESENT_SPLIT_INTRO} text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={delay(160)}><TourCopy text={team.intro} audience={audience} /></p>
         )}
       </div>
-      <ul className={`mt-10 grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4 ${PRESENT_GAP} ${PRESENT_COLUMNS.team}`}>
+      {/*
+        Flex, not a fixed column grid: a short last row (7 people is 4 + 3)
+        stays centred instead of sticking to the left. Present mode uses a
+        fixed card width so the same thing happens on a wide screen.
+      */}
+      <ul className={`mt-10 flex flex-wrap justify-center gap-4 md:gap-5 ${PRESENT_GAP}`}>
         {team.members.map((member, i) => {
           const src = tourAssetUrl(member.image);
           return (
-            <li key={member.id} className={`${CARD} ${styles.enter} group flex flex-col overflow-hidden`} style={stagger(i)}>
+            <li
+              key={member.id}
+              className={`${CARD} ${styles.enter} group flex w-[calc(50%-0.5rem)] shrink-0 flex-col overflow-hidden md:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)] group-data-[presenting]/tour:w-56! group-data-[presenting]/tour:max-w-[calc(50%-0.625rem)]!`}
+              style={stagger(i)}
+            >
               {/* Square in Present mode: a shorter row leaves room to show everyone larger. */}
               <div className="aspect-[310/366] overflow-hidden bg-[#f0e8f2] group-data-[presenting]/tour:aspect-square!">
                 {src && (
@@ -1135,7 +1143,7 @@ export function TeamSection({ content, audience, index }: SectionProps & { index
                     src={src}
                     alt={member.fullName}
                     loading="lazy"
-                    className={`${styles.kenBurns} h-full w-full object-cover transition-transform group-data-[presenting]/tour:object-[50%_20%] duration-500 group-hover:scale-105`}
+                    className={`${styles.kenBurns} h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105`}
                   />
                 )}
               </div>
