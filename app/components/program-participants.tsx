@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Users,
   Search,
@@ -15,13 +15,20 @@ import {
 import DataTable, { Column } from "@/app/components/datatable";
 import ConfirmModal from "@/app/components/confirm-modal";
 import ModuleProgressModal from "@/app/components/module-progress-modal";
+import ModuleProgressStrip, {
+  ModuleProgressPill,
+  type ProgressModule,
+} from "@/app/components/module-progress-strip";
+import ParticipantProgressDrawer from "@/app/components/participant-progress-drawer";
 import { usePortal } from "@/app/components/portal-context";
 import { useToast } from "@/app/components/toast";
 import { moduleIdFromModuleLink } from "@/lib/module-library";
 import { fetchModuleCatalog } from "@/lib/module-library-client";
 import {
   checklistKindForModule,
-  quizIsSubmitted,
+  moduleIsFinished,
+  moduleStatus,
+  overallProgress,
   progressByUser,
   type ChecklistItem,
   type ChecklistKind,
@@ -54,25 +61,47 @@ interface ParticipantRow {
   status: ProgramEnrollment["status"];
   /** Checklist progress per library module that reports one (by modules.json id). */
   setup: Record<string, ProgressSummary>;
-  /** Steps done in the first checklist module, for sorting. */
-  setup_done: number | null;
+  /** Modules finished, for sorting the Progress column. */
+  overall_done: number;
+  /** Steps done (or test score) in the focused module, for sorting. -1 when not submitted. */
+  focus_done: number;
 }
 
 /** A module in this program whose modules.json entry has a `checklist`. */
-type SetupModule = {
-  id: string;
-  title: string;
+type SetupModule = ProgressModule & {
   checklist: ChecklistItem[];
-  checklistKind: ChecklistKind;
 };
 
-function progressColumnLabel(module: SetupModule, onlyOne: boolean): string {
-  if (module.checklistKind === "quiz") {
-    if (module.id.endsWith("pre-test")) return "Pre-test";
-    if (module.id.endsWith("post-test")) return "Post-test";
-    return module.title;
+type StatusFilter = "all" | "not_started" | "in_progress" | "finished";
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "not_started", label: "Not started" },
+  { value: "in_progress", label: "In progress" },
+  { value: "finished", label: "Finished" },
+];
+
+const MODULE_PARAM = "module";
+
+function moduleLabel(id: string, title: string, kind: ChecklistKind): string {
+  if (kind === "quiz") {
+    if (id.endsWith("pre-test")) return "Pre-test";
+    if (id.endsWith("post-test")) return "Post-test";
   }
-  return onlyOne ? "Setup" : module.title;
+  return title;
+}
+
+/** Bucket a learner for the status filter, by one module or across all of them. */
+function rowStatus(row: ParticipantRow, modules: SetupModule[]): StatusFilter {
+  const [only] = modules;
+  if (modules.length === 1 && only) {
+    const status = moduleStatus(row.setup[only.id], only.checklistKind);
+    if (moduleIsFinished(status)) return "finished";
+    return status === "in_progress" ? "in_progress" : "not_started";
+  }
+  const { finished, started, total } = overallProgress(row.setup, modules);
+  if (total > 0 && finished === total) return "finished";
+  return finished + started > 0 ? "in_progress" : "not_started";
 }
 
 function progressHint(modules: SetupModule[]): string {
@@ -104,12 +133,16 @@ async function loadSetupModules(programId: string): Promise<SetupModule[]> {
     const catalog = await fetchModuleCatalog();
     return catalog.modules
       .filter((item) => ids.has(item.id) && item.checklist?.length)
-      .map((item) => ({
-        id: item.id,
-        title: item.title,
-        checklist: item.checklist ?? [],
-        checklistKind: checklistKindForModule(item.id, item.checklistKind),
-      }));
+      .map((item) => {
+        const checklistKind = checklistKindForModule(item.id, item.checklistKind);
+        return {
+          id: item.id,
+          title: item.title,
+          label: moduleLabel(item.id, item.title, checklistKind),
+          checklist: item.checklist ?? [],
+          checklistKind,
+        };
+      });
   } catch (error) {
     console.error("Failed to load module checklists:", error);
     return [];
@@ -123,6 +156,14 @@ async function loadModuleProgress(): Promise<ModuleProgress[]> {
     console.error("Failed to load module progress:", error);
     return [];
   }
+}
+
+function chipClass(active: boolean): string {
+  return `inline-flex items-center gap-2 h-8 px-3 rounded-full border text-[11px] font-bold transition-colors ${
+    active
+      ? "bg-[#2a7797] border-[#2a7797] text-white"
+      : "bg-white border-slate-200 text-slate-600 hover:border-[#2a7797]/50 hover:text-[#2a7797]"
+  }`;
 }
 
 interface ProgramParticipantsProps {
@@ -160,8 +201,22 @@ export default function ProgramParticipants({
   const [setupModules, setSetupModules] = useState<SetupModule[]>([]);
   const [progressDetail, setProgressDetail] = useState<{
     row: ParticipantRow;
-    module: SetupModule;
+    module: ProgressModule;
   } | null>(null);
+  const [drawerRow, setDrawerRow] = useState<ParticipantRow | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  // The focused module lives in ?module= so a link opens straight to it.
+  const focusedModuleId = useSearchParams().get(MODULE_PARAM);
+
+  const focusModule = (id: string | null) => {
+    setSortConfig((current) =>
+      current?.key === "focus_done" ? null : current,
+    );
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set(MODULE_PARAM, id);
+    else url.searchParams.delete(MODULE_PARAM);
+    window.history.replaceState(null, "", url);
+  };
   const [sortConfig, setSortConfig] = useState<{
     key: keyof ParticipantRow;
     direction: "asc" | "desc";
@@ -193,7 +248,6 @@ export default function ProgramParticipants({
       const setup = await loadSetupModules(programId);
       const progressRows = setup.length ? await loadModuleProgress() : [];
       const enrolledUserIds = programEnrollments.map((e) => e.user_id);
-      const firstSetup = setup[0];
       const setupByModule = new Map(
         setup.map((m) => [
           m.id,
@@ -206,6 +260,12 @@ export default function ProgramParticipants({
       for (const enrollment of programEnrollments) {
         const u = userMap.get(enrollment.user_id);
         if (!u) continue;
+        const userSetup: Record<string, ProgressSummary> = Object.fromEntries(
+          setup.flatMap((m) => {
+            const summary = setupByModule.get(m.id)?.get(u.id);
+            return summary ? [[m.id, summary] as const] : [];
+          }),
+        );
         rows.push({
           enrollmentId: enrollment.id,
           id: u.id,
@@ -214,15 +274,9 @@ export default function ProgramParticipants({
           institution: u.institution ?? null,
           has_certificate: certSet.has(u.id),
           status: enrollment.status,
-          setup: Object.fromEntries(
-            setup.flatMap((m) => {
-              const summary = setupByModule.get(m.id)?.get(u.id);
-              return summary ? [[m.id, summary] as const] : [];
-            }),
-          ),
-          setup_done: firstSetup
-            ? (setupByModule.get(firstSetup.id)?.get(u.id)?.done ?? 0)
-            : null,
+          setup: userSetup,
+          overall_done: overallProgress(userSetup, setup).finished,
+          focus_done: 0,
         });
       }
 
@@ -284,6 +338,8 @@ export default function ProgramParticipants({
     }
   };
 
+  const closeDrawer = useCallback(() => setDrawerRow(null), []);
+
   const handleSort = (key: keyof ParticipantRow) => {
     let direction: "asc" | "desc" = "asc";
     if (
@@ -296,9 +352,38 @@ export default function ProgramParticipants({
     setSortConfig({ key, direction });
   };
 
+  const focusedModule =
+    setupModules.find((m) => m.id === focusedModuleId) ?? null;
+
+  /** Learners who finished each module, for the chips above the table. */
+  const finishedByModule = useMemo(
+    () =>
+      new Map(
+        setupModules.map((m) => [
+          m.id,
+          participantsList.filter((p) =>
+            moduleIsFinished(moduleStatus(p.setup[m.id], m.checklistKind)),
+          ).length,
+        ]),
+      ),
+    [participantsList, setupModules],
+  );
+
   const filteredAndSorted = useMemo(() => {
-    let result = [...participantsList];
+    let result = participantsList.map((p) => {
+      if (!focusedModule) return p;
+      const summary = p.setup[focusedModule.id];
+      const unsubmitted =
+        moduleStatus(summary, focusedModule.checklistKind) === "not_started" &&
+        focusedModule.checklistKind === "quiz";
+      return { ...p, focus_done: unsubmitted ? -1 : (summary?.done ?? 0) };
+    });
     const q = searchQuery.toLowerCase().trim();
+
+    if (statusFilter !== "all") {
+      const scope = focusedModule ? [focusedModule] : setupModules;
+      result = result.filter((p) => rowStatus(p, scope) === statusFilter);
+    }
 
     if (q) {
       result = result.filter(
@@ -328,7 +413,7 @@ export default function ProgramParticipants({
     }
 
     return result;
-  }, [participantsList, searchQuery, sortConfig]);
+  }, [focusedModule, participantsList, searchQuery, setupModules, sortConfig, statusFilter]);
 
   const columns: Column<ParticipantRow>[] = [
     {
@@ -337,7 +422,18 @@ export default function ProgramParticipants({
       sortable: true,
       render: (p) => (
         <div className="flex flex-col gap-0.5 py-1">
-          <span className="font-bold text-slate-900 leading-snug">{p.name}</span>
+          {setupModules.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setDrawerRow(p)}
+              title={`View ${p.name}'s progress in every module`}
+              className="self-start text-left font-bold text-slate-900 leading-snug hover:text-[#2a7797] hover:underline"
+            >
+              {p.name}
+            </button>
+          ) : (
+            <span className="font-bold text-slate-900 leading-snug">{p.name}</span>
+          )}
           <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
             <Mail className="w-3 h-3" /> {p.email}
           </span>
@@ -348,45 +444,45 @@ export default function ProgramParticipants({
         </div>
       ),
     },
-    ...setupModules.map(
-      (m, index): Column<ParticipantRow> => ({
-        key: index === 0 ? "setup_done" : `setup:${m.id}`,
-        label: progressColumnLabel(m, setupModules.length === 1),
-        width: "14%",
-        sortable: index === 0,
-        render: (p) => {
-          const summary = p.setup[m.id];
-          if (!summary) return <span className="text-slate-400">—</span>;
-          const isQuiz = m.checklistKind === "quiz";
-          const submitted = isQuiz && quizIsSubmitted(summary.items);
-          const complete = summary.done === summary.total && (!isQuiz || submitted);
-          const started = isQuiz ? submitted : summary.done > 0;
-          return (
-            <button
-              type="button"
-              onClick={() => setProgressDetail({ row: p, module: m })}
-              title={
-                isQuiz
-                  ? `${m.title}: ${submitted ? "view score and answers" : "not submitted"}`
-                  : `${m.title}: view steps and pasted output`
-              }
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold font-mono transition-colors ${
-                complete
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
-                  : started
-                    ? isQuiz
-                      ? "bg-[#e7f3f6] text-[#1f5f79] border-[#c5e0e8] hover:bg-[#d7ebf1]"
-                      : "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100"
-                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              {isQuiz && !submitted ? "—" : `${summary.done} / ${summary.total}`}
-            </button>
-          );
-        },
-      }),
-    ),
   ];
+
+  if (setupModules.length > 0) {
+    columns.push({
+      key: "overall_done",
+      label: "Progress",
+      width: "24%",
+      sortable: true,
+      render: (p) => (
+        <div className="flex flex-col gap-1.5 py-1">
+          <ModuleProgressStrip
+            modules={setupModules}
+            setup={p.setup}
+            participantName={p.name}
+            onSelect={(module) => setProgressDetail({ row: p, module })}
+          />
+          <span className="text-[11px] font-semibold text-slate-500">
+            {p.overall_done} of {setupModules.length} modules
+          </span>
+        </div>
+      ),
+    });
+  }
+
+  if (focusedModule) {
+    columns.push({
+      key: "focus_done",
+      label: focusedModule.label,
+      width: "14%",
+      sortable: true,
+      render: (p) => (
+        <ModuleProgressPill
+          module={focusedModule}
+          summary={p.setup[focusedModule.id]}
+          onClick={() => setProgressDetail({ row: p, module: focusedModule })}
+        />
+      ),
+    });
+  }
 
   // Certificates are not issued from the training dashboard yet.
   if (!isTraining) {
@@ -493,6 +589,66 @@ export default function ProgramParticipants({
         </div>
       )}
 
+      {setupModules.length > 0 && (
+        <div className="space-y-3">
+          <div
+            role="group"
+            aria-label="Focus on a module"
+            className="flex flex-wrap gap-2"
+          >
+            <button
+              type="button"
+              aria-pressed={!focusedModule}
+              onClick={() => focusModule(null)}
+              className={chipClass(!focusedModule)}
+            >
+              All modules
+            </button>
+            {setupModules.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={focusedModule?.id === m.id}
+                title={`${m.title}: ${finishedByModule.get(m.id) ?? 0} of ${participantsList.length} finished`}
+                onClick={() =>
+                  focusModule(focusedModule?.id === m.id ? null : m.id)
+                }
+                className={chipClass(focusedModule?.id === m.id)}
+              >
+                <span className="truncate max-w-[180px]">{m.label}</span>
+                <span className="font-mono opacity-70">
+                  {finishedByModule.get(m.id) ?? 0}/{participantsList.length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div
+            role="group"
+            aria-label="Filter by status"
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-slate-400 font-quicksand mr-1">
+              {focusedModule ? focusedModule.label : "Status"}
+            </span>
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                aria-pressed={statusFilter === f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className={`h-7 px-3 rounded-full text-[11px] font-bold transition-colors ${
+                  statusFilter === f.value
+                    ? "bg-slate-800 text-white"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loadError ? (
         <p className="text-sm text-rose-600 font-semibold">{loadError}</p>
       ) : (
@@ -518,6 +674,18 @@ export default function ProgramParticipants({
         }
         kind={progressDetail?.module.checklistKind ?? "steps"}
         onClose={() => setProgressDetail(null)}
+      />
+
+      <ParticipantProgressDrawer
+        isOpen={!!drawerRow}
+        participantName={drawerRow?.name ?? ""}
+        email={drawerRow?.email ?? ""}
+        modules={setupModules}
+        setup={drawerRow?.setup ?? {}}
+        onSelectModule={(module) =>
+          drawerRow && setProgressDetail({ row: drawerRow, module })
+        }
+        onClose={closeDrawer}
       />
 
       <ConfirmModal

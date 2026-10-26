@@ -209,3 +209,42 @@ export const PLATFORM_LABELS: Record<ModuleProgressPlatform, string> = {
   macos: "macOS",
   linux: "Linux",
 };
+
+/**
+ * Where a learner stands on one module, for the participants table.
+ * A test with any answer counts as `submitted`, whatever the score.
+ */
+export type ModuleStatus = "complete" | "submitted" | "in_progress" | "not_started";
+
+export function moduleStatus(
+  summary: ProgressSummary | null | undefined,
+  kind: ChecklistKind,
+): ModuleStatus {
+  if (!summary) return "not_started";
+  if (kind === "quiz") {
+    if (!quizIsSubmitted(summary.items)) return "not_started";
+    return summary.done === summary.total ? "complete" : "submitted";
+  }
+  if (summary.total > 0 && summary.done === summary.total) return "complete";
+  return summary.done > 0 ? "in_progress" : "not_started";
+}
+
+/** Complete steps or a submitted test. */
+export function moduleIsFinished(status: ModuleStatus): boolean {
+  return status === "complete" || status === "submitted";
+}
+
+/** Modules a learner has finished out of those that report progress. */
+export function overallProgress(
+  setup: Record<string, ProgressSummary>,
+  modules: { id: string; checklistKind: ChecklistKind }[],
+): { finished: number; started: number; total: number } {
+  let finished = 0;
+  let started = 0;
+  for (const item of modules) {
+    const status = moduleStatus(setup[item.id], item.checklistKind);
+    if (moduleIsFinished(status)) finished += 1;
+    else if (status === "in_progress") started += 1;
+  }
+  return { finished, started, total: modules.length };
+}

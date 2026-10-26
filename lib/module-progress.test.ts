@@ -7,6 +7,8 @@ import {
   quizIsSubmitted,
   quizItemStatus,
   quizSubmittedAt,
+  moduleStatus,
+  overallProgress,
   sanitizeProgressItems,
   summarizeProgress,
 } from "@/lib/module-progress";
@@ -149,5 +151,54 @@ describe("quiz progress", () => {
         },
       ]),
     ).toBe("2026-10-20T05:38:00.000Z");
+  });
+});
+
+describe("moduleStatus", () => {
+  const steps = (done: boolean[]) =>
+    summarizeProgress(
+      checklist,
+      checklist.flatMap((item, i) =>
+        done[i]
+          ? [{ user_id: "u", module_id: "m", item_id: item.id, done: true }]
+          : [],
+      ),
+    );
+
+  it("reads step checklists by how many steps are done", () => {
+    expect(moduleStatus(undefined, "steps")).toBe("not_started");
+    expect(moduleStatus(steps([false, false, false]), "steps")).toBe("not_started");
+    expect(moduleStatus(steps([true, false, false]), "steps")).toBe("in_progress");
+    expect(moduleStatus(steps([true, true, true]), "steps")).toBe("complete");
+  });
+
+  it("treats any answered test as submitted", () => {
+    const unanswered = summarizeProgress(checklist, []);
+    expect(moduleStatus(unanswered, "quiz")).toBe("not_started");
+    const partial = summarizeProgress(checklist, [
+      { user_id: "u", module_id: "m", item_id: "terminal", done: false, evidence: "Answer: B" },
+    ]);
+    expect(moduleStatus(partial, "quiz")).toBe("submitted");
+    expect(moduleStatus(steps([true, true, true]), "quiz")).toBe("complete");
+  });
+});
+
+describe("overallProgress", () => {
+  it("counts finished and started modules", () => {
+    const done = summarizeProgress(checklist, [
+      { user_id: "u", module_id: "a", item_id: "terminal", done: true },
+      { user_id: "u", module_id: "a", item_id: "miniconda", done: true },
+      { user_id: "u", module_id: "a", item_id: "qiime2", done: true },
+    ]);
+    const half = summarizeProgress(checklist, [
+      { user_id: "u", module_id: "b", item_id: "terminal", done: true },
+    ]);
+    expect(
+      overallProgress({ a: done, b: half }, [
+        { id: "a", checklistKind: "steps" },
+        { id: "b", checklistKind: "steps" },
+        { id: "c", checklistKind: "quiz" },
+      ]),
+    ).toEqual({ finished: 1, started: 1, total: 3 });
   });
 });
