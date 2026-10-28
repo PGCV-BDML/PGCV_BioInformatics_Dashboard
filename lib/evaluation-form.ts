@@ -260,6 +260,94 @@ export const POST_ACTIVITY_EVALUATION_QUESTIONS: PostActivityQuestion[] = [
   },
 ];
 
+export const DASHBOARD_EVALUATION_INTRO =
+  "Tell us how it was to use this dashboard during the program. Your answers will help us make it easier to use in future programs. Rate each statement, or select N/A if you did not use that part.";
+
+export const DASHBOARD_DEVICE_OPTIONS = ["Laptop / Desktop", "Tablet", "Phone"];
+
+// Feedback on the dashboard itself, asked after the official form in the same
+// submission. Staff see it apart from the activity ratings.
+export const DASHBOARD_EVALUATION_QUESTIONS: PostActivityQuestion[] = [
+  {
+    type: "rating_group",
+    id: "eval_dash_usability",
+    question: "Using the Dashboard",
+    required: true,
+    allowNA: true,
+    section: "Dashboard experience",
+    sectionIntro: DASHBOARD_EVALUATION_INTRO,
+    statements: [
+      {
+        id: "eval_dash_navigation",
+        statement: "Ease of signing in and finding your way around the dashboard",
+      },
+      {
+        id: "eval_dash_modules",
+        statement: "Ease of accessing modules, presentations, and program files",
+      },
+      {
+        id: "eval_dash_assessments",
+        statement: "Ease of taking the pre/post tests and this evaluation",
+      },
+      {
+        id: "eval_dash_progress",
+        statement: "Clarity of your progress and what to do next",
+      },
+      {
+        id: "eval_dash_chat",
+        statement: "Usefulness of the program chat for questions and updates",
+      },
+      {
+        id: "eval_dash_reliability",
+        statement: "Speed and reliability (pages load, nothing breaks)",
+      },
+    ],
+  },
+  {
+    type: "rating_group",
+    id: "eval_dash_overall",
+    question: "Overall Dashboard Evaluation",
+    required: true,
+    allowNA: true,
+    statements: [
+      {
+        id: "eval_dash_overall_experience",
+        statement: "Overall experience using the dashboard",
+      },
+    ],
+  },
+  {
+    type: "choice",
+    id: "eval_dash_device",
+    question: "Which device did you mostly use to access the dashboard?",
+    options: DASHBOARD_DEVICE_OPTIONS,
+    required: true,
+  },
+  {
+    type: "text",
+    id: "eval_dash_issues",
+    question:
+      "Did you run into any problems with the dashboard (e.g., errors, broken links, pages that were hard to find)?",
+    required: false,
+    multiline: true,
+    placeholder: "Describe any problems here...",
+  },
+  {
+    type: "text",
+    id: "eval_dash_suggestions",
+    question: "What can we do to improve the dashboard for future programs?",
+    required: false,
+    multiline: true,
+    placeholder: "Type your suggestions here...",
+  },
+];
+
+/** Everything the learner fills in: the official form, then dashboard feedback. */
+export const EVALUATION_FORM_QUESTIONS: PostActivityQuestion[] = [
+  ...POST_ACTIVITY_EVALUATION_QUESTIONS,
+  ...DASHBOARD_EVALUATION_QUESTIONS,
+];
+
 const POST_ACTIVITY_QUESTION_ID = "eval_full_name";
 
 export function isPostActivityEvaluation(
@@ -393,7 +481,7 @@ export function prefillEvaluationAnswers(input: {
 }
 
 export function asStoredEvaluationQuestions(
-  questions: PostActivityQuestion[] = POST_ACTIVITY_EVALUATION_QUESTIONS,
+  questions: PostActivityQuestion[] = EVALUATION_FORM_QUESTIONS,
 ): Question[] {
   return questions as EvaluationQuestion[];
 }

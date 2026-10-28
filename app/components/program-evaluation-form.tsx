@@ -16,10 +16,10 @@ import { useToast } from "@/app/components/toast";
 import {
   EVALUATION_DATA_PRIVACY,
   EVALUATION_FORM_INTRO,
+  EVALUATION_FORM_QUESTIONS,
   EVALUATION_FORM_TITLE,
   EVALUATION_RATING_SCALE,
   missingRequiredAnswers,
-  POST_ACTIVITY_EVALUATION_QUESTIONS,
   prefillEvaluationAnswers,
   type EvaluationAnswers,
   type EvaluationAnswerValue,
@@ -199,7 +199,7 @@ function LearnerEvaluationForm({
 }: ProgramEvaluationFormProps) {
   const { showToast } = useToast();
   const routes = programRoutes(programType);
-  const questions = POST_ACTIVITY_EVALUATION_QUESTIONS;
+  const questions = EVALUATION_FORM_QUESTIONS;
 
   const [answers, setAnswers] = useState<EvaluationAnswers>({});
   const [evaluation, setEvaluation] = useState<Assessment | null>(null);

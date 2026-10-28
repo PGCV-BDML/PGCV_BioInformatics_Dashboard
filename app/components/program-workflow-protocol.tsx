@@ -669,7 +669,8 @@ export default function ProgramWorkflowProtocol({
           <strong className="text-[#172126]">Evaluation</strong> and completes
           the{" "}
           <strong className="text-[#172126]">{copy.evaluationTitle}</strong>{" "}
-          (participant details, 5–1 + N/A ratings, and comments)
+          (participant details, 5–1 + N/A ratings, and comments, then a
+          short Dashboard experience section rating the dashboard itself)
           {copy.hasInternNameField
             ? ", including full name, email, and institution,"
             : ""}{" "}
@@ -679,7 +680,10 @@ export default function ProgramWorkflowProtocol({
         <p>
           Staff open <strong className="text-[#172126]">Evaluation</strong> to
           see average ratings (N/A excluded), attendance reasons, and written
-          comments. They can{" "}
+          comments. <strong className="text-[#172126]">Dashboard feedback</strong>{" "}
+          below them shows how participants rated the dashboard, the devices
+          they used, and what to improve; it is kept out of the overall
+          activity average. They can{" "}
           <strong className="text-[#172126]">Clear responses</strong> to
           remove a test submission; that does not delete certificates. Then
           open <strong className="text-[#172126]">Certificate</strong>{" "}

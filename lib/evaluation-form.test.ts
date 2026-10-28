@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  DASHBOARD_EVALUATION_QUESTIONS,
+  EVALUATION_FORM_QUESTIONS,
   isPostActivityEvaluation,
   missingRequiredAnswers,
   POST_ACTIVITY_EVALUATION_QUESTIONS,
@@ -94,6 +96,39 @@ describe("POST_ACTIVITY_EVALUATION_QUESTIONS", () => {
   });
 });
 
+describe("DASHBOARD_EVALUATION_QUESTIONS", () => {
+  it("follows the official form in its own section", () => {
+    expect(EVALUATION_FORM_QUESTIONS.map((q) => q.id)).toEqual([
+      ...POST_ACTIVITY_EVALUATION_QUESTIONS.map((q) => q.id),
+      "eval_dash_usability",
+      "eval_dash_overall",
+      "eval_dash_device",
+      "eval_dash_issues",
+      "eval_dash_suggestions",
+    ]);
+    expect(DASHBOARD_EVALUATION_QUESTIONS[0]?.section).toBe(
+      "Dashboard experience",
+    );
+  });
+
+  it("asks for ratings and a device, and leaves the written answers optional", () => {
+    expect(
+      DASHBOARD_EVALUATION_QUESTIONS.filter((q) => q.required === false).map(
+        (q) => q.id,
+      ),
+    ).toEqual(["eval_dash_issues", "eval_dash_suggestions"]);
+  });
+
+  it("does not reuse any official form id", () => {
+    const officialIds = new Set(
+      POST_ACTIVITY_EVALUATION_QUESTIONS.map((q) => q.id),
+    );
+    expect(
+      DASHBOARD_EVALUATION_QUESTIONS.some((q) => officialIds.has(q.id)),
+    ).toBe(false);
+  });
+});
+
 describe("isPostActivityEvaluation", () => {
   it("detects the canonical form by question id", () => {
     expect(
@@ -126,6 +161,25 @@ describe("missingRequiredAnswers", () => {
     expect(
       missingRequiredAnswers(POST_ACTIVITY_EVALUATION_QUESTIONS, answers),
     ).toEqual([]);
+  });
+
+  it("requires the dashboard ratings and device on the full form", () => {
+    const answers: EvaluationAnswers = {
+      ...completeAnswers(),
+      eval_dash_usability: {
+        eval_dash_navigation: 5,
+        eval_dash_modules: 4,
+        eval_dash_assessments: 4,
+        eval_dash_progress: 3,
+        eval_dash_chat: "N/A",
+      },
+    };
+
+    expect(missingRequiredAnswers(EVALUATION_FORM_QUESTIONS, answers)).toEqual([
+      "eval_dash_reliability",
+      "eval_dash_overall_experience",
+      "eval_dash_device",
+    ]);
   });
 
   it("flags blank required text, choice, and incomplete rating groups", () => {

@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Award, BarChart3, MessageSquareText, Trash2 } from "lucide-react";
+import {
+  Award,
+  BarChart3,
+  MessageSquareText,
+  MonitorSmartphone,
+  Trash2,
+} from "lucide-react";
 import AssessmentAccessToggle from "@/app/components/assessment-access-toggle";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
@@ -15,7 +21,10 @@ import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import {
   formatEvaluationAverage,
   hasEvaluationAnswers,
+  summarizeDashboardFeedback,
   summarizeEvaluationResponses,
+  type ChoiceCount,
+  type DashboardFeedbackSummary,
   type EvaluationComment,
   type EvaluationSummary,
   type RatingGroupSummary,
@@ -139,6 +148,109 @@ function CommentList({
   );
 }
 
+function ChoiceCountList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: ChoiceCount[];
+}) {
+  return (
+    <section className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3">
+      <h3 className="text-xs font-extrabold text-slate-700">{title}</h3>
+      <ul className="space-y-2">
+        {rows.map((row) => (
+          <li
+            key={row.option}
+            className="flex items-center justify-between gap-3 bg-white/80 border border-slate-200/80 px-3 py-2 rounded-xl"
+          >
+            <span className="text-xs font-semibold text-slate-700">
+              {row.option}
+            </span>
+            <span className="text-xs font-extrabold text-[#2a7797] tabular-nums">
+              {row.count}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DashboardFeedback({
+  summary,
+  evaluationCount,
+}: {
+  summary: DashboardFeedbackSummary;
+  evaluationCount: number;
+}) {
+  return (
+    <div className="space-y-5 border-t border-slate-200/60 pt-5">
+      <div className="space-y-2">
+        <h3 className="text-[11px] font-extrabold text-[#2a7797] uppercase tracking-[1.5px] flex items-center gap-1.5">
+          <MonitorSmartphone className="w-3.5 h-3.5" />
+          Dashboard feedback
+        </h3>
+        <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
+          How participants found the dashboard itself. These ratings are not
+          part of the overall activity average.
+        </p>
+      </div>
+
+      {summary.responseCount === 0 ? (
+        <p className="text-xs text-slate-400">
+          No dashboard feedback yet. Evaluations submitted before the dashboard
+          questions were added don&apos;t include it.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-[#f2f2f2] border border-slate-300/40 rounded-[20px] p-5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Responses with dashboard feedback
+              </p>
+              <p className="text-2xl font-extrabold text-slate-800 tabular-nums mt-1">
+                {summary.responseCount}
+                <span className="text-xs font-bold text-slate-400">
+                  {" "}
+                  of {evaluationCount}
+                </span>
+              </p>
+            </div>
+            <div className="bg-[#f2f2f2] border border-slate-300/40 rounded-[20px] p-5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Dashboard average
+              </p>
+              <p className="text-2xl font-extrabold text-[#2a7797] tabular-nums mt-1">
+                {formatEvaluationAverage(summary.overallAverage)}
+                <span className="text-xs font-bold text-slate-400"> / 5</span>
+              </p>
+            </div>
+          </div>
+
+          <RatingGroups groups={summary.ratingGroups} />
+
+          <ChoiceCountList
+            title="Device used most to access the dashboard"
+            rows={summary.devices}
+          />
+
+          <CommentList
+            title="Problems with the dashboard"
+            entries={summary.issues}
+            emptyLabel="No problems were reported."
+          />
+          <CommentList
+            title="Suggestions to improve the dashboard"
+            entries={summary.suggestions}
+            emptyLabel="No dashboard suggestions were written."
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ProgramEvaluationSummary({
   programId,
   programType,
@@ -149,6 +261,8 @@ export default function ProgramEvaluationSummary({
   const [summary, setSummary] = useState<EvaluationSummary>(() =>
     summarizeEvaluationResponses([]),
   );
+  const [dashboardSummary, setDashboardSummary] =
+    useState<DashboardFeedbackSummary>(() => summarizeDashboardFeedback([]));
   const [responseIds, setResponseIds] = useState<string[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -177,11 +291,15 @@ export default function ProgramEvaluationSummary({
       }
       setResponseIds(programResponses.map((row) => row.id));
       setSummary(summarizeEvaluationResponses(programResponses, nameByUserId));
+      setDashboardSummary(
+        summarizeDashboardFeedback(programResponses, nameByUserId),
+      );
     } catch (error) {
       console.error("Error loading evaluation summary:", error);
       showToast("Failed to load evaluation responses.", "error");
       setResponseIds([]);
       setSummary(summarizeEvaluationResponses([]));
+      setDashboardSummary(summarizeDashboardFeedback([]));
     } finally {
       setIsLoading(false);
     }
@@ -330,7 +448,7 @@ export default function ProgramEvaluationSummary({
               </div>
               <div className="bg-[#f2f2f2] border border-slate-300/40 rounded-[20px] p-5">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Overall average
+                  Overall activity average
                 </p>
                 <p className="text-2xl font-extrabold text-[#2a7797] tabular-nums mt-1">
                   {formatEvaluationAverage(summary.overallAverage)}
@@ -353,26 +471,10 @@ export default function ProgramEvaluationSummary({
 
             <RatingGroups groups={summary.ratingGroups} />
 
-            <section className="bg-[#f2f2f2] border border-slate-300/40 p-5 rounded-[20px] space-y-3">
-              <h3 className="text-xs font-extrabold text-slate-700">
-                Why did you attend this activity?
-              </h3>
-              <ul className="space-y-2">
-                {summary.attendanceReasons.map((row) => (
-                  <li
-                    key={row.option}
-                    className="flex items-center justify-between gap-3 bg-white/80 border border-slate-200/80 px-3 py-2 rounded-xl"
-                  >
-                    <span className="text-xs font-semibold text-slate-700">
-                      {row.option}
-                    </span>
-                    <span className="text-xs font-extrabold text-[#2a7797] tabular-nums">
-                      {row.count}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <ChoiceCountList
+              title="Why did you attend this activity?"
+              rows={summary.attendanceReasons}
+            />
 
             <CommentList
               title="Suggestions for future activities"
@@ -383,6 +485,11 @@ export default function ProgramEvaluationSummary({
               title="Overall comments"
               entries={summary.comments}
               emptyLabel="No overall comments were written."
+            />
+
+            <DashboardFeedback
+              summary={dashboardSummary}
+              evaluationCount={summary.responseCount}
             />
           </div>
         )}
