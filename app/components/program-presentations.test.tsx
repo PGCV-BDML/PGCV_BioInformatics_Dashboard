@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProgramPresentations from "./program-presentations";
-import { getRowsFromDB, saveDataToDB } from "@/lib/supabase";
+import { saveMaterialOrder } from "@/lib/material-order";
+import {
+  deleteDataFromDB,
+  getRowsFromDB,
+  saveDataToDB,
+} from "@/lib/supabase";
 
 const portal = { isStaff: true, isLearnerView: false };
 const showToast = vi.fn();
@@ -20,6 +25,10 @@ vi.mock("@/lib/supabase", () => ({
   saveDataToDB: vi.fn(),
   deleteDataFromDB: vi.fn(),
   supabase: {},
+}));
+
+vi.mock("@/lib/material-order", () => ({
+  saveMaterialOrder: vi.fn(),
 }));
 
 const deck = {
@@ -78,5 +87,65 @@ describe("ProgramPresentations access", () => {
     expect(
       screen.queryByRole("switch", { name: "Basic coding open for trainees" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("ProgramPresentations builder", () => {
+  const second = {
+    ...deck,
+    id: "deck-2",
+    title: "Phylogenetics",
+    content_link: "github-presentation:phylogenetics",
+    order: 2,
+  };
+
+  beforeEach(() => {
+    portal.isStaff = true;
+    portal.isLearnerView = false;
+    showToast.mockClear();
+    vi.mocked(getRowsFromDB).mockReset();
+    vi.mocked(getRowsFromDB).mockResolvedValue([deck, second] as never);
+    vi.mocked(deleteDataFromDB).mockReset();
+    vi.mocked(deleteDataFromDB).mockResolvedValue(undefined);
+    vi.mocked(saveMaterialOrder).mockReset();
+    vi.mocked(saveMaterialOrder).mockResolvedValue(undefined);
+  });
+
+  it("saves the new order when staff move a presentation", async () => {
+    const user = userEvent.setup();
+    render(<ProgramPresentations programId="prog-1" />);
+
+    await screen.findByText("Phylogenetics");
+    const [, moveSecondUp] = screen.getAllByRole("button", {
+      name: "Move presentation up",
+    });
+    await user.click(moveSecondUp!);
+
+    expect(saveMaterialOrder).toHaveBeenCalledWith("presentation", "prog-1", [
+      "deck-2",
+      "deck-1",
+    ]);
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("removes a presentation without saving the order again", async () => {
+    const user = userEvent.setup();
+    render(<ProgramPresentations programId="prog-1" />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Remove Basic coding" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(deleteDataFromDB).toHaveBeenCalledWith("presentation", "deck-1");
+    await waitFor(() => {
+      expect(screen.queryByText("Basic coding")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Phylogenetics")).toBeInTheDocument();
+    expect(saveMaterialOrder).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith(
+      "Presentation removed from this training.",
+      "success",
+    );
   });
 });

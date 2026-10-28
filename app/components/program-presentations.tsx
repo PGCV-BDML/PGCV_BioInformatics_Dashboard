@@ -25,6 +25,7 @@ import {
   fetchPresentationCatalog,
   getGithubPresentationViewUrl,
 } from "@/lib/presentation-library-client";
+import { saveMaterialOrder } from "@/lib/material-order";
 import {
   deleteDataFromDB,
   getRowsFromDB,
@@ -150,20 +151,6 @@ export default function ProgramPresentations({
     }
   };
 
-  const persistOrder = async (ordered: DeckRow[]) => {
-    await Promise.all(
-      ordered.map((row, index) =>
-        saveDataToDB("presentation", row.id, { order: -(index + 1) }),
-      ),
-    );
-    await Promise.all(
-      ordered.map((row, index) =>
-        saveDataToDB("presentation", row.id, { order: index + 1 }),
-      ),
-    );
-    setDecks(ordered.map((row, index) => ({ ...row, order: index + 1 })));
-  };
-
   const moveDeck = async (deckId: string, direction: "up" | "down") => {
     const index = decks.findIndex((row) => row.id === deckId);
     if (index < 0) return;
@@ -181,7 +168,11 @@ export default function ProgramPresentations({
     setDecks(next.map((row, i) => ({ ...row, order: i + 1 })));
     setBusyId(deckId);
     try {
-      await persistOrder(next);
+      await saveMaterialOrder(
+        "presentation",
+        programId,
+        next.map((row) => row.id),
+      );
     } catch (error) {
       console.error("Failed to reorder presentations:", error);
       showToast("Failed to reorder presentations.", "error");
@@ -197,8 +188,8 @@ export default function ProgramPresentations({
     setIsRemoving(true);
     try {
       await deleteDataFromDB("presentation", removeTarget.id);
-      const remaining = decks.filter((row) => row.id !== removeTarget.id);
-      await persistOrder(remaining);
+      // Gaps in "order" are fine: the list sorts by it and numbers by index.
+      setDecks((prev) => prev.filter((row) => row.id !== removeTarget.id));
       setRemoveTarget(null);
       showToast("Presentation removed from this training.", "success");
     } catch (error) {
@@ -371,7 +362,7 @@ export default function ProgramPresentations({
                       <button
                         type="button"
                         aria-label="Move presentation up"
-                        disabled={index === 0 || busyId === deck.id}
+                        disabled={index === 0 || busyId !== null}
                         onClick={() => void moveDeck(deck.id, "up")}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                       >
@@ -381,7 +372,7 @@ export default function ProgramPresentations({
                         type="button"
                         aria-label="Move presentation down"
                         disabled={
-                          index === decks.length - 1 || busyId === deck.id
+                          index === decks.length - 1 || busyId !== null
                         }
                         onClick={() => void moveDeck(deck.id, "down")}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
@@ -391,8 +382,9 @@ export default function ProgramPresentations({
                       <button
                         type="button"
                         aria-label={`Remove ${deck.title}`}
+                        disabled={busyId !== null}
                         onClick={() => setRemoveTarget(deck)}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-rose-100 bg-white text-rose-600 hover:bg-rose-50"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-rose-100 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-40"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
