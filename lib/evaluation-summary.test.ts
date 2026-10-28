@@ -3,6 +3,7 @@ import type { EvaluationAnswers } from "./evaluation-form";
 import {
   formatEvaluationAverage,
   hasEvaluationAnswers,
+  summarizeDashboardFeedback,
   summarizeEvaluationResponses,
   toNumericEvaluationRating,
 } from "./evaluation-summary";
@@ -179,6 +180,111 @@ describe("summarizeEvaluationResponses", () => {
         submittedAt: "2026-08-03T10:00:00.000Z",
       },
     ]);
+  });
+});
+
+describe("dashboard feedback", () => {
+  const dashboardAnswers: Partial<EvaluationAnswers> = {
+    eval_dash_usability: {
+      eval_dash_navigation: 1,
+      eval_dash_modules: 2,
+      eval_dash_assessments: 1,
+      eval_dash_progress: 2,
+      eval_dash_chat: "N/A",
+      eval_dash_reliability: 1,
+    },
+    eval_dash_overall: { eval_dash_overall_experience: 2 },
+    eval_dash_device: "Phone",
+    eval_dash_issues: "The module viewer was slow on my phone.",
+    eval_dash_suggestions: "  ",
+  };
+
+  it("keeps dashboard ratings out of the activity summary", () => {
+    const activityOnly = summarizeEvaluationResponses([
+      { participant_id: "ada", submitted_at: null, answers: answers() },
+    ]);
+    const withDashboard = summarizeEvaluationResponses([
+      {
+        participant_id: "ada",
+        submitted_at: null,
+        answers: answers(dashboardAnswers),
+      },
+    ]);
+
+    expect(withDashboard.overallAverage).toBe(activityOnly.overallAverage);
+    expect(withDashboard.ratingGroups.map((group) => group.id)).not.toContain(
+      "eval_dash_usability",
+    );
+  });
+
+  it("summarizes only the responses that answered the dashboard section", () => {
+    const summary = summarizeDashboardFeedback(
+      [
+        {
+          participant_id: "ada",
+          submitted_at: "2026-08-01T10:00:00.000Z",
+          answers: answers(),
+        },
+        {
+          participant_id: "grace",
+          submitted_at: "2026-08-03T10:00:00.000Z",
+          answers: answers({
+            ...dashboardAnswers,
+            eval_full_name: "  ",
+          }),
+        },
+        {
+          participant_id: "katherine",
+          submitted_at: "2026-08-02T10:00:00.000Z",
+          answers: answers({
+            eval_full_name: "Katherine Johnson",
+            eval_dash_usability: {
+              eval_dash_navigation: 5,
+              eval_dash_modules: 4,
+              eval_dash_assessments: 5,
+              eval_dash_progress: 4,
+              eval_dash_chat: 5,
+              eval_dash_reliability: 3,
+            },
+            eval_dash_overall: { eval_dash_overall_experience: 4 },
+            eval_dash_device: "Laptop / Desktop",
+            eval_dash_suggestions: "Add a dark mode.",
+          }),
+        },
+      ],
+      { grace: "Grace Hopper" },
+    );
+
+    expect(summary.responseCount).toBe(2);
+    const chat = summary.ratingGroups
+      .find((group) => group.id === "eval_dash_usability")
+      ?.statements.find((row) => row.id === "eval_dash_chat");
+    expect(chat).toMatchObject({ average: 5, ratingCount: 1, naCount: 1 });
+    expect(summary.overallAverage).toBe(3);
+    expect(summary.devices).toEqual([
+      { option: "Laptop / Desktop", count: 1 },
+      { option: "Tablet", count: 0 },
+      { option: "Phone", count: 1 },
+    ]);
+    expect(summary.issues).toEqual([
+      {
+        participantName: "Grace Hopper",
+        text: "The module viewer was slow on my phone.",
+        submittedAt: "2026-08-03T10:00:00.000Z",
+      },
+    ]);
+    expect(summary.suggestions.map((row) => row.text)).toEqual([
+      "Add a dark mode.",
+    ]);
+  });
+
+  it("returns empty totals for evaluations without the section", () => {
+    const summary = summarizeDashboardFeedback([
+      { participant_id: "ada", submitted_at: null, answers: answers() },
+    ]);
+    expect(summary.responseCount).toBe(0);
+    expect(summary.overallAverage).toBeNull();
+    expect(summary.devices.every((row) => row.count === 0)).toBe(true);
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  DASHBOARD_EVALUATION_QUESTIONS,
   isEvaluationRatingValue,
   POST_ACTIVITY_EVALUATION_QUESTIONS,
   type EvaluationAnswers,
@@ -44,6 +45,25 @@ export type EvaluationSummary = {
   attendanceReasons: ChoiceCount[];
   suggestions: EvaluationComment[];
   comments: EvaluationComment[];
+};
+
+export type DashboardFeedbackSummary = {
+  /** Responses that answered at least one dashboard question. */
+  responseCount: number;
+  overallAverage: number | null;
+  ratingGroups: RatingGroupSummary[];
+  devices: ChoiceCount[];
+  issues: EvaluationComment[];
+  suggestions: EvaluationComment[];
+};
+
+type RatingGroupQuestion = Extract<PostActivityQuestion, { type: "rating_group" }>;
+type ChoiceQuestion = Extract<PostActivityQuestion, { type: "choice" }>;
+
+type NamedResponse = {
+  answers: EvaluationAnswers;
+  name: string;
+  submittedAt: string | null;
 };
 
 function asAnswers(value: Record<string, unknown> | null): EvaluationAnswers {
@@ -111,46 +131,36 @@ export function formatEvaluationAverage(value: number | null): string {
   return value.toFixed(1);
 }
 
-export function summarizeEvaluationResponses(
+function newestFirst(
   responses: EvaluationResponseInput[],
-  nameByUserId: Record<string, string> = {},
-  questions: PostActivityQuestion[] = POST_ACTIVITY_EVALUATION_QUESTIONS,
-): EvaluationSummary {
-  const ratingGroups = questions.filter(
-    (question) => question.type === "rating_group",
-  );
-  const attendanceQuestion = questions.find(
-    (question) =>
-      question.type === "choice" && question.id === "eval_attendance_reason",
-  );
+  nameByUserId: Record<string, string>,
+): NamedResponse[] {
+  return [...responses]
+    .sort((a, b) => (b.submitted_at ?? "").localeCompare(a.submitted_at ?? ""))
+    .map((response) => {
+      const answers = asAnswers(response.answers);
+      return {
+        answers,
+        name: participantName(answers, response.participant_id, nameByUserId),
+        submittedAt: response.submitted_at,
+      };
+    });
+}
 
+function summarizeRatingGroups(
+  groups: RatingGroupQuestion[],
+  responses: NamedResponse[],
+): { ratingGroups: RatingGroupSummary[]; overallAverage: number | null } {
   const statementTotals = new Map<string, { sum: number; count: number; na: number }>();
-  for (const group of ratingGroups) {
+  for (const group of groups) {
     for (const statement of group.statements) {
       statementTotals.set(statement.id, { sum: 0, count: 0, na: 0 });
     }
   }
-
-  const attendanceCounts = new Map<string, number>();
-  if (attendanceQuestion?.type === "choice") {
-    for (const option of attendanceQuestion.options) {
-      attendanceCounts.set(option, 0);
-    }
-  }
-
-  const suggestions: EvaluationComment[] = [];
-  const comments: EvaluationComment[] = [];
   const overallValues: number[] = [];
 
-  const sorted = [...responses].sort((a, b) =>
-    (b.submitted_at ?? "").localeCompare(a.submitted_at ?? ""),
-  );
-
-  for (const response of sorted) {
-    const answers = asAnswers(response.answers);
-    const name = participantName(answers, response.participant_id, nameByUserId);
-
-    for (const group of ratingGroups) {
+  for (const { answers } of responses) {
+    for (const group of groups) {
       const nested = nestedGroup(answers[group.id]);
       for (const statement of group.statements) {
         const raw = nested[statement.id] ?? answers[statement.id];
@@ -167,36 +177,11 @@ export function summarizeEvaluationResponses(
         overallValues.push(numeric);
       }
     }
-
-    if (attendanceQuestion?.type === "choice") {
-      const reason = answers.eval_attendance_reason;
-      if (typeof reason === "string" && attendanceCounts.has(reason)) {
-        attendanceCounts.set(reason, (attendanceCounts.get(reason) ?? 0) + 1);
-      }
-    }
-
-    const suggestion = textAnswer(answers, "eval_suggestions");
-    if (suggestion) {
-      suggestions.push({
-        participantName: name,
-        text: suggestion,
-        submittedAt: response.submitted_at,
-      });
-    }
-    const comment = textAnswer(answers, "eval_comments");
-    if (comment) {
-      comments.push({
-        participantName: name,
-        text: comment,
-        submittedAt: response.submitted_at,
-      });
-    }
   }
 
   return {
-    responseCount: responses.length,
     overallAverage: average(overallValues),
-    ratingGroups: ratingGroups.map((group) => ({
+    ratingGroups: groups.map((group) => ({
       id: group.id,
       question: group.question,
       statements: group.statements.map((statement) => {
@@ -215,10 +200,114 @@ export function summarizeEvaluationResponses(
         };
       }),
     })),
-    attendanceReasons: [...attendanceCounts.entries()].map(
-      ([option, count]) => ({ option, count }),
+  };
+}
+
+function countChoices(
+  question: ChoiceQuestion | undefined,
+  responses: NamedResponse[],
+): ChoiceCount[] {
+  if (!question) return [];
+  const counts = new Map<string, number>(
+    question.options.map((option) => [option, 0]),
+  );
+  for (const { answers } of responses) {
+    const value = answers[question.id];
+    if (typeof value === "string" && counts.has(value)) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].map(([option, count]) => ({ option, count }));
+}
+
+function collectText(
+  responses: NamedResponse[],
+  id: string,
+): EvaluationComment[] {
+  const entries: EvaluationComment[] = [];
+  for (const response of responses) {
+    const text = textAnswer(response.answers, id);
+    if (text) {
+      entries.push({
+        participantName: response.name,
+        text,
+        submittedAt: response.submittedAt,
+      });
+    }
+  }
+  return entries;
+}
+
+function findChoice(
+  questions: PostActivityQuestion[],
+  id: string,
+): ChoiceQuestion | undefined {
+  return questions.find(
+    (question): question is ChoiceQuestion =>
+      question.type === "choice" && question.id === id,
+  );
+}
+
+function ratingGroupsOf(
+  questions: PostActivityQuestion[],
+): RatingGroupQuestion[] {
+  return questions.filter(
+    (question): question is RatingGroupQuestion =>
+      question.type === "rating_group",
+  );
+}
+
+/** Summarizes the official post-activity form; dashboard answers are left out. */
+export function summarizeEvaluationResponses(
+  responses: EvaluationResponseInput[],
+  nameByUserId: Record<string, string> = {},
+  questions: PostActivityQuestion[] = POST_ACTIVITY_EVALUATION_QUESTIONS,
+): EvaluationSummary {
+  const sorted = newestFirst(responses, nameByUserId);
+  const { ratingGroups, overallAverage } = summarizeRatingGroups(
+    ratingGroupsOf(questions),
+    sorted,
+  );
+
+  return {
+    responseCount: responses.length,
+    overallAverage,
+    ratingGroups,
+    attendanceReasons: countChoices(
+      findChoice(questions, "eval_attendance_reason"),
+      sorted,
     ),
-    suggestions,
-    comments,
+    suggestions: collectText(sorted, "eval_suggestions"),
+    comments: collectText(sorted, "eval_comments"),
+  };
+}
+
+/**
+ * Summarizes the dashboard feedback section. Evaluations submitted before it
+ * was added have no dashboard answers and are not counted.
+ */
+export function summarizeDashboardFeedback(
+  responses: EvaluationResponseInput[],
+  nameByUserId: Record<string, string> = {},
+  questions: PostActivityQuestion[] = DASHBOARD_EVALUATION_QUESTIONS,
+): DashboardFeedbackSummary {
+  const questionIds = questions.map((question) => question.id);
+  const answered = newestFirst(responses, nameByUserId).filter(({ answers }) =>
+    hasEvaluationAnswers(
+      Object.fromEntries(questionIds.map((id) => [id, answers[id]])),
+    ),
+  );
+  const { ratingGroups, overallAverage } = summarizeRatingGroups(
+    ratingGroupsOf(questions),
+    answered,
+  );
+
+  return {
+    responseCount: answered.length,
+    overallAverage,
+    ratingGroups,
+    devices: countChoices(findChoice(questions, "eval_dash_device"), answered),
+    issues: collectText(answered, "eval_dash_issues"),
+    suggestions: collectText(answered, "eval_dash_suggestions"),
   };
 }

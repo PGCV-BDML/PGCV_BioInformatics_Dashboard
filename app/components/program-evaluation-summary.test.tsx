@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProgramEvaluationSummary from "./program-evaluation-summary";
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
@@ -54,5 +54,57 @@ describe("ProgramEvaluationSummary", () => {
       expect(toggle).toHaveAttribute("aria-checked", "true");
     });
     expect(showToast).toHaveBeenCalledWith("Evaluation opened.", "success");
+  });
+
+  it("shows dashboard feedback apart from the activity ratings", async () => {
+    vi.mocked(ensureProgramEvaluation).mockResolvedValue({
+      id: "eval-1",
+      program_id: "prog-1",
+      type: "evaluation",
+      questions: [],
+      is_open: true,
+    });
+    vi.mocked(getRowsFromDB).mockResolvedValue([
+      {
+        id: "resp-1",
+        assessment_id: "eval-1",
+        participant_id: "ada",
+        submitted_at: "2026-10-10T01:00:00Z",
+        score: null,
+        answers: {
+          eval_full_name: "Ada Lovelace",
+          eval_overall: { eval_overall_quality: 5 },
+          eval_dash_overall: { eval_dash_overall_experience: 2 },
+          eval_dash_device: "Phone",
+          eval_dash_issues: "Couldn't find the slides.",
+        },
+      },
+      {
+        id: "resp-2",
+        assessment_id: "eval-1",
+        participant_id: "grace",
+        submitted_at: "2026-10-09T01:00:00Z",
+        score: null,
+        answers: {
+          eval_full_name: "Grace Hopper",
+          eval_overall: { eval_overall_quality: 3 },
+        },
+      },
+    ] as never);
+    vi.mocked(getUsersFromDB).mockResolvedValue([] as never);
+
+    render(<ProgramEvaluationSummary programId="prog-1" programType="training" />);
+
+    const dashboard = (await screen.findByText("Dashboard feedback")).closest(
+      "div.space-y-5",
+    ) as HTMLElement;
+    expect(within(dashboard).getByText("of 2")).toBeInTheDocument();
+    expect(
+      within(dashboard).getByText("Couldn't find the slides."),
+    ).toBeInTheDocument();
+
+    const activityAverage = screen.getByText("Overall activity average")
+      .parentElement as HTMLElement;
+    expect(within(activityAverage).getByText("4.0")).toBeInTheDocument();
   });
 });

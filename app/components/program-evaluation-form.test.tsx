@@ -122,6 +122,21 @@ describe("ProgramEvaluationForm (learner)", () => {
     ).toBeInTheDocument();
   });
 
+  it("asks about the dashboard after the official form", async () => {
+    vi.mocked(ensureProgramEvaluation).mockResolvedValue(evaluation(true));
+    render(<ProgramEvaluationForm programId="prog-1" programType="training" />);
+
+    expect(await screen.findByText("Dashboard experience")).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "20. Using the Dashboard" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        /What can we do to improve the dashboard for future programs\?/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("submits the evaluation without creating a certificate", async () => {
     vi.mocked(ensureProgramEvaluation).mockResolvedValue(evaluation(true));
     vi.mocked(saveDataToDB).mockResolvedValue(undefined as never);
