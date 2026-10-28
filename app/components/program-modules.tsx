@@ -49,6 +49,7 @@ import {
   uploadModuleFile,
   validateModuleFile,
 } from "@/lib/module-file";
+import { saveMaterialOrder } from "@/lib/material-order";
 import {
   deleteDataFromDB,
   getRowsFromDB,
@@ -351,24 +352,6 @@ export default function ProgramModules({
     }
   };
 
-  const persistOrder = async (ordered: ModuleRow[]) => {
-    // Two-phase write avoids unique (program_id, order) collisions when
-    // swapping: e.g. A:1↔B:2 cannot both become 2/1 in one parallel update.
-    await Promise.all(
-      ordered.map((row, index) =>
-        saveDataToDB("module", row.id, { order: -(index + 1) }),
-      ),
-    );
-    await Promise.all(
-      ordered.map((row, index) =>
-        saveDataToDB("module", row.id, { order: index + 1 }),
-      ),
-    );
-    setModulesList(
-      ordered.map((row, index) => ({ ...row, order: index + 1 })),
-    );
-  };
-
   const moveModule = async (moduleId: string, direction: "up" | "down") => {
     const index = modulesList.findIndex((m) => m.id === moduleId);
     if (index < 0) return;
@@ -388,7 +371,11 @@ export default function ProgramModules({
     );
     setBusyModuleId(moduleId);
     try {
-      await persistOrder(next);
+      await saveMaterialOrder(
+        "module",
+        programId,
+        next.map((row) => row.id),
+      );
     } catch (error) {
       console.error("Failed to reorder modules:", error);
       showToast("Failed to reorder modules.", "error");
@@ -414,8 +401,8 @@ export default function ProgramModules({
           );
         }
       }
-      const remaining = modulesList.filter((m) => m.id !== removeTarget.id);
-      await persistOrder(remaining);
+      // Gaps in "order" are fine: the list sorts by it and numbers by index.
+      setModulesList((prev) => prev.filter((m) => m.id !== removeTarget.id));
       setReadModuleIds((prev) => prev.filter((id) => id !== removeTarget.id));
       setRemoveTarget(null);
       showToast("Module removed from course.", "success");
@@ -714,7 +701,7 @@ export default function ProgramModules({
                         <button
                           type="button"
                           aria-label="Move module up"
-                          disabled={index === 0 || busyModuleId === module.id}
+                          disabled={index === 0 || busyModuleId !== null}
                           onClick={() => moveModule(module.id, "up")}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                         >
@@ -725,7 +712,7 @@ export default function ProgramModules({
                           aria-label="Move module down"
                           disabled={
                             index === modulesList.length - 1 ||
-                            busyModuleId === module.id
+                            busyModuleId !== null
                           }
                           onClick={() => moveModule(module.id, "down")}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
@@ -735,8 +722,9 @@ export default function ProgramModules({
                         <button
                           type="button"
                           aria-label={`Remove ${module.title}`}
+                          disabled={busyModuleId !== null}
                           onClick={() => setRemoveTarget(module)}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-rose-100 bg-white text-rose-600 hover:bg-rose-50"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-rose-100 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-40"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
