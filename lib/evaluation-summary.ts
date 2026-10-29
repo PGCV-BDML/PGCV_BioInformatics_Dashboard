@@ -109,7 +109,8 @@ function average(values: number[]): number | null {
   return roundOne(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-function participantName(
+/** The name typed on the form, then the account name. */
+export function evaluationParticipantName(
   answers: EvaluationAnswers,
   participantId: string,
   nameByUserId: Record<string, string>,
@@ -141,7 +142,11 @@ function newestFirst(
       const answers = asAnswers(response.answers);
       return {
         answers,
-        name: participantName(answers, response.participant_id, nameByUserId),
+        name: evaluationParticipantName(
+          answers,
+          response.participant_id,
+          nameByUserId,
+        ),
         submittedAt: response.submitted_at,
       };
     });

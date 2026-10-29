@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Award,
   BarChart3,
+  Download,
   MessageSquareText,
   MonitorSmartphone,
   Trash2,
@@ -13,6 +14,11 @@ import AssessmentAccessToggle from "@/app/components/assessment-access-toggle";
 import ConfirmModal from "@/app/components/confirm-modal";
 import { EmptyState } from "@/app/components/state-views";
 import { useToast } from "@/app/components/toast";
+import { downloadCsv, toCsvTable } from "@/lib/assessment-export";
+import {
+  buildEvaluationExportTable,
+  evaluationExportFileName,
+} from "@/lib/evaluation-export";
 import {
   EVALUATION_FORM_TITLE,
   EVALUATION_RATING_SCALE,
@@ -26,6 +32,7 @@ import {
   type ChoiceCount,
   type DashboardFeedbackSummary,
   type EvaluationComment,
+  type EvaluationResponseInput,
   type EvaluationSummary,
   type RatingGroupSummary,
 } from "@/lib/evaluation-summary";
@@ -38,12 +45,29 @@ import {
   saveDataToDB,
   supabase,
 } from "@/lib/supabase";
-import type { Assessment, AssessmentResponse, User } from "@/types/database";
+import type {
+  Assessment,
+  AssessmentResponse,
+  TrainingProgram,
+  User,
+} from "@/types/database";
 
 type ProgramEvaluationSummaryProps = {
   programId: string;
   programType: ProgramType;
 };
+
+type EvaluationExportSource = {
+  programTitle: string | null;
+  responses: EvaluationResponseInput[];
+  nameByUserId: Record<string, string>;
+};
+
+const emptyExportSource = (): EvaluationExportSource => ({
+  programTitle: null,
+  responses: [],
+  nameByUserId: {},
+});
 
 function submittedDate(value: string | null): string {
   if (!value) return "";
@@ -264,6 +288,9 @@ export default function ProgramEvaluationSummary({
   const [dashboardSummary, setDashboardSummary] =
     useState<DashboardFeedbackSummary>(() => summarizeDashboardFeedback([]));
   const [responseIds, setResponseIds] = useState<string[]>([]);
+  const [exportSource, setExportSource] = useState<EvaluationExportSource>(
+    emptyExportSource,
+  );
   const [confirmClear, setConfirmClear] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [evaluation, setEvaluation] = useState<Assessment | null>(null);
@@ -275,9 +302,10 @@ export default function ProgramEvaluationSummary({
       const programEvaluation = await ensureProgramEvaluation(programId);
       setEvaluation(programEvaluation);
       const evaluationId = programEvaluation?.id;
-      const [responses, users] = await Promise.all([
+      const [responses, users, programs] = await Promise.all([
         getRowsFromDB<AssessmentResponse>("assessment_response"),
         getUsersFromDB<Pick<User, "id" | "name">>(["trainee", "intern"]),
+        getRowsFromDB<TrainingProgram>("training_program"),
       ]);
 
       const programResponses = (
@@ -290,6 +318,12 @@ export default function ProgramEvaluationSummary({
         nameByUserId[user.id] = user.name;
       }
       setResponseIds(programResponses.map((row) => row.id));
+      setExportSource({
+        programTitle:
+          programs.find((program) => program.id === programId)?.title ?? null,
+        responses: programResponses,
+        nameByUserId,
+      });
       setSummary(summarizeEvaluationResponses(programResponses, nameByUserId));
       setDashboardSummary(
         summarizeDashboardFeedback(programResponses, nameByUserId),
@@ -298,6 +332,7 @@ export default function ProgramEvaluationSummary({
       console.error("Error loading evaluation summary:", error);
       showToast("Failed to load evaluation responses.", "error");
       setResponseIds([]);
+      setExportSource(emptyExportSource());
       setSummary(summarizeEvaluationResponses([]));
       setDashboardSummary(summarizeDashboardFeedback([]));
     } finally {
@@ -308,6 +343,14 @@ export default function ProgramEvaluationSummary({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleDownload = () => {
+    const { header, rows } = buildEvaluationExportTable(exportSource);
+    downloadCsv(
+      evaluationExportFileName({ programTitle: exportSource.programTitle }),
+      toCsvTable(header, rows),
+    );
+  };
 
   const handleToggleAccess = async () => {
     if (!evaluation) return;
@@ -392,14 +435,24 @@ export default function ProgramEvaluationSummary({
               </h2>
             </div>
             {!isLoading && summary.responseCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setConfirmClear(true)}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-rose-200 bg-white text-rose-600 text-[11px] font-bold hover:bg-rose-50 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Clear responses
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-bold hover:bg-slate-50 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClear(true)}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-rose-200 bg-white text-rose-600 text-[11px] font-bold hover:bg-rose-50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear responses
+                </button>
+              </div>
             )}
           </div>
           <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
