@@ -21,6 +21,7 @@ import {
 import { loadUserNameMap } from "@/lib/user-names";
 import { describeDeleteError, describeSaveError } from "@/lib/db-errors";
 import { countListedParticipantsByProgram } from "@/lib/program-enrollment";
+import { sortPrograms } from "@/lib/program-order";
 import { ensureProgramEvaluation } from "@/lib/program-evaluation";
 import { seedDefaultTrainingPrepItems } from "@/lib/training-prep-checklist";
 import type { BreadcrumbItem } from "@/app/components/dashboardbreadcrumbs";
@@ -52,6 +53,7 @@ function mapProgramCard(
     end_date: program.end_date ?? "",
     participant_count: enrollmentCounts.get(program.id) ?? 0,
     status: program.status ?? "ongoing",
+    pinned_at: program.pinned_at ?? "",
   };
 }
 
@@ -99,8 +101,10 @@ export default function ProgramDirectory({
 
   const programsList = useMemo(
     () =>
-      rawPrograms.map((program) =>
-        mapProgramCard(program, userNameById, enrollmentCounts),
+      sortPrograms(
+        rawPrograms.map((program) =>
+          mapProgramCard(program, userNameById, enrollmentCounts),
+        ),
       ),
     [rawPrograms, userNameById, enrollmentCounts],
   );
@@ -213,6 +217,39 @@ export default function ProgramDirectory({
           ),
         );
         showToast("Failed to update program status.", "error");
+      }
+    },
+    [showToast],
+  );
+
+  // Pins are team-wide: a pinned program is listed first for everyone.
+  const togglePin = useCallback(
+    async (program: ProgramCard) => {
+      const previous = program.pinned_at || null;
+      const next = previous ? null : new Date().toISOString();
+      const setPinnedAt = (pinnedAt: string | null) =>
+        setRawPrograms((prev) =>
+          prev.map((p) =>
+            p.id === program.id ? { ...p, pinned_at: pinnedAt } : p,
+          ),
+        );
+      setPinnedAt(next);
+      try {
+        const saved = (await saveDataToDB("training_program", program.id, {
+          pinned_at: next,
+        })) as TrainingProgram | null;
+        if (saved && saved.pinned_at !== undefined) setPinnedAt(saved.pinned_at);
+        showToast(
+          next ? "Pinned to the top for everyone." : "Unpinned.",
+          "success",
+        );
+      } catch (error) {
+        console.error("Failed to update program pin:", error);
+        setPinnedAt(previous);
+        showToast(
+          next ? "Failed to pin the program." : "Failed to unpin the program.",
+          "error",
+        );
       }
     },
     [showToast],
@@ -405,6 +442,7 @@ export default function ProgramDirectory({
             onArchive={(prog) => setArchiveTarget(prog)}
             onRestore={(prog) => updateProgramStatus(prog, "ongoing")}
             onDelete={(prog) => setDeleteTarget(prog)}
+            onTogglePin={(prog) => void togglePin(prog)}
           />
         )}
       </div>

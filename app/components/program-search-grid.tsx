@@ -16,6 +16,8 @@ import {
   Archive,
   RotateCcw,
   Trash2,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { programRoutes } from "@/lib/routes";
 import type {
@@ -34,6 +36,8 @@ export interface ProgramCard {
   end_date: string;
   participant_count: number;
   status: TrainingProgramStatus;
+  /** When staff pinned the program for everyone; empty when not pinned. */
+  pinned_at: string;
 }
 
 type StatusFilter = "all" | "draft" | "completed";
@@ -79,6 +83,38 @@ interface ProgramSearchGridProps {
   onArchive?: (program: ProgramCard) => void;
   onRestore?: (program: ProgramCard) => void;
   onDelete?: (program: ProgramCard) => void;
+  onTogglePin?: (program: ProgramCard) => void;
+}
+
+function PinButton({
+  prog,
+  onTogglePin,
+}: {
+  prog: ProgramCard;
+  onTogglePin: (program: ProgramCard) => void;
+}) {
+  const pinned = Boolean(prog.pinned_at);
+  const label = pinned ? "Unpin" : "Pin to top for everyone";
+  const Icon = pinned ? PinOff : Pin;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onTogglePin(prog);
+      }}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+        pinned
+          ? "border-[#4ec2bb]/40 bg-[#eaf7f6] text-[#247974] hover:bg-[#deefed]"
+          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
 }
 
 function ProgramCardMenu({
@@ -212,6 +248,7 @@ export default function ProgramSearchGrid({
   onArchive,
   onRestore,
   onDelete,
+  onTogglePin,
 }: ProgramSearchGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -298,10 +335,13 @@ export default function ProgramSearchGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredPrograms.map((prog) => {
           const badge = STATUS_BADGE[prog.status];
+          const showPinned = canManage && Boolean(prog.pinned_at);
           return (
             <div
               key={prog.id}
-              className="flex flex-col justify-between bg-surface border border-slate-300/60 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group"
+              className={`flex flex-col justify-between bg-surface border rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all duration-200 relative group ${
+                showPinned ? "border-[#4ec2bb]/70" : "border-slate-300/60"
+              }`}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-2">
@@ -314,6 +354,12 @@ export default function ProgramSearchGrid({
                     >
                       {badge.label}
                     </span>
+                    {showPinned && (
+                      <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[1px] border px-2 py-0.5 rounded-md bg-[#eaf7f6] text-[#247974] border-[#4ec2bb]/30">
+                        <Pin className="w-2.5 h-2.5" />
+                        Pinned
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {showParticipantCount && (
@@ -323,6 +369,9 @@ export default function ProgramSearchGrid({
                           {prog.participant_count} {participantLabel}
                         </span>
                       </div>
+                    )}
+                    {canManage && onTogglePin && (
+                      <PinButton prog={prog} onTogglePin={onTogglePin} />
                     )}
                     {canManage && (
                       <ProgramCardMenu
