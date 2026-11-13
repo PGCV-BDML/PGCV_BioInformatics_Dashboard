@@ -291,6 +291,8 @@ export interface TrainingProgram {
   description: string | null;
   requesting_institution: string | null;
   training_code: string | null;
+  /** Set when staff pin the program to the top of its directory. */
+  pinned_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
