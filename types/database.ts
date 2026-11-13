@@ -395,6 +395,11 @@ export type ChoiceQuestion = {
   options: string[];
   required?: boolean;
   multiple?: boolean;
+  /**
+   * The option (for example "Other (please specify)") that opens a text box
+   * when picked. Its text is saved under `<id>_other` in the answers.
+   */
+  otherOption?: string;
 } & QuestionSectionFields;
 
 export type DateQuestion = {

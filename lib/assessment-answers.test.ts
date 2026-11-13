@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Question } from "@/types/database";
 import {
-  INTRO_BIOINFORMATICS_POST_QUESTIONS,
   INTRO_BIOINFORMATICS_PRE_QUESTIONS,
 } from "./intro-bioinformatics-assessments";
 import {
@@ -158,13 +157,23 @@ describe("compareAnswerSheets", () => {
     });
   });
 
-  it("matches the shared Introduction to Bioinformatics items", () => {
-    const rows = compareAnswerSheets(
-      buildAnswerSheet(INTRO_BIOINFORMATICS_PRE_QUESTIONS, null),
-      buildAnswerSheet(INTRO_BIOINFORMATICS_POST_QUESTIONS, null),
-    );
-    expect(rows.filter((row) => row.type === "mcq")).toHaveLength(10);
-    expect(rows.filter((row) => row.type === "rating")).toHaveLength(5);
+  it("shows what the learner typed after Other", () => {
+    const sheet = buildAnswerSheet(INTRO_BIOINFORMATICS_PRE_QUESTIONS, {
+      id: "r1",
+      assessment_id: "pre",
+      participant_id: "u1",
+      answers: {
+        intro_pre_role: "Other (please specify)",
+        intro_pre_role_other: "Medical technologist",
+      },
+      score: null,
+      submitted_at: "2026-11-25",
+    });
+    expect(sheet.score).toBeNull();
+    expect(sheet.items.find((item) => item.id === "intro_pre_role")).toMatchObject({
+      answer: "Other (please specify): Medical technologist",
+      status: "answered",
+    });
   });
 });
 

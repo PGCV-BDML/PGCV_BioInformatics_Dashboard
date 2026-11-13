@@ -16,6 +16,9 @@ import { useToast } from "@/app/components/toast";
 import {
   asStringArray,
   formatAnswer,
+  hasScoredQuestions,
+  isOtherSelected,
+  otherAnswerId,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "@/lib/assessment-form";
@@ -81,6 +84,8 @@ function LearnerAssessmentForm({
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, AssessmentAnswer>
   >({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  // Null after submitting a test that has no scored questions.
   const [scoreResult, setScoreResult] = useState<number | null>(null);
   const [existingResponses, setExistingResponses] = useState<
     AssessmentResponse[]
@@ -172,6 +177,7 @@ function LearnerAssessmentForm({
     setActiveTest(type);
     setIsReviewing(false);
     setSelectedAnswers({});
+    setIsSubmitted(false);
     setScoreResult(null);
   };
 
@@ -254,23 +260,46 @@ function LearnerAssessmentForm({
                     type={question.multiple ? "checkbox" : "radio"}
                     name={question.id}
                     checked={isChecked}
-                    onChange={() =>
-                      setSelectedAnswers({
+                    onChange={() => {
+                      const next = question.multiple
+                        ? toggleMultiChoiceOption(
+                            asStringArray(selectedAnswers[question.id]),
+                            option,
+                          )
+                        : option;
+                      const updated = {
                         ...selectedAnswers,
-                        [question.id]: question.multiple
-                          ? toggleMultiChoiceOption(
-                              asStringArray(selectedAnswers[question.id]),
-                              option,
-                            )
-                          : option,
-                      })
-                    }
+                        [question.id]: next,
+                      };
+                      // Drop the typed "Other" text once Other is unpicked.
+                      if (!isOtherSelected(question, next)) {
+                        delete updated[otherAnswerId(question.id)];
+                      }
+                      setSelectedAnswers(updated);
+                    }}
                     className="text-[#4ec2bb] focus:ring-[#4ec2bb]"
                   />
                   <span>{option}</span>
                 </label>
               );
             })}
+            {isOtherSelected(question, selected) ? (
+              <input
+                type="text"
+                aria-label={`${question.otherOption}: please specify`}
+                value={
+                  (selectedAnswers[otherAnswerId(question.id)] as string) ?? ""
+                }
+                onChange={(event) =>
+                  setSelectedAnswers({
+                    ...selectedAnswers,
+                    [otherAnswerId(question.id)]: event.target.value,
+                  })
+                }
+                placeholder="Please specify"
+                className="w-full text-xs rounded-xl border-slate-200 focus:border-[#4ec2bb] focus:ring-[#4ec2bb] p-2.5 text-slate-700 bg-white"
+              />
+            ) : null}
           </div>
         </div>
       );
@@ -393,7 +422,9 @@ function LearnerAssessmentForm({
         return;
       }
 
-      const finalScore = scoreMcqPercent(questions, selectedAnswers);
+      const finalScore = hasScoredQuestions(questions)
+        ? scoreMcqPercent(questions, selectedAnswers)
+        : null;
 
       const typedAnswers: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(selectedAnswers)) {
@@ -411,6 +442,7 @@ function LearnerAssessmentForm({
       });
 
       setScoreResult(finalScore);
+      setIsSubmitted(true);
       setExistingResponses((prev) => [
         ...prev,
         {
@@ -435,7 +467,11 @@ function LearnerAssessmentForm({
     return questions.map((question) => {
       if (question.section) number = 0;
       number += 1;
-      const answer = formatAnswer(question, selectedAnswers[question.id]);
+      const answer = formatAnswer(
+        question,
+        selectedAnswers[question.id],
+        selectedAnswers[otherAnswerId(question.id)],
+      );
       return (
         <Fragment key={question.id}>
           {question.section ? (
@@ -563,7 +599,7 @@ function LearnerAssessmentForm({
             </span>
           </div>
 
-          {scoreResult === null && !isReviewing ? (
+          {!isSubmitted && !isReviewing ? (
             <div className="space-y-6 max-w-3xl">
               {renderQuestionList(
                 activeTest === "pre" ? preTestQuestions : postTestQuestions,
@@ -580,7 +616,7 @@ function LearnerAssessmentForm({
                 Review Answers
               </button>
             </div>
-          ) : scoreResult === null ? (
+          ) : !isSubmitted ? (
             <div className="space-y-6 max-w-3xl">
               <div className="rounded-[16px] border border-amber-200 bg-amber-50 p-4 space-y-1">
                 <h3 className="text-sm font-bold text-slate-800">
@@ -630,14 +666,16 @@ function LearnerAssessmentForm({
                   Your test answers have been saved.
                 </p>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-4 inline-block min-w-[120px]">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold block">
-                  Your Score
-                </span>
-                <span className="text-3xl font-black text-[#2a7797] font-quicksand">
-                  {scoreResult}%
-                </span>
-              </div>
+              {scoreResult != null ? (
+                <div className="bg-slate-50 rounded-2xl p-4 inline-block min-w-[120px]">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold block">
+                    Your Score
+                  </span>
+                  <span className="text-3xl font-black text-[#2a7797] font-quicksand">
+                    {scoreResult}%
+                  </span>
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setActiveTest(null)}

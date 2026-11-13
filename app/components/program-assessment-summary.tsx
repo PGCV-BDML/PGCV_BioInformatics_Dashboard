@@ -110,6 +110,12 @@ function TestSection({
         <p className="text-xs text-slate-400">No submissions yet.</p>
       ) : (
         <div className="space-y-3">
+          {summary.mcqItems.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              This test has no scored questions. Select a participant below to
+              see their answers.
+            </p>
+          ) : null}
           {summary.mcqItems.map((item) => (
             <div
               key={item.id}
@@ -419,8 +425,12 @@ export default function ProgramAssessmentSummary({
             />
             <ScoreCard
               label="Pre-test average"
-              value={formatAssessmentAverage(summary.pre.averageScore)}
-              suffix=" %"
+              value={
+                summary.pre.mcqItems.length === 0
+                  ? "Not scored"
+                  : formatAssessmentAverage(summary.pre.averageScore)
+              }
+              suffix={summary.pre.mcqItems.length === 0 ? undefined : " %"}
             />
             <ScoreCard
               label="Post-test responses"
@@ -430,6 +440,12 @@ export default function ProgramAssessmentSummary({
               label="Average gain"
               value={formatAssessmentAverage(summary.averageGain)}
               suffix=" pts"
+              hint={
+                summary.pre.mcqItems.length === 0 ||
+                summary.post.mcqItems.length === 0
+                  ? "Needs a scored pre-test and post-test"
+                  : undefined
+              }
             />
           </div>
 

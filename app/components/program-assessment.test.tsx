@@ -83,7 +83,7 @@ describe("ProgramAssessment", () => {
     expect(screen.getByRole("checkbox", { name: "None of these" })).toBeChecked();
   });
 
-  it("renders the Introduction to Bioinformatics pre-test without a participant code", async () => {
+  function mockIntroTests() {
     vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
       if (table === "assessment") {
         return [
@@ -103,14 +103,20 @@ describe("ProgramAssessment", () => {
       }
       return [] as never;
     });
+  }
 
+  it("renders the Introduction to Bioinformatics pre-test without a participant code", async () => {
+    mockIntroTests();
     const user = userEvent.setup();
     render(<ProgramAssessment programId="prog-1" programType="training" />);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Start Pre-Test" })).toBeInTheDocument();
     });
-    expect(screen.getAllByText("Suggested time: 10 minutes.")).toHaveLength(2);
+    expect(screen.getByText("30 questions")).toBeInTheDocument();
+    expect(
+      screen.getByText("Suggested time: about 10 minutes."),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Your dashboard account identifies you/),
     ).toBeInTheDocument();
@@ -119,13 +125,64 @@ describe("ProgramAssessment", () => {
     await user.click(screen.getByRole("button", { name: "Start Pre-Test" }));
 
     expect(screen.getByText("Getting to know you")).toBeInTheDocument();
-    expect(screen.getByText("Knowledge check")).toBeInTheDocument();
     expect(
-      screen.getByText(/Which command-line skills have you used before/),
+      screen.getByText("Your experience with the training topics"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Current confidence")).toBeInTheDocument();
+    expect(screen.getByText("Starting point")).toBeInTheDocument();
+    expect(screen.queryByText("Knowledge check")).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Why is the command line especially useful/),
+      screen.getByText(/Sequence similarity search using BLAST/),
     ).toBeInTheDocument();
+  });
+
+  it("asks learners to specify Other and saves the pre-test without a score", async () => {
+    mockIntroTests();
+    const user = userEvent.setup();
+    render(<ProgramAssessment programId="prog-1" programType="training" />);
+
+    await user.click(await screen.findByRole("button", { name: "Start Pre-Test" }));
+    const specify = "Other (please specify): please specify";
+    expect(screen.queryByRole("textbox", { name: specify })).not.toBeInTheDocument();
+
+    const roleOther = screen.getAllByRole("radio", {
+      name: "Other (please specify)",
+    })[0]!;
+    await user.click(roleOther);
+    await user.type(
+      screen.getByRole("textbox", { name: specify }),
+      "Medical technologist",
+    );
+    await user.click(screen.getByRole("radio", { name: "Graduate student" }));
+    expect(screen.queryByRole("textbox", { name: specify })).not.toBeInTheDocument();
+
+    await user.click(roleOther);
+    await user.type(
+      screen.getByRole("textbox", { name: specify }),
+      "Medical technologist",
+    );
+    await user.click(screen.getByRole("button", { name: "Review Answers" }));
+    expect(
+      screen.getByText("Other (please specify): Medical technologist"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Submit Final Answers" }));
+    await waitFor(() => {
+      expect(screen.getByText("Assessment Submitted")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Your Score")).not.toBeInTheDocument();
+    expect(vi.mocked(saveDataToDB).mock.calls[0]?.[2]).toMatchObject({
+      assessment_id: "pre-id",
+      score: null,
+      answers: {
+        intro_pre_role: "Other (please specify)",
+        intro_pre_role_other: "Medical technologist",
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Return to tests" }));
+    expect(screen.getByText("Submitted")).toBeInTheDocument();
+    expect(screen.queryByText(/Submitted · Score/)).not.toBeInTheDocument();
   });
 
   it("hides closed tests and locks submitted ones", async () => {
