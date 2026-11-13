@@ -173,11 +173,14 @@ export function fileSlug(name: string): string {
 export function responseExportFileName(input?: {
   participantName?: string | null;
   date?: Date;
+  /** Trainings export only the pre-test. */
+  preOnly?: boolean;
 }): string {
   const stamp = fileDate(input?.date ?? new Date());
+  const prefix = input?.preOnly ? "pre-test-responses" : "pre-post-responses";
   const name = input?.participantName?.trim();
-  if (!name) return `pre-post-responses-${stamp}.csv`;
-  return `pre-post-responses-${fileSlug(name)}-${stamp}.csv`;
+  if (!name) return `${prefix}-${stamp}.csv`;
+  return `${prefix}-${fileSlug(name)}-${stamp}.csv`;
 }
 
 /** Saves a CSV in the browser. A leading BOM lets Excel read accents. */

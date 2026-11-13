@@ -21,12 +21,18 @@ vi.mock("./portal-context", () => ({
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     from: (table: string) => {
-      const result = Promise.resolve({ data: tables[table] ?? [], error: null });
+      let rows = (tables[table] ?? []) as Record<string, unknown>[];
       const chain = {
         select: () => chain,
         eq: () => chain,
-        in: () => chain,
-        then: result.then.bind(result),
+        in: (column: string, values: unknown[]) => {
+          rows = rows.filter((row) => values.includes(row[column]));
+          return chain;
+        },
+        then: (
+          resolve: (value: { data: unknown[]; error: null }) => unknown,
+          reject?: (reason: unknown) => unknown,
+        ) => Promise.resolve({ data: rows, error: null }).then(resolve, reject),
       };
       return chain;
     },
@@ -117,11 +123,11 @@ describe("ParticipantAssessmentAnswers", () => {
     ];
   });
 
-  it("shows one trainee's scores, answers and pre vs post comparison", async () => {
+  it("shows one intern's scores, answers and pre vs post comparison", async () => {
     render(
       <ParticipantAssessmentAnswers
         programId="prog-1"
-        programType="training"
+        programType="internship"
         participantId="u-ben"
       />,
     );
@@ -129,7 +135,7 @@ describe("ParticipantAssessmentAnswers", () => {
     expect(
       await screen.findByRole("heading", { name: "Ben Cruz" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Trainee 2 of 3/)).toBeInTheDocument();
+    expect(screen.getByText(/Pre \/ post test answers · Intern 2 of 3/)).toBeInTheDocument();
     expect(screen.getByText("+100")).toBeInTheDocument();
 
     expect(screen.getByText("Knowledge check: 0/1 before → 1/1 after")).toBeInTheDocument();
@@ -161,7 +167,47 @@ describe("ParticipantAssessmentAnswers", () => {
     download.mockRestore();
   });
 
+  it("shows only the pre-test on a training and leaves old post-test answers out", async () => {
+    render(
+      <ParticipantAssessmentAnswers
+        programId="prog-1"
+        programType="training"
+        participantId="u-ben"
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Ben Cruz" }),
+    ).toBeInTheDocument();
+    // Cy only took the post-test, so they drop out of the trainee list.
+    expect(screen.getByText(/Pre-test answers · Trainee 2 of 2/)).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Cy Reyes" })).not.toBeInTheDocument();
+    expect(screen.getByText("Pre-test score")).toBeInTheDocument();
+    expect(screen.getByText("Pre-Test")).toBeInTheDocument();
+    expect(screen.getByText("Why Linux?")).toBeInTheDocument();
+    expect(screen.queryByText("Post-test score")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gain")).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-Test")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pre vs Post")).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    const download = vi
+      .spyOn(assessmentExport, "downloadCsv")
+      .mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "All responses" }));
+    const [file, csv] = download.mock.calls[0]!;
+    expect(file).toMatch(/^pre-test-responses-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(csv).toContain("pre_test");
+    expect(csv).not.toContain("post_test");
+    expect(csv).not.toContain("Cy Reyes");
+    download.mockRestore();
+  });
+
   it("links to the previous and next trainee by name", async () => {
+    tables.assessment_response!.push(
+      response("r5", "u-cy", "pre", { pre_k1: 1 }, 100),
+    );
     render(
       <ParticipantAssessmentAnswers
         programId="prog-1"

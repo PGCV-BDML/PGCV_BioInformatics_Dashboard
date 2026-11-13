@@ -5,6 +5,7 @@ import {
   hasScoredQuestions,
   isOtherSelected,
   otherAnswerId,
+  programHasPostTest,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "./assessment-form";
@@ -135,5 +136,15 @@ describe("hasScoredQuestions", () => {
     expect(hasScoredQuestions(questions.filter((q) => q.type !== "mcq"))).toBe(
       false,
     );
+  });
+});
+
+describe("programHasPostTest", () => {
+  it("leaves the post-test off trainings, whose post-tests are in the modules", () => {
+    expect(programHasPostTest("training")).toBe(false);
+  });
+
+  it("keeps the post-test on internships", () => {
+    expect(programHasPostTest("internship")).toBe(true);
   });
 });

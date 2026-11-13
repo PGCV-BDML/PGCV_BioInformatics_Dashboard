@@ -1,6 +1,17 @@
+import type { ProgramType } from "@/lib/routes";
 import type { ChoiceQuestion, McqQuestion, Question } from "@/types/database";
 
 export const NONE_OF_THESE_OPTION = "None of these";
+
+/**
+ * Whether the program's test tab includes a post-test. Trainings only have
+ * the pre-test there: their graded pre- and post-tests are inside each
+ * module, and staff read those answers on the Participants tab. Any old
+ * training post-test stays in the database but is no longer shown.
+ */
+export function programHasPostTest(programType: ProgramType): boolean {
+  return programType !== "training";
+}
 
 /** Answer key for the text typed after picking a choice question's "Other". */
 export function otherAnswerId(questionId: string): string {

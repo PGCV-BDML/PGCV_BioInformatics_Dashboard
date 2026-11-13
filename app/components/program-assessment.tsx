@@ -19,6 +19,7 @@ import {
   hasScoredQuestions,
   isOtherSelected,
   otherAnswerId,
+  programHasPostTest,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "@/lib/assessment-form";
@@ -77,6 +78,7 @@ function LearnerAssessmentForm({
 }: ProgramAssessmentProps) {
   const { showToast } = useToast();
   const isTraining = programType === "training";
+  const hasPostTest = programHasPostTest(programType);
   const [activeTest, setActiveTest] = useState<TestKind | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [preTestQuestions, setPreTestQuestions] = useState<Question[]>([]);
@@ -110,7 +112,9 @@ function LearnerAssessmentForm({
       (row) => row.program_id === programId,
     );
     const pre = programAssessments.find((row) => row.type === "pre_test");
-    const post = programAssessments.find((row) => row.type === "post_test");
+    const post = hasPostTest
+      ? programAssessments.find((row) => row.type === "post_test")
+      : undefined;
     const mine = responses.filter((row) => row.participant_id === user?.id);
     setPreTestQuestions(pre?.questions ?? []);
     setPostTestQuestions(post?.questions ?? []);
@@ -121,7 +125,7 @@ function LearnerAssessmentForm({
     });
     setExistingResponses(mine);
     return { pre, post, mine, user };
-  }, [programId]);
+  }, [hasPostTest, programId]);
 
   useEffect(() => {
     const load = async () => {
@@ -566,22 +570,33 @@ function LearnerAssessmentForm({
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-                Pre / Post Tests
+                {hasPostTest ? "Pre / Post Tests" : "Pre-Test"}
               </h2>
             </div>
             <span className="text-[10px] font-bold tracking-wider text-[#359b95] bg-[#e6f7f6] px-4 py-1.5 rounded-full uppercase">
               Assessments Panel
             </span>
           </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Complete both tests while signed in. Your dashboard account identifies
-            you and pairs pre- and post-test responses. Each test can be
-            submitted once, so review your answers before submitting.
-          </p>
+          {hasPostTest ? (
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Complete both tests while signed in. Your dashboard account
+              identifies you and pairs pre- and post-test responses. Each test
+              can be submitted once, so review your answers before submitting.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Complete the pre-test while signed in. Your dashboard account
+              identifies you. It can be submitted once, so review your answers
+              before submitting. The pre- and post-tests for each topic are
+              inside the modules.
+            </p>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            className={`grid grid-cols-1 gap-6 ${hasPostTest ? "md:grid-cols-2" : "max-w-md"}`}
+          >
             {renderTestCard("pre")}
-            {renderTestCard("post")}
+            {hasPostTest ? renderTestCard("post") : null}
           </div>
         </div>
       ) : (

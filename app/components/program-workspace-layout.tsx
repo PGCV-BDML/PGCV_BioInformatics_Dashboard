@@ -17,6 +17,7 @@ import {
   AlertCircle,
   ListChecks,
 } from "lucide-react";
+import { programHasPostTest } from "@/lib/assessment-form";
 import type { ProgramType } from "@/lib/routes";
 import { programRoutes, routes as dashboardRoutes } from "@/lib/routes";
 import type { TrainingProgramStatus } from "@/types/database";
@@ -117,7 +118,7 @@ export default function ProgramWorkspaceLayout({
       },
       {
         id: "assessment",
-        label: "Pre/Post Tests",
+        label: programHasPostTest(programType) ? "Pre/Post Tests" : "Pre-Test",
         icon: ClipboardCheck,
         href: programPaths.assessment(program.id),
       },

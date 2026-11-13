@@ -136,6 +136,38 @@ describe("ProgramAssessment", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows only the pre-test on a training, even when a post-test exists", async () => {
+    mockIntroTests();
+    render(<ProgramAssessment programId="prog-1" programType="training" />);
+
+    expect(
+      await screen.findByRole("button", { name: "Start Pre-Test" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Pre-Test" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/tests for each topic are inside the modules/)).toBeInTheDocument();
+    expect(screen.queryByText(/Complete both tests/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-Test")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start Post-Test" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps both tests on an internship", async () => {
+    mockIntroTests();
+    render(<ProgramAssessment programId="prog-1" programType="internship" />);
+
+    expect(
+      await screen.findByRole("button", { name: "Start Post-Test" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Pre-Test" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Pre / Post Tests" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Complete both tests/)).toBeInTheDocument();
+  });
+
   it("asks learners to specify Other and saves the pre-test without a score", async () => {
     mockIntroTests();
     const user = userEvent.setup();
@@ -217,7 +249,7 @@ describe("ProgramAssessment", () => {
       ] as never;
     });
 
-    render(<ProgramAssessment programId="prog-1" programType="training" />);
+    render(<ProgramAssessment programId="prog-1" programType="internship" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Submitted · Score 40%/)).toBeInTheDocument();

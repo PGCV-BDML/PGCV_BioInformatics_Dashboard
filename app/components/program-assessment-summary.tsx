@@ -20,6 +20,7 @@ import {
   toCsv,
   type ResponseExportUser,
 } from "@/lib/assessment-export";
+import { programHasPostTest } from "@/lib/assessment-form";
 import {
   formatAssessmentAverage,
   summarizeProgramAssessments,
@@ -183,6 +184,7 @@ export default function ProgramAssessmentSummary({
   programType,
 }: ProgramAssessmentSummaryProps) {
   const paths = programRoutes(programType);
+  const hasPostTest = programHasPostTest(programType);
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<ProgramAssessmentSummaryData>(() =>
@@ -219,7 +221,9 @@ export default function ProgramAssessmentSummary({
         (row) => row.program_id === programId,
       );
       const pre = programAssessments.find((row) => row.type === "pre_test");
-      const post = programAssessments.find((row) => row.type === "post_test");
+      const post = hasPostTest
+        ? programAssessments.find((row) => row.type === "post_test")
+        : undefined;
       setTests({ pre, post });
       const nameByUserId: Record<string, string> = {};
       const usersById: Record<string, ResponseExportUser> = {};
@@ -269,7 +273,7 @@ export default function ProgramAssessmentSummary({
     } finally {
       setIsLoading(false);
     }
-  }, [programId, showToast]);
+  }, [hasPostTest, programId, showToast]);
 
   useEffect(() => {
     void load();
@@ -280,7 +284,7 @@ export default function ProgramAssessmentSummary({
 
   const handleDownloadAll = () => {
     downloadCsv(
-      responseExportFileName(),
+      responseExportFileName({ preOnly: !hasPostTest }),
       toCsv(buildResponseExportRows(exportSource)),
     );
   };
@@ -351,7 +355,7 @@ export default function ProgramAssessmentSummary({
           <div className="flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-[#2a7797]" />
             <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-              Pre / Post Test Summary
+              {hasPostTest ? "Pre / Post Test Summary" : "Pre-Test Summary"}
             </h2>
           </div>
           {!isLoading && responseCount > 0 && (
@@ -375,11 +379,27 @@ export default function ProgramAssessmentSummary({
             </div>
           )}
         </div>
-        <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
-          Multiple-choice items are scored as a percent correct. Written answers
-          are listed as submitted. Participants can submit each test once, and
-          only while it is open.
-        </p>
+        {hasPostTest ? (
+          <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
+            Multiple-choice items are scored as a percent correct. Written
+            answers are listed as submitted. Participants can submit each test
+            once, and only while it is open.
+          </p>
+        ) : (
+          <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">
+            Multiple-choice items are scored as a percent correct. Written
+            answers are listed as submitted. Participants can submit the
+            pre-test once, and only while it is open. Answers to the pre- and
+            post-tests inside each module are on the{" "}
+            <Link
+              href={paths.participants(programId)}
+              className="font-bold text-[#2a7797] hover:text-[#1f5a73] hover:underline"
+            >
+              Participants
+            </Link>{" "}
+            tab.
+          </p>
+        )}
       </div>
 
       {!isLoading && (tests.pre || tests.post) && (
@@ -414,11 +434,17 @@ export default function ProgramAssessmentSummary({
         <EmptyState
           icon={ClipboardCheck}
           title="No test responses yet"
-          description="Scores will show here after participants submit a pre-test or post-test."
+          description={
+            hasPostTest
+              ? "Scores will show here after participants submit a pre-test or post-test."
+              : "Scores will show here after participants submit the pre-test."
+          }
         />
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${hasPostTest ? "xl:grid-cols-4" : ""}`}
+          >
             <ScoreCard
               label="Pre-test responses"
               value={String(summary.pre.responseCount)}
@@ -432,21 +458,25 @@ export default function ProgramAssessmentSummary({
               }
               suffix={summary.pre.mcqItems.length === 0 ? undefined : " %"}
             />
-            <ScoreCard
-              label="Post-test responses"
-              value={String(summary.post.responseCount)}
-            />
-            <ScoreCard
-              label="Average gain"
-              value={formatAssessmentAverage(summary.averageGain)}
-              suffix=" pts"
-              hint={
-                summary.pre.mcqItems.length === 0 ||
-                summary.post.mcqItems.length === 0
-                  ? "Needs a scored pre-test and post-test"
-                  : undefined
-              }
-            />
+            {hasPostTest ? (
+              <>
+                <ScoreCard
+                  label="Post-test responses"
+                  value={String(summary.post.responseCount)}
+                />
+                <ScoreCard
+                  label="Average gain"
+                  value={formatAssessmentAverage(summary.averageGain)}
+                  suffix=" pts"
+                  hint={
+                    summary.pre.mcqItems.length === 0 ||
+                    summary.post.mcqItems.length === 0
+                      ? "Needs a scored pre-test and post-test"
+                      : undefined
+                  }
+                />
+              </>
+            ) : null}
           </div>
 
           {summary.participants.length > 0 && (
@@ -465,7 +495,9 @@ export default function ProgramAssessmentSummary({
                     <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-200">
                       <th className="px-3 py-2 font-extrabold">Name</th>
                       <th className="px-3 py-2 font-extrabold">Pre</th>
-                      <th className="px-3 py-2 font-extrabold">Post</th>
+                      {hasPostTest ? (
+                        <th className="px-3 py-2 font-extrabold">Post</th>
+                      ) : null}
                       <th className="px-3 py-2 font-extrabold">
                         <span className="sr-only">Answers</span>
                       </th>
@@ -491,9 +523,11 @@ export default function ProgramAssessmentSummary({
                         <td className="px-3 py-2 tabular-nums font-bold text-[#2a7797]">
                           {row.preScore == null ? "—" : `${row.preScore}%`}
                         </td>
-                        <td className="px-3 py-2 tabular-nums font-bold text-[#2a7797]">
-                          {row.postScore == null ? "—" : `${row.postScore}%`}
-                        </td>
+                        {hasPostTest ? (
+                          <td className="px-3 py-2 tabular-nums font-bold text-[#2a7797]">
+                            {row.postScore == null ? "—" : `${row.postScore}%`}
+                          </td>
+                        ) : null}
                         <td className="px-3 py-2 text-right">
                           <Link
                             href={paths.assessmentParticipant(
@@ -516,7 +550,9 @@ export default function ProgramAssessmentSummary({
           )}
 
           <TestSection title="Pre-Test" summary={summary.pre} />
-          <TestSection title="Post-Test" summary={summary.post} />
+          {hasPostTest ? (
+            <TestSection title="Post-Test" summary={summary.post} />
+          ) : null}
         </div>
       )}
 
@@ -525,7 +561,8 @@ export default function ProgramAssessmentSummary({
         title="Clear test responses"
         message={
           <>
-            Remove all {responseCount} submitted pre/post test
+            Remove all {responseCount} submitted{" "}
+            {hasPostTest ? "pre/post test" : "pre-test"}
             {responseCount === 1 ? "" : "s"} for this program? This cannot be
             undone.
           </>
