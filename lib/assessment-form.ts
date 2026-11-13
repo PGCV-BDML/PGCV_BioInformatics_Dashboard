@@ -1,6 +1,27 @@
-import type { McqQuestion, Question } from "@/types/database";
+import type { ChoiceQuestion, McqQuestion, Question } from "@/types/database";
 
 export const NONE_OF_THESE_OPTION = "None of these";
+
+/** Answer key for the text typed after picking a choice question's "Other". */
+export function otherAnswerId(questionId: string): string {
+  return `${questionId}_other`;
+}
+
+/** Whether the learner picked the option that asks them to specify. */
+export function isOtherSelected(
+  question: ChoiceQuestion,
+  answer: unknown,
+): boolean {
+  if (!question.otherOption) return false;
+  return question.multiple
+    ? asStringArray(answer).includes(question.otherOption)
+    : answer === question.otherOption;
+}
+
+/** Tests with no multiple-choice items have nothing to score. */
+export function hasScoredQuestions(questions: Question[]): boolean {
+  return questions.some((question) => question.type === "mcq");
+}
 
 export function scoreMcqPercent(
   questions: Question[],
@@ -36,18 +57,27 @@ export function asStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-/** A learner's answer as display text, or null when it was left blank. */
+/**
+ * A learner's answer as display text, or null when it was left blank.
+ * `otherText` is what they typed after picking the question's "Other" option.
+ */
 export function formatAnswer(
   question: Question,
   answer: unknown,
+  otherText?: unknown,
 ): string | null {
   if (question.type === "mcq") {
     return typeof answer === "number" ? (question.options[answer] ?? null) : null;
   }
   if (question.type === "choice") {
-    if (typeof answer === "string") return answer || null;
+    const specified = typeof otherText === "string" ? otherText.trim() : "";
+    const label = (value: string) =>
+      specified && value === question.otherOption
+        ? `${value}: ${specified}`
+        : value;
+    if (typeof answer === "string") return answer ? label(answer) : null;
     const values = asStringArray(answer);
-    return values.length > 0 ? values.join(", ") : null;
+    return values.length > 0 ? values.map(label).join(", ") : null;
   }
   if (question.type === "rating") {
     return typeof answer === "number"

@@ -5,7 +5,8 @@ import {
   INTRO_BIOINFORMATICS_POST_QUESTIONS,
   INTRO_BIOINFORMATICS_PRE_QUESTIONS,
 } from "./intro-bioinformatics-assessments";
-import { scoreMcqPercent } from "./assessment-form";
+import { hasScoredQuestions, scoreMcqPercent } from "./assessment-form";
+import type { ChoiceQuestion } from "@/types/database";
 
 function extractDollarJson(sql: string, tag: string): unknown {
   const open = `$${tag}$`;
@@ -28,66 +29,88 @@ describe("Introduction to Bioinformatics pre/post tests", () => {
       2, 0, 1, 3, 2, 0, 1, 3, 0, 2,
     ]);
     expect(
-      INTRO_BIOINFORMATICS_PRE_QUESTIONS.filter(
-        (question) => question.type === "mcq",
-      ),
-    ).toHaveLength(10);
-    expect(
       INTRO_BIOINFORMATICS_POST_QUESTIONS.filter(
         (question) => question.type === "mcq",
       ),
     ).toHaveLength(10);
   });
 
-  it("repeats the same knowledge questions on the post-test", () => {
-    const preKnowledge = INTRO_BIOINFORMATICS_PRE_QUESTIONS.filter(
-      (question) => question.type === "mcq",
-    );
-    const postKnowledge = INTRO_BIOINFORMATICS_POST_QUESTIONS.filter(
-      (question) => question.type === "mcq",
-    );
+  it("makes the pre-test an ungraded survey in four parts", () => {
+    const pre = INTRO_BIOINFORMATICS_PRE_QUESTIONS;
+    expect(hasScoredQuestions(pre)).toBe(false);
+    expect(pre).toHaveLength(30);
+    expect(pre.filter((question) => question.section).map((q) => q.section)).toEqual([
+      "Getting to know you",
+      "Your experience with the training topics",
+      "Current confidence",
+      "Starting point",
+    ]);
+    expect(pre[0]?.sectionIntro).toMatch(/not graded/);
+    expect(pre[0]?.sectionIntro).toMatch(/Suggested time: about 10 minutes\./);
+    expect(pre.filter((question) => question.type === "rating")).toHaveLength(11);
     expect(
-      postKnowledge.map(({ question, options, correct }) => ({
-        question,
-        options,
-        correct,
-      })),
-    ).toEqual(
-      preKnowledge.map(({ question, options, correct }) => ({
-        question,
-        options,
-        correct,
-      })),
-    );
+      pre.filter((question) => question.id.startsWith("intro_pre_exp")),
+    ).toHaveLength(11);
+    expect(new Set(pre.map((question) => question.id)).size).toBe(pre.length);
   });
 
-  it("does not count background answers toward the knowledge score", () => {
+  it("opens a text box for every Other option", () => {
+    const withOther = INTRO_BIOINFORMATICS_PRE_QUESTIONS.filter(
+      (question): question is ChoiceQuestion =>
+        question.type === "choice" &&
+        question.options.some((option) => option.startsWith("Other (")),
+    );
+    expect(withOther.map((question) => question.id)).toEqual([
+      "intro_pre_role",
+      "intro_pre_field",
+      "intro_pre_plans",
+      "intro_pre_tools",
+    ]);
+    for (const question of withOther) {
+      expect(question.options).toContain(question.otherOption);
+    }
+  });
+
+  it("does not score background answers on the pre-test", () => {
     const answers: Record<string, unknown> = {
-      intro_pre_role: "Undergraduate student",
-      intro_pre_skills: ["Navigating directories with `pwd`, `ls`, or `cd`"],
+      intro_pre_role: "Other (please specify)",
+      intro_pre_role_other: "Medical technologist",
+      intro_pre_tools: ["BLAST", "R or RStudio"],
+      intro_pre_conf1: 3,
     };
-    for (const question of INTRO_BIOINFORMATICS_PRE_QUESTIONS) {
+    expect(scoreMcqPercent(INTRO_BIOINFORMATICS_PRE_QUESTIONS, answers)).toBe(0);
+  });
+
+  it("scores only the knowledge check on the post-test", () => {
+    const answers: Record<string, unknown> = {
+      intro_post_clearest: "Terminal concepts and command structure",
+    };
+    for (const question of INTRO_BIOINFORMATICS_POST_QUESTIONS) {
       if (question.type === "mcq") answers[question.id] = question.correct;
     }
-    expect(scoreMcqPercent(INTRO_BIOINFORMATICS_PRE_QUESTIONS, answers)).toBe(
+    expect(scoreMcqPercent(INTRO_BIOINFORMATICS_POST_QUESTIONS, answers)).toBe(
       100,
     );
-    answers["intro_pre_k1"] = 4;
-    expect(scoreMcqPercent(INTRO_BIOINFORMATICS_PRE_QUESTIONS, answers)).toBe(
+    answers["intro_post_k1"] = 4;
+    expect(scoreMcqPercent(INTRO_BIOINFORMATICS_POST_QUESTIONS, answers)).toBe(
       90,
     );
   });
 
-  it("keeps the replacement migration in sync", () => {
-    const sql = readFileSync(
+  it("keeps the migrations in sync", () => {
+    const original = readFileSync(
       "supabase/migrations/20260908120000_replace_intro_bioinformatics_assessments.sql",
       "utf8",
     );
-    expect(extractDollarJson(sql, "pre")).toEqual(
-      INTRO_BIOINFORMATICS_PRE_QUESTIONS,
-    );
-    expect(extractDollarJson(sql, "post")).toEqual(
+    expect(extractDollarJson(original, "post")).toEqual(
       INTRO_BIOINFORMATICS_POST_QUESTIONS,
+    );
+    const revisedPre = readFileSync(
+      "supabase/migrations/20261113120000_revise_intro_bioinformatics_pretest.sql",
+      "utf8",
+    );
+    expect(extractDollarJson(revisedPre, "pre")).toEqual(
+      INTRO_BIOINFORMATICS_PRE_QUESTIONS,
     );
   });
 

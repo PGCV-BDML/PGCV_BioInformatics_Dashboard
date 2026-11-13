@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   asStringArray,
   formatAnswer,
+  hasScoredQuestions,
+  isOtherSelected,
+  otherAnswerId,
   scoreMcqPercent,
   toggleMultiChoiceOption,
 } from "./assessment-form";
-import type { Question } from "@/types/database";
+import type { ChoiceQuestion, Question } from "@/types/database";
 
 const questions: Question[] = [
   {
@@ -84,5 +87,53 @@ describe("formatAnswer", () => {
       formatAnswer({ type: "text", id: "t", question: "Why?" } as Question, "  "),
     ).toBeNull();
     expect(formatAnswer(mcq, undefined)).toBeNull();
+  });
+});
+
+describe("Other (please specify)", () => {
+  const single: ChoiceQuestion = {
+    type: "choice",
+    id: "role",
+    question: "Role?",
+    options: ["Student", "Other (please specify)"],
+    otherOption: "Other (please specify)",
+  };
+  const multiple: ChoiceQuestion = { ...single, id: "tools", multiple: true };
+
+  it("stores the typed text under its own key", () => {
+    expect(otherAnswerId("role")).toBe("role_other");
+  });
+
+  it("knows when Other is picked", () => {
+    expect(isOtherSelected(single, "Other (please specify)")).toBe(true);
+    expect(isOtherSelected(single, "Student")).toBe(false);
+    expect(isOtherSelected(multiple, ["Student", "Other (please specify)"])).toBe(
+      true,
+    );
+    expect(isOtherSelected(multiple, ["Student"])).toBe(false);
+    const plain: ChoiceQuestion = { ...single, otherOption: undefined };
+    expect(isOtherSelected(plain, "Other (please specify)")).toBe(false);
+  });
+
+  it("shows the typed text next to Other", () => {
+    expect(formatAnswer(single, "Other (please specify)", "  Nurse ")).toBe(
+      "Other (please specify): Nurse",
+    );
+    expect(formatAnswer(single, "Student", "Nurse")).toBe("Student");
+    expect(formatAnswer(single, "Other (please specify)", "")).toBe(
+      "Other (please specify)",
+    );
+    expect(
+      formatAnswer(multiple, ["Student", "Other (please specify)"], "Galaxy"),
+    ).toBe("Student, Other (please specify): Galaxy");
+  });
+});
+
+describe("hasScoredQuestions", () => {
+  it("is true only when a test has multiple-choice items", () => {
+    expect(hasScoredQuestions(questions)).toBe(true);
+    expect(hasScoredQuestions(questions.filter((q) => q.type !== "mcq"))).toBe(
+      false,
+    );
   });
 });

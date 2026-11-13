@@ -1,8 +1,10 @@
 -- DRAFT: Pre-test and post-test questions for Introduction to Bioinformatics
 -- Canonical copy: lib/intro-bioinformatics-assessments.ts
--- Applied via: supabase/migrations/20260908120000_replace_intro_bioinformatics_assessments.sql
+-- Post-test applied via: supabase/migrations/20260908120000_replace_intro_bioinformatics_assessments.sql
+-- Pre-test revised via: supabase/migrations/20261113120000_revise_intro_bioinformatics_pretest.sql
 --
--- Scoring: only knowledge-check MCQs are auto-scored. "I don't know yet",
+-- Scoring: the pre-test is an ungraded survey and is saved with no score.
+-- On the post-test, only knowledge-check MCQs are auto-scored. "I don't know yet",
 -- background, confidence, and reflection items are stored but not scored.
 -- Participant code is omitted; pairing uses the signed-in account.
 -- Suggested time: 10 minutes per test. Do not show the answer key until

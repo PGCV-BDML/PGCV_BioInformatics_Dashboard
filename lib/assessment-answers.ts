@@ -1,4 +1,4 @@
-import { formatAnswer } from "@/lib/assessment-form";
+import { formatAnswer, otherAnswerId } from "@/lib/assessment-form";
 import {
   asOptionIndex,
   hasAnswerPayload,
@@ -48,10 +48,11 @@ export type ParticipantAnswers = {
 
 function describeItem(
   question: Question,
-  raw: unknown,
+  answers: Record<string, unknown>,
   number: number,
   section: string | null,
 ): AnswerSheetItem {
+  const raw = answers[question.id];
   const base = {
     id: question.id,
     number,
@@ -78,7 +79,11 @@ function describeItem(
     };
   }
 
-  const answer = formatAnswer(question, raw);
+  const answer = formatAnswer(
+    question,
+    raw,
+    answers[otherAnswerId(question.id)],
+  );
   return {
     ...base,
     answer,
@@ -101,7 +106,7 @@ export function buildAnswerSheet(
       number = 0;
     }
     number += 1;
-    return describeItem(question, answers[question.id], number, section);
+    return describeItem(question, answers, number, section);
   });
 
   return {
