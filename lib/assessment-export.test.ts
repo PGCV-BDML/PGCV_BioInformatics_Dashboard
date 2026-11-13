@@ -238,4 +238,13 @@ describe("responseExportFileName", () => {
       responseExportFileName({ participantName: "Ada Lovelace", date }),
     ).toBe("pre-post-responses-ada-lovelace-2026-10-15.csv");
   });
+
+  it("names a pre-test-only export as such", () => {
+    expect(responseExportFileName({ date, preOnly: true })).toBe(
+      "pre-test-responses-2026-10-15.csv",
+    );
+    expect(
+      responseExportFileName({ participantName: "Ada Lovelace", date, preOnly: true }),
+    ).toBe("pre-test-responses-ada-lovelace-2026-10-15.csv");
+  });
 });

@@ -35,6 +35,8 @@ type ProgramCopy = {
   evaluationTitle: string;
   evaluationSubmit: string;
   hasInternNameField: boolean;
+  /** Label of the test tab: trainings only have a pre-test there. */
+  testsTab: "Pre-Test" | "Pre/Post Tests";
 };
 
 const COPY: Record<ProgramKind, ProgramCopy> = {
@@ -59,6 +61,7 @@ const COPY: Record<ProgramKind, ProgramCopy> = {
     evaluationTitle: "Post-Activity Evaluation Form",
     evaluationSubmit: "Submit Evaluation & Generate Award Certificate",
     hasInternNameField: true,
+    testsTab: "Pre-Test",
   },
   internship: {
     code: "SOP-BIOINFO-IN-001",
@@ -81,6 +84,7 @@ const COPY: Record<ProgramKind, ProgramCopy> = {
     evaluationTitle: "Post-Activity Evaluation Form",
     evaluationSubmit: "Submit Evaluation & Generate Internship Certificate",
     hasInternNameField: true,
+    testsTab: "Pre/Post Tests",
   },
 };
 
@@ -100,7 +104,7 @@ const TRAINING_WORKFLOW_STAGES = [
   "Onboarding",
   "Modules",
   "Enroll",
-  "Pre/Post tests",
+  "Pre-test",
   "Evaluate",
   "Certificate",
 ] as const;
@@ -130,7 +134,7 @@ const TRAINING_TOC = [
   { id: "onboarding", label: "3. Training files" },
   { id: "modules", label: "4. Modules" },
   { id: "enroll", label: "5. Enroll participants" },
-  { id: "assessments", label: "6. Pre/Post tests" },
+  { id: "assessments", label: "6. Pre-test" },
   { id: "evaluation", label: "7. Evaluation and certificates" },
   { id: "closeout", label: "8. Close out the cohort" },
   { id: "troubleshooting", label: "Troubleshooting" },
@@ -338,8 +342,11 @@ export default function ProgramWorkflowProtocol({
                 </td>
                 <td className="px-4 py-3">
                   After sign-in, only sees {copy.moduleTitle}. Opens enrolled
-                  courses, reads onboarding docs, works modules, takes
-                  pre/post tests, submits the evaluation, and views{" "}
+                  courses, reads onboarding docs, works modules, takes{" "}
+                  {kind === "training"
+                    ? "the pre-test and the tests inside the modules"
+                    : "pre/post tests"}
+                  , submits the evaluation, and views{" "}
                   <strong>My Certificate</strong>.
                 </td>
               </tr>
@@ -368,12 +375,23 @@ export default function ProgramWorkflowProtocol({
             </code>{" "}
             role before that person appears in the enroll list.
           </li>
-          <li>
-            Pre/post tests and the evaluation are stored as assessment rows for
-            the program. There is no in-app question editor. Pre/post tests still
-            need to be seeded per cohort. The post-activity evaluation form is
-            attached automatically when a program is created.
-          </li>
+          {kind === "training" ? (
+            <li>
+              The pre-test and the evaluation are stored as assessment rows for
+              the program. There is no in-app question editor. The pre-test
+              still needs to be seeded per cohort. The post-activity evaluation
+              form is attached automatically when a program is created. The
+              graded pre- and post-tests for each topic are inside the modules.
+            </li>
+          ) : (
+            <li>
+              Pre/post tests and the evaluation are stored as assessment rows
+              for the program. There is no in-app question editor. Pre/post
+              tests still need to be seeded per cohort. The post-activity
+              evaluation form is attached automatically when a program is
+              created.
+            </li>
+          )}
           <li>
             Printed names on the certificate are the lab signatories — this is
             not the service-report PNG e-signature. After evaluation, check
@@ -510,7 +528,7 @@ export default function ProgramWorkflowProtocol({
             only; hidden from {copy.learners}
           </li>
           <li>
-            <strong className="text-[#172126]">Pre/Post Tests</strong>
+            <strong className="text-[#172126]">{copy.testsTab}</strong>
           </li>
           <li>
             <strong className="text-[#172126]">Evaluation</strong>
@@ -632,8 +650,19 @@ export default function ProgramWorkflowProtocol({
           The table shows name, email, and institution.
           {kind === "internship" &&
             " Each row also shows whether a certificate is Issued or Pending."}{" "}
-          Test scores are on{" "}
-          <strong className="text-[#172126]">Pre/Post Tests</strong>.{" "}
+          {kind === "training" ? (
+            <>
+              Pre-test scores are on{" "}
+              <strong className="text-[#172126]">Pre-Test</strong>. For a
+              module&apos;s pre- or post-test, pick that test above the table,
+              then click a trainee&apos;s status to see their answers.{" "}
+            </>
+          ) : (
+            <>
+              Test scores are on{" "}
+              <strong className="text-[#172126]">Pre/Post Tests</strong>.{" "}
+            </>
+          )}
           <strong className="text-[#172126]">Remove</strong> drops the
           enrollment and they lose access.
         </p>
@@ -644,16 +673,18 @@ export default function ProgramWorkflowProtocol({
         </Callout>
       </Section>
 
-      <Section id="assessments" title="6. Pre/Post tests">
+      <Section
+        id="assessments"
+        title={kind === "training" ? "6. Pre-test" : "6. Pre/Post tests"}
+      >
         <p>
           {copy.learnerTitle}s open{" "}
-          <strong className="text-[#172126]">Pre/Post Tests</strong>, start a
-          test, answer, then click{" "}
-          <strong className="text-[#172126]">Submit Answers &amp; Calculate Score</strong>.
-          Multiple-choice items are scored as a percentage. Rating and free-text
-          answers are saved but not scored. After submit, the button becomes{" "}
-          <strong className="text-[#172126]">Review Pre-Test</strong> /{" "}
-          <strong>Review Post-Test</strong>.
+          <strong className="text-[#172126]">{copy.testsTab}</strong>, start{" "}
+          {kind === "training" ? "the pre-test" : "a test"}, answer, click{" "}
+          <strong className="text-[#172126]">Review Answers</strong>, then{" "}
+          <strong className="text-[#172126]">Submit Final Answers</strong>. Each
+          test can be submitted once. Multiple-choice items are scored as a
+          percentage. Rating and free-text answers are saved but not scored.
         </p>
         <p>
           Staff open the same tab to see average scores, percent correct per
@@ -661,6 +692,16 @@ export default function ProgramWorkflowProtocol({
           <strong className="text-[#172126]">Clear responses</strong> to remove
           a test run.
         </p>
+        {kind === "training" ? (
+          <Callout title="Module tests are on Participants">
+            This tab has no post-test for trainings. The pre- and post-tests
+            for each topic are inside the modules. To read a trainee&apos;s
+            answers, open{" "}
+            <strong className="text-[#172126]">Participants</strong>, pick the
+            module&apos;s test above the table, then click the trainee&apos;s
+            status.
+          </Callout>
+        ) : null}
       </Section>
 
       <Section id="evaluation" title="7. Evaluation and certificates">
@@ -785,12 +826,16 @@ export default function ProgramWorkflowProtocol({
               </tr>
               <tr>
                 <td className="px-4 py-3 font-semibold text-[#172126] align-top">
-                  No pre-test / post-test questions
+                  {kind === "training"
+                    ? "No pre-test questions"
+                    : "No pre-test / post-test questions"}
                 </td>
                 <td className="px-4 py-3">
-                  Pre/post tests are not created in this screen. The program
-                  still needs seeded question sets. The post-activity evaluation
-                  form is attached automatically when the program is created.
+                  {kind === "training"
+                    ? "The pre-test is not created in this screen. The program still needs a seeded question set."
+                    : "Pre/post tests are not created in this screen. The program still needs seeded question sets."}{" "}
+                  The post-activity evaluation form is attached automatically
+                  when the program is created.
                 </td>
               </tr>
               <tr>

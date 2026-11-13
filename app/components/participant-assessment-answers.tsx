@@ -31,6 +31,7 @@ import {
   toCsv,
   type ResponseExportUser,
 } from "@/lib/assessment-export";
+import { programHasPostTest } from "@/lib/assessment-form";
 import {
   formatAssessmentAverage,
   summarizeProgramAssessments,
@@ -316,6 +317,7 @@ export default function ParticipantAssessmentAnswers({
   const paths = programRoutes(programType);
   const canView = !loading && isStaff && !isLearnerView;
   const learnerLabel = programType === "training" ? "trainee" : "intern";
+  const hasPostTest = programHasPostTest(programType);
 
   const [tests, setTests] = useState<LoadedTests | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -332,14 +334,16 @@ export default function ParticipantAssessmentAnswers({
         .from("assessment")
         .select("id, type, questions")
         .eq("program_id", programId)
-        .in("type", ["pre_test", "post_test"]);
+        .in("type", hasPostTest ? ["pre_test", "post_test"] : ["pre_test"]);
       if (assessmentError) throw assessmentError;
       const rows = (assessments ?? []) as Pick<
         Assessment,
         "id" | "type" | "questions"
       >[];
       const pre = rows.find((row) => row.type === "pre_test") ?? null;
-      const post = rows.find((row) => row.type === "post_test") ?? null;
+      const post = hasPostTest
+        ? (rows.find((row) => row.type === "post_test") ?? null)
+        : null;
 
       const testIds = [pre?.id, post?.id].filter(
         (id): id is string => Boolean(id),
@@ -375,7 +379,7 @@ export default function ParticipantAssessmentAnswers({
       console.error("Error loading test answers:", error);
       setLoadError("Failed to load test answers.");
     }
-  }, [programId]);
+  }, [hasPostTest, programId]);
 
   useEffect(() => {
     if (!canView) return;
@@ -463,7 +467,7 @@ export default function ParticipantAssessmentAnswers({
   ) => {
     if (!tests) return;
     downloadCsv(
-      responseExportFileName({ participantName }),
+      responseExportFileName({ participantName, preOnly: !hasPostTest }),
       toCsv(
         buildResponseExportRows({
           preId: tests.pre?.id ?? null,
@@ -544,7 +548,7 @@ export default function ParticipantAssessmentAnswers({
         <EmptyState
           icon={ClipboardCheck}
           title="No test answers found"
-          description={`This ${learnerLabel} hasn't submitted a pre-test or post-test for this program, or their responses were cleared.`}
+          description={`This ${learnerLabel} hasn't submitted ${hasPostTest ? "a pre-test or post-test" : "the pre-test"} for this program, or their responses were cleared.`}
         />
       ) : (
         <>
@@ -557,7 +561,7 @@ export default function ParticipantAssessmentAnswers({
                 </h2>
               </div>
               <p className="text-xs text-slate-500">
-                Pre / post test answers ·{" "}
+                {hasPostTest ? "Pre / post test answers" : "Pre-test answers"} ·{" "}
                 {programType === "training" ? "Trainee" : "Intern"} {index + 1} of{" "}
                 {participants.length}
               </p>
@@ -581,37 +585,48 @@ export default function ParticipantAssessmentAnswers({
                   : "Not submitted"
               }
             />
-            <ScoreCard
-              label="Post-test score"
-              value={current.postScore == null ? "—" : String(current.postScore)}
-              suffix={current.postScore == null ? undefined : " %"}
-              hint={
-                answers.post.submitted
-                  ? `Submitted ${submittedDate(answers.post.submittedAt)}`
-                  : "Not submitted"
-              }
-            />
-            <ScoreCard
-              label="Gain"
-              value={
-                gain == null
-                  ? "—"
-                  : `${gain > 0 ? "+" : ""}${formatAssessmentAverage(gain)}`
-              }
-              suffix={gain == null ? undefined : " pts"}
-            />
+            {hasPostTest ? (
+              <>
+                <ScoreCard
+                  label="Post-test score"
+                  value={
+                    current.postScore == null ? "—" : String(current.postScore)
+                  }
+                  suffix={current.postScore == null ? undefined : " %"}
+                  hint={
+                    answers.post.submitted
+                      ? `Submitted ${submittedDate(answers.post.submittedAt)}`
+                      : "Not submitted"
+                  }
+                />
+                <ScoreCard
+                  label="Gain"
+                  value={
+                    gain == null
+                      ? "—"
+                      : `${gain > 0 ? "+" : ""}${formatAssessmentAverage(gain)}`
+                  }
+                  suffix={gain == null ? undefined : " pts"}
+                />
+              </>
+            ) : null}
           </div>
 
-          {answers.pre.submitted &&
+          {hasPostTest &&
+          answers.pre.submitted &&
           answers.post.submitted &&
           answers.comparison.length > 0 ? (
             <ComparisonSection rows={answers.comparison} />
           ) : null}
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+          {hasPostTest ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+              <SheetSection title="Pre-Test" sheet={answers.pre} />
+              <SheetSection title="Post-Test" sheet={answers.post} />
+            </div>
+          ) : (
             <SheetSection title="Pre-Test" sheet={answers.pre} />
-            <SheetSection title="Post-Test" sheet={answers.post} />
-          </div>
+          )}
         </>
       )}
     </div>

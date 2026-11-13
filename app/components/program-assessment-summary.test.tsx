@@ -80,4 +80,110 @@ describe("ProgramAssessmentSummary", () => {
     expect(csv).toContain("pwd");
     download.mockRestore();
   });
+
+  it("shows only the pre-test on a training and leaves old post-test answers out", async () => {
+    vi.mocked(getUsersFromDB).mockResolvedValue([
+      { id: "u-ada", name: "Ada Lovelace", email: "ada@example.com", institution: "PGCV" },
+      { id: "u-ben", name: "Ben Cruz", email: "ben@example.com", institution: "UP" },
+    ] as never);
+    vi.mocked(getRowsFromDB).mockImplementation(async (table) => {
+      if (table === "assessment") {
+        return [
+          {
+            id: "pre",
+            program_id: "prog-1",
+            type: "pre_test",
+            questions: [
+              {
+                type: "mcq",
+                id: "k1",
+                question: "Which command prints the working directory?",
+                options: ["ls", "pwd"],
+                correct: 1,
+              },
+            ],
+          },
+          {
+            id: "post",
+            program_id: "prog-1",
+            type: "post_test",
+            questions: [
+              {
+                type: "mcq",
+                id: "p1",
+                question: "Which command lists files?",
+                options: ["ls", "pwd"],
+                correct: 0,
+              },
+            ],
+          },
+        ] as never;
+      }
+      if (table === "assessment_response") {
+        return [
+          {
+            id: "r1",
+            assessment_id: "pre",
+            participant_id: "u-ada",
+            answers: { k1: 1 },
+            score: 100,
+            submitted_at: "2026-10-01T01:00:00Z",
+          },
+          {
+            id: "r2",
+            assessment_id: "post",
+            participant_id: "u-ada",
+            answers: { p1: 1 },
+            score: 0,
+            submitted_at: "2026-10-03T01:00:00Z",
+          },
+          {
+            id: "r3",
+            assessment_id: "post",
+            participant_id: "u-ben",
+            answers: { p1: 0 },
+            score: 100,
+            submitted_at: "2026-10-03T01:00:00Z",
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    render(<ProgramAssessmentSummary programId="prog-1" programType="training" />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Pre-Test Summary" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
+      "href",
+      "/dashboard/training/prog-1/assessment/u-ada",
+    );
+    expect(screen.getByRole("link", { name: "Participants" })).toHaveAttribute(
+      "href",
+      "/dashboard/training/prog-1/participants",
+    );
+    expect(screen.queryByRole("link", { name: "Ben Cruz" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Post" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-test responses")).not.toBeInTheDocument();
+    expect(screen.queryByText("Average gain")).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-Test")).not.toBeInTheDocument();
+    expect(screen.queryByText("Which command lists files?")).not.toBeInTheDocument();
+
+    const download = vi
+      .spyOn(assessmentExport, "downloadCsv")
+      .mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Download all" }));
+    const [filename, csv] = download.mock.calls[0]!;
+    expect(filename).toMatch(/^pre-test-responses-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(csv).not.toContain("Which command lists files?");
+    expect(csv).not.toContain("Ben Cruz");
+    download.mockRestore();
+
+    // Clearing covers only the visible pre-test answer.
+    fireEvent.click(screen.getByRole("button", { name: "Clear responses" }));
+    expect(
+      screen.getByText(/Remove all 1 submitted pre-test for this program\?/),
+    ).toBeInTheDocument();
+  });
 });
