@@ -11,6 +11,8 @@ Section 9 records where the build differs from the plan.
 - [mockups/view-projector.jpg](mockups/view-projector.jpg): Present mode on a 1024 × 768 (4:3) projector.
 - [mockups/view-phone-a.jpg](mockups/view-phone-a.jpg) and [mockups/view-phone-b.jpg](mockups/view-phone-b.jpg):
   the two options for phones (decision 1).
+- [mockups/title-slide.html](mockups/title-slide.html): the three directions for the title slide, live (open it in a
+  browser to see them move), and [mockups/title-slide.jpg](mockups/title-slide.jpg): the one built, moving and still.
 
 The mockups use the dashboard's real text and its own figures (the Venn diagram, the sample-results charts, the
 variant tree and map, the 3D virus), drawn at the size they would have on the canvas. Photos are grey
