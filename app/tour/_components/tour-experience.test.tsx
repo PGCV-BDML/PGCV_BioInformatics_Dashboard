@@ -418,7 +418,7 @@ describe("TourExperience", () => {
     expect(document.getElementById("showcase")).toBeNull();
   });
 
-  it("follows a project's story with its journey from sample to genome", () => {
+  it("shows a project's story and its journey from sample to genome on one slide", () => {
     const project: TourProject = {
       id: "rusa",
       title: "First draft genome of the Visayan spotted deer",
@@ -437,14 +437,18 @@ describe("TourExperience", () => {
       steps: [{ label: "Sample", note: "Ear tissue", state: "done" }],
       next: null,
       partners: [],
-      citation: null,
+      citation: { text: "Javier et al. (2025), GigaByte", url: "https://doi.org/10.46471/gigabyte.150", note: "Data: GenBank" },
     };
     render(<TourExperience content={{ ...content, projects: { ...content.projects, items: [project] } }} stats={null} />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.indexOf("projects") + 1).toBe(ids.indexOf("projects-genome"));
-    const journey = screen.getByRole("region", { name: "Sample to genome" });
-    expect(journey.querySelector("h2")).toHaveTextContent("From sample to genome");
-    expect(journey).toHaveTextContent("Research highlights · Philippine spotted deer");
+    expect(ids).toContain("projects");
+    expect(ids).not.toContain("projects-genome");
+    const slide = screen.getByRole("region", { name: "Projects" });
+    expect(slide.querySelector("h2")).toHaveTextContent(content.projects.title);
+    expect(slide).toHaveTextContent("From sample to genome");
+    expect(slide).toHaveTextContent("Ear tissue");
+    expect(slide.querySelector("a[href='https://doi.org/10.46471/gigabyte.150']")).not.toBeNull();
+    expect(slide).toHaveTextContent("Data: GenBank");
   });
 
   it("sets the slides' scale before the first paint, from the window", () => {

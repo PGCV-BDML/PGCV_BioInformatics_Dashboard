@@ -138,7 +138,11 @@ function QuarterlyChart({ quarterly }: { quarterly: TourCovidStats["quarterly"] 
   );
 }
 
-/** The decks' `stats`: the totals along the top and the per-quarter chart under them, live from the database. */
+/**
+ * The decks' `stats`: the totals as a column of tiles on the left and the
+ * per-quarter chart filling the rest, live from the database. On a phone the
+ * tiles sit two by two above the chart.
+ */
 export function CovidSlide({ content, audience, meta, stats }: SlideProps & { stats: TourCovidStats | null }) {
   const { covid } = content;
   const visual = audience === "visual";
@@ -166,17 +170,17 @@ export function CovidSlide({ content, audience, meta, stats }: SlideProps & { st
       source={stats ? "PGC Visayas SARS-CoV-2 sequencing runs · aggregate counts only" : undefined}
     >
       {stats && (
-        <div className="grid grid-cols-1 gap-5 canvas:flex canvas:h-full canvas:flex-col canvas:gap-4">
-          <dl className={`grid gap-4 canvas:auto-cols-fr canvas:grid-flow-col canvas:gap-4 ${visual ? "" : "grid-cols-2"}`}>
+        <div className="grid grid-cols-1 gap-5 canvas:grid canvas:h-full canvas:grid-cols-[300px_minmax(0,1fr)] canvas:gap-4">
+          <dl className={`grid gap-4 canvas:flex canvas:min-h-0 canvas:flex-col canvas:gap-2.5 ${visual ? "" : "grid-cols-2"}`}>
             {tiles.map((tile, i) => (
               <div
                 key={tile.label}
-                className={`${CARD} ${styles.enter} relative flex flex-col-reverse justify-end overflow-hidden py-4 pl-6 pr-5 canvas:py-3`}
+                className={`${CARD} ${styles.enter} relative flex flex-col-reverse justify-end overflow-hidden py-4 pl-6 pr-5 canvas:flex-1 canvas:justify-center canvas:py-2.5`}
                 style={stagger(i)}
               >
                 <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: tile.color }} aria-hidden="true" />
-                <dt className="mt-0.5 text-sm font-medium text-[#5b6770] canvas:text-[18px]">{tile.label}</dt>
-                <dd className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-6xl canvas:text-[64px] canvas:leading-none" : "text-3xl canvas:text-[36px] canvas:leading-tight"}`}>
+                <dt className="mt-0.5 text-sm font-medium text-[#5b6770] canvas:mt-1.5 canvas:text-[18px] canvas:leading-snug">{tile.label}</dt>
+                <dd className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-6xl canvas:text-[64px] canvas:leading-none" : "text-3xl canvas:text-[36px] canvas:leading-none"}`}>
                   <CountUp value={tile.value} />
                 </dd>
               </div>

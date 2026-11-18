@@ -1,7 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- tour images come from our own
    /api/tour/asset proxy (CDN-cached), not from next/image's optimizer. */
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
+  ArrowRight,
   CircleDot,
   Dna,
   ExternalLink,
@@ -12,21 +13,27 @@ import {
   TestTube,
   type LucideIcon,
 } from "lucide-react";
-import { tourAssetUrl, type Audience, type TourProject, type TourProjectStep } from "@/lib/tour";
-import { BRAND, CARD } from "./brand";
+import { tourAssetUrl, type Audience, type TourProject } from "@/lib/tour";
+import { BRAND } from "./brand";
 import { CountUp } from "./count-up";
 import { DoiQr } from "./doi-qr";
 import { TourCopy } from "./tour-copy";
 import styles from "./tour-motion.module.css";
 
 /*
- * A project fills two slides: its story (photo, summary and numbers) and its
- * journey (from sample to genome, where the species lives, who it was done
- * with, what's next and the paper). On a phone they stack as the slides do.
+ * A project on one slide, in three columns: the photo (with where the species
+ * lives along its foot), the story and its numbers, and the journey from
+ * sample to genome, ending in what's next and who it was done with. The
+ * paper's QR code sits beside the slide's title (ProjectPaper). On a phone the
+ * columns stack.
+ *
+ * It is a lot for one slide, so the text is smaller than on other slides; the
+ * small print is at the decks' 14px floor, and there is no room to go lower.
  */
 
 const delay = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 const HIGHLIGHT_COLORS = [BRAND.teal, BRAND.deepTeal, BRAND.purple, BRAND.navy];
+const KICKER = "font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] canvas:text-[14px]";
 
 /** Steps carry no icon, so one is picked from the wording. */
 function stepIcon(label: string): LucideIcon {
@@ -40,21 +47,35 @@ function stepIcon(label: string): LucideIcon {
   return CircleDot;
 }
 
-/** Whether the project has a second slide: its steps, range, partners, next steps or paper. */
-export function hasProjectJourney(project: TourProject): boolean {
+function hasRange(project: TourProject): boolean {
+  return Boolean(project.range && (project.range.current.length > 0 || project.range.former.length > 0));
+}
+
+/** Whether the project has a photo column: the photo, or anything drawn over it. */
+function hasPhoto(project: TourProject): boolean {
   return (
-    project.steps.length > 0 ||
-    Boolean(project.citation) ||
-    Boolean(project.next) ||
-    project.partners.length > 0 ||
-    Boolean(project.range && (project.range.current.length || project.range.former.length))
+    Boolean(tourAssetUrl(project.image)) ||
+    Boolean(project.conservation) ||
+    project.facts.length > 0 ||
+    Boolean(project.imageTitle) ||
+    hasRange(project)
   );
 }
 
-/** The photo: Red List badge and facts on top, the photo's title along the bottom. Navy when there is no photo. */
+/** Whether the project has a journey column: its steps, what's next or its partners (not for Visual). */
+function hasJourney(project: TourProject, visual: boolean): boolean {
+  return project.steps.length > 0 || (!visual && (Boolean(project.next) || project.partners.length > 0));
+}
+
+/**
+ * The photo: the Red List badge and facts on top; the photo's title and the
+ * islands where the species lives (struck through where it is gone) along the
+ * bottom. Navy when there is no photo.
+ */
 function ProjectPhoto({ project }: { project: TourProject }) {
   const src = tourAssetUrl(project.image);
   const name = project.commonName ?? project.species ?? project.title;
+  const range = hasRange(project) ? project.range : null;
   return (
     <div className="relative min-h-[380px] shrink-0 overflow-hidden rounded-2xl bg-[#1c2152] canvas:h-full canvas:min-h-0">
       {src && (
@@ -71,7 +92,7 @@ function ProjectPhoto({ project }: { project: TourProject }) {
         aria-hidden="true"
       />
       {(project.conservation || project.facts.length > 0) && (
-        <ul className="relative flex flex-wrap gap-2 p-5 text-xs font-bold canvas:p-4 canvas:text-[14px]">
+        <ul className="relative flex flex-wrap gap-2 p-4 text-xs font-bold canvas:p-3.5 canvas:text-[14px]">
           {project.conservation && (
             <li className="inline-flex items-center gap-1.5 rounded-full bg-[#fdecea] py-1 pl-1.5 pr-3 text-[#a1261d]">
               <span className="rounded bg-[#c8281e] px-1.5 py-0.5 text-[10px] tracking-wide text-white canvas:text-[14px]">
@@ -87,198 +108,237 @@ function ProjectPhoto({ project }: { project: TourProject }) {
           ))}
         </ul>
       )}
-      {project.imageTitle && (
-        <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(28,33,82,0.8),rgba(28,33,82,0))] px-5 pb-4 pt-12 text-white">
-          <p className="text-base font-black canvas:text-[22px]">{project.imageTitle}</p>
+      {(project.imageTitle || range) && (
+        <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(28,33,82,0.92)_45%,rgba(28,33,82,0))] px-5 pb-4 pt-14 text-white canvas:px-4 canvas:pb-3.5">
+          {project.imageTitle && <p className="text-base font-black canvas:text-[20px] canvas:leading-tight">{project.imageTitle}</p>}
+          {range && (
+            <>
+              <p className={`${KICKER} text-[#7ee8c9] ${project.imageTitle ? "mt-2" : ""}`}>{range.title}</p>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5 text-sm canvas:text-[14px]">
+                {range.current.map((place) => (
+                  <li key={place} className="rounded-md bg-[#12ca99] px-2 py-0.5 font-bold text-[#0b2b2e]">
+                    {place}
+                  </li>
+                ))}
+                {range.former.map((place) => (
+                  <li key={place} className="rounded-md bg-white/15 px-2 py-0.5 text-white/75 line-through">
+                    <span className="sr-only">Formerly </span>
+                    {place}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-/** The first slide: the photo beside the story and the numbers (the deck's `projects`). */
-export function ProjectStory({ project, audience }: { project: TourProject; audience: Audience }) {
-  // Visual: photo, title and big numbers; no story.
+/** The middle column: status, title, species, the story and the four numbers. */
+function ProjectStory({ project, audience }: { project: TourProject; audience: Audience }) {
+  // Visual: title and big numbers; no story.
   const visual = audience === "visual";
-  const hasPhoto =
-    Boolean(tourAssetUrl(project.image)) || Boolean(project.conservation) || project.facts.length > 0 || Boolean(project.imageTitle);
   return (
-    <article
-      className={`${styles.enter} flex flex-col gap-6 canvas:grid canvas:h-full canvas:gap-7 ${hasPhoto ? "canvas:grid-cols-[410px_minmax(0,1fr)]" : ""}`}
-      style={delay(220)}
-    >
-      {hasPhoto && <ProjectPhoto project={project} />}
-      <div className="min-w-0">
-        {project.status && (
-          <span className="inline-block rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558] canvas:text-[14px]">
-            {project.status}
-          </span>
-        )}
-        <h3 className="mt-4 text-2xl font-black leading-tight text-[#2b3278] canvas:mt-2.5 canvas:text-[30px] canvas:leading-[1.15]">
-          {project.title}
-        </h3>
-        {project.species && (
-          <p className="mt-1 text-lg italic text-[#5e205e] canvas:text-[20px]">
-            {project.species}
-            {project.commonName && <span className="not-italic text-[15px] text-[#5b6770] canvas:text-[18px]"> · {project.commonName}</span>}
-          </p>
-        )}
-        {!visual && (
-          <p className="mt-4 text-lg leading-relaxed text-[#5b6770] canvas:mt-3 canvas:text-[18px] canvas:leading-normal">
-            <TourCopy text={project.summary} audience={audience} />
-          </p>
-        )}
-        {project.highlights.length > 0 && (
-          <dl className={`mt-7 grid grid-cols-2 gap-3 canvas:mt-5 canvas:gap-2.5 ${visual ? "" : "canvas:grid-cols-4"}`}>
-            {project.highlights.map((h, i) => (
-              <div
-                key={h.label || i}
-                className="flex flex-col-reverse justify-end rounded-r-xl border-l-4 bg-white px-4 py-3 canvas:px-3.5 canvas:py-2.5"
-                style={{ borderColor: HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length] }}
-              >
-                <dt className="mt-0.5 text-xs font-medium leading-snug text-[#5b6770] canvas:text-[14px]">{h.label}</dt>
-                <dd className="flex items-baseline gap-1">
-                  <span
-                    className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-4xl canvas:text-[48px]" : "text-2xl canvas:text-[30px]"}`}
-                  >
-                    <CountUp value={h.value} />
+    <div className="min-w-0">
+      {project.status && (
+        <span className="inline-block rounded-full bg-[#12ca99]/15 px-3 py-1 font-quicksand text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a7558] canvas:text-[14px]">
+          {project.status}
+        </span>
+      )}
+      <h3 className="mt-4 text-2xl font-black leading-tight text-[#2b3278] canvas:mt-2 canvas:text-[26px] canvas:leading-[1.15]">
+        {project.title}
+      </h3>
+      {project.species && (
+        <p className="mt-1 text-lg italic text-[#5e205e] canvas:mt-0.5 canvas:text-[18px]">
+          {project.species}
+          {project.commonName && <span className="not-italic text-[15px] text-[#5b6770] canvas:text-[16px]"> · {project.commonName}</span>}
+        </p>
+      )}
+      {!visual && (
+        <p className="mt-4 text-lg leading-relaxed text-[#5b6770] canvas:mt-2 canvas:text-[16px] canvas:leading-[1.45]">
+          <TourCopy text={project.summary} audience={audience} />
+        </p>
+      )}
+      {project.highlights.length > 0 && (
+        <dl className="mt-6 grid grid-cols-2 gap-3 canvas:mt-3 canvas:gap-2">
+          {project.highlights.map((h, i) => (
+            <div
+              key={h.label || i}
+              className="flex flex-col-reverse justify-end rounded-r-xl border-l-4 bg-white px-4 py-3 canvas:px-3 canvas:py-2"
+              style={{ borderColor: HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length] }}
+            >
+              <dt className="mt-0.5 text-xs font-medium leading-snug text-[#5b6770] canvas:mt-0 canvas:text-[14px]">{h.label}</dt>
+              <dd className="flex items-baseline gap-1">
+                <span
+                  className={`font-black tracking-tight text-[#2b3278] tabular-nums ${visual ? "text-4xl canvas:text-[40px]" : "text-2xl canvas:text-[24px]"}`}
+                >
+                  <CountUp value={h.value} />
+                </span>
+                {h.unit && <span className="text-sm font-bold text-[#5b6770] canvas:text-[15px]">{h.unit}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+/** One stop on the timeline: its disc, then its words. `line` runs on to the next stop's disc. */
+function Stop({
+  disc,
+  line,
+  ms,
+  children,
+}: {
+  disc: ReactNode;
+  line: "solid" | "dashed" | null;
+  ms: number;
+  children: ReactNode;
+}) {
+  return (
+    <li className={`${styles.enter} relative flex items-start gap-3 pb-2.5 canvas:pb-[5px]`} style={delay(ms)}>
+      {line && (
+        <span
+          className={`absolute left-[15px] top-4 h-full border-l-[3px] ${line === "solid" ? "border-[#12ca99]/60" : "border-dashed border-[#12ca99]/60"}`}
+          aria-hidden="true"
+        />
+      )}
+      {disc}
+      <span className="min-w-0 text-sm leading-snug text-[#5b6770] canvas:text-[14px] canvas:leading-tight">{children}</span>
+    </li>
+  );
+}
+
+/** The right column: from sample to genome, one step under the other, then what's next and the partners. */
+function ProjectJourney({ project, audience }: { project: TourProject; audience: Audience }) {
+  // Visual: the steps' labels only; no notes, plans or partners.
+  const visual = audience === "visual";
+  const next = visual ? null : project.next;
+  const partners = visual ? [] : project.partners;
+  const { steps } = project;
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      {(steps.length > 0 || next) && (
+        <div>
+          {steps.length > 0 && <p className={`${KICKER} text-[#0a7558]`}>From sample to genome</p>}
+          <ol className={steps.length > 0 ? "mt-3 canvas:mt-2" : ""}>
+            {steps.map((step, i) => {
+              const Icon = stepIcon(step.label);
+              const following = i < steps.length - 1 ? steps[i + 1]! : null;
+              const line = following ? (following.state === "done" ? "solid" : "dashed") : next ? "dashed" : null;
+              return (
+                <Stop
+                  key={step.label}
+                  line={line}
+                  ms={300 + i * 110}
+                  disc={
+                    <span
+                      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 ${
+                        step.state === "done"
+                          ? "border-[#12ca99] bg-[#12ca99] text-white"
+                          : step.state === "now"
+                            ? "border-[#12ca99] bg-white text-[#0a7558] shadow-[0_0_0_4px_rgba(18,202,153,0.18)]"
+                            : "border-[#2b3278]/15 bg-white text-[#2b3278]"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                  }
+                >
+                  <span className="block font-bold text-[#2b3278] canvas:text-[16px]">{step.label}</span>
+                  {!visual && step.note}
+                  <span className="sr-only">
+                    {step.state === "done" ? " (done)" : step.state === "now" ? " (in progress)" : " (coming next)"}
                   </span>
-                  {h.unit && <span className="text-sm font-bold text-[#5b6770] canvas:text-[18px]">{h.unit}</span>}
-                </dd>
-              </div>
+                </Stop>
+              );
+            })}
+            {next && (
+              <Stop
+                line={null}
+                ms={300 + steps.length * 110}
+                disc={
+                  <span
+                    className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-[#12ca99] bg-white text-[#0a7558]"
+                    aria-hidden="true"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                }
+              >
+                <span className="block font-bold text-[#0a7558] canvas:text-[16px]">What&rsquo;s next</span>
+                <span className="canvas:leading-snug">
+                  <TourCopy text={next} audience={audience} />
+                </span>
+              </Stop>
+            )}
+          </ol>
+        </div>
+      )}
+      {partners.length > 0 && (
+        <div className={`${styles.enter} canvas:mt-auto`} style={delay(860)}>
+          <p className={`${KICKER} text-[#5b6770]`}>In partnership with</p>
+          <ul className="mt-2 flex flex-wrap gap-2 canvas:mt-1.5">
+            {partners.map((partner) => (
+              <li
+                key={partner}
+                className="rounded-lg bg-white px-3 py-1.5 text-sm font-bold text-[#2b3278] ring-1 ring-[#2b3278]/10 canvas:text-[15px]"
+              >
+                {partner}
+              </li>
             ))}
-          </dl>
-        )}
-      </div>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The slide's main element: photo | story | journey, each column only when the project has something for it. */
+export function ProjectFeature({ project, audience }: { project: TourProject; audience: Audience }) {
+  const photo = hasPhoto(project);
+  const journey = hasJourney(project, audience === "visual");
+  const columns = photo
+    ? journey
+      ? "canvas:grid-cols-[250px_minmax(0,1fr)_300px]"
+      : "canvas:grid-cols-[410px_minmax(0,1fr)]"
+    : journey
+      ? "canvas:grid-cols-[minmax(0,1fr)_300px]"
+      : "canvas:grid-cols-1";
+  return (
+    <article className={`${styles.enter} flex flex-col gap-6 canvas:grid canvas:h-full canvas:gap-6 ${columns}`} style={delay(220)}>
+      {photo && <ProjectPhoto project={project} />}
+      <ProjectStory project={project} audience={audience} />
+      {journey && <ProjectJourney project={project} audience={audience} />}
     </article>
   );
 }
 
-/** The steps as cards in one row on the canvas, a list on a phone. `brief` leaves out each step's note. */
-function StepTimeline({ steps, brief = false }: { steps: TourProjectStep[]; brief?: boolean }) {
+/** The paper, beside the slide's title: its name, its address and a QR code to scan. */
+export function ProjectPaper({ project }: { project: TourProject }) {
+  const citation = project.citation;
+  if (!citation) return null;
   return (
-    <ol
-      className="grid gap-3 canvas:grid-cols-[repeat(var(--steps),minmax(0,1fr))]"
-      style={{ "--steps": steps.length } as CSSProperties}
-    >
-      {steps.map((step, i) => {
-        const Icon = stepIcon(step.label);
-        return (
-          <li
-            key={step.label}
-            className={`${CARD} ${styles.enter} relative flex items-center gap-3 px-4 py-3 canvas:flex-col canvas:items-start canvas:gap-2.5 canvas:px-4 canvas:py-4`}
-            style={delay(300 + i * 110)}
-          >
-            {/* The line on to the next step. */}
-            {i < steps.length - 1 && (
-              <span className="absolute -right-3 top-9 hidden h-[3px] w-3 bg-[#12ca99] canvas:block" aria-hidden="true" />
-            )}
-            <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 ${
-                step.state === "done"
-                  ? "border-[#12ca99] bg-[#12ca99] text-white"
-                  : step.state === "now"
-                    ? "border-[#12ca99] bg-white text-[#0a7558] shadow-[0_0_0_5px_rgba(18,202,153,0.18)]"
-                    : "border-[#2b3278]/15 bg-white text-[#2b3278]"
-              }`}
-              aria-hidden="true"
-            >
-              <Icon className="h-5 w-5" />
-            </span>
-            <span className="text-sm leading-snug text-[#5b6770] canvas:text-[18px]">
-              <span className="block font-bold text-[#2b3278] canvas:text-[20px]">{step.label}</span>
-              {!brief && step.note}
-              <span className="sr-only">
-                {step.state === "done" ? " (done)" : step.state === "now" ? " (in progress)" : " (coming next)"}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-const KICKER = "font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] canvas:text-[14px]";
-
-/** The second slide: the steps along the top; the range and partners, what's next and the paper under them. */
-export function ProjectJourney({ project, audience }: { project: TourProject; audience: Audience }) {
-  // Visual: the steps' labels, where it lives and the paper's QR code; no notes, plans or partners.
-  const visual = audience === "visual";
-  const range = project.range && (project.range.current.length > 0 || project.range.former.length > 0) ? project.range : null;
-  const partners = visual ? [] : project.partners;
-  return (
-    <div className="flex flex-col gap-6 canvas:gap-4">
-      {project.steps.length > 0 && <StepTimeline steps={project.steps} brief={visual} />}
-      <div className="grid gap-4 canvas:auto-cols-fr canvas:grid-flow-col canvas:gap-4">
-        {(range || partners.length > 0) && (
-          <div className={`${CARD} ${styles.enter} px-5 py-4`} style={delay(700)}>
-            {range && (
-              <>
-                <p className={`${KICKER} text-[#0a7558]`}>{range.title}</p>
-                <ul className="mt-2 flex flex-wrap gap-2 text-sm canvas:text-[16px]">
-                  {range.current.map((place) => (
-                    <li key={place} className="rounded-lg bg-[#12ca99]/15 px-3 py-1 font-bold text-[#0a7558]">
-                      {place}
-                    </li>
-                  ))}
-                  {range.former.map((place) => (
-                    <li key={place} className="rounded-lg bg-[#f7f6fa] px-3 py-1 text-[#5b6770] line-through">
-                      <span className="sr-only">Formerly </span>
-                      {place}
-                    </li>
-                  ))}
-                </ul>
-                {range.former.length > 0 && (
-                  <p className="mt-2 text-[11px] text-[#5b6770] canvas:text-[14px]">Struck through: islands where it no longer survives in the wild</p>
-                )}
-              </>
-            )}
-            {partners.length > 0 && (
-              <div className={range ? "mt-4" : ""}>
-                <p className={`${KICKER} text-[#5b6770]`}>In partnership with</p>
-                <ul className="mt-2 flex flex-wrap gap-2">
-                  {partners.map((partner) => (
-                    <li key={partner} className="rounded-lg bg-[#f7f6fa] px-3 py-1.5 text-sm font-bold text-[#2b3278] canvas:text-[16px]">
-                      {partner}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-        {project.next && !visual && (
-          <div className={`${CARD} ${styles.enter} px-5 py-4`} style={delay(780)}>
-            <p className={`${KICKER} text-[#0a7558]`}>What&rsquo;s next</p>
-            <p className="mt-2 text-sm leading-relaxed text-[#5b6770] canvas:text-[18px] canvas:leading-normal">
-              <TourCopy text={project.next} audience={audience} />
-            </p>
-          </div>
-        )}
-        {project.citation && (
-          <div className={`${CARD} ${styles.enter} flex items-center gap-4 px-5 py-4`} style={delay(860)}>
-            <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-[#5b6770] canvas:text-[14px]">
-              <a
-                href={project.citation.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-bold text-[#2b3278] underline-offset-2 hover:underline canvas:text-[18px]"
-              >
-                {project.citation.text}
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-              <span className="block break-all">{project.citation.url.replace(/^https?:\/\//, "")}</span>
-              {!visual && project.citation.note && <span className="mt-1 block">{project.citation.note}</span>}
-            </p>
-            <DoiQr
-              url={project.citation.url}
-              label={`QR code linking to ${project.citation.text}`}
-              className="h-20 w-20 shrink-0 rounded-md canvas:h-24 canvas:w-24"
-            />
-          </div>
-        )}
-      </div>
+    <div className="flex flex-row-reverse items-center justify-end gap-3 canvas:-mt-7 canvas:flex-row canvas:text-right">
+      <p className="min-w-0 text-[13px] leading-snug text-[#5b6770] canvas:text-[14px]">
+        <span className={`${KICKER} block text-[#0a7558]`}>Read the paper</span>
+        <a
+          href={citation.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-0.5 inline-flex items-center gap-1 font-bold text-[#2b3278] underline-offset-2 hover:underline canvas:text-[16px]"
+        >
+          {citation.text}
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+        <span className="block break-all">{citation.url.replace(/^https?:\/\//, "")}</span>
+      </p>
+      <span className="shrink-0 rounded-lg bg-white p-1.5 shadow-[0_6px_18px_-10px_rgba(43,50,120,0.35)] ring-1 ring-[#2b3278]/10">
+        <DoiQr url={citation.url} label={`QR code linking to ${citation.text}`} className="block h-[72px] w-[72px]" />
+      </span>
     </div>
   );
 }

@@ -226,14 +226,20 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
   and Bioinformatics Training. Until that branch reaches `main`, the live site shrinks those slides as far as 0.85×.
 - **Research agenda, Technical:** the full project titles (up to 156 characters) don't fit five columns, or five rows.
   On the canvas Technical shows each project's name and partners, as the deck does; phones keep the full titles.
-- **COVID-19:** with live data there are four tiles, so they sit in a row above the chart rather than in a column
-  beside it.
+- **COVID-19:** the four live tiles first sat in a row above the chart. Since 18 November 2026 they are a column on
+  the left (300 px, sharing its height), as planned, and the chart fills the rest, so it is taller and its bars wider.
 - **Variant tree:** the headline numbers (genomes, dates, provinces) sit at the right of the title's row, and the
   province map's labels are drawn at 24 units so they show at 14 px.
 - **Sample results:** only two figures needed bigger text once measured: the genome ring (14) and the gene heatmap
   (13, on taller rows). The Venn diagram's overlap labels went from 11 to 12.
 - **Sample to sequence:** the stage is 500 x 284, so the longest Technical step fits beside it.
 - **Present mode:** the control bar fades after three still seconds, as in the decks, so it doesn't hide the footer.
+- **Projects (slides 12 and 13 merged, 18 November 2026):** each project is now one slide, in three columns: the
+  photo, with where the species lives along its foot; the story and the four numbers in a 2 × 2 grid; and the five
+  steps as a timeline ending in what's next, with the partner under it. The paper's link and QR code sit beside the
+  slide's title, and its note (other partners, GenBank) joins the photo credit in the source line. To fit, the text
+  is smaller than elsewhere (16 px summary, 26 px project title, 24 px numbers, 14 px notes and labels); Visual keeps
+  the photo, the numbers, the steps' names and the QR code.
 
 - **Title slide** (chosen from three live mockups on 18 November 2026: the helix, with the reads mockup's fact cards):
   the white PGC Visayas logo beside the eyebrow; a double helix turning down the right side, its bases flying into a

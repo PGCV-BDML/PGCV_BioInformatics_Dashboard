@@ -18,7 +18,6 @@ import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
 import { HelixProgress } from "./helix-progress";
 import { JOURNEY_SCENE_MS } from "./sample-journey";
-import { hasProjectJourney } from "./project-feature";
 import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
 import { deckScaleScript, useDeckScale } from "./deck-scale";
 import { useFitCheck } from "./fit-check";
@@ -30,7 +29,7 @@ import { InfrastructureSlide } from "./slides/infrastructure-slide";
 import { IntroSlide } from "./slides/intro-slide";
 import { JourneySlide } from "./slides/journey-slide";
 import { LabMapSlide } from "./slides/lab-map-slide";
-import { ProjectJourneySlide, ProjectStorySlide } from "./slides/projects-slides";
+import { ProjectSlide } from "./slides/projects-slides";
 import { ResultsSlide } from "./slides/results-slide";
 import { ServicesSlide } from "./slides/services-slide";
 import { TeamSlide } from "./slides/team-slide";
@@ -42,12 +41,12 @@ import { WelcomeSlide } from "./slides/welcome-slide";
 import slideStyles from "./slide.module.css";
 import styles from "./tour-motion.module.css";
 
-/** What a slide shows. Sample results and each project take more than one slide. */
+/** What a slide shows. Sample results take one slide per service; each project, one slide. */
 type SlideSpec =
   | { kind: "welcome" | "intro" | "journey" | "services" | "trainings" | "lab-map" | "infrastructure" }
   | { kind: "covid" | "variant-tree" | "virus" | "agenda" | "team" | "videos" | "contact" }
   | { kind: "results"; item: ShowcaseCopy }
-  | { kind: "project" | "project-journey"; project: TourProject };
+  | { kind: "project"; project: TourProject };
 
 /** A slide: its anchor (…/tour#services), its name in the progress bar, and what it shows. */
 type SlideEntry = { id: string; nav: string; spec: SlideSpec };
@@ -69,18 +68,11 @@ export function tourSlides(
   if (content.trainings.items.length) slides.push({ id: "trainings", nav: "Trainings", spec: { kind: "trainings" } });
   if (content.labMap && labMap) slides.push({ id: "lab-map", nav: "Lab map", spec: { kind: "lab-map" } });
   slides.push({ id: "infrastructure", nav: "Infrastructure", spec: { kind: "infrastructure" } });
-  // Each project: its story, then (when it has one) its journey from sample to genome.
+  // Each project on one slide: its story and its journey from sample to genome.
   content.projects.items.forEach((project, i) => {
     const id = i === 0 ? "projects" : `project-${project.id}`;
     const name = project.commonName ?? project.species ?? project.title;
     slides.push({ id, nav: i === 0 ? "Projects" : name, spec: { kind: "project", project } });
-    if (hasProjectJourney(project)) {
-      slides.push({
-        id: i === 0 ? "projects-genome" : `${id}-genome`,
-        nav: i === 0 ? "Sample to genome" : `${name}: sample to genome`,
-        spec: { kind: "project-journey", project },
-      });
-    }
   });
   slides.push({ id: "covid-19", nav: "COVID-19", spec: { kind: "covid" } });
   if (content.nextstrain && phylo) slides.push({ id: "variant-tree", nav: "Variant tree", spec: { kind: "variant-tree" } });
@@ -483,9 +475,7 @@ export function TourExperience({
       case "infrastructure":
         return <InfrastructureSlide {...props} />;
       case "project":
-        return <ProjectStorySlide project={spec.project} heading={content.projects.title} audience={audience} meta={meta} />;
-      case "project-journey":
-        return <ProjectJourneySlide project={spec.project} audience={audience} meta={meta} />;
+        return <ProjectSlide project={spec.project} heading={content.projects.title} audience={audience} meta={meta} />;
       case "covid":
         return <CovidSlide {...props} stats={stats} />;
       case "variant-tree":

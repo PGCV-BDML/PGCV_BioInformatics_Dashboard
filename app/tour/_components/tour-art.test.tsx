@@ -90,32 +90,56 @@ describe("the dark slides' backdrop", () => {
   });
 });
 
-describe("the project slides", () => {
-  it("tell the deer example's story, then its range, timeline and a scannable citation", async () => {
+describe("the project slide", () => {
+  it("tells the deer example's story, range, timeline and what's next on one slide", async () => {
     const { parseTourContent } = await import("@/lib/tour");
-    const { ProjectJourney, ProjectStory, hasProjectJourney } = await import("./project-feature");
+    const { ProjectFeature } = await import("./project-feature");
     const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
     const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
     const deer = tour.projects.items[0]!;
-    expect(hasProjectJourney(deer)).toBe(true);
 
-    const story = render(<ProjectStory project={deer} audience="students" />);
-    expect(story.getByText(/giant puzzle/)).toBeInTheDocument();
-    expect(story.getByText("Meet Abraham")).toBeInTheDocument();
-    story.unmount();
-
-    const { getByText, getByRole, getAllByText } = render(<ProjectJourney project={deer} audience="students" />);
+    const { getByText, getAllByText, queryByText } = render(<ProjectFeature project={deer} audience="students" />);
+    expect(getByText(/giant puzzle/)).toBeInTheDocument();
+    expect(getByText("Meet Abraham")).toBeInTheDocument();
     expect(getByText("Cebu").closest("li")).toHaveTextContent("Formerly Cebu");
     expect(getAllByText(/\(done\)/)).toHaveLength(5);
+    expect(getByText("From sample to genome")).toBeInTheDocument();
+    expect(getByText(/Reading longer stretches of DNA/)).toBeInTheDocument();
+    expect(getByText("Silliman University · CENTROP")).toBeInTheDocument();
+    // The paper sits beside the slide's title, not in the main element.
+    expect(queryByText(/Javier et al/)).toBeNull();
+  });
+
+  it("puts the paper beside the title, as a link and a scannable QR code", async () => {
+    const { parseTourContent } = await import("@/lib/tour");
+    const { ProjectPaper } = await import("./project-feature");
+    const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
+    const deer = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample }).projects.items[0]!;
+    const { getByRole } = render(<ProjectPaper project={deer} />);
     expect(getByRole("img", { name: /QR code linking to Javier et al\. \(2025\)/ }).querySelector("path")).not.toBeNull();
     expect(getByRole("link", { name: /Javier et al\. \(2025\), GigaByte/ })).toHaveAttribute(
       "href",
       "https://doi.org/10.46471/gigabyte.150",
     );
+    expect(render(<ProjectPaper project={{ ...deer, citation: null }} />).container.textContent).toBe("");
   });
 
-  it("leave out the second slide when a project has nothing for it", async () => {
-    const { hasProjectJourney } = await import("./project-feature");
+  it("keeps Visual to the photo, the numbers and the steps' names", async () => {
+    const { parseTourContent } = await import("@/lib/tour");
+    const { ProjectFeature } = await import("./project-feature");
+    const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
+    const deer = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample }).projects.items[0]!;
+    const { container, getByText } = render(<ProjectFeature project={deer} audience="visual" />);
+    expect(getByText("Sequencing")).toBeInTheDocument();
+    expect(getByText("Panay")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("NextSeq 1000 · PGC Visayas");
+    expect(container).not.toHaveTextContent("What’s next");
+    expect(container).not.toHaveTextContent("In partnership with");
+    expect(container).not.toHaveTextContent("ear-tissue sample");
+  });
+
+  it("leaves out the journey column when a project has nothing for it", async () => {
+    const { ProjectFeature } = await import("./project-feature");
     const bare = {
       id: "p",
       title: "A genome",
@@ -136,23 +160,22 @@ describe("the project slides", () => {
       partners: [],
       citation: null,
     };
-    expect(hasProjectJourney(bare)).toBe(false);
-    expect(hasProjectJourney({ ...bare, next: "More sequencing" })).toBe(true);
+    const { container, rerender } = render(<ProjectFeature project={bare} audience="general" />);
+    expect(container.querySelector("article")!.children).toHaveLength(1);
+    expect(container.querySelector("ol")).toBeNull();
+    rerender(<ProjectFeature project={{ ...bare, next: "More sequencing" }} audience="general" />);
+    expect(container.querySelector("article")!.children).toHaveLength(2);
+    expect(container).toHaveTextContent("What’s nextMore sequencing");
   });
 });
 
 describe("scientific names", () => {
   it("sets them in italics in the deer project's technical summary", async () => {
     const { parseTourContent } = await import("@/lib/tour");
-    const { ProjectJourney, ProjectStory } = await import("./project-feature");
+    const { ProjectFeature } = await import("./project-feature");
     const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
     const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
-    const { container } = render(
-      <>
-        <ProjectStory project={tour.projects.items[0]!} audience="technical" />
-        <ProjectJourney project={tour.projects.items[0]!} audience="technical" />
-      </>,
-    );
+    const { container } = render(<ProjectFeature project={tour.projects.items[0]!} audience="technical" />);
     const italics = [...container.querySelectorAll("i")].map((i) => i.textContent);
     expect(italics).toEqual(["Cervus elaphus", "R. alfredi", "Cervus"]);
     expect(container.textContent).not.toContain("*");
