@@ -162,9 +162,10 @@ export function PhyloMap({
       : provinces.map((_, p) => provinceTotal(p));
 
   return (
-    <div className="flex h-full flex-col">
+    // On the canvas: the map on the left, the readout and legend in a column beside it.
+    <div className="flex h-full flex-col canvas:grid canvas:grid-cols-[minmax(0,1fr)_190px] canvas:grid-rows-[auto_minmax(0,1fr)_auto] canvas:gap-x-4">
       {/* Live readout */}
-      <div className="flex items-baseline justify-between gap-3" aria-live="off">
+      <div className="flex items-baseline justify-between gap-3 canvas:col-start-2 canvas:row-start-1 canvas:flex-col canvas:gap-0" aria-live="off">
         <span className="text-sm font-bold text-[#2a7797]">{monthLabel}</span>
         <span className="text-right">
           <span className="text-3xl font-black tabular-nums text-[#2b3278]">{Math.round(total).toLocaleString("en-PH")}</span>
@@ -175,7 +176,7 @@ export function PhyloMap({
       {/* Map */}
       <div
         ref={box}
-        className="relative mt-2 h-[340px] min-h-0 md:h-[400px] lg:h-auto lg:flex-1"
+        className="relative mt-2 h-[340px] min-h-0 canvas:col-start-1 canvas:row-span-2 canvas:row-start-1 canvas:mt-0 canvas:h-auto"
         onPointerLeave={blur}
       >
         <svg
@@ -233,17 +234,18 @@ export function PhyloMap({
                 y={shape.anchor[1]}
                 textAnchor={side === "right" ? "start" : "end"}
                 dominantBaseline="middle"
-                className="pointer-events-none select-none"
                 fill={total >= 0.5 ? "#2b3278" : "#9a96a8"}
                 stroke="#ffffff"
                 strokeWidth={3}
                 paintOrder="stroke"
                 strokeLinejoin="round"
                 fontSize={15}
+                // The map is drawn 400 wide: on the canvas it shows at about 0.59, so its labels are drawn bigger.
+                className="pointer-events-none select-none canvas:text-[24px]"
               >
                 <tspan fontWeight={700}>{shape.name}</tspan>
                 {total >= 0.5 && (
-                  <tspan x={x} dy={17} fontWeight={600} fill="#5b6770">
+                  <tspan x={x} dy="1.15em" fontWeight={600} fill="#5b6770">
                     {Math.round(total).toLocaleString("en-PH")}
                   </tspan>
                 )}
@@ -269,13 +271,13 @@ export function PhyloMap({
         )}
       </div>
       {onMap >= 0.5 && (
-        <p className="mt-1 text-xs text-[#5b6770]">
+        <p className="mt-1 text-xs text-[#5b6770] canvas:col-start-1 canvas:row-start-3 canvas:text-[14px]">
           + {Math.round(onMap).toLocaleString("en-PH")} from other or unrecorded provinces
         </p>
       )}
 
       {/* Legend with live counts — identity never relies on colour alone */}
-      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-[#2b3278]/10 pt-3 text-[13px]">
+      <ul className="mt-3 grid grid-cols-2 content-start gap-x-4 gap-y-1.5 border-t border-[#2b3278]/10 pt-3 text-[13px] canvas:col-start-2 canvas:row-span-2 canvas:row-start-2 canvas:mt-2 canvas:grid-cols-1 canvas:gap-y-0.5 canvas:pt-2 canvas:text-[14px]">
         {categories.map((label, k) => {
           const count = Math.round(at(categoryTotals, k));
           const final = colorBy === "group" ? sumGroup(at(cumulative, last), provinces.length, G, k) : sumProvince(at(cumulative, last), G, k);

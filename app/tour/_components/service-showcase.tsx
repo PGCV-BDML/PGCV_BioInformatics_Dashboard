@@ -17,7 +17,7 @@ import {
   type ShowcaseId,
   type TreeNode,
 } from "@/lib/tour-showcase";
-import { BRAND, LOGO } from "./brand";
+import { BRAND, CARD, LOGO } from "./brand";
 
 const INK = "#333333";
 const MUTED = "#5b6770";
@@ -35,16 +35,41 @@ function blend(stops: string[], t: number): string {
   return `rgb(${a.map((v, k) => Math.round(v + ((b[k] ?? v) - v) * f)).join(",")})`;
 }
 
-function Figure({ label, viewBox, children }: { label: string; viewBox: string; children: React.ReactNode }) {
+/**
+ * On the canvas a figure fills its half of the slide (about 506 x 299), so its
+ * text is drawn at a size that shows at 14px or more there: 11 in most, bigger
+ * in the figures that are taller than they are wide.
+ */
+function Figure({
+  label,
+  viewBox,
+  fontSize = 11,
+  children,
+}: {
+  label: string;
+  viewBox: string;
+  fontSize?: number;
+  children: React.ReactNode;
+}) {
   return (
-    <svg viewBox={viewBox} role="img" aria-label={label} className="block h-auto w-full" fontSize={11}>
+    <svg
+      viewBox={viewBox}
+      role="img"
+      aria-label={label}
+      className="block h-auto w-full canvas:absolute canvas:inset-0 canvas:h-full"
+      fontSize={fontSize}
+    >
       {children}
     </svg>
   );
 }
 
 function FigureTitle({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-xs font-semibold text-[#2b3278]">{children}</p>;
+  return (
+    <p className="mb-2 text-xs font-semibold text-[#2b3278] canvas:font-quicksand canvas:text-[14px] canvas:font-bold canvas:uppercase canvas:tracking-[0.14em] canvas:text-[#5b6770]">
+      {children}
+    </p>
+  );
 }
 
 // --- DNA barcoding ---------------------------------------------------------------
@@ -120,10 +145,10 @@ function BlastTable() {
   const [top] = BLAST_HITS;
   return (
     <div>
-      <p className="mb-2 text-[11px] text-[#5b6770]">
+      <p className="mb-2 text-[11px] text-[#5b6770] canvas:text-[14px]">
         Query {BARCODE_QUERY.id} · {BARCODE_QUERY.marker} · {BARCODE_QUERY.length} bp
       </p>
-      <table className="w-full table-fixed border-collapse text-xs">
+      <table className="w-full table-fixed border-collapse text-xs canvas:text-[15px]">
         <thead>
           <tr className="border-b border-[#2b3278]/10 text-left text-[#5b6770]">
             <th className="w-[44%] py-1 pr-1 font-semibold">Hit</th>
@@ -143,7 +168,7 @@ function BlastTable() {
           ))}
         </tbody>
       </table>
-      <p className="mt-3 text-xs text-[#0a7558]">
+      <p className="mt-3 text-xs text-[#0a7558] canvas:text-[14px]">
         <span className="font-semibold">Best match:</span> <span className="italic">{top?.species}</span> (yellowfin tuna),{" "}
         {top?.identity}% identity
       </p>
@@ -180,18 +205,18 @@ function GenomeRing() {
   const ticks = Array.from({ length: Math.ceil(length / 250_000) }, (_, i) => i * 250_000);
 
   return (
-    <Figure label={`Circular genome map, ${(length / 1e6).toFixed(2)} Mb`} viewBox="0 0 300 300">
+    <Figure label={`Circular genome map, ${(length / 1e6).toFixed(2)} Mb`} viewBox="0 0 300 300" fontSize={14}>
       <circle cx={c} cy={c} r={118} fill="none" stroke={BRAND.navy} strokeWidth={1.5} />
       {ticks.map((pos) => {
         const a = angle(pos);
         const major = pos % 1_000_000 === 0;
-        const lx = c + 136 * Math.cos(a);
-        const ly = c + 136 * Math.sin(a);
+        const lx = c + 134 * Math.cos(a);
+        const ly = c + 134 * Math.sin(a);
         return (
           <g key={pos}>
             <path d={`M${at(118, a)}L${at(major ? 125 : 122, a)}`} stroke={BRAND.navy} strokeWidth={1} />
             {major && (
-              <text x={lx} y={ly + 4} textAnchor="middle" fill={MUTED}>
+              <text x={lx} y={ly + 5} textAnchor="middle" fill={MUTED}>
                 {pos / 1e6} Mb
               </text>
             )}
@@ -212,10 +237,10 @@ function GenomeRing() {
       ))}
       {windowArc(gcContent, 66, 7, BRAND.deepTeal, "#d7a6d7", "gc")}
       {windowArc(gcSkew, 41, 7, BRAND.teal, BRAND.purple, "sk")}
-      <text x={c} y={c - 1} textAnchor="middle" fontSize={13} fontWeight={800} fill={BRAND.navy}>
+      <text x={c} y={c - 2} textAnchor="middle" fontSize={16} fontWeight={800} fill={BRAND.navy}>
         {(length / 1e6).toFixed(2)} Mb
       </text>
-      <text x={c} y={c + 13} textAnchor="middle" fill={MUTED}>
+      <text x={c} y={c + 15} textAnchor="middle" fill={MUTED}>
         GC {gc}%
       </text>
     </Figure>
@@ -237,12 +262,12 @@ function AssemblyStats() {
       <dl className="grid grid-cols-2 gap-2">
         {GENOME_MAP.stats.map((stat) => (
           <div key={stat.label} className="flex flex-col-reverse rounded-lg bg-[#f7f6fa] px-3 py-2">
-            <dt className="text-[11px] text-[#5b6770]">{stat.label}</dt>
-            <dd className="text-sm font-bold text-[#2b3278]">{stat.value}</dd>
+            <dt className="text-[11px] text-[#5b6770] canvas:text-[14px]">{stat.label}</dt>
+            <dd className="text-sm font-bold text-[#2b3278] canvas:text-[18px]">{stat.value}</dd>
           </div>
         ))}
       </dl>
-      <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-[#5b6770]">
+      <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-[#5b6770] canvas:text-[14px]">
         {GENOME_LEGEND.map(([color, label]) => (
           <li key={label} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: color }} aria-hidden="true" />
@@ -454,11 +479,12 @@ const Z_STOPS = [LOGO.blue, "#ffffff", LOGO.red];
 function DegHeatmap() {
   const x0 = 96;
   const cw = 32;
-  const ch = 12;
+  // Rows tall enough for 13-unit labels, which show at 14px on the canvas.
+  const ch = 13.5;
   const y0 = 34;
   const keyY = y0 + DEG_HEATMAP.length * ch + 12;
   return (
-    <Figure label="Heatmap of the top differentially expressed genes, control versus treated" viewBox={`0 0 320 ${keyY + 14}`}>
+    <Figure label="Heatmap of the top differentially expressed genes, control versus treated" viewBox={`0 0 320 ${keyY + 14}`} fontSize={13}>
       <rect x={x0} y={4} width={cw * 3 - 2} height={6} fill="#9aa0ab" />
       <rect x={x0 + cw * 3} y={4} width={cw * 3 - 2} height={6} fill={BRAND.navy} />
       <text x={x0 + cw * 1.5} y={26} textAnchor="middle" fill={MUTED}>
@@ -469,7 +495,7 @@ function DegHeatmap() {
       </text>
       {DEG_HEATMAP.map((row, i) => (
         <g key={row.gene}>
-          <text x={x0 - 6} y={y0 + i * ch + ch / 2 + 3} textAnchor="end" fontStyle="italic" fill={INK}>
+          <text x={x0 - 6} y={y0 + i * ch + ch / 2 + 4.5} textAnchor="end" fontStyle="italic" fill={INK}>
             {row.gene}
           </text>
           {row.z.map((z, j) => (
@@ -501,19 +527,23 @@ const FIGURES: Record<ShowcaseId, [string, React.ReactNode, string, React.ReactN
   transcriptomics: ["Volcano plot", <Volcano key="a" />, "Top differentially expressed genes", <DegHeatmap key="b" />],
 };
 
+/** One figure in a card of its own, with its title above it. */
+function FigureCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className={`${CARD} flex flex-col p-5 canvas:min-h-0 canvas:px-[18px] canvas:pb-4 canvas:pt-3.5`}>
+      <FigureTitle>{title}</FigureTitle>
+      <div className="mx-auto w-full max-w-[400px] canvas:relative canvas:min-h-0 canvas:max-w-none canvas:flex-1">{children}</div>
+    </div>
+  );
+}
+
+/** A service's two report figures: stacked on a phone, side by side on the canvas. */
 export function ShowcaseFigures({ id }: { id: ShowcaseId }) {
   const [titleA, figureA, titleB, figureB] = FIGURES[id];
   return (
-    // Stacked, and capped in width so the 11px chart text stays near its drawn size.
-    <div className="flex flex-col gap-5">
-      <div className="mx-auto w-full max-w-[400px]">
-        <FigureTitle>{titleA}</FigureTitle>
-        {figureA}
-      </div>
-      <div className="mx-auto w-full max-w-[400px]">
-        <FigureTitle>{titleB}</FigureTitle>
-        {figureB}
-      </div>
+    <div className="flex flex-col gap-5 canvas:grid canvas:h-full canvas:grid-cols-2 canvas:gap-6">
+      <FigureCard title={titleA}>{figureA}</FigureCard>
+      <FigureCard title={titleB}>{figureB}</FigureCard>
     </div>
   );
 }

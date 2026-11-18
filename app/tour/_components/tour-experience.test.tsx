@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { FALLBACK_TOUR, type TourContent } from "@/lib/tour";
+import { FALLBACK_TOUR, type TourContent, type TourProject, type TourText } from "@/lib/tour";
+import { SHOWCASE_COPY } from "@/lib/tour-showcase";
 import { TourExperience } from "./tour-experience";
 
 beforeAll(() => {
@@ -22,6 +23,8 @@ const content: TourContent = {
     intro: { general: "General intro", students: "Students intro", technical: "Technical intro" },
   },
 };
+
+const general = (text: TourText) => (typeof text === "string" ? text : text.general);
 
 describe("TourExperience", () => {
   it("offers background music in Present mode only when the content names a track", async () => {
@@ -228,7 +231,17 @@ describe("TourExperience", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
     const { unmount } = render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 6)).toEqual(["welcome", "intro", "sample-to-sequence", "services", "showcase", "lab-map"]);
+    expect(ids.slice(0, 9)).toEqual([
+      "welcome",
+      "intro",
+      "sample-to-sequence",
+      "services",
+      "results-barcoding",
+      "results-assembly",
+      "results-metagenomics",
+      "results-transcriptomics",
+      "lab-map",
+    ]);
     const frame = screen.getByTitle("Explore the lab");
     expect(frame).toHaveAttribute("src", "/api/tour/lab-map");
     expect(frame).toHaveAttribute("sandbox", "allow-scripts");
@@ -267,7 +280,7 @@ describe("TourExperience", () => {
     const trainings = { ...content.trainings, items: [{ name: "Intro to Linux", image: null }] };
     render(<TourExperience content={{ ...content, labMap, trainings }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(4, 8)).toEqual(["showcase", "trainings", "lab-map", "infrastructure"]);
+    expect(ids.slice(7, 11)).toEqual(["results-transcriptomics", "trainings", "lab-map", "infrastructure"]);
   });
 
   it("puts the research agenda right before the team, with partners for technical visitors", async () => {
@@ -353,5 +366,73 @@ describe("TourExperience", () => {
     );
     expect(screen.queryByRole("region", { name: "Variant tree" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Projects" })).not.toBeInTheDocument();
+  });
+
+  it("numbers every light slide in its footer, out of the slides shown", () => {
+    render(<TourExperience content={content} stats={null} />);
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("main > section"));
+    const total = sections.length;
+    sections.forEach((section, i) => {
+      const frame = section.querySelector("[data-slide-frame]");
+      expect(frame, section.id).not.toBeNull();
+      if (frame?.getAttribute("data-slide-frame") === "light") {
+        expect(section).toHaveTextContent(`${i + 1} / ${total}`);
+        expect(section).toHaveTextContent("Lab tour · PGC Visayas");
+      }
+    });
+    // The welcome and contact slides are dark, with no footer, as in the decks.
+    expect(sections[0]!.querySelector("[data-slide-frame=dark]")).not.toBeNull();
+    expect(sections.at(-1)!.querySelector("[data-slide-frame=dark]")).not.toBeNull();
+  });
+
+  it("gives each service's sample results a slide of their own, captioned by its takeaway", () => {
+    render(<TourExperience content={content} stats={null} />);
+    for (const item of SHOWCASE_COPY) {
+      const slide = document.getElementById(`results-${item.id}`)!;
+      expect(slide).not.toBeNull();
+      expect(slide.querySelector("h2")).toHaveTextContent(general(item.title));
+      expect(slide).toHaveTextContent(general(item.caption));
+      expect(slide).toHaveTextContent("Sample data for illustration, not from a real project");
+      expect(slide.querySelectorAll("[role=img]").length + slide.querySelectorAll("table, dl").length).toBeGreaterThanOrEqual(2);
+    }
+    expect(document.getElementById("showcase")).toBeNull();
+  });
+
+  it("follows a project's story with its journey from sample to genome", () => {
+    const project: TourProject = {
+      id: "rusa",
+      title: "First draft genome of the Visayan spotted deer",
+      species: "Rusa alfredi",
+      status: null,
+      commonName: "Philippine spotted deer",
+      image: null,
+      imageFocus: null,
+      imageTitle: null,
+      imageCredit: null,
+      conservation: null,
+      facts: [],
+      range: null,
+      summary: "Summary",
+      highlights: [],
+      steps: [{ label: "Sample", note: "Ear tissue", state: "done" }],
+      next: null,
+      partners: [],
+      citation: null,
+    };
+    render(<TourExperience content={{ ...content, projects: { ...content.projects, items: [project] } }} stats={null} />);
+    const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
+    expect(ids.indexOf("projects") + 1).toBe(ids.indexOf("projects-genome"));
+    const journey = screen.getByRole("region", { name: "Sample to genome" });
+    expect(journey.querySelector("h2")).toHaveTextContent("From sample to genome");
+    expect(journey).toHaveTextContent("Research highlights · Philippine spotted deer");
+  });
+
+  it("sets the slides' scale before the first paint, from the window", () => {
+    render(<TourExperience content={content} stats={null} />);
+    const main = document.querySelector("main")!;
+    expect(main.id).toBe("tour-main");
+    const script = main.querySelector("script");
+    expect(script?.innerHTML).toContain('getElementById("tour-main")');
+    expect(script?.innerHTML).toContain("--s");
   });
 });

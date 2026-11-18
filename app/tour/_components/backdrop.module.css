@@ -1,15 +1,23 @@
 /*
- * Section backgrounds for the Lab Tour. Layers are absolutely positioned
- * behind the content, animate transform/opacity/stroke dashes only, stop for
- * prefers-reduced-motion, and pause while their section is off screen.
+ * Backgrounds for the Lab Tour's dark slides. Layers are absolutely positioned
+ * behind the content, animate transform/opacity only, stop for
+ * prefers-reduced-motion, and pause while their slide is off screen.
  */
 
 .root {
+  /* Blob sizes: 1vw on a phone; on the 1280px canvas, a hundredth of its width (zoomed with it). */
+  --u: 1vw;
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
   user-select: none;
+}
+
+@media (width >= 48rem) {
+  .root {
+    --u: 12.8px;
+  }
 }
 
 /* --- Aurora: soft patches of the logo colours ----------------------------- */
@@ -64,55 +72,6 @@
   content: attr(data-seq);
 }
 
-/* --- Light sections: dot grid near one corner plus a soft glow ------------ */
-
-.dots {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgb(43 50 120 / 0.2) 1px, transparent 1.5px);
-  background-size: 22px 22px;
-  mask-image: radial-gradient(ellipse 55% 75% at var(--mx) var(--my), #000 0%, transparent 70%);
-}
-
-.glow {
-  position: absolute;
-  top: var(--gy);
-  left: var(--gx);
-  width: min(52rem, 110vw);
-  aspect-ratio: 1;
-  border-radius: 9999px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 15%, transparent), transparent);
-  translate: -50% -50%;
-}
-
-/* --- Infrastructure: circuit traces with travelling data pulses ----------- */
-
-.circuit {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.trace {
-  stroke: rgb(43 50 120 / 0.08);
-}
-
-.pulse {
-  stroke-dasharray: 0.07 0.93;
-  stroke-dashoffset: 1;
-  opacity: 0;
-}
-
-.node {
-  fill: #f7f6fa;
-  stroke: rgb(43 50 120 / 0.2);
-}
-
-.light {
-  opacity: 0.35;
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .blob {
     animation: drift var(--t) ease-in-out infinite alternate;
@@ -128,20 +87,6 @@
 
   .rowReverse {
     animation-direction: reverse;
-  }
-
-  .glow {
-    animation: drift 32s ease-in-out infinite alternate;
-  }
-
-  .pulse {
-    animation: pulse var(--t) linear infinite;
-    animation-delay: var(--d);
-  }
-
-  .light {
-    animation: rack-light 2.8s steps(1) infinite;
-    animation-delay: var(--d);
   }
 
   .root[data-offscreen] * {
@@ -164,37 +109,5 @@
 @keyframes stream {
   to {
     transform: translateX(-50%);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  8% {
-    opacity: 1;
-  }
-  60% {
-    stroke-dashoffset: -0.07;
-    opacity: 1;
-  }
-  61%,
-  100% {
-    stroke-dashoffset: -0.07;
-    opacity: 0;
-  }
-}
-
-@keyframes rack-light {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  40% {
-    opacity: 1;
-  }
-  55% {
-    opacity: 0.25;
   }
 }

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * The lab tour's slides are laid out on a fixed 1280 x 720 canvas from 768px up
+ * (app/tour/_components/slide.module.css), so the window's width says nothing
+ * about a slide's. Inside a slide, `canvas:` is the only breakpoint: the layout
+ * for the canvas. Below it, phones get the stacked layout.
+ */
+@custom-variant canvas (@media (width >= 48rem));
+
 :root {
   --background: #f6f4ee;
   --foreground: #333333;

@@ -471,16 +471,16 @@ export function SampleJourney({
   const visual = audience === "visual";
 
   return (
-    <div className={`${CARD} p-4 sm:p-6`}>
+    <div className={`${CARD} p-4`}>
       <div
-        className={`grid items-center gap-6 md:gap-10 ${visual ? "md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]"}`}
+        className={`grid items-center gap-6 canvas:gap-7 ${visual ? "canvas:grid-cols-[640px_minmax(0,1fr)]" : "canvas:grid-cols-[500px_minmax(0,1fr)]"}`}
       >
-        <div className="overflow-hidden rounded-2xl bg-[#f0e8f2]">
+        <div className={`overflow-hidden rounded-2xl bg-[#f0e8f2] ${visual ? "canvas:h-[340px]" : "canvas:h-[284px]"}`}>
           {/* Remounted per scene, so each one's entrance plays when it comes up. */}
           <svg
             key={shown.id}
             viewBox="0 0 560 340"
-            className="block h-auto w-full"
+            className="block h-auto w-full canvas:mx-auto canvas:h-full canvas:w-auto"
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -497,23 +497,23 @@ export function SampleJourney({
               <div
                 // A new key when shown, so the caption's entrance replays.
                 key={`${item.id}-${i === scene}`}
-                className={`col-start-1 row-start-1 flex flex-col gap-3 self-start md:self-center ${i === scene ? "" : "invisible"}`}
+                className={`col-start-1 row-start-1 flex flex-col gap-3 self-start canvas:gap-2 canvas:self-center ${i === scene ? "" : "invisible"}`}
               >
-                <p className={`font-quicksand text-xs font-bold uppercase tracking-[0.18em] text-[#0a7558] ${styles.enter}`}>
+                <p className={`font-quicksand text-xs font-bold uppercase tracking-[0.18em] text-[#0a7558] canvas:text-[14px] ${styles.enter}`}>
                   Step {i + 1} of {JOURNEY_STEPS.length}
                 </p>
-                <h3 className={`text-3xl font-black tracking-tight text-[#2b3278] md:text-4xl ${styles.enter}`} style={d(80)}>
+                <h3 className={`text-3xl font-black tracking-tight text-[#2b3278] canvas:text-[30px] canvas:leading-tight ${styles.enter}`} style={d(80)}>
                   {item.name}
                 </h3>
                 {!visual && (
-                  <p className={`text-lg leading-relaxed text-[#5b6770] ${styles.enter}`} style={d(160)}>
+                  <p className={`text-lg leading-relaxed text-[#5b6770] canvas:text-[18px] canvas:leading-normal ${styles.enter}`} style={d(160)}>
                     <TourCopy text={item.text} audience={audience} />
                   </p>
                 )}
                 <div className={`self-start rounded-xl bg-[#f7f6fa] px-3.5 py-2.5 ${styles.enter}`} style={d(260)}>
-                  <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#0a7558]">What we have now</p>
-                  <p className="mt-0.5 font-bold text-[#2b3278]"><TourCopy text={item.now} audience={audience} /></p>
-                  {note && <p className="mt-0.5 text-xs text-[#5b6770]">{note}</p>}
+                  <p className="font-quicksand text-[11px] font-bold uppercase tracking-[0.14em] text-[#0a7558] canvas:text-[14px]">What we have now</p>
+                  <p className="mt-0.5 font-bold text-[#2b3278] canvas:text-[18px]"><TourCopy text={item.now} audience={audience} /></p>
+                  {note && <p className="mt-0.5 text-xs text-[#5b6770] canvas:text-[14px]">{note}</p>}
                 </div>
               </div>
             );
@@ -522,7 +522,7 @@ export function SampleJourney({
       </div>
 
       {/* Five names to a row on a phone: tight gaps, and a long name hyphenates on the narrowest screens. */}
-      <ol className="mt-5 grid gap-1 sm:gap-4" style={{ gridTemplateColumns: `repeat(${JOURNEY_STEPS.length}, minmax(0, 1fr))` }}>
+      <ol className="mt-5 grid gap-1 canvas:mt-3.5 canvas:gap-2.5" style={{ gridTemplateColumns: `repeat(${JOURNEY_STEPS.length}, minmax(0, 1fr))` }}>
         {JOURNEY_STEPS.map((item, i) => (
           <li key={item.id}>
             <button
@@ -534,7 +534,7 @@ export function SampleJourney({
             >
               <span className="flex items-center gap-2">
                 <span
-                  className={`hidden h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold sm:flex ${
+                  className={`hidden h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold canvas:flex canvas:text-[14px] ${
                     i < scene
                       ? "border-[#2b3278] bg-[#2b3278] text-white"
                       : i === scene
@@ -544,7 +544,7 @@ export function SampleJourney({
                 >
                   {i + 1}
                 </span>
-                <span className={`hyphens-auto text-[11px] font-bold sm:text-sm ${i <= scene ? "text-[#2b3278]" : "text-[#5b6770]"}`}>{item.name}</span>
+                <span className={`hyphens-auto text-[11px] font-bold canvas:text-[14px] ${i <= scene ? "text-[#2b3278]" : "text-[#5b6770]"}`}>{item.name}</span>
               </span>
               <span className="block h-1.5 overflow-hidden rounded-full bg-[#2b3278]/10">
                 <span

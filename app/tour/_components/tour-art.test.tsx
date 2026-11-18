@@ -59,51 +59,31 @@ describe("SectionBackdrop", () => {
   });
 });
 
-describe("light section motifs", () => {
-  it.each(["assembly", "network", "contours", "radar", "bokeh", "glyphs"] as const)(
-    "draws the %s art as hidden decoration with no text",
-    (motif) => {
-      const { container } = render(<SectionBackdrop variant="light" motif={motif} />);
-      const root = container.firstElementChild!;
-      expect(root.getAttribute("aria-hidden")).toBe("true");
-      expect(root.childElementCount).toBeGreaterThan(2);
-      expect(container.textContent).toBe("");
-    },
-  );
-
-  it("draws the field symbols as generated content", () => {
-    const { container } = render(<SectionBackdrop variant="light" motif="glyphs" />);
-    const symbols = [...container.querySelectorAll("[data-glyph]")].map((g) => g.getAttribute("data-glyph"));
-    expect(symbols).toContain("Σ");
-    expect(symbols).toContain("</>");
-    expect(symbols).toContain("ATG");
-    expect(new Set(symbols).size).toBe(symbols.length);
-  });
-
-  it("points the radar sweep at its own gradient", () => {
-    const { container } = render(<SectionBackdrop variant="light" motif="radar" />);
-    const id = container.querySelector("linearGradient")?.id;
-    expect(id).toBeTruthy();
-    expect(container.querySelector(`path[fill="url(#${id})"]`)).not.toBeNull();
-  });
-
-  it("leaves a plain light section without extra art", () => {
-    const { container } = render(<SectionBackdrop variant="light" />);
-    expect(container.querySelector("svg")).toBeNull();
+describe("the dark slides' backdrop", () => {
+  it.each(["hero", "contact"] as const)("draws the %s aurora as hidden decoration with no text", (variant) => {
+    const { container } = render(<SectionBackdrop variant={variant} />);
+    const root = container.firstElementChild!;
+    expect(root.getAttribute("aria-hidden")).toBe("true");
+    expect(root.childElementCount).toBeGreaterThan(2);
+    expect(container.textContent).toBe("");
   });
 });
 
-describe("FeaturedProject", () => {
-  it("renders the deer example with its range, timeline and a scannable citation", async () => {
+describe("the project slides", () => {
+  it("tell the deer example's story, then its range, timeline and a scannable citation", async () => {
     const { parseTourContent } = await import("@/lib/tour");
-    const { FeaturedProject } = await import("./project-feature");
+    const { ProjectJourney, ProjectStory, hasProjectJourney } = await import("./project-feature");
     const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
     const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
-    const { getByText, getByRole, getAllByText } = render(
-      <FeaturedProject project={tour.projects.items[0]!} audience="students" />,
-    );
-    expect(getByText(/giant puzzle/)).toBeInTheDocument();
-    expect(getByText("Meet Abraham")).toBeInTheDocument();
+    const deer = tour.projects.items[0]!;
+    expect(hasProjectJourney(deer)).toBe(true);
+
+    const story = render(<ProjectStory project={deer} audience="students" />);
+    expect(story.getByText(/giant puzzle/)).toBeInTheDocument();
+    expect(story.getByText("Meet Abraham")).toBeInTheDocument();
+    story.unmount();
+
+    const { getByText, getByRole, getAllByText } = render(<ProjectJourney project={deer} audience="students" />);
     expect(getByText("Cebu").closest("li")).toHaveTextContent("Formerly Cebu");
     expect(getAllByText(/\(done\)/)).toHaveLength(5);
     expect(getByRole("img", { name: /QR code linking to Javier et al\. \(2025\)/ }).querySelector("path")).not.toBeNull();
@@ -112,15 +92,46 @@ describe("FeaturedProject", () => {
       "https://doi.org/10.46471/gigabyte.150",
     );
   });
+
+  it("leave out the second slide when a project has nothing for it", async () => {
+    const { hasProjectJourney } = await import("./project-feature");
+    const bare = {
+      id: "p",
+      title: "A genome",
+      species: null,
+      status: null,
+      commonName: null,
+      image: null,
+      imageFocus: null,
+      imageTitle: null,
+      imageCredit: null,
+      conservation: null,
+      facts: [],
+      range: null,
+      summary: "Summary",
+      highlights: [],
+      steps: [],
+      next: null,
+      partners: [],
+      citation: null,
+    };
+    expect(hasProjectJourney(bare)).toBe(false);
+    expect(hasProjectJourney({ ...bare, next: "More sequencing" })).toBe(true);
+  });
 });
 
 describe("scientific names", () => {
   it("sets them in italics in the deer project's technical summary", async () => {
     const { parseTourContent } = await import("@/lib/tour");
-    const { FeaturedProject } = await import("./project-feature");
+    const { ProjectJourney, ProjectStory } = await import("./project-feature");
     const deerExample = (await import("@/docs/tour-content/visayan-spotted-deer.json")).default;
     const tour = parseTourContent({ version: 1, ...FALLBACK_TOUR, projects: deerExample });
-    const { container } = render(<FeaturedProject project={tour.projects.items[0]!} audience="technical" />);
+    const { container } = render(
+      <>
+        <ProjectStory project={tour.projects.items[0]!} audience="technical" />
+        <ProjectJourney project={tour.projects.items[0]!} audience="technical" />
+      </>,
+    );
     const italics = [...container.querySelectorAll("i")].map((i) => i.textContent);
     expect(italics).toEqual(["Cervus elaphus", "R. alfredi", "Cervus"]);
     expect(container.textContent).not.toContain("*");

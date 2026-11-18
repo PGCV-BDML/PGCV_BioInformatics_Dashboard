@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Pause, Play, Table2, X } from "lucide-react";
 import {
   cumulativeCounts,
   formatMonth,
@@ -58,8 +59,13 @@ type Tree = {
   provinces: string[];
 };
 
+/**
+ * The tree, the monthly counts and the map, in one card. On the canvas it fills
+ * the slide's main element, and the tree takes what height is left.
+ */
 export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
   const [tree, setTree] = useState<Tree | null>(null);
+  const tableDialog = useRef<HTMLDialogElement>(null);
   const [failed, setFailed] = useState(false);
   const [colorBy, setColorBy] = useState<ColorBy>("group");
   const [hover, setHover] = useState<number | null>(null);
@@ -267,7 +273,7 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
   const hovered = hover !== null && tree ? hover : null;
 
   return (
-    <div className="mt-8 rounded-2xl border border-[#2b3278]/10 bg-white p-4 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] md:p-6">
+    <div className="mt-8 rounded-2xl border border-[#2b3278]/10 bg-white p-4 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] canvas:mt-0 canvas:flex canvas:h-full canvas:flex-col canvas:px-4 canvas:py-3">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div role="radiogroup" aria-label="Colour the tree by" className="flex rounded-full border border-[#2b3278]/15 p-1 text-sm">
@@ -316,12 +322,12 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
         </div>
       </div>
 
-      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
-        <div className="min-w-0">
+      <div className="mt-5 canvas:mt-3 canvas:grid canvas:min-h-0 canvas:flex-1 canvas:grid-cols-[minmax(0,1fr)_460px] canvas:gap-4">
+        <div className="min-w-0 canvas:flex canvas:min-h-0 canvas:flex-col">
           {/* Tree — sized to the screen when presenting so the whole slide fits */}
           <div
             ref={treeBox}
-            className="relative h-[360px] overflow-hidden md:h-[460px] md:group-data-presenting/tour:h-[clamp(280px,calc(100svh_-_730px),460px)]"
+            className="relative h-[360px] overflow-hidden canvas:h-auto canvas:min-h-0 canvas:flex-1"
             onPointerMove={onTreeMove}
             onPointerLeave={() => setHover(null)}
           >
@@ -392,12 +398,22 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
           </div>
 
           {/* Frequency */}
-          <div className="mt-4 flex items-baseline justify-between gap-4 text-xs font-semibold text-[#5b6770]">
+          <div className="mt-4 flex items-baseline justify-between gap-4 text-xs font-semibold text-[#5b6770] canvas:mt-2 canvas:text-[14px]">
             <span>Genomes sequenced per month</span>
-            {freq && <span className="tabular-nums">peak {freq.peak.toLocaleString("en-PH")}</span>}
+            {freq && <span className="ml-auto tabular-nums">peak {freq.peak.toLocaleString("en-PH")}</span>}
+            {freq && (
+              <button
+                type="button"
+                onClick={() => tableDialog.current?.showModal?.()}
+                className="inline-flex items-center gap-1 font-semibold text-[#2a7797] hover:underline"
+              >
+                <Table2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Show as a table
+              </button>
+            )}
           </div>
           <div
-            className="relative mt-1 h-24 md:h-28"
+            className="relative mt-1 h-24 canvas:h-12"
             onPointerMove={onFreqMove}
             onPointerLeave={() => setHoverMonth(null)}
           >
@@ -438,7 +454,7 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
           </div>
 
           {/* Time axis */}
-          <div className="relative mt-1 h-8 text-[11px] text-[#5b6770]" aria-hidden="true">
+          <div className="relative mt-1 h-8 text-[11px] text-[#5b6770] canvas:h-9 canvas:text-[14px]" aria-hidden="true">
             {ticks.map((t) => (
               <span key={t.key} className="absolute top-0 -translate-x-1/2 text-center leading-tight" style={{ left: `${t.left}%` }}>
                 <span className="block max-sm:hidden">{t.label}</span>
@@ -449,7 +465,7 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
         </div>
 
         {/* Map with live counts, Nextstrain-style */}
-        <div className="mt-6 border-t border-[#2b3278]/10 pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+        <div className="mt-6 border-t border-[#2b3278]/10 pt-4 canvas:mt-0 canvas:min-h-0 canvas:border-l canvas:border-t-0 canvas:pl-4 canvas:pt-0">
           {tree && cumulative ? (
             <PhyloMap
               cumulative={cumulative}
@@ -464,12 +480,12 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
               onFocusProvince={setFocusProvince}
             />
           ) : (
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm lg:flex-col">
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm canvas:flex-col">
               {categories.map((c, k) =>
                 c.count > 0 ? (
                   <li key={c.label} className="flex items-center gap-2">
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[k] }} aria-hidden="true" />
-                    <span className="font-medium text-[#333333] lg:flex-1">{c.label}</span>
+                    <span className="font-medium text-[#333333] canvas:flex-1">{c.label}</span>
                     <span className="tabular-nums text-[#5b6770]">{c.count.toLocaleString("en-PH")}</span>
                   </li>
                 ) : null,
@@ -479,35 +495,56 @@ export function PhyloTree({ summary }: { summary: TourPhyloSummary }) {
         </div>
       </div>
 
-      {freq && (
-        <details className="mt-4 text-sm">
-          <summary className="cursor-pointer font-semibold text-[#2a7797]">Show as a table</summary>
-          <div className="mt-3 max-h-72 overflow-auto">
-            <table className="w-full border-collapse text-left tabular-nums">
-              <thead className="sticky top-0 bg-white text-[#5b6770]">
-                <tr>
-                  <th className="py-1 pr-3 font-semibold">Month</th>
-                  {categories.map((c) => (
-                    <th key={c.label} className="py-1 pr-3 font-semibold">{c.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {months.map((m, i) =>
-                  at(freq.series, i).some((v) => v > 0) ? (
-                    <tr key={m} className="border-t border-[#2b3278]/[0.07]">
-                      <td className="py-1 pr-3 font-medium">{formatMonth(m)}</td>
-                      {at(freq.series, i).map((v, k) => (
-                        <td key={k} className="py-1 pr-3">{v || ""}</td>
-                      ))}
-                    </tr>
-                  ) : null,
-                )}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
+      {freq &&
+        typeof document !== "undefined" &&
+        createPortal(
+          // In the page's body, so the slide's zoom doesn't size it.
+          <dialog
+            ref={tableDialog}
+            aria-label="Genomes sequenced per month"
+            className="m-auto max-h-[80vh] w-[min(56rem,calc(100vw-2rem))] rounded-2xl border border-[#2b3278]/10 bg-white p-0 text-sm text-[#333333] shadow-2xl backdrop:bg-[#1c2152]/50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) e.currentTarget.close();
+            }}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-[#2b3278]/10 px-5 py-3">
+              <p className="font-bold text-[#2b3278]">Genomes sequenced per month</p>
+              <button
+                type="button"
+                onClick={() => tableDialog.current?.close()}
+                aria-label="Close the table"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#2b3278] hover:bg-[#f0e8f2]"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="max-h-[calc(80vh-3.5rem)] overflow-auto px-5 pb-4">
+              <table className="w-full border-collapse text-left tabular-nums">
+                <thead className="sticky top-0 bg-white text-[#5b6770]">
+                  <tr>
+                    <th className="py-1 pr-3 font-semibold">Month</th>
+                    {categories.map((c) => (
+                      <th key={c.label} className="py-1 pr-3 font-semibold">{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map((m, i) =>
+                    at(freq.series, i).some((v) => v > 0) ? (
+                      <tr key={m} className="border-t border-[#2b3278]/[0.07]">
+                        <td className="py-1 pr-3 font-medium">{formatMonth(m)}</td>
+                        {at(freq.series, i).map((v, k) => (
+                          <td key={k} className="py-1 pr-3">{v || ""}</td>
+                        ))}
+                      </tr>
+                    ) : null,
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </dialog>,
+          document.body,
+        )}
     </div>
   );
 }
