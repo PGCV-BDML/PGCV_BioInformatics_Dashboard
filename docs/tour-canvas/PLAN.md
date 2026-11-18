@@ -226,8 +226,8 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
   and Bioinformatics Training. Until that branch reaches `main`, the live site shrinks those slides as far as 0.85×.
 - **Research agenda, Technical:** the full project titles (up to 156 characters) don't fit five columns, or five rows.
   On the canvas Technical shows each project's name and partners, as the deck does; phones keep the full titles.
-- **COVID-19:** with live data there are four tiles, so they sit in a row above the chart rather than in a column
-  beside it.
+- **COVID-19:** the four live tiles first sat in a row above the chart. Since 18 November 2026 they are a column on
+  the left (300 px, sharing its height), as planned, and the chart fills the rest, so it is taller and its bars wider.
 - **Variant tree:** the headline numbers (genomes, dates, provinces) sit at the right of the title's row, and the
   province map's labels are drawn at 24 units so they show at 14 px.
 - **Sample results:** only two figures needed bigger text once measured: the genome ring (14) and the gene heatmap
