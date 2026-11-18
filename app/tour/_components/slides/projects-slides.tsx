@@ -1,31 +1,28 @@
 import type { TourProject } from "@/lib/tour";
-import { ProjectJourney, ProjectStory } from "../project-feature";
+import { ProjectFeature, ProjectPaper } from "../project-feature";
 import { LightSlide } from "../slide-frame";
 import type { SlideProps } from "./shared";
 
 type ProjectSlideProps = Omit<SlideProps, "content"> & { project: TourProject; heading: string };
 
-/** A project's first slide: its photo, story and numbers. */
-export function ProjectStorySlide({ project, heading, audience, meta }: ProjectSlideProps) {
-  return (
-    <LightSlide meta={meta} eyebrow="Research highlights" title={heading} source={project.imageCredit ? `Photo: ${project.imageCredit}` : undefined}>
-      <ProjectStory project={project} audience={audience} />
-    </LightSlide>
-  );
-}
-
-/** A project's second slide: from sample to genome, and where to read more. */
-export function ProjectJourneySlide({ project, audience, meta }: Omit<ProjectSlideProps, "heading">) {
-  const name = project.commonName ?? project.species ?? project.title;
-  const citation = project.citation;
+/**
+ * A project's slide: its photo, story and numbers, and its journey from sample
+ * to genome, with the paper's QR code beside the title. The source line credits
+ * the photo, then the paper's note (its other partners and data), except for
+ * Visual, which leaves the note out.
+ */
+export function ProjectSlide({ project, heading, audience, meta }: ProjectSlideProps) {
+  const note = audience === "visual" ? null : project.citation?.note;
+  const source = [project.imageCredit ? `Photo: ${project.imageCredit}` : null, note].filter(Boolean).join(" · ");
   return (
     <LightSlide
       meta={meta}
-      eyebrow={`Research highlights · ${name}`}
-      title="From sample to genome"
-      source={citation ? `${citation.text} · ${citation.url.replace(/^https?:\/\//, "")}` : undefined}
+      eyebrow="Research highlights"
+      title={heading}
+      source={source || undefined}
+      aside={project.citation ? <ProjectPaper project={project} /> : undefined}
     >
-      <ProjectJourney project={project} audience={audience} />
+      <ProjectFeature project={project} audience={audience} />
     </LightSlide>
   );
 }

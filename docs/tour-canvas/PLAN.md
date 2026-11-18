@@ -234,6 +234,12 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
   (13, on taller rows). The Venn diagram's overlap labels went from 11 to 12.
 - **Sample to sequence:** the stage is 500 x 284, so the longest Technical step fits beside it.
 - **Present mode:** the control bar fades after three still seconds, as in the decks, so it doesn't hide the footer.
+- **Projects (slides 12 and 13 merged, 18 November 2026):** each project is now one slide, in three columns: the
+  photo, with where the species lives along its foot; the story and the four numbers in a 2 × 2 grid; and the five
+  steps as a timeline ending in what's next, with the partner under it. The paper's link and QR code sit beside the
+  slide's title, and its note (other partners, GenBank) joins the photo credit in the source line. To fit, the text
+  is smaller than elsewhere (16 px summary, 26 px project title, 24 px numbers, 14 px notes and labels); Visual keeps
+  the photo, the numbers, the steps' names and the QR code.
 
 - **Title slide** (chosen from three live mockups on 18 November 2026: the helix, with the reads mockup's fact cards):
   the white PGC Visayas logo beside the eyebrow; a double helix turning down the right side, its bases flying into a
