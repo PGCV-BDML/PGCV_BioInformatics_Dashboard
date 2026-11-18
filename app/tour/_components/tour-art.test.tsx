@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FALLBACK_TOUR } from "@/lib/tour";
-import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import { hasServiceIcon, ServiceIcon } from "./service-icons";
 import { hasTrainingIcon, TrainingDisc } from "./training-icons";
@@ -46,27 +45,9 @@ describe("TrainingDisc", () => {
   });
 });
 
-describe("LogoHelix", () => {
-  it("gives each instance its own gradient ids", () => {
-    const { container } = render(
-      <>
-        <LogoHelix />
-        <LogoHelix onDark />
-      </>,
-    );
-    const ids = [...container.querySelectorAll("linearGradient")].map((g) => g.id);
-    expect(ids).toHaveLength(6);
-    expect(new Set(ids).size).toBe(6);
-    for (const path of container.querySelectorAll("path, line")) {
-      const ref = path.getAttribute("stroke")?.match(/^url\(#(.+)\)$/)?.[1];
-      expect(ids).toContain(ref);
-    }
-  });
-});
-
 describe("SectionBackdrop", () => {
   it("keeps the sequence texture out of the page text", () => {
-    const { container } = render(<SectionBackdrop variant="hero" />);
+    const { container } = render(<SectionBackdrop />);
     const rows = [...container.querySelectorAll("[data-seq]")].map((row) => row.getAttribute("data-seq") ?? "");
     expect(container.textContent).toBe("");
     expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
@@ -81,8 +62,8 @@ describe("SectionBackdrop", () => {
 });
 
 describe("the dark slides' backdrop", () => {
-  it.each(["hero", "contact"] as const)("draws the %s aurora as hidden decoration with no text", (variant) => {
-    const { container } = render(<SectionBackdrop variant={variant} />);
+  it("draws the aurora as hidden decoration with no text", () => {
+    const { container } = render(<SectionBackdrop />);
     const root = container.firstElementChild!;
     expect(root.getAttribute("aria-hidden")).toBe("true");
     expect(root.childElementCount).toBeGreaterThan(2);

@@ -1,89 +1,31 @@
-/* eslint-disable @next/next/no-img-element -- the white logo is a static asset inside a zoomed canvas. */
 import type { CSSProperties } from "react";
 import { DarkSlide } from "../slide-frame";
-import { SectionBackdrop } from "../section-backdrop";
 import { TourCopy } from "../tour-copy";
+import { BASE_COLOR, pairCentre, TurningHelix, type Base, type HelixPlacement } from "../turning-helix";
 import { useOnScreen } from "../use-reveal";
 import styles from "../tour-motion.module.css";
 import art from "./welcome.module.css";
+import { BrandLine, DARK_SLIDE_BACKGROUND, DarkSlideArt, GradientLastWord } from "./dark-parts";
 import { delay, stagger, type SlideProps } from "./shared";
 
-type Base = "A" | "C" | "G" | "T";
-const PARTNER: Record<Base, Base> = { A: "T", T: "A", C: "G", G: "C" };
-const BASE_COLOR: Record<Base, string> = { A: "var(--base-a)", C: "var(--base-c)", G: "var(--base-g)", T: "var(--base-t)" };
 const BASE_CLASS: Record<Base, string | undefined> = { A: art.A, C: art.C, G: art.G, T: art.T };
 
-/* An illustration, not real data: one strand of the helix, and the read it is sequenced into. */
-const STRAND = "ATGCGTACCGGATTACAGCTTGACCGATCG";
+/* An illustration, not real data: the read the helix is sequenced into. */
 const READ = "TACGGAGGGTGCAAGCGTTAATCGGA";
 const QUALITY = "IIIIIHHHHGGGFFFIIIHHHGGGFF";
 
-/* The helix on the canvas: 28 pairs 30px apart, tilted 14°, a full turn every 12 seconds. */
-const PAIRS = 28;
-const PAIR_GAP = 30;
-const TURN_S = 12;
-const HALF_WIDTH = 78;
-const TILT = (14 * Math.PI) / 180;
-const HELIX = { x: 1000, top: -60, height: 840 };
+/** The helix down the right side: 28 pairs, from above the slide to below it, tilted 14°. */
+const STANDING_HELIX: HelixPlacement = { x: 1000, y: 360, pairs: 28, tilt: 14 };
 /* The read's card, and where its sequence line's letters sit. */
 const READ_CARD = { x: 836, y: 468 };
 const READ_CHAR = { x: READ_CARD.x + 16, width: 9.6, y: READ_CARD.y + 34 + 12 + 25.6 - 4 };
 
-/** Where a bead stands at a point in its turn: across with cos, forward (bigger, brighter) with sin. */
-function beadAt(progress: number) {
-  const angle = progress * 2 * Math.PI;
-  const depth = Math.sin(angle);
-  return {
-    "--x": `${(HALF_WIDTH * Math.cos(angle)).toFixed(1)}px`,
-    "--k": (0.9 + 0.3 * depth).toFixed(3),
-    "--o": (depth >= 0 ? 0.8 + 0.2 * depth : 0.8 + 0.4 * depth).toFixed(3),
-    "--z": depth > 0.3 ? 3 : depth < -0.3 ? 1 : 2,
-  };
-}
-
 const css = (vars: Record<string, string | number>) => vars as CSSProperties;
-
-/** The centre of pair `i` on the canvas, after the helix's tilt. */
-function pairCentre(i: number): [number, number] {
-  const fromMiddle = i * PAIR_GAP - HELIX.height / 2;
-  return [HELIX.x - fromMiddle * Math.sin(TILT), HELIX.top + HELIX.height / 2 + fromMiddle * Math.cos(TILT)];
-}
-
-function Helix() {
-  return (
-    <div className={art.helix}>
-      {Array.from({ length: PAIRS }, (_, i) => {
-        const base = STRAND[i % STRAND.length] as Base;
-        const partner = PARTNER[base];
-        // Each pair is a twelfth of a turn on from the one above.
-        const progress = (i % TURN_S) / TURN_S;
-        return (
-          <div key={i} className={art.pair} style={{ top: i * PAIR_GAP }}>
-            <span
-              className={art.rung}
-              style={css({
-                "--c1": BASE_COLOR[base],
-                "--c2": BASE_COLOR[partner],
-                "--r": Math.cos(progress * 2 * Math.PI).toFixed(3),
-                "--d": `${-i}s`,
-              })}
-            />
-            <span className={art.bead} style={css({ "--c": BASE_COLOR[base], ...beadAt(progress), "--d": `${-i}s` })} />
-            <span
-              className={art.bead}
-              style={css({ "--c": BASE_COLOR[partner], ...beadAt(progress + 0.5), "--d": `${-i - TURN_S / 2}s` })}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 /** Bases leaving the upper helix for their places in the read, one every 0.55 seconds. */
 function FlyingBases() {
   return [4, 6, 8, 10, 12, 5, 9, 11, 7].map((pair, k) => {
-    const [x, y] = pairCentre(pair);
+    const [x, y] = pairCentre(STANDING_HELIX, pair);
     const at = 1 + k * 3; // the read's 2nd, 5th … 26th base
     const base = READ[at] as Base;
     return (
@@ -173,13 +115,6 @@ function StorageGauge() {
   );
 }
 
-/** The title with its last word in the mint-to-sky gradient. */
-function splitLastWord(title: string): [string, string] {
-  const trimmed = title.trim();
-  const at = trimmed.lastIndexOf(" ");
-  return at < 0 ? ["", trimmed] : [trimmed.slice(0, at + 1), trimmed.slice(at + 1)];
-}
-
 /**
  * The title slide: the lab's logo and the words on the left, held still once
  * they have risen in; on the right, a double helix turning, its bases flying
@@ -188,45 +123,28 @@ function splitLastWord(title: string): [string, string] {
  */
 export function WelcomeSlide({ content, audience }: Omit<SlideProps, "meta">) {
   const { hero } = content;
-  const [artRef, onScreen] = useOnScreen<HTMLDivElement>();
+  const [screenRef, onScreen] = useOnScreen<HTMLSpanElement>();
   const paused = onScreen === false ? (art.paused ?? "") : "";
-  const [head, last] = splitLastWord(hero.title);
   return (
     <DarkSlide
-      background="linear-gradient(135deg,#2b3278 0%,#5e205e 45%,#2a7797 85%,#12ca99 130%)"
+      background={DARK_SLIDE_BACKGROUND}
       innerClassName={`${art.slide} canvas:flex canvas:flex-col canvas:items-start canvas:justify-center`}
       art={
-        <>
-          <SectionBackdrop variant="hero" />
-          {/* Keeps the headline side dark enough for white text over the aurora. */}
-          <span
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(28,33,82,0.75)_0%,rgba(28,33,82,0.4)_50%,rgba(28,33,82,0.1)_80%)]"
-            aria-hidden="true"
-          />
-          <div ref={artRef} className={`${art.slide} ${art.art} ${paused}`} aria-hidden="true">
-            <Helix />
+        <DarkSlideArt screenRef={screenRef}>
+          <div className={`${art.slide} ${art.art} ${paused}`} aria-hidden="true">
+            <TurningHelix placement={STANDING_HELIX} />
             <FlyingBases />
             <ReadCard />
           </div>
-          <span
-            className="absolute inset-x-0 bottom-0 h-1.5 bg-[linear-gradient(90deg,#ff8601,#c51b4a,#8a2990,#0176c3)]"
-            aria-hidden="true"
-          />
-        </>
+        </DarkSlideArt>
       }
     >
-      <div className={`flex items-center gap-4 ${styles.enter}`} style={delay(100)}>
-        <img src="/assets/PGC-VSF_Logo-W.png" alt="Philippine Genome Center Visayas" width={118} height={40} className="h-8 w-auto canvas:h-9" />
-        <p className="border-l border-white/25 pl-4 font-quicksand text-xs font-bold uppercase tracking-[0.2em] text-[#9ff0d8] canvas:text-[14px]">
-          {hero.eyebrow}
-        </p>
-      </div>
+      <BrandLine eyebrow={hero.eyebrow} />
       <h1
         className={`mt-5 max-w-3xl text-4xl font-black leading-[1.08] tracking-tight text-balance canvas:mt-4 canvas:max-w-[640px] canvas:text-[64px] canvas:leading-[1.05] ${styles.enter}`}
         style={delay(250)}
       >
-        {head}
-        <span className="bg-[linear-gradient(90deg,#9ff0d8,#5aaef0)] bg-clip-text text-transparent">{last}</span>
+        <GradientLastWord text={hero.title} />
       </h1>
       {audience !== "visual" && (
         <p

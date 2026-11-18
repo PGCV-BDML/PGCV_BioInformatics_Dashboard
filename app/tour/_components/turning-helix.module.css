@@ -1,0 +1,96 @@
+/*
+ * The turning double helix of the tour's dark slides: down the title slide's
+ * right side, and across the contact slide. Canvas pixels. Decoration only:
+ * motion on transform and opacity, still for prefers-reduced-motion. The
+ * slide pauses it while it is off screen.
+ */
+
+.helix {
+  --base-a: #7fe3cc;
+  --base-c: #5aaef0;
+  --base-g: #ffc145;
+  --base-t: #f25c80;
+  position: absolute;
+  width: 0;
+  transform-origin: 0 50%;
+}
+
+.pair {
+  position: absolute;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Each bead sits where its turn starts (--x, --k, --o); the animation swings it across and back. */
+.bead {
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 14px var(--c);
+  opacity: var(--o);
+  transform: translateX(var(--x)) scale(var(--k));
+  z-index: var(--z);
+}
+
+/* The rung, in its pair's two colours, as wide as the beads swing (--hw either side); it flips as the pair turns edge-on. */
+.rung {
+  position: absolute;
+  left: calc(var(--hw) * -1);
+  top: -2px;
+  width: calc(var(--hw) * 2);
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--c2) 50%, var(--c1) 50%);
+  opacity: 0.75;
+  transform: scaleX(var(--r));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bead {
+    animation: turn 12s linear infinite;
+    animation-delay: var(--d);
+  }
+
+  .rung {
+    animation: flip 12s linear infinite;
+    animation-delay: var(--d);
+  }
+}
+
+/* One turn: x follows cos, size and brightness follow sin (front: large and bright; back: small and faint). */
+@keyframes turn {
+  0%     { transform: translateX(var(--hw)) scale(0.9);                opacity: 0.8;  z-index: 2; }
+  8.33%  { transform: translateX(calc(var(--hw) * 0.866)) scale(1.04); opacity: 0.92; z-index: 3; }
+  16.67% { transform: translateX(calc(var(--hw) * 0.5)) scale(1.15);   opacity: 1;    z-index: 3; }
+  25%    { transform: translateX(0) scale(1.2);                        opacity: 1;    z-index: 3; }
+  33.33% { transform: translateX(calc(var(--hw) * -0.5)) scale(1.15);  opacity: 1;    z-index: 3; }
+  41.67% { transform: translateX(calc(var(--hw) * -0.866)) scale(1.04); opacity: 0.92; z-index: 3; }
+  50%    { transform: translateX(calc(var(--hw) * -1)) scale(0.9);     opacity: 0.8;  z-index: 2; }
+  58.33% { transform: translateX(calc(var(--hw) * -0.866)) scale(0.76); opacity: 0.6; z-index: 1; }
+  66.67% { transform: translateX(calc(var(--hw) * -0.5)) scale(0.66);  opacity: 0.45; z-index: 1; }
+  75%    { transform: translateX(0) scale(0.62);                       opacity: 0.4;  z-index: 1; }
+  83.33% { transform: translateX(calc(var(--hw) * 0.5)) scale(0.66);   opacity: 0.45; z-index: 1; }
+  91.67% { transform: translateX(calc(var(--hw) * 0.866)) scale(0.76); opacity: 0.6;  z-index: 1; }
+  100%   { transform: translateX(var(--hw)) scale(0.9);                opacity: 0.8;  z-index: 2; }
+}
+
+@keyframes flip {
+  0%     { transform: scaleX(1); }
+  8.33%  { transform: scaleX(0.866); }
+  16.67% { transform: scaleX(0.5); }
+  25%    { transform: scaleX(0); }
+  33.33% { transform: scaleX(-0.5); }
+  41.67% { transform: scaleX(-0.866); }
+  50%    { transform: scaleX(-1); }
+  58.33% { transform: scaleX(-0.866); }
+  66.67% { transform: scaleX(-0.5); }
+  75%    { transform: scaleX(0); }
+  83.33% { transform: scaleX(0.5); }
+  91.67% { transform: scaleX(0.866); }
+  100%   { transform: scaleX(1); }
+}

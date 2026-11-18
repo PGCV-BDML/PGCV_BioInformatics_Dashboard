@@ -13,7 +13,6 @@
   stroke-dasharray: 1;
 }
 
-.rung,
 .rise,
 .pop,
 .slideLeft,
@@ -32,7 +31,6 @@
   transform-origin: left;
 }
 
-.rung,
 .pop,
 .flicker,
 .pulse {
@@ -77,11 +75,6 @@
 @media (prefers-reduced-motion: no-preference) {
   .draw {
     animation: tour-draw 1.4s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
-    animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
-  }
-
-  .rung {
-    animation: tour-grow-y 0.5s var(--ease-tour, cubic-bezier(0.22, 1, 0.36, 1)) both;
     animation-delay: calc(var(--base, 0ms) + var(--d, 0ms));
   }
 
@@ -209,11 +202,11 @@
 }
 
 @media (scripting: enabled) {
-  [data-reveal="pending"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
+  [data-reveal="pending"] :is(.draw, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
     animation-play-state: paused;
   }
 
-  [data-reveal="reset"] :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
+  [data-reveal="reset"] :is(.draw, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn, .wipe) {
     animation: none;
   }
 }
@@ -418,7 +411,7 @@
     visibility: visible;
   }
 
-  :is(.draw, .rung, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
+  :is(.draw, .rise, .pop, .slideLeft, .slideRight, .enter, .growX, .bar, .fadeIn) {
     animation: none !important;
   }
 }
