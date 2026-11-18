@@ -39,8 +39,9 @@ the logo gradient, an entrance when the slide comes into view and a small loop o
   slide is never empty.
 - **`app/tour/_components/`**: the three new icons go beside the Services ones, and `trainings-slide.tsx` lays out the
   chosen option. A training added to `tour.json` without a drawn icon falls back to its initials, as services do.
-- The slide's "Photos: …" source line goes. The dashboard no longer shows the photos in `images/trainings/`; the
-  content repo's static deck (`deck.js`) still does.
+- The slide's "Photos: …" source line goes. Neither the dashboard nor the content repo's static deck shows the photos
+  in `images/trainings/` any more: the deck's trainings slide is the same path (a `path` layout in `deck-art.js`), with
+  shorter summaries to stay within its word limit.
 
 The one-line summaries in the mockups are drafts for the General audience. The Students and Technical versions were
 written with the build, in `tour.json`.
