@@ -25,14 +25,17 @@ export function InfrastructureSlide({ content, audience, meta }: SlideProps) {
       title={infrastructure.title}
       intro={audience !== "visual" && <TourCopy text={infrastructure.analogy} audience={audience} />}
     >
-      <div className="space-y-6 canvas:grid canvas:auto-cols-fr canvas:grid-flow-col canvas:items-start canvas:gap-6 canvas:space-y-0">
+      {/* On the canvas the cards share two rows through subgrid (photo and words,
+          then specs), so both cards are the same height and their spec tiles
+          start on the same line and match in size, whatever the copy's length. */}
+      <div className="space-y-6 canvas:grid canvas:auto-cols-fr canvas:grid-flow-col canvas:grid-rows-[auto_auto] canvas:gap-x-6 canvas:gap-y-0 canvas:space-y-0">
         {infrastructure.items.map((item, itemIndex) => {
           const src = tourAssetUrl(item.image);
           return (
             <article
               key={item.id}
               style={stagger(itemIndex)}
-              className={`${styles.enter} flex flex-col gap-6 rounded-3xl border border-[#2b3278]/10 bg-white p-6 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] canvas:gap-0 canvas:rounded-2xl canvas:px-5 canvas:py-[18px]`}
+              className={`${styles.enter} flex flex-col gap-6 rounded-3xl border border-[#2b3278]/10 bg-white p-6 shadow-[0_10px_30px_-12px_rgba(43,50,120,0.18)] canvas:row-span-2 canvas:grid canvas:grid-rows-subgrid canvas:gap-0 canvas:rounded-2xl canvas:px-5 canvas:py-[18px]`}
             >
               <div className="flex flex-col gap-6 canvas:grid canvas:grid-cols-[136px_minmax(0,1fr)] canvas:items-start canvas:gap-5">
                 {src && (
