@@ -1,0 +1,379 @@
+/*
+ * The tour's slides, on the canvas of the bioinfo-presentations decks
+ * (template/lab-tour.html, "Slide canvas and primitives" and "Present mode").
+ *
+ * From 768px up, every slide is laid out at exactly 1280 x 720 and scaled by
+ * one factor for the whole tour (--s, from deck-scale.ts), with the decks'
+ * margins, type sizes and footer. Below 768px the slides are stacked blocks
+ * as wide as the phone, and nothing here scales them.
+ *
+ * Sizes on the canvas are canvas pixels: a 1080p screen shows them at 1.5x.
+ */
+
+.deck {
+  --m-top: 68px;
+  --m-side: 84px;
+  --m-bottom: 80px;
+
+  --t-source: 13px;
+  --t-label: 14px;
+  --t-eyebrow: 15px;
+  --t-card: 18px;
+  --t-name: 20px;
+  --t-body: 22px;
+  --t-takeaway: 26px;
+  --t-title: 46px;
+  --t-hero: 64px;
+
+  --navy: #2b3278;
+  --night: #1c2152;
+  --teal: #12ca99;
+  --teal-ink: #0a7558;
+  --muted: #5b6770;
+  --page: #f7f6fa;
+  --desk: #e6e5ee;
+}
+
+/* ===== Phones: stacked slides ============================================= */
+
+.section {
+  position: relative;
+  /* Clear of the sticky header when the page scrolls to a slide. */
+  scroll-margin-top: 64px;
+}
+
+.canvas {
+  position: relative;
+}
+
+.light {
+  position: relative;
+  overflow: hidden;
+  background: var(--page);
+  padding: 64px 16px 48px;
+}
+
+.topline {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #ff8601, #e5332a, #c51b4a, #9c1f7a, #8a2990, #65328f, #3b3694, #0176c3);
+}
+
+/* The dot grid, always in the top-right corner. */
+.dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgb(43 50 120 / 0.22) 1.1px, transparent 1.6px);
+  background-size: 20px 20px;
+  mask-image: radial-gradient(ellipse 44% 60% at 100% 0%, #000 0%, transparent 72%);
+}
+
+.wrap {
+  position: relative;
+  max-width: 72rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 24px;
+  font-family: var(--font-quicksand);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--teal-ink);
+}
+
+.ebar {
+  display: block;
+  flex-shrink: 0;
+  height: 2px;
+  width: 32px;
+  border-radius: 9999px;
+  background: var(--teal);
+}
+
+.title {
+  margin-top: 12px;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  color: var(--navy);
+}
+
+.intro {
+  margin-top: 12px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.aside {
+  margin-top: 12px;
+}
+
+.main {
+  margin-top: 32px;
+  min-width: 0;
+}
+
+.takeawayBlock {
+  padding-top: 24px;
+}
+
+.takeaway {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  color: var(--teal-ink);
+}
+
+.foot {
+  position: relative;
+  max-width: 72rem;
+  margin: 16px auto 0;
+}
+
+.footRow {
+  display: none;
+}
+
+.source {
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Dark slides: the welcome and contact slides. */
+.dark {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  padding: 64px 16px;
+}
+
+.darkInner {
+  position: relative;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+/* ===== The canvas, from 768px up ========================================== */
+
+@media (width >= 48rem) {
+  .deck {
+    display: grid;
+    justify-content: center;
+    gap: 24px;
+    padding: 24px 16px 40px;
+    background: var(--desk);
+  }
+
+  .section {
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow:
+      0 1px 0 rgb(43 50 120 / 0.06),
+      0 14px 30px -18px rgb(28 33 82 / 0.45);
+    /* Clear of the sticky header when the page scrolls to a slide. */
+    scroll-margin-top: 88px;
+  }
+
+  /* Laid out at 1280 x 720, then zoomed to the tour's scale. */
+  .canvas {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    zoom: var(--s, 1);
+  }
+
+  .light,
+  .dark {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+  }
+
+  /* The content area: the same margins on every light slide. */
+  .wrap {
+    position: absolute;
+    inset: var(--m-top) var(--m-side) var(--m-bottom);
+    max-width: none;
+    margin: 0;
+  }
+
+  /* A slide with a source gives up a little of its content area, so the source has air above it. */
+  .hasSource .wrap {
+    bottom: calc(var(--m-bottom) + 12px);
+  }
+
+  /* Nothing in a content area shrinks to fit: too much shows as overflow, which the fit check names. */
+  .wrap > * {
+    flex-shrink: 0;
+  }
+
+  .eyebrow {
+    font-size: var(--t-eyebrow);
+  }
+
+  .title {
+    margin-top: 13px;
+    max-width: 1040px;
+    font-size: var(--t-title);
+    line-height: 1.08;
+  }
+
+  .intro {
+    margin-top: 13px;
+    max-width: 1040px;
+    font-size: var(--t-body);
+    line-height: 1.4;
+  }
+
+  /* A slide's headline numbers: at the right end of the title's row. */
+  .aside {
+    position: absolute;
+    top: 37px;
+    right: 0;
+    margin: 0;
+    text-align: right;
+  }
+
+  /* The main element takes the room left between the header and the takeaway. */
+  .main {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    margin-top: 32px;
+  }
+
+  .fit {
+    height: 100%;
+  }
+
+  .takeawayBlock {
+    padding-top: 16px;
+  }
+
+  .takeaway {
+    max-width: 1056px;
+    font-size: var(--t-takeaway);
+    line-height: 1.25;
+  }
+
+  /* The footer: the logo at the left; the tour's title and the slide number at the right;
+     the slide's source, when it has one, on one line just above them. */
+  .foot {
+    position: absolute;
+    left: var(--m-side);
+    right: var(--m-side);
+    bottom: 24px;
+    max-width: none;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .footRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .logo {
+    display: block;
+    height: 30px;
+    width: auto;
+  }
+
+  .footMeta {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+
+  .footTitle {
+    font-family: var(--font-quicksand);
+    font-size: var(--t-source);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .slideNum {
+    font-size: var(--t-label);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--navy);
+  }
+
+  .source {
+    overflow: hidden;
+    font-size: var(--t-source);
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Dark slides keep the light slides' margins, with their words centred between top and bottom. */
+  .darkInner {
+    position: absolute;
+    inset: var(--m-top) var(--m-side) var(--m-bottom);
+    max-width: none;
+    margin: 0;
+  }
+
+  /* --- Present mode ------------------------------------------------------
+     Nothing changes inside a slide. Each section fills the screen; the slide
+     is centred in it at the screen's scale. Where the screen isn't 16:9 the
+     slide grows by --bleed-x and --bleed-y on each side so its background
+     reaches the edges, and its margins grow by as much: the content keeps
+     its 1280 x 720 place in the middle. */
+  [data-presenting] .deck {
+    display: block;
+    padding: 0;
+    background: var(--night);
+  }
+
+  [data-presenting] .section {
+    display: grid;
+    place-items: center;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+    scroll-margin-top: 0;
+    scroll-snap-align: start;
+  }
+
+  [data-presenting] .canvas {
+    --m-top: calc(68px + var(--bleed-y, 0px));
+    --m-side: calc(84px + var(--bleed-x, 0px));
+    --m-bottom: calc(80px + var(--bleed-y, 0px));
+    width: calc(1280px + 2 * var(--bleed-x, 0px));
+    height: calc(720px + 2 * var(--bleed-y, 0px));
+  }
+}
+
+/* The fit check's mark on a slide that runs past its margins (development only). */
+.overflowing {
+  outline: 4px solid #c8281e;
+  outline-offset: -4px;
+}

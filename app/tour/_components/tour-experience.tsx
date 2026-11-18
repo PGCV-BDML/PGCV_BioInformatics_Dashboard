@@ -1,79 +1,121 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ImageIcon, Maximize2, Music, Pause, Play, VolumeX, X } from "lucide-react";
-import { AUDIENCE_LABELS, AUDIENCES, tourMusicUrl, type Audience, type TourContent } from "@/lib/tour";
+import {
+  AUDIENCE_LABELS,
+  AUDIENCES,
+  tourMusicUrl,
+  type Audience,
+  type TourContent,
+  type TourProject,
+} from "@/lib/tour";
 import { JOURNEY_STEPS } from "@/lib/tour-journey";
+import { SHOWCASE_COPY, type ShowcaseCopy } from "@/lib/tour-showcase";
 import type { TourCovidStats } from "@/lib/tour-stats";
 import type { TourPhyloSummary } from "@/lib/tour-phylo";
 import type { TourVirusSummary } from "@/lib/tour-virus";
-import {
-  AgendaSection,
-  ContactSection,
-  CovidSection,
-  HeroSection,
-  InfrastructureSection,
-  IntroSection,
-  JourneySection,
-  LabMapSection,
-  ProjectsSection,
-  ServicesSection,
-  ShowcaseSection,
-  TeamSection,
-  TrainingsSection,
-  VariantTreeSection,
-  VideosSection,
-  VirusModelSection,
-} from "./tour-sections";
 import { HelixProgress } from "./helix-progress";
 import { JOURNEY_SCENE_MS } from "./sample-journey";
+import { hasProjectJourney } from "./project-feature";
 import { rewindReveal, watchReveal, type RevealState } from "./use-reveal";
-import { useSlideFit } from "./slide-fit";
+import { deckScaleScript, useDeckScale } from "./deck-scale";
+import { useFitCheck } from "./fit-check";
+import type { SlideMeta } from "./slide-frame";
+import { AgendaSlide } from "./slides/agenda-slide";
+import { ContactSlide } from "./slides/contact-slide";
+import { CovidSlide } from "./slides/covid-slide";
+import { InfrastructureSlide } from "./slides/infrastructure-slide";
+import { IntroSlide } from "./slides/intro-slide";
+import { JourneySlide } from "./slides/journey-slide";
+import { LabMapSlide } from "./slides/lab-map-slide";
+import { ProjectJourneySlide, ProjectStorySlide } from "./slides/projects-slides";
+import { ResultsSlide } from "./slides/results-slide";
+import { ServicesSlide } from "./slides/services-slide";
+import { TeamSlide } from "./slides/team-slide";
+import { TrainingsSlide } from "./slides/trainings-slide";
+import { VariantTreeSlide } from "./slides/variant-tree-slide";
+import { VideosSlide } from "./slides/videos-slide";
+import { VirusSlide } from "./slides/virus-slide";
+import { WelcomeSlide } from "./slides/welcome-slide";
+import slideStyles from "./slide.module.css";
 import styles from "./tour-motion.module.css";
 
-type SectionId =
-  | "welcome"
-  | "intro"
-  | "sample-to-sequence"
-  | "lab-map"
-  | "services"
-  | "showcase"
-  | "infrastructure"
-  | "trainings"
-  | "projects"
-  | "covid-19"
-  | "variant-tree"
-  | "virus-model"
-  | "agenda"
-  | "team"
-  | "videos"
-  | "contact";
+/** What a slide shows. Sample results and each project take more than one slide. */
+type SlideSpec =
+  | { kind: "welcome" | "intro" | "journey" | "services" | "trainings" | "lab-map" | "infrastructure" }
+  | { kind: "covid" | "variant-tree" | "virus" | "agenda" | "team" | "videos" | "contact" }
+  | { kind: "results"; item: ShowcaseCopy }
+  | { kind: "project" | "project-journey"; project: TourProject };
 
-const NAV_LABELS: Record<SectionId, string> = {
-  welcome: "Welcome",
-  intro: "Bioinformatics",
-  "sample-to-sequence": "Sample to sequence",
-  "lab-map": "Lab map",
-  services: "Services",
-  showcase: "Sample results",
-  infrastructure: "Infrastructure",
-  trainings: "Trainings",
-  projects: "Projects",
-  "covid-19": "COVID-19",
-  "variant-tree": "Variant tree",
-  "virus-model": "3D virus",
-  agenda: "Research agenda",
-  team: "Team",
-  videos: "Videos",
-  contact: "Contact",
-};
+/** A slide: its anchor (…/tour#services), its name in the progress bar, and what it shows. */
+type SlideEntry = { id: string; nav: string; spec: SlideSpec };
+
+/** The tour's slides, in order. Slides with nothing to show are left out. */
+export function tourSlides(
+  content: TourContent,
+  { phylo, virus, labMap }: { phylo: boolean; virus: boolean; labMap: boolean },
+): SlideEntry[] {
+  const slides: SlideEntry[] = [
+    { id: "welcome", nav: "Welcome", spec: { kind: "welcome" } },
+    { id: "intro", nav: "Bioinformatics", spec: { kind: "intro" } },
+    { id: "sample-to-sequence", nav: "Sample to sequence", spec: { kind: "journey" } },
+    { id: "services", nav: "Services", spec: { kind: "services" } },
+    // One slide per service's results, as in the deck.
+    ...SHOWCASE_COPY.map((item) => ({ id: `results-${item.id}`, nav: `Results: ${item.service}`, spec: { kind: "results" as const, item } })),
+  ];
+  // Training is the one service the sample results can't show, so it follows them.
+  if (content.trainings.items.length) slides.push({ id: "trainings", nav: "Trainings", spec: { kind: "trainings" } });
+  if (content.labMap && labMap) slides.push({ id: "lab-map", nav: "Lab map", spec: { kind: "lab-map" } });
+  slides.push({ id: "infrastructure", nav: "Infrastructure", spec: { kind: "infrastructure" } });
+  // Each project: its story, then (when it has one) its journey from sample to genome.
+  content.projects.items.forEach((project, i) => {
+    const id = i === 0 ? "projects" : `project-${project.id}`;
+    const name = project.commonName ?? project.species ?? project.title;
+    slides.push({ id, nav: i === 0 ? "Projects" : name, spec: { kind: "project", project } });
+    if (hasProjectJourney(project)) {
+      slides.push({
+        id: i === 0 ? "projects-genome" : `${id}-genome`,
+        nav: i === 0 ? "Sample to genome" : `${name}: sample to genome`,
+        spec: { kind: "project-journey", project },
+      });
+    }
+  });
+  slides.push({ id: "covid-19", nav: "COVID-19", spec: { kind: "covid" } });
+  if (content.nextstrain && phylo) slides.push({ id: "variant-tree", nav: "Variant tree", spec: { kind: "variant-tree" } });
+  if (content.virusModel && virus) slides.push({ id: "virus-model", nav: "3D virus", spec: { kind: "virus" } });
+  slides.push({ id: "agenda", nav: "Research agenda", spec: { kind: "agenda" } });
+  if (content.team.members.length) slides.push({ id: "team", nav: "Team", spec: { kind: "team" } });
+  if (content.videos.items.length) slides.push({ id: "videos", nav: "Videos", spec: { kind: "videos" } });
+  slides.push({ id: "contact", nav: "Contact", spec: { kind: "contact" } });
+  return slides;
+}
+
+/**
+ * Runs as the page is parsed (it sets the slides' scale before the first
+ * paint); React leaves it alone afterwards, so on the client it is inert text.
+ */
+function InlineScript({ html }: { html: string }) {
+  return (
+    <script
+      type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+const TOUR_MAIN_ID = "tour-main";
+
+/** How long the mouse stays still before the Present-mode controls fade. */
+const CONTROLS_IDLE_MS = 3000;
 
 /** How long each slide stays up when auto-advance is on. */
 const AUTO_ADVANCE_MS = 20_000;
 
 /** Slides that stay up longer, so their scenes can all play. */
-const SLIDE_MS: Partial<Record<SectionId, number>> = {
+const SLIDE_MS: Partial<Record<string, number>> = {
   "sample-to-sequence": JOURNEY_STEPS.length * JOURNEY_SCENE_MS,
 };
 
@@ -81,7 +123,7 @@ const SLIDE_MS: Partial<Record<SectionId, number>> = {
  * Slides with steps of their own. In Present mode (without auto-advance) the
  * arrow keys go through a slide's steps before moving to the next slide.
  */
-const SLIDE_STEPS: Partial<Record<SectionId, number>> = {
+const SLIDE_STEPS: Partial<Record<string, number>> = {
   "sample-to-sequence": JOURNEY_STEPS.length,
 };
 
@@ -135,21 +177,6 @@ function useBackgroundMusic(audioRef: React.RefObject<HTMLAudioElement | null>, 
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
-
-/** Plain light sections; a light section right after another gets a divider rule. */
-const LIGHT_SECTIONS = new Set<SectionId>([
-  "lab-map",
-  "services",
-  "showcase",
-  "infrastructure",
-  "trainings",
-  "projects",
-  "variant-tree",
-  "virus-model",
-  "agenda",
-  "team",
-  "videos",
-]);
 
 /** Who the copy is written for; shown in the header, and in the controls while presenting. */
 function AudienceToggle({
@@ -213,6 +240,8 @@ export function TourExperience({
   // The step reached on a slide with steps; any other slide is at its first.
   const [slideStep, setSlideStep] = useState({ index: 0, step: 0 });
   const [autoAdvance, setAutoAdvance] = useState(false);
+  // In Present mode the controls and the cursor fade after a few still seconds, as in the decks.
+  const [idle, setIdle] = useState(false);
   // Opt-in, remembered per browser. Its button only renders in Present mode,
   // never in the server HTML, so reading storage up front can't mismatch.
   const [music, setMusic] = useState(() => {
@@ -230,24 +259,14 @@ export function TourExperience({
   const [reveal, setReveal] = useState<ReadonlyMap<number, RevealState>>(() => new Map([[0, "visible"]]));
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const headerRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
-  // Sections with nothing to show are skipped entirely.
-  const sectionIds = useMemo(() => {
-    const ids: SectionId[] = ["welcome", "intro", "sample-to-sequence", "services", "showcase"];
-    // Training is the one service the sample results can't show, so it follows them.
-    if (content.trainings.items.length) ids.push("trainings");
-    if (content.labMap && labMap) ids.push("lab-map");
-    ids.push("infrastructure");
-    if (content.projects.items.length) ids.push("projects");
-    ids.push("covid-19");
-    if (content.nextstrain && phylo) ids.push("variant-tree");
-    if (content.virusModel && virus) ids.push("virus-model");
-    ids.push("agenda");
-    if (content.team.members.length) ids.push("team");
-    if (content.videos.items.length) ids.push("videos");
-    ids.push("contact");
-    return ids;
-  }, [content, phylo, virus, labMap]);
+  // Slides with nothing to show are skipped entirely.
+  const slides = useMemo(
+    () => tourSlides(content, { phylo: Boolean(phylo), virus: Boolean(virus), labMap }),
+    [content, phylo, virus, labMap],
+  );
+  const sectionIds = useMemo(() => slides.map((slide) => slide.id), [slides]);
 
   /** Scrolls to a slide, at its first step unless told otherwise. */
   const goTo = useCallback(
@@ -273,6 +292,7 @@ export function TourExperience({
 
   const startPresenting = () => {
     setPresenting(true);
+    setIdle(false);
     // Visual is for a screen nobody presents from, so it plays by itself.
     setAutoAdvance(audience === "visual");
     document.documentElement.requestFullscreen?.().catch(() => {
@@ -343,15 +363,35 @@ export function TourExperience({
 
   useBackgroundMusic(musicRef, presenting && music, sectionIds[current] === "videos");
 
-  // In Present mode each slide shrinks, if needed, to fit the screen.
-  useSlideFit(presenting, sectionRefs, headerRef, sectionIds);
+  // The controls sit in the slide's bottom margin, over its footer, so they fade
+  // once the mouse has been still for a while and come back when it moves.
+  useEffect(() => {
+    if (!presenting) return;
+    let timer = window.setTimeout(() => setIdle(true), CONTROLS_IDLE_MS);
+    const wake = () => {
+      setIdle(false);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setIdle(true), CONTROLS_IDLE_MS);
+    };
+    window.addEventListener("pointermove", wake);
+    window.addEventListener("pointerdown", wake);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointermove", wake);
+      window.removeEventListener("pointerdown", wake);
+    };
+  }, [presenting]);
 
-  // In Present mode each slide snaps to the top of the screen (the header is
-  // hidden then; otherwise the sections' scroll-mt-16 keeps them clear of it).
+  // One scale for every slide: the window's on the page, the screen's in Present mode.
+  useDeckScale(mainRef, headerRef, presenting);
+  // A slide that runs past its margins is a content problem: named in development.
+  useFitCheck(mainRef, audience, sectionIds);
+
+  // In Present mode each slide fills the screen and snaps to it (the header is hidden then).
   useEffect(() => {
     if (!presenting) return;
     const html = document.documentElement;
-    html.style.scrollSnapType = "y proximity";
+    html.style.scrollSnapType = "y mandatory";
     return () => {
       html.style.scrollSnapType = "";
     };
@@ -414,16 +454,17 @@ export function TourExperience({
     };
   }, [presenting, autoAdvance, current, slideStep, goTo, sectionIds, stopPresenting]);
 
-  const renderSection = (id: SectionId, index: number) => {
-    const props = { content, audience, index };
-    switch (id) {
+  const renderSlide = ({ id, spec }: SlideEntry, index: number): ReactNode => {
+    const meta: SlideMeta = { number: index + 1, total: slides.length };
+    const props = { content, audience, meta };
+    switch (spec.kind) {
       case "welcome":
-        return <HeroSection content={content} audience={audience} />;
+        return <WelcomeSlide content={content} audience={audience} />;
       case "intro":
-        return <IntroSection audience={audience} index={index} />;
-      case "sample-to-sequence":
+        return <IntroSlide audience={audience} meta={meta} />;
+      case "journey":
         return (
-          <JourneySection
+          <JourneySlide
             {...props}
             active={current === index}
             // Stepped by the arrow keys while presenting; otherwise its scenes play on a timer.
@@ -431,44 +472,49 @@ export function TourExperience({
             onStepChange={(step) => setSlideStep({ index, step })}
           />
         );
-      case "lab-map":
-        return <LabMapSection {...props} holdPageScroll={presenting && current === index} />;
       case "services":
-        return <ServicesSection {...props} />;
-      case "showcase":
-        return <ShowcaseSection audience={audience} index={index} />;
-      case "infrastructure":
-        return <InfrastructureSection {...props} />;
+        return <ServicesSlide {...props} />;
+      case "results":
+        return <ResultsSlide item={spec.item} audience={audience} meta={meta} />;
       case "trainings":
-        return <TrainingsSection {...props} />;
-      case "projects":
-        return <ProjectsSection {...props} />;
-      case "covid-19":
-        return <CovidSection {...props} stats={stats} />;
+        return <TrainingsSlide {...props} />;
+      case "lab-map":
+        return <LabMapSlide {...props} holdPageScroll={presenting && current === index} />;
+      case "infrastructure":
+        return <InfrastructureSlide {...props} />;
+      case "project":
+        return <ProjectStorySlide project={spec.project} heading={content.projects.title} audience={audience} meta={meta} />;
+      case "project-journey":
+        return <ProjectJourneySlide project={spec.project} audience={audience} meta={meta} />;
+      case "covid":
+        return <CovidSlide {...props} stats={stats} />;
       case "variant-tree":
-        return phylo ? <VariantTreeSection {...props} summary={phylo} /> : null;
-      case "virus-model":
-        return virus ? <VirusModelSection {...props} summary={virus} /> : null;
+        return phylo ? <VariantTreeSlide {...props} summary={phylo} /> : null;
+      case "virus":
+        return virus ? <VirusSlide {...props} summary={virus} /> : null;
       case "agenda":
-        return <AgendaSection audience={audience} index={index} />;
+        return <AgendaSlide audience={audience} meta={meta} />;
       case "team":
-        return <TeamSection {...props} />;
+        return <TeamSlide {...props} />;
       case "videos":
-        return <VideosSection {...props} />;
+        return <VideosSlide content={content} meta={meta} />;
       case "contact":
-        return <ContactSection {...props} />;
+        return <ContactSlide content={content} audience={audience} />;
     }
+    return id;
   };
 
   return (
     <div
       data-presenting={presenting || undefined}
       data-audience={audience}
-      className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting ? "text-[1.08rem]" : ""}`}
+      data-idle={(presenting && idle) || undefined}
+      className={`group/tour min-h-screen bg-[#f7f6fa] font-aileron text-[#333333] ${presenting && idle ? "cursor-none" : ""}`}
     >
       {/* Present mode is full screen: the slides get the whole height, and the controls move to the bottom bar. */}
       <header
         ref={headerRef}
+        data-tour-header
         className={`sticky top-0 z-30 border-b-[3px] ${presenting ? "hidden" : ""} border-[#12ca99] bg-white/95 shadow-sm backdrop-blur`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 md:px-8">
@@ -502,26 +548,26 @@ export function TourExperience({
         </div>
       </header>
 
-      <main className={presenting ? styles.presentType : undefined}>
-        {sectionIds.map((id, index) => (
+      {/*
+        Every slide is laid out at 1280 x 720 and scaled by one factor for the
+        whole tour (--s, set before the first paint by the script, then kept up
+        by useDeckScale). Below 768px the slides stack instead.
+      */}
+      <main id={TOUR_MAIN_ID} ref={mainRef} className={slideStyles.deck} suppressHydrationWarning>
+        <InlineScript html={deckScaleScript(TOUR_MAIN_ID, "[data-tour-header]")} />
+        {slides.map((slide, index) => (
           <section
-            key={id}
-            id={id}
-            aria-label={NAV_LABELS[id]}
-            data-tone={LIGHT_SECTIONS.has(id) ? "light" : undefined}
+            key={slide.id}
+            id={slide.id}
+            aria-label={slide.nav}
             // The opening slide plays straight from the server HTML, without waiting for hydration.
             data-reveal={reveal.get(index) ?? "pending"}
             ref={(el) => {
               sectionRefs.current[index] = el;
             }}
-            className={
-              presenting
-                ? // pb-16 keeps the slide centred above the floating controls (slide-fit's CONTROLS_PX).
-                  "flex min-h-screen snap-start flex-col pb-16 [&>div]:flex [&>div]:w-full [&>div]:flex-1 [&>div]:flex-col [&>div]:justify-center"
-                : "scroll-mt-16"
-            }
+            className={slideStyles.section}
           >
-            {renderSection(id, index)}
+            <div className={slideStyles.canvas}>{renderSlide(slide, index)}</div>
           </section>
         ))}
       </main>
@@ -551,8 +597,12 @@ export function TourExperience({
 
       {presenting && (
         <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-          <div className="relative flex items-center gap-3 overflow-hidden rounded-full bg-[#1c2152]/85 py-1.5 pl-4 pr-1.5 text-white shadow-lg backdrop-blur">
-            <HelixProgress labels={sectionIds.map((id) => NAV_LABELS[id])} current={current} onSelect={goTo} />
+          <div
+            className={`relative flex items-center gap-3 overflow-hidden rounded-full bg-[#1c2152]/85 py-1.5 pl-4 pr-1.5 text-white shadow-lg backdrop-blur transition-opacity duration-500 ${
+              idle ? "pointer-events-none opacity-0 focus-within:pointer-events-auto focus-within:opacity-100" : ""
+            }`}
+          >
+            <HelixProgress labels={slides.map((slide) => slide.nav)} current={current} onSelect={goTo} />
             <span className="hidden text-xs text-white/70 2xl:inline">← → to navigate · Esc to exit</span>
             <AudienceToggle audience={audience} onChange={chooseAudience} onDark />
             {musicSrc && (

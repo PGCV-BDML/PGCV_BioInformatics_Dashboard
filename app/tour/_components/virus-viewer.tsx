@@ -314,7 +314,7 @@ export function VirusViewer({
         />
       )}
       {mode === "still" && (
-        <p className="pointer-events-none absolute right-4 top-16 max-w-[15rem] rounded-2xl bg-[#1c2152]/70 px-3 py-1.5 text-right text-xs font-medium text-white/70 backdrop-blur sm:top-4 md:right-5 md:top-5">
+        <p className="pointer-events-none absolute right-4 top-16 max-w-[15rem] rounded-2xl bg-[#1c2152]/70 px-3 py-1.5 text-right text-xs font-medium text-white/70 backdrop-blur canvas:top-4 canvas:max-w-[18rem] canvas:text-[14px]">
           Still picture: this browser has 3D graphics (WebGL) turned off.
         </p>
       )}

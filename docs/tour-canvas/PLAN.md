@@ -1,6 +1,7 @@
 # Plan: the lab tour on the presentations' 1280 × 720 canvas
 
-**Status:** proposed, waiting for a go-ahead and the four decisions in section 6. No tour code has changed yet.
+**Status:** built, with the recommendation taken on all four decisions in section 6 (18 November 2026).
+Section 9 records where the build differs from the plan.
 
 **Mockups** (in [mockups/](mockups/)):
 - [mockups/slides.jpg](mockups/slides.jpg): all 19 slides as proposed, from [mockups/slides.html](mockups/slides.html)
@@ -212,3 +213,23 @@ changes in the mockups.
 - Speaker notes and speaker view, which the decks have and the dashboard tour doesn't.
 - Printing one slide per page (possible later with a print stylesheet).
 - Changes to `tour.json` beyond the cuts in section 5.
+
+## 9. As built
+
+All 19 slides pass the fit check in all four audiences (Students, General, Technical, Visual): nothing past the
+bottom margin, no title over two lines, no HTML text under 14 px. Where the build differs from the plan above:
+
+- **Copy cut in `tour.json`** (pgcv-tour-content, branch `claude/sweet-faraday-uwamz4`): the Storage Cluster text in
+  all three audiences, the HPC Cluster's Technical text, and the Technical summaries of Sequence Assembly, DNA Barcoding
+  and Bioinformatics Training. Until that branch reaches `main`, the live site shrinks those slides as far as 0.85×.
+- **Research agenda, Technical:** the full project titles (up to 156 characters) don't fit five columns, or five rows.
+  On the canvas Technical shows each project's name and partners, as the deck does; phones keep the full titles.
+- **COVID-19:** with live data there are four tiles, so they sit in a row above the chart rather than in a column
+  beside it.
+- **Variant tree:** the headline numbers (genomes, dates, provinces) sit at the right of the title's row, and the
+  province map's labels are drawn at 24 units so they show at 14 px.
+- **Sample results:** only two figures needed bigger text once measured: the genome ring (14) and the gene heatmap
+  (13, on taller rows). The Venn diagram's overlap labels went from 11 to 12.
+- **Sample to sequence:** the stage is 500 x 284, so the longest Technical step fits beside it.
+- **Present mode:** the control bar fades after three still seconds, as in the decks, so it doesn't hide the footer.
+

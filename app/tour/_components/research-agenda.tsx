@@ -74,31 +74,47 @@ const AREA_COLORS: Record<string, { ink: string; tint: string }> = {
   evolution: { ink: BRAND.navy, tint: "#e8e9f6" },
 };
 
+/**
+ * One research area and its projects. On a phone, centred; on the canvas, a
+ * narrow column of five, so the icon sits beside the name and the projects
+ * keep their words (their icons drop out, except for Visual, which has no words).
+ */
 export function AgendaAreaCard({ area, audience }: { area: AgendaArea; audience: Audience }) {
   const { ink, tint } = AREA_COLORS[area.id] ?? AREA_COLORS.evolution!;
   const AreaIcon = ICONS[area.icon];
+  const visual = audience === "visual";
   return (
-    <article className={`${CARD} flex h-full flex-col px-4 pb-3 pt-6 text-center`}>
-      <span
-        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ backgroundColor: tint, color: ink }}
-        aria-hidden="true"
-      >
-        <AreaIcon className="h-8 w-8" strokeWidth={1.75} />
-      </span>
-      <h3 className="mt-3 text-lg font-bold leading-tight text-[#2b3278]"><TourCopy text={area.name} audience={audience} /></h3>
-      <ul className="mt-3 flex flex-1 flex-col">
+    <article className={`${CARD} flex h-full flex-col px-4 pb-3 pt-6 text-center ${visual ? "" : "canvas:pt-[18px] canvas:text-left"}`}>
+      <div className={`flex flex-col items-center ${visual ? "" : "canvas:flex-row canvas:gap-2.5"}`}>
+        <span
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${visual ? "" : "canvas:h-10 canvas:w-10"}`}
+          style={{ backgroundColor: tint, color: ink }}
+          aria-hidden="true"
+        >
+          <AreaIcon className={`h-8 w-8 ${visual ? "" : "canvas:h-5 canvas:w-5"}`} strokeWidth={1.75} />
+        </span>
+        <h3 className={`mt-3 text-lg font-bold leading-tight text-[#2b3278] canvas:text-[20px] ${visual ? "" : "canvas:mt-0"}`}>
+          <TourCopy text={area.name} audience={audience} />
+        </h3>
+      </div>
+      <ul className="mt-3 flex flex-1 flex-col canvas:mt-2">
         {area.projects.map((project) => {
           const Icon = ICONS[project.icon];
           return (
-            <li key={project.id} className="flex flex-1 flex-col items-center gap-1 border-t border-[#2b3278]/10 px-1 py-3">
-              <Icon className="h-6 w-6 shrink-0" style={{ color: ink }} strokeWidth={1.75} aria-hidden="true" />
-              <p className="text-sm font-semibold leading-snug text-[#333333]">{project.name}</p>
-              {audience !== "visual" && (
-                <p className="text-xs leading-snug text-[#5b6770]"><TourCopy text={project.summary} audience={audience} /></p>
+            <li
+              key={project.id}
+              className={`flex flex-1 flex-col items-center gap-1 border-t border-[#2b3278]/10 px-1 py-3 ${visual ? "" : "canvas:flex-none canvas:items-start canvas:gap-0.5 canvas:px-0 canvas:py-2.5"}`}
+            >
+              <Icon className={`h-6 w-6 shrink-0 ${visual ? "canvas:h-9 canvas:w-9" : "canvas:hidden"}`} style={{ color: ink }} strokeWidth={1.75} aria-hidden="true" />
+              <p className="text-sm font-semibold leading-snug text-[#333333] canvas:text-[18px] canvas:font-bold canvas:text-[#2b3278]">{project.name}</p>
+              {!visual && (
+                // Technical's full project titles run to four lines: on the canvas, as in the deck, the name and partners stand for them.
+                <p className={`text-xs leading-snug text-[#5b6770] canvas:text-[16px] ${audience === "technical" ? "canvas:hidden" : ""}`}>
+                  <TourCopy text={project.summary} audience={audience} />
+                </p>
               )}
               {audience === "technical" && (
-                <p className="text-[11px] font-semibold leading-snug" style={{ color: ink }}>
+                <p className="text-[11px] font-semibold leading-snug canvas:mt-0.5 canvas:text-[14px]" style={{ color: ink }}>
                   {project.partners}
                 </p>
               )}
