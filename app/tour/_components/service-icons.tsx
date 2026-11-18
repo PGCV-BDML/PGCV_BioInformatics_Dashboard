@@ -10,7 +10,7 @@ import styles from "./tour-motion.module.css";
 
 const d = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
-function IconFrame({ children, gradient }: { children: (gradientUrl: string) => ReactNode; gradient?: boolean }) {
+export function IconFrame({ children, gradient }: { children: (gradientUrl: string) => ReactNode; gradient?: boolean }) {
   const id = `${useId()}-accent`;
   return (
     <svg
@@ -39,7 +39,7 @@ function IconFrame({ children, gradient }: { children: (gradientUrl: string) => 
 }
 
 /** Short reads sliding together into one contig. */
-function AssemblyIcon() {
+export function AssemblyIcon() {
   return (
     <IconFrame gradient>
       {(accent) => (
@@ -70,7 +70,7 @@ const BARCODE_BARS = [
 ];
 
 /** A barcode whose bars are the four nucleotide colours, with a scan line. */
-function BarcodeIcon() {
+export function BarcodeIcon() {
   return (
     <IconFrame>
       {() => (

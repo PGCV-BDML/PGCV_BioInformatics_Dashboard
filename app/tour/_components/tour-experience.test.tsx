@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { FALLBACK_TOUR, type TourContent, type TourProject, type TourText } from "@/lib/tour";
@@ -79,7 +79,7 @@ describe("TourExperience", () => {
 
   it("hides sections with nothing to show and omits COVID numbers without stats", () => {
     render(<TourExperience content={content} stats={null} />);
-    // Fallback content has no trainings, team or videos.
+    // Fallback content has no team or videos.
     expect(screen.queryByRole("region", { name: "Team" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Videos" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "COVID-19" })).toBeInTheDocument();
@@ -231,7 +231,7 @@ describe("TourExperience", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
     const { unmount } = render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
-    expect(ids.slice(0, 9)).toEqual([
+    expect(ids.slice(0, 10)).toEqual([
       "welcome",
       "intro",
       "sample-to-sequence",
@@ -240,6 +240,7 @@ describe("TourExperience", () => {
       "results-assembly",
       "results-metagenomics",
       "results-transcriptomics",
+      "trainings",
       "lab-map",
     ]);
     const frame = screen.getByTitle("Explore the lab");
@@ -275,10 +276,29 @@ describe("TourExperience", () => {
     expect(html.style.overflow).toBe("");
   });
 
+  it("shows the trainings as a path of icons, and only their names for Visual", async () => {
+    render(<TourExperience content={content} stats={null} />);
+    const slide = screen.getByRole("region", { name: "Trainings" });
+    const names = within(slide).getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(names).toEqual(content.trainings.items.map((t) => t.name));
+    // Every built-in training has a drawn icon, and the slide shows no photos.
+    expect(slide.querySelectorAll("[data-training-icon]")).toHaveLength(content.trainings.items.length);
+    expect(slide.querySelector("[data-training-icon=fallback]")).toBeNull();
+    expect(within(slide).queryByText(/^Photos:/)).not.toBeInTheDocument();
+    expect(within(slide).getByText("Many microbes")).toBeInTheDocument();
+    expect(within(slide).getByText(/^Choosing the short DNA pieces/)).toBeInTheDocument();
+    expect(within(slide).getByText(/^From your first command to a whole genome/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Visual" }));
+    expect(within(slide).getAllByRole("heading", { level: 3 })).toHaveLength(content.trainings.items.length);
+    expect(within(slide).queryByText("Many microbes")).not.toBeInTheDocument();
+    expect(within(slide).queryByText(/^Choosing the short DNA pieces/)).not.toBeInTheDocument();
+    expect(within(slide).queryByText(/^From your first command/)).not.toBeInTheDocument();
+  });
+
   it("puts the trainings right after the sample results, ahead of the lab map and infrastructure", () => {
     const labMap = { title: "Explore the lab", intro: "Walk the rooms", src: "lab-map/index.html" };
-    const trainings = { ...content.trainings, items: [{ name: "Intro to Linux", image: null }] };
-    render(<TourExperience content={{ ...content, labMap, trainings }} stats={null} labMap />);
+    render(<TourExperience content={{ ...content, labMap }} stats={null} labMap />);
     const ids = Array.from(document.querySelectorAll("main > section")).map((s) => s.id);
     expect(ids.slice(7, 11)).toEqual(["results-transcriptomics", "trainings", "lab-map", "infrastructure"]);
   });

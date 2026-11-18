@@ -4,6 +4,7 @@ import { FALLBACK_TOUR } from "@/lib/tour";
 import { LogoHelix } from "./logo-helix";
 import { SectionBackdrop } from "./section-backdrop";
 import { hasServiceIcon, ServiceIcon } from "./service-icons";
+import { hasTrainingIcon, TrainingDisc } from "./training-icons";
 
 describe("ServiceIcon", () => {
   it("has a drawn icon for every built-in service", () => {
@@ -21,6 +22,26 @@ describe("ServiceIcon", () => {
   it("falls back to the service code for an unknown id", () => {
     const { container } = render(<ServiceIcon id="proteomics" code="PR" color="#2b3278" />);
     expect(container.querySelector("[data-service-icon=fallback]")?.textContent).toBe("PR");
+    expect(container.querySelector("svg")).toBeNull();
+  });
+});
+
+describe("TrainingDisc", () => {
+  it("has a drawn icon for every built-in training", () => {
+    for (const training of FALLBACK_TOUR.trainings.items) {
+      expect(hasTrainingIcon(training.id), training.id).toBe(true);
+    }
+  });
+
+  it("draws the icon for a known training", () => {
+    const { container } = render(<TrainingDisc id="primer-designing" name="Primer Designing" color="#2a7797" />);
+    expect(container.querySelector("[data-training-icon=primer-designing] svg")).not.toBeNull();
+    expect(container.textContent).toBe("");
+  });
+
+  it("falls back to the name's initials for a training without an icon", () => {
+    const { container } = render(<TrainingDisc id="rna-seq-analysis" name="RNA-seq Analysis" color="#2b3278" />);
+    expect(container.querySelector("[data-training-icon=fallback]")?.textContent).toBe("RA");
     expect(container.querySelector("svg")).toBeNull();
   });
 });

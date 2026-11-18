@@ -1,6 +1,7 @@
 # Plan: icons instead of photos on the trainings slide
 
-**Status:** mockups, waiting for a choice of layout (18 November 2026).
+**Status:** built with option B, the path (18 November 2026). The last section records where the build differs
+from the mockup.
 
 **Mockups** (in [mockups/](mockups/)), from [mockups/trainings.html](mockups/trainings.html) (open it in a browser to
 see each slide at 1280 × 720):
@@ -38,7 +39,23 @@ the logo gradient, an entrance when the slide comes into view and a small loop o
   slide is never empty.
 - **`app/tour/_components/`**: the three new icons go beside the Services ones, and `trainings-slide.tsx` lays out the
   chosen option. A training added to `tour.json` without a drawn icon falls back to its initials, as services do.
-- The slide's "Photos: …" source line goes. The photos in `images/trainings/` are no longer used.
+- The slide's "Photos: …" source line goes. The dashboard no longer shows the photos in `images/trainings/`; the
+  content repo's static deck (`deck.js`) still does.
 
-The one-line summaries in the mockups are drafts for the General audience. Students and Technical versions are still to
-be written.
+The one-line summaries in the mockups are drafts for the General audience. The Students and Technical versions were
+written with the build, in `tour.json`.
+
+## As built
+
+- **The line.** One logo gradient from the first training to the last, as in the mockup. It is drawn in pieces, one
+  from each disc to the next, so the same markup runs across the slide on the canvas and down it on a phone.
+- **Content.** Each training in `tour.json` has `id`, `color`, `name`, `scale` and `summary` (Students, General and
+  Technical), and the slide has a `takeaway`. Option A's `io` was not needed. Without an `id`, the name is used as one,
+  and without a `color` the trainings take navy, deep teal, magenta, teal and purple in turn. So a `tour.json` that
+  still lists only names and photos shows the right icons, without the words.
+- **Visual audience.** The path with bigger discs and the names only, centred on the slide (the mockup showed this
+  on option A's cards).
+- **Fallback.** The built-in tour in `lib/tour.ts` lists the five trainings with their General text, so the slide shows
+  even when GitHub can't be reached.
+- **Checked** on the canvas in all four audiences with the tour's fit check (nothing over the margin, no card
+  overflowing), and on a phone (390 px, no sideways scroll).

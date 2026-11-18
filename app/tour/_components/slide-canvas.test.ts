@@ -18,6 +18,7 @@ const SLIDE_PIECES = [
   "sample-journey.tsx",
   "service-showcase.tsx",
   "slide-frame.tsx",
+  "training-icons.tsx",
   "virus-viewer.tsx",
 ];
 const files = [
