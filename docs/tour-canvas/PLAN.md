@@ -11,6 +11,8 @@ Section 9 records where the build differs from the plan.
 - [mockups/view-projector.jpg](mockups/view-projector.jpg): Present mode on a 1024 × 768 (4:3) projector.
 - [mockups/view-phone-a.jpg](mockups/view-phone-a.jpg) and [mockups/view-phone-b.jpg](mockups/view-phone-b.jpg):
   the two options for phones (decision 1).
+- [mockups/title-slide.html](mockups/title-slide.html): the three directions for the title slide, live (open it in a
+  browser to see them move), and [mockups/title-slide.jpg](mockups/title-slide.jpg): the one built, moving and still.
 
 The mockups use the dashboard's real text and its own figures (the Venn diagram, the sample-results charts, the
 variant tree and map, the 3D virus), drawn at the size they would have on the canvas. Photos are grey
@@ -233,3 +235,8 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
 - **Sample to sequence:** the stage is 500 x 284, so the longest Technical step fits beside it.
 - **Present mode:** the control bar fades after three still seconds, as in the decks, so it doesn't hide the footer.
 
+- **Title slide** (chosen from three live mockups on 18 November 2026: the helix, with the reads mockup's fact cards):
+  the white PGC Visayas logo beside the eyebrow; a double helix turning down the right side, its bases flying into a
+  FASTQ read that types itself out; the 240 cores drawn as 240 squares lighting up as jobs run, and the 360 TB as a
+  filling gauge. The words rise once and hold still; the art is still for reduced motion and pauses off screen. The
+  fit check now measures the dark slides too.

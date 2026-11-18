@@ -121,7 +121,9 @@ export function DarkSlide({
   return (
     <div className={styles.dark} style={{ background }} data-slide-frame="dark">
       {art}
-      <div className={`${styles.darkInner} ${innerClassName}`}>{children}</div>
+      <div className={`${styles.darkInner} ${innerClassName}`} data-slide-inner>
+        {children}
+      </div>
     </div>
   );
 }

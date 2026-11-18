@@ -52,19 +52,39 @@ function shrink(fit: HTMLElement, scale: number) {
  * boxes (offsetTop/offsetHeight): entrance animations move things with
  * transforms, which a scrollHeight would count. `container` must be positioned.
  */
-function contentBottom(container: HTMLElement): number {
+function contentBox(container: HTMLElement): { top: number; bottom: number } {
+  let top = Infinity;
   let bottom = 0;
   for (const el of container.querySelectorAll<HTMLElement>("*")) {
     if (!(el instanceof HTMLElement) || el.offsetParent === null) continue;
-    let top = el.offsetTop;
+    let y = el.offsetTop;
     let parent = el.offsetParent as HTMLElement | null;
     while (parent && parent !== container) {
-      top += parent.offsetTop;
+      y += parent.offsetTop;
       parent = parent.offsetParent as HTMLElement | null;
     }
-    if (parent === container) bottom = Math.max(bottom, top + el.offsetHeight);
+    if (parent !== container) continue;
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y + el.offsetHeight);
   }
-  return bottom;
+  return { top: Number.isFinite(top) ? top : 0, bottom };
+}
+
+const contentBottom = (container: HTMLElement) => contentBox(container).bottom;
+
+/**
+ * A dark slide (welcome, contact) centres its words between the margins, so
+ * too many runs past both the top and the bottom one. Its size on the canvas
+ * is the 720px slide less the 68px and 80px margins.
+ */
+function checkDark(section: HTMLElement, report: (problem: string) => void) {
+  const inner = section.querySelector<HTMLElement>("[data-slide-inner]");
+  if (!inner) return;
+  const k = inner.clientHeight / WRAP_PX;
+  if (!(k > 0)) return;
+  const { top, bottom } = contentBox(inner);
+  const past = Math.round((Math.max(0, -top) + Math.max(0, bottom - inner.clientHeight)) / k);
+  if (past > 1) report(`runs ${past}px past its margins`);
 }
 
 /** Text only screen readers get (Tailwind's sr-only, at any breakpoint) has no size to check. */
@@ -82,7 +102,7 @@ function textUnder(wrap: HTMLElement, minPx: number, zoom: number): string[] {
   return found;
 }
 
-/** Checks every light slide in `main`, fixes what it can on the live site, and returns what it found. */
+/** Checks every slide in `main`, fixes what it can on the live site, and returns what it found. */
 export function checkSlides(main: HTMLElement, { live }: { live: boolean }): FitProblem[] {
   const problems: FitProblem[] = [];
   const sections = [...main.querySelectorAll<HTMLElement>(":scope > section")];
@@ -91,7 +111,9 @@ export function checkSlides(main: HTMLElement, { live }: { live: boolean }): Fit
     const main = section.querySelector<HTMLElement>("[data-slide-main]");
     const fit = section.querySelector<HTMLElement>("[data-slide-fit]");
     const title = section.querySelector<HTMLElement>("[data-slide-title]");
-    if (!wrap || !main || !fit || !title) return;
+    const report = (problem: string) => problems.push({ slide: i + 1, id: section.id, problem });
+    if (!wrap) return checkDark(section, report);
+    if (!main || !fit || !title) return;
     const frame = wrap.parentElement!;
     shrink(fit, 1);
     frame.classList.remove(OVERFLOWING);
@@ -100,7 +122,6 @@ export function checkSlides(main: HTMLElement, { live }: { live: boolean }): Fit
     // Sizes come back in the browser's units for this zoom; the wrap's known height converts them to canvas px.
     const k = wrap.clientHeight / (hasSource ? WRAP_WITH_SOURCE_PX : WRAP_PX);
     if (!(k > 0)) return;
-    const report = (problem: string) => problems.push({ slide: i + 1, id: section.id, problem });
 
     const needed = contentBottom(main);
     const pastMain = Math.round((needed - main.clientHeight) / k);
