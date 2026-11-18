@@ -164,6 +164,7 @@ A training program's **Presentations** tab (next to Modules) reads `presentation
   - `citation` (`{ text, url, note }`): the http(s) `url` also becomes a QR code
 
   [`docs/tour-content/visayan-spotted-deer.json`](docs/tour-content/visayan-spotted-deer.json) is a complete example, ready to paste as the `projects` block. Its photo goes in the content repo at `images/projects/abraham.jpg`.
+- **Trainings** are one path of icons, with no photos. Each entry in `trainings.items` takes `name`, `scale` (what it works on, e.g. `"One gene"`), `summary` (per audience) and `color` (one of the service colours); `trainings.takeaway` is the line under the path. `id` picks the icon: `basic-coding`, `primer-designing`, `dna-barcoding`, `16s-metabarcoding-analysis` or `whole-genome-assembly`. Without an `id`, the name is used as one ("Basic Coding" → `basic-coding`). A training with no drawn icon shows its initials until one is added to `app/tour/_components/training-icons.tsx`.
 - **COVID-19 numbers** are live totals from the `get_tour_covid_stats()` RPC (migration `20261006120000_tour_covid_stats.sql`), refreshed hourly. It returns aggregates only; `covid_sequencing_run` rows stay staff-only.
 - **Token:** set `GITHUB_TOUR_TOKEN` to a fine-grained PAT with read-only Contents access to `pgcv-tour-content`, or add that repo to the `GITHUB_MODULES_TOKEN` PAT. If GitHub can't be reached or `tour.json` is invalid, the page falls back to the built-in copy in `lib/tour.ts` (no photos) instead of erroring.
 

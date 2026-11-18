@@ -45,7 +45,20 @@ function minimalTour(overrides: Record<string, unknown> = {}) {
         },
       ],
     },
-    trainings: { title: "Trainings", intro: "Workshops", items: [{ name: "Basic Coding", image: "images/trainings/basic-coding.jpg" }] },
+    trainings: {
+      title: "Trainings",
+      intro: "Workshops",
+      takeaway: "From a command to a genome",
+      items: [
+        {
+          id: "basic-coding",
+          color: "indigo",
+          name: "Basic Coding",
+          scale: "The basics",
+          summary: { general: "The command line", students: "Typing commands" },
+        },
+      ],
+    },
     covid: { title: "COVID-19", intro: "Biosurveillance" },
     team: {
       title: "Team",
@@ -96,10 +109,42 @@ describe("parseTourContent", () => {
   it("drops image paths outside images/", () => {
     const raw = minimalTour();
     raw.team.members[0]!.image = "../secrets.png";
-    raw.trainings.items[0]!.image = "tour.json";
     const tour = parseTourContent(raw);
     expect(tour.team.members[0]!.image).toBeNull();
-    expect(tour.trainings.items[0]!.image).toBeNull();
+  });
+
+  it("parses trainings with their icon id, colour, scale and summary", () => {
+    const tour = parseTourContent(minimalTour());
+    expect(tour.trainings.takeaway).toBe("From a command to a genome");
+    expect(tour.trainings.items[0]).toEqual({
+      id: "basic-coding",
+      color: "indigo",
+      name: "Basic Coding",
+      scale: "The basics",
+      summary: { general: "The command line", students: "Typing commands" },
+    });
+  });
+
+  it("still reads trainings written as a name and a photo", () => {
+    const raw = minimalTour({
+      trainings: {
+        title: "Trainings",
+        intro: "Workshops",
+        items: [
+          { name: "Basic Coding", image: "images/trainings/basic-coding.jpg" },
+          { name: "16S Metabarcoding Analysis", image: "images/trainings/16s-metabarcoding.jpg" },
+          { name: "Primer Designing", color: "neon" },
+        ],
+      },
+    });
+    const { trainings } = parseTourContent(raw);
+    expect(trainings.takeaway).toBeNull();
+    // The id comes from the name, and colours go round the palette in order.
+    expect(trainings.items).toEqual([
+      { id: "basic-coding", color: "indigo", name: "Basic Coding", scale: null, summary: null },
+      { id: "16s-metabarcoding-analysis", color: "coral", name: "16S Metabarcoding Analysis", scale: null, summary: null },
+      { id: "primer-designing", color: "magenta", name: "Primer Designing", scale: null, summary: null },
+    ]);
   });
 
   it("keeps only videos with a valid YouTube id or https URL", () => {

@@ -50,7 +50,30 @@ export type TourInfrastructureItem = {
   specs: TourSpec[];
 };
 
-export type TourTraining = { name: string; image: string | null };
+/**
+ * A training on the trainings slide: an icon on the path, then `scale` (what
+ * it works on, e.g. "One gene"), the name and a one-line `summary`. `id`
+ * picks the icon (see training-icons.tsx); without one it is the name as a
+ * slug, so "Basic Coding" draws the basic-coding icon.
+ */
+export type TourTraining = {
+  id: string;
+  color: ServiceColor;
+  name: string;
+  scale: string | null;
+  summary: TourText | null;
+};
+
+/** Trainings without a `color` take these in turn: navy, deep teal, magenta, teal, purple. */
+const TRAINING_COLORS: ServiceColor[] = ["indigo", "coral", "magenta", "mint", "purple"];
+
+/** "16S Metabarcoding Analysis" -> "16s-metabarcoding-analysis". */
+export function trainingSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export type TourMember = {
   id: string;
@@ -114,7 +137,7 @@ export type TourContent = {
   };
   services: { title: string; intro: TourText; items: TourService[] };
   infrastructure: { title: string; analogy: TourText; items: TourInfrastructureItem[] };
-  trainings: { title: string; intro: TourText; items: TourTraining[] };
+  trainings: { title: string; intro: TourText; takeaway: TourText | null; items: TourTraining[] };
   projects: { title: string; intro: TourText; items: TourProject[] };
   covid: { title: string; intro: TourText };
   /** Variant tree slide; `tree` is a nextstrain/*.json path in the content repo. */
@@ -428,9 +451,19 @@ export function parseTourContent(raw: unknown): TourContent {
     trainings: {
       title: str(trainings.title, "trainings.title"),
       intro: text(trainings.intro, "trainings.intro"),
+      takeaway: trainings.takeaway == null ? null : text(trainings.takeaway, "trainings.takeaway"),
       items: arr(trainings.items, "trainings.items").map((t, i) => {
-        const o = obj(t, `trainings.items[${i}]`);
-        return { name: str(o.name, `trainings.items[${i}].name`), image: image(o.image) };
+        const where = `trainings.items[${i}]`;
+        const o = obj(t, where);
+        const name = str(o.name, `${where}.name`);
+        const color = o.color as ServiceColor;
+        return {
+          id: optStr(o.id) ?? trainingSlug(name),
+          color: SERVICE_COLORS.includes(color) ? color : TRAINING_COLORS[i % TRAINING_COLORS.length]!,
+          name,
+          scale: optStr(o.scale),
+          summary: o.summary == null ? null : text(o.summary, `${where}.summary`),
+        };
       }),
     },
     projects: {
@@ -573,7 +606,18 @@ export const FALLBACK_TOUR: TourContent = {
       },
     ],
   },
-  trainings: { title: "Bioinformatics trainings", intro: "Hands-on workshops run in our own computer lab.", items: [] },
+  trainings: {
+    title: "Bioinformatics trainings",
+    intro: "Hands-on workshops for students, researchers and partner institutions — run in our own computer lab.",
+    takeaway: "From your first command to a whole genome — every workshop hands-on.",
+    items: [
+      { id: "basic-coding", color: "indigo", name: "Basic Coding", scale: "The basics", summary: "The Linux command line and your first scripts: the everyday tools of the trade." },
+      { id: "primer-designing", color: "coral", name: "Primer Designing", scale: "One gene", summary: "Choosing the short DNA pieces that let PCR copy only the gene you want to study." },
+      { id: "dna-barcoding", color: "magenta", name: "DNA Barcoding", scale: "One gene", summary: "Telling which species a sample came from, using one short, standard stretch of its DNA." },
+      { id: "16s-metabarcoding-analysis", color: "mint", name: "16S Metabarcoding Analysis", scale: "Many microbes", summary: "Finding out which bacteria live in a sample, and how many, from one gene they all share." },
+      { id: "whole-genome-assembly", color: "purple", name: "Whole Genome Assembly", scale: "A whole genome", summary: "Piecing millions of short DNA reads back together into an organism’s full genome." },
+    ],
+  },
   projects: { title: "Research projects", intro: "Genomes we have sequenced and assembled.", items: [] },
   covid: {
     title: "COVID-19 genomic surveillance",
