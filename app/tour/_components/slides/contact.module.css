@@ -1,0 +1,149 @@
+/*
+ * The contact slide's art. Canvas pixels, decoration only: aria-hidden, no
+ * pointer, motion on transform and opacity, still for prefers-reduced-motion,
+ * and paused while the slide is off screen.
+ *
+ * The thread: the helix lies across the slide and the QR codes hang on it. A
+ * glow runs along it every 8 seconds and each code lifts as the glow passes.
+ * For the Visual audience the helix stands where the title slide has it, the
+ * codes float in front of it, and a viewfinder frames each in turn.
+ */
+
+/*
+ * The helix and the glow are placed on the 1280 x 720 slide, as the codes are
+ * on its content: where Present mode grows the slide to fill a screen that
+ * isn't 16:9 (by --bleed-x and --bleed-y each side), the art moves with them.
+ */
+.art {
+  display: none;
+  position: absolute;
+  left: var(--bleed-x, 0px);
+  top: var(--bleed-y, 0px);
+  width: 1280px;
+  height: 720px;
+  pointer-events: none;
+}
+
+/* The glow that runs along the thread, from off the left edge to off the right. */
+.pulse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 160px;
+  height: 160px;
+  margin: -80px 0 0 -80px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(159 240 216 / 0.55), rgb(18 202 153 / 0.18) 55%, transparent);
+  opacity: 0;
+}
+
+/* A code's plate: a mint glow around it shows while it is lifted. */
+.plate {
+  position: relative;
+}
+
+.plate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 3px rgb(159 240 216 / 0.35),
+    0 0 36px 4px rgb(18 202 153 / 0.45);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Visual: the code in the viewfinder lifts and glows. */
+[data-locked] .plate {
+  transform: translateY(-5px);
+}
+
+[data-locked] .plate::after {
+  opacity: 1;
+}
+
+/* The viewfinder: four mint corner brackets round the code it frames (--fx, --fy, --fs). */
+.finder {
+  display: none;
+}
+
+@media (width >= 48rem) {
+  .art {
+    display: block;
+  }
+
+  .finder {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--fs);
+    height: var(--fs);
+    pointer-events: none;
+    transform: translate(var(--fx), var(--fy));
+    background:
+      linear-gradient(#9ff0d8, #9ff0d8) 0 0 / 32px 4px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 0 0 / 4px 32px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 100% 0 / 32px 4px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 100% 0 / 4px 32px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 0 100% / 32px 4px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 0 100% / 4px 32px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 100% 100% / 32px 4px no-repeat,
+      linear-gradient(#9ff0d8, #9ff0d8) 100% 100% / 4px 32px no-repeat;
+    filter: drop-shadow(0 0 6px rgb(159 240 216 / 0.8));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse {
+    animation: travel 8s linear infinite;
+  }
+
+  /* The thread: each code lifts as the glow reaches it (--wave, from where it hangs). */
+  .wave,
+  .wave::after {
+    animation: wave 8s ease-in-out infinite;
+    animation-delay: var(--wave, 0s);
+  }
+
+  .wave::after {
+    animation-name: glow;
+  }
+
+  .lockable,
+  .lockable::after {
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.5s ease;
+  }
+
+  .finder {
+    transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  .paused,
+  .paused * {
+    animation-play-state: paused !important;
+  }
+}
+
+/* Along the thread (contact-slide.tsx's THREAD): it crosses x 640 at y 478 and rises 2.5° to the right. */
+@keyframes travel {
+  0% { transform: translate(-120px, 511px); opacity: 0; }
+  5% { opacity: 1; }
+  70% { transform: translate(1400px, 445px); opacity: 1; }
+  72%, 100% { transform: translate(1400px, 445px); opacity: 0; }
+}
+
+@keyframes wave {
+  0%, 4% { transform: none; }
+  10% { transform: translateY(-6px); }
+  18%, 100% { transform: none; }
+}
+
+@keyframes glow {
+  0%, 4% { opacity: 0; }
+  10% { opacity: 1; }
+  18%, 100% { opacity: 0; }
+}

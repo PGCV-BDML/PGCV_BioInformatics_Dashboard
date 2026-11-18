@@ -4,7 +4,7 @@ import { useOnScreen } from "./use-reveal";
 import styles from "./backdrop.module.css";
 
 /*
- * Decorative backgrounds for the tour's dark slides (welcome and contact).
+ * The decorative background of the tour's dark slides (welcome and contact).
  * Everything here is aria-hidden, ignores the pointer and uses no images. The
  * parent must be `relative` and the content above it `relative` too. Sizes are
  * in --u: 1vw on a phone, a hundredth of the canvas's width on the canvas.
@@ -17,12 +17,6 @@ const HERO_BLOBS: Blob[] = [
   { color: LOGO.blue, size: "calc(55 * var(--u))", x: "92%", y: "30%", alpha: 0.45, seconds: 34, alt: true },
   { color: LOGO.orange, size: "calc(38 * var(--u))", x: "72%", y: "92%", alpha: 0.3, seconds: 30 },
   { color: BRAND.teal, size: "calc(34 * var(--u))", x: "6%", y: "100%", alpha: 0.22, seconds: 38, alt: true },
-];
-
-const CONTACT_BLOBS: Blob[] = [
-  { color: LOGO.blue, size: "calc(60 * var(--u))", x: "8%", y: "90%", alpha: 0.4, seconds: 30, alt: true },
-  { color: LOGO.magenta, size: "calc(55 * var(--u))", x: "88%", y: "10%", alpha: 0.45, seconds: 26 },
-  { color: LOGO.orange, size: "calc(30 * var(--u))", x: "60%", y: "105%", alpha: 0.25, seconds: 36 },
 ];
 
 /** Deterministic A/C/G/T rows, so server and client render the same text. */
@@ -72,13 +66,11 @@ function SequenceTexture() {
   );
 }
 
-export type BackdropVariant = "hero" | "contact";
-
-export function SectionBackdrop({ variant }: { variant: BackdropVariant }) {
+export function SectionBackdrop() {
   const [ref, onScreen] = useOnScreen<HTMLSpanElement>();
   return (
     <span ref={ref} className={styles.root} data-offscreen={onScreen === false ? "" : undefined} aria-hidden="true">
-      <Aurora blobs={variant === "hero" ? HERO_BLOBS : CONTACT_BLOBS} />
+      <Aurora blobs={HERO_BLOBS} />
       <SequenceTexture />
     </span>
   );

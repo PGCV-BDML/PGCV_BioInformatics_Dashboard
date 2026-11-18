@@ -13,6 +13,9 @@ Section 9 records where the build differs from the plan.
   the two options for phones (decision 1).
 - [mockups/title-slide.html](mockups/title-slide.html): the three directions for the title slide, live (open it in a
   browser to see them move), and [mockups/title-slide.jpg](mockups/title-slide.jpg): the one built, moving and still.
+- [mockups/closing-slide.jpg](mockups/closing-slide.jpg): the three directions for the last slide, with the title
+  slide's look, and the Visual version; [mockups/closing-slide-built.jpg](mockups/closing-slide-built.jpg): the one
+  built, for both audiences and on a 4:3 projector, beside the title slide it bookends.
 
 The mockups use the dashboard's real text and its own figures (the Venn diagram, the sample-results charts, the
 variant tree and map, the 3D virus), drawn at the size they would have on the canvas. Photos are grey
@@ -246,3 +249,19 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
   FASTQ read that types itself out; the 240 cores drawn as 240 squares lighting up as jobs run, and the 360 TB as a
   filling gauge. The words rise once and hold still; the art is still for reduced motion and pauses off screen. The
   fit check now measures the dark slides too.
+
+- **Last slide** (chosen on 18 November 2026 from three mockups of the title slide's look: C, the thread, and B's
+  layout for the Visual audience): the title slide's gradient, aurora, shade, white logo and logo-colour line; the
+  eyebrow "Thank you for visiting", a bookend to "Welcome to the lab tour"; the title at 60 px with its last word in
+  the mint-to-sky gradient; the words and social accounts top left and the emails top right, as the title slide's
+  glass cards. The title slide's helix lies across the lower half, and the QR codes hang on it (`threadSpots`: evenly
+  spaced, at most 330 px apart). A glow runs along it every 8 seconds and each code lifts as it passes. For the Visual
+  audience the slide is "Scan to connect" and its codes: two columns of 184 px codes (smaller with more rows,
+  `scanSpots`) in front of the helix where the title slide has it, and a viewfinder that frames each code in turn
+  every 2.5 seconds. The helix is one component for both slides now (`turning-helix.tsx`), and so are the dark
+  slides' shared parts (`slides/dark-parts.tsx`); the contact slide's corner logo helix and its own aurora are gone.
+  The art is placed with the content, so in Present mode on a 4:3 projector the codes stay on the helix. Both dark
+  slides now tell whether they are on screen from a box the size of the slide, not from the art: on a phone the art
+  is hidden, so the title slide's fact cards had stopped partway through their entrance, and the contact slide's
+  codes would not have shown at all. No `tour.json` change.
+
