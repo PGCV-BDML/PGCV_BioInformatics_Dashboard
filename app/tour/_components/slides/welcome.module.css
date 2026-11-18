@@ -1,0 +1,263 @@
+/*
+ * The title slide's art: a double helix turning down the right side, letters
+ * peeling off it into a sequencing read, and the two facts drawn as 240 cores
+ * and a storage gauge. Canvas pixels (the slide is 1280 x 720 and zoomed as a
+ * whole). Everything here is decoration: aria-hidden, no pointer, motion on
+ * transform, opacity and clip-path only, still for prefers-reduced-motion, and
+ * paused while the slide is off screen.
+ */
+
+.slide {
+  --base-a: #7fe3cc;
+  --base-c: #5aaef0;
+  --base-g: #ffc145;
+  --base-t: #f25c80;
+}
+
+.art {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---- The helix: 28 base pairs, a turn every 12 seconds ------------------ */
+
+.helix {
+  position: absolute;
+  left: 1000px;
+  top: -60px;
+  width: 0;
+  height: 840px;
+  transform: rotate(14deg);
+  transform-origin: 0 50%;
+}
+
+.pair {
+  position: absolute;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Each bead sits where its turn starts (--x, --k, --o); the animation swings it across and back. */
+.bead {
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 14px var(--c);
+  opacity: var(--o);
+  transform: translateX(var(--x)) scale(var(--k));
+  z-index: var(--z);
+}
+
+/* The rung, in its pair's two colours; it flips as the pair turns edge-on. */
+.rung {
+  position: absolute;
+  left: -78px;
+  top: -2px;
+  width: 156px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--c2) 50%, var(--c1) 50%);
+  opacity: 0.75;
+  transform: scaleX(var(--r));
+}
+
+/* ---- Letters flying from the helix into the read ------------------------ */
+
+.fly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 800 22px/1 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  color: var(--c);
+  text-shadow: 0 0 12px var(--c);
+  opacity: 0;
+}
+
+/* ---- The read: a FASTQ record, typing itself ---------------------------- */
+
+.read {
+  position: absolute;
+  left: 836px;
+  top: 468px;
+  width: 360px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(18 21 46 / 0.78);
+  box-shadow: 0 18px 40px -14px rgb(5 6 25 / 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.readBar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgb(255 255 255 / 0.06);
+  font: 600 14px var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  color: rgb(255 255 255 / 0.6);
+}
+
+.readBar i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.readBody {
+  padding: 12px 16px 14px;
+  font: 500 16px/1.6 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+
+.line {
+  display: block;
+  width: max-content;
+  white-space: pre;
+}
+
+.dim {
+  color: rgb(255 255 255 / 0.5);
+}
+
+.A { color: var(--base-a); }
+.C { color: var(--base-c); }
+.G { color: var(--base-g); }
+.T { color: var(--base-t); }
+
+/* ---- The facts' pictures: 240 cores and a storage gauge ----------------- */
+
+.cores {
+  display: grid;
+  grid-template-columns: repeat(20, 5px);
+  gap: 2px;
+}
+
+.core {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: #12ca99;
+  opacity: var(--o);
+}
+
+.disk {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 34px;
+}
+
+.bar {
+  width: 6px;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to top, #5aaef0, #9ff0d8);
+  transform-origin: bottom;
+}
+
+@media (width >= 48rem) {
+  .art {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bead {
+    animation: turn 12s linear infinite;
+    animation-delay: var(--d);
+  }
+
+  .rung {
+    animation: flip 12s linear infinite;
+    animation-delay: var(--d);
+  }
+
+  .fly {
+    animation: fly 9s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+    animation-delay: var(--d);
+  }
+
+  .type {
+    animation: type 9s steps(var(--n), end) infinite;
+    animation-delay: var(--d);
+  }
+
+  .core {
+    animation: busy 3.2s ease-in-out infinite;
+    animation-delay: var(--d);
+  }
+
+  .bar {
+    animation: fill 8s ease-out infinite both;
+    animation-delay: var(--d);
+  }
+
+  .paused * {
+    animation-play-state: paused !important;
+  }
+}
+
+/* One turn: x follows cos, size and brightness follow sin (front: large and bright; back: small and faint). */
+@keyframes turn {
+  0%     { transform: translateX(78px) scale(0.9);    opacity: 0.8;  z-index: 2; }
+  8.33%  { transform: translateX(67.5px) scale(1.04); opacity: 0.92; z-index: 3; }
+  16.67% { transform: translateX(39px) scale(1.15);   opacity: 1;    z-index: 3; }
+  25%    { transform: translateX(0) scale(1.2);       opacity: 1;    z-index: 3; }
+  33.33% { transform: translateX(-39px) scale(1.15);  opacity: 1;    z-index: 3; }
+  41.67% { transform: translateX(-67.5px) scale(1.04); opacity: 0.92; z-index: 3; }
+  50%    { transform: translateX(-78px) scale(0.9);   opacity: 0.8;  z-index: 2; }
+  58.33% { transform: translateX(-67.5px) scale(0.76); opacity: 0.6; z-index: 1; }
+  66.67% { transform: translateX(-39px) scale(0.66);  opacity: 0.45; z-index: 1; }
+  75%    { transform: translateX(0) scale(0.62);      opacity: 0.4;  z-index: 1; }
+  83.33% { transform: translateX(39px) scale(0.66);   opacity: 0.45; z-index: 1; }
+  91.67% { transform: translateX(67.5px) scale(0.76); opacity: 0.6;  z-index: 1; }
+  100%   { transform: translateX(78px) scale(0.9);    opacity: 0.8;  z-index: 2; }
+}
+
+@keyframes flip {
+  0%     { transform: scaleX(1); }
+  8.33%  { transform: scaleX(0.866); }
+  16.67% { transform: scaleX(0.5); }
+  25%    { transform: scaleX(0); }
+  33.33% { transform: scaleX(-0.5); }
+  41.67% { transform: scaleX(-0.866); }
+  50%    { transform: scaleX(-1); }
+  58.33% { transform: scaleX(-0.866); }
+  66.67% { transform: scaleX(-0.5); }
+  75%    { transform: scaleX(0); }
+  83.33% { transform: scaleX(0.5); }
+  91.67% { transform: scaleX(0.866); }
+  100%   { transform: scaleX(1); }
+}
+
+@keyframes fly {
+  0% { transform: translate(var(--x0), var(--y0)) scale(1.4); opacity: 0; }
+  6% { opacity: 1; }
+  30% { transform: translate(var(--x1), var(--y1)) scale(0.8); opacity: 0.95; }
+  34%, 100% { transform: translate(var(--x1), var(--y1)) scale(0.8); opacity: 0; }
+}
+
+@keyframes type {
+  0% { clip-path: inset(0 100% 0 0); }
+  28%, 92% { clip-path: inset(0 0 0 0); opacity: 1; }
+  97%, 100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+
+@keyframes busy {
+  0%, 100% { opacity: 0.22; }
+  35%, 55% { opacity: 1; }
+}
+
+@keyframes fill {
+  0% { transform: scaleY(0.12); opacity: 0.4; }
+  10%, 85% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0.12); opacity: 0.4; }
+}

@@ -233,3 +233,8 @@ bottom margin, no title over two lines, no HTML text under 14 px. Where the buil
 - **Sample to sequence:** the stage is 500 x 284, so the longest Technical step fits beside it.
 - **Present mode:** the control bar fades after three still seconds, as in the decks, so it doesn't hide the footer.
 
+- **Title slide** (chosen from three live mockups on 18 November 2026: the helix, with the reads mockup's fact cards):
+  the white PGC Visayas logo beside the eyebrow; a double helix turning down the right side, its bases flying into a
+  FASTQ read that types itself out; the 240 cores drawn as 240 squares lighting up as jobs run, and the 360 TB as a
+  filling gauge. The words rise once and hold still; the art is still for reduced motion and pauses off screen. The
+  fit check now measures the dark slides too.
