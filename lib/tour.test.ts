@@ -291,6 +291,8 @@ describe("lab map", () => {
     const labMap = { title: "Explore the lab", intro: { general: "Walk the rooms" }, src: "lab-map/index.html" };
     expect(parseTourContent(minimalTour({ labMap })).labMap).toMatchObject(labMap);
     expect(parseTourContent(minimalTour()).labMap).toBeNull();
+    const noIntro = { title: labMap.title, src: labMap.src };
+    expect(parseTourContent(minimalTour({ labMap: noIntro })).labMap).toMatchObject({ ...noIntro, intro: null });
     for (const src of ["index.html", "lab-map/../tour.json", "lab-map/.secret.html", "lab-map/map.js", "images/x.html"]) {
       expect(parseTourContent(minimalTour({ labMap: { ...labMap, src } })).labMap).toBeNull();
     }
