@@ -151,7 +151,7 @@ export type TourContent = {
    * Lab map slide; `src` is a self-contained lab-map/*.html page in the
    * content repo, served sandboxed by /api/tour/lab-map.
    */
-  labMap: { title: string; intro: TourText; src: string } | null;
+  labMap: { title: string; intro: TourText | null; src: string } | null;
   team: {
     title: string;
     intro: TourText;
@@ -500,7 +500,7 @@ export function parseTourContent(raw: unknown): TourContent {
       labMap && isSafeTourLabMapPath(optStr(labMap.src) ?? "")
         ? {
             title: str(labMap.title, "labMap.title"),
-            intro: text(labMap.intro, "labMap.intro"),
+            intro: labMap.intro == null ? null : text(labMap.intro, "labMap.intro"),
             src: str(labMap.src, "labMap.src"),
           }
         : null,

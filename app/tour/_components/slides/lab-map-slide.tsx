@@ -35,7 +35,7 @@ export function LabMapSlide({ content, audience, meta, holdPageScroll }: SlidePr
       meta={meta}
       eyebrow="Step inside"
       title={labMap.title}
-      intro={audience !== "visual" && <TourCopy text={labMap.intro} audience={audience} />}
+      intro={audience !== "visual" && labMap.intro && <TourCopy text={labMap.intro} audience={audience} />}
     >
       <figure
         className={`${styles.enter} relative h-[70vh] min-h-[420px] overflow-hidden rounded-3xl border border-[#2b3278]/10 bg-[#073e3e] shadow-[0_18px_40px_-16px_rgba(43,50,120,0.35)] canvas:h-full canvas:min-h-0 canvas:rounded-2xl`}
